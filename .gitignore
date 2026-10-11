@@ -1,0 +1,6 @@
+# תוצרי build — נבנים מחדש מ-generated/corpus.bundle.js הקיים או מ-scripts/build.js
+/dist/
+*.zip
+
+# קבצי מערכת
+.DS_Store

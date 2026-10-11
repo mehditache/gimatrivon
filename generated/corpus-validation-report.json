@@ -1,0 +1,110 @@
+{
+ "totals": {
+  "tanakhBooks": 39,
+  "mishnahTractates": 63,
+  "files": 102,
+  "searchableUnits": 27310,
+  "tanakhVerseUnits": 23204,
+  "mishnahUnits": 4106
+ },
+ "checks": [
+  {
+   "name": "39 ספרי תנ״ך",
+   "ok": true,
+   "detail": 39
+  },
+  {
+   "name": "63 מסכתות משנה",
+   "ok": true,
+   "detail": 63
+  },
+  {
+   "name": "102 קבצים",
+   "ok": true,
+   "detail": 102
+  },
+  {
+   "name": "כל ה-JSON תקין",
+   "ok": true
+  },
+  {
+   "name": "אין שדה error",
+   "ok": true
+  },
+  {
+   "name": "text קיים ועברי בכל קובץ",
+   "ok": true
+  },
+  {
+   "name": "אין תרגום/טקסט לטיני (לאחר ניקוי סימון)",
+   "ok": true
+  },
+  {
+   "name": "קטגוריות: רק Tanakh ו-Mishnah",
+   "ok": true
+  },
+  {
+   "name": "אין קבצי תלמוד/מדרש/פירוש/תרגום",
+   "ok": true
+  },
+  {
+   "name": "39 שמות התנ״ך תואמים לרשימה הקנונית",
+   "ok": true
+  },
+  {
+   "name": "מבנה text[פרק][יחידה] נשמר — יחידה = פסוק/משנה",
+   "ok": true,
+   "detail": "חלונות החיפוש מוגבלים ליחידה"
+  }
+ ],
+ "allPassed": true,
+ "flagged": [
+  {
+   "file": "data/Tanakh/Joshua.json",
+   "status": "warning",
+   "warnings": [
+    "יחידות ללא אותיות עבריות (לא נכללות בחיפוש): 21:36, 21:37"
+   ]
+  },
+  {
+   "file": "data/Mishnah/Seder Zeraim/Mishnah Maasrot.json",
+   "status": "warning",
+   "warnings": [
+    "קובץ עם BOM (נקרא כהלכה, המקור לא שונה)",
+    "יחידות גדולות שחשודות כמאוחדות מכמה משניות בקובץ המקור: 4:1"
+   ]
+  },
+  {
+   "file": "data/Mishnah/Seder Moed/Mishnah Taanit.json",
+   "status": "warning",
+   "warnings": [
+    "קובץ עם BOM (נקרא כהלכה, המקור לא שונה)",
+    "יחידות גדולות שחשודות כמאוחדות מכמה משניות בקובץ המקור: 2:1"
+   ]
+  },
+  {
+   "file": "data/Mishnah/Seder Nezikin/Pirkei Avot.json",
+   "status": "warning",
+   "warnings": [
+    "קובץ עם BOM (נקרא כהלכה, המקור לא שונה)",
+    "heTitle חסר בקובץ המקור",
+    "יחידות גדולות שחשודות כמאוחדות מכמה משניות בקובץ המקור: 2:1, 3:1, 5:1, 6:1"
+   ]
+  },
+  {
+   "file": "data/Mishnah/Seder Tahorot/Mishnah Niddah.json",
+   "status": "warning",
+   "warnings": [
+    "קובץ עם BOM (נקרא כהלכה, המקור לא שונה)",
+    "יחידות גדולות שחשודות כמאוחדות מכמה משניות בקובץ המקור: 5:1"
+   ]
+  },
+  {
+   "file": "data/Mishnah/Seder Tahorot/Mishnah Uktzin.json",
+   "status": "ok",
+   "warnings": [
+    "קובץ עם BOM (נקרא כהלכה, המקור לא שונה)"
+   ]
+  }
+ ]
+}

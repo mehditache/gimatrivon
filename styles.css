@@ -1,0 +1,350 @@
+:root{--bg:#e9e3d3;--pn:#fcfaf4;--pn2:#f3eddd;--ln:#d6c9a9;--ln2:#e7dcc2;--tx:#251e13;--mu:#76684e;--gold:#98722c;--ac:var(--gold);--acs:color-mix(in srgb,var(--ac) 12%,#fff);--r:12px;--g:10px;
+--ui:"Segoe UI","Heebo","Assistant",system-ui,"Arial Hebrew",Arial,sans-serif;--tf:"Frank Ruhl Libre","David","Times New Roman",serif;--sb:#c4b48d;--sel:#7fa6a0;
+/* --markbg/--glowYbg/--glowGbg: רקעי הדגשות-מילה (mark/glow) ברשימת-התוצאות — ערכים *קבועים* (לא
+   color-mix() בזמן-ריצה!). עד גרסה 2.6.2 אלה חושבו דרך color-mix(var(--ac)/צבע-קבוע, var(--mkbg)) — אבל עם
+   רשימת-תוצאות של אלפי כרטיסים (כל אחד עם mark אחד או יותר), כל שינוי ב-data-theme (או בכל משתנה-CSS
+   שמשפיע על הנוסחה) מכריח את הדפדפן לחשב מחדש color-mix() עבור *כל* מופע mark בדף בבת-אחת — ולא רק
+   layout/paint (ש-content-visibility:auto על .rs כבר פותר), אלא גם style recalculation, שלא מדלג על
+   אלמנטים מחוץ-למסך. זו היתה הסיבה המדודה (Performance Observer: longtask של מאות אלפי מ"ש) לקיפאון
+   הדפדפן בהחלפת theme כשיש הרבה תוצאות — בין בהדגמה ובין בשימוש רגיל. הפתרון: במקום לתת לדפדפן לחשב את
+   המיזוג-הצבעים מחדש על כל אלמנט, התוצאה המוכנה-מראש (אותה נוסחה בדיוק, מחושבת ידנית/ע״י getComputedStyle)
+   מוגדרת כאן כקבוע-צבע פשוט, שאינו "יקר" לפתור. --markbg תלוי-צד (ממוזג מ-var(--ac) שהוא עצמו תלוי-צד) —
+   מוגדר מחדש בכל אחד מ-.side[data-k=A/B] למטה (וב-[data-theme=dark] שוב, כי --ac גם הוא שונה בכהה);
+   --glowYbg/--glowGbg אינם תלויי-צד (מבוססים על צבעים קבועים, לא על --ac) — ברירת-מחדל (בהיר) כאן, override
+   יחיד בכהה. */
+--glowYbg:#f8eec7;--glowGbg:#d1ecd8}
+*{box-sizing:border-box}html,body{height:100%}[hidden]{display:none!important}
+body{margin:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:var(--tx);font:15px/1.5 var(--ui)}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+/* בחירת טקסט: צבע אחיד בכל האתר (תכלת-אזמרגד רך) במקום ברירת המחדל הכחולה של הדפדפן; וטקסט ניתן לסימון בכל מקום,
+   כולל בתוך כרטיסי תוצאה שבנויים כ-<button> (שם הדפדפן חוסם סימון טקסט כברירת מחדל) */
+::selection{background:var(--sel);color:#fff}
+button,button *{-webkit-user-select:text;user-select:text}
+/* header */
+.top{flex:none;display:flex;align-items:center;gap:1rem;padding:.5rem var(--g);min-height:48px}
+.brand{display:flex;align-items:baseline;gap:.7rem}.brand h1{margin:0;font:700 1.35rem var(--tf);color:#5e4518}.brand span{color:var(--mu);font-size:.85rem}
+.ver{background:var(--pn2);border:1px solid var(--ln);border-radius:99px;padding:.05rem .55rem;font:600 .72rem var(--ui);color:var(--ac)!important;letter-spacing:.02em}
+.langSw{font:700 .72rem var(--ui);padding:.12rem .55rem;border-radius:99px;color:var(--ac);border-color:var(--ac);letter-spacing:.03em}
+.tools{margin-inline-start:auto;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}.inl{display:flex;align-items:center;gap:.4rem;color:var(--mu);font-size:.85rem}
+.status{color:var(--mu);font-size:.8rem;min-width:11rem;text-align:end}
+/* buttons / inputs / select — one system */
+button,select,.inp input[type=number],.rng input{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:.28rem .75rem;cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s}
+button:hover,select:hover{border-color:var(--ac);background:var(--acs)}button:active{transform:translateY(1px)}
+select{appearance:none;padding-inline-end:1.7rem;background-image:linear-gradient(45deg,transparent 50%,#76684e 50%),linear-gradient(135deg,#76684e 50%,transparent 50%);background-size:5px 5px;background-repeat:no-repeat;background-position:left 14px center,left 9px center}
+.sm{font-size:.78rem;padding:.12rem .55rem}
+.seg{display:inline-flex;border:1px solid var(--ln);border-radius:8px;overflow:hidden;background:var(--pn)}.seg button{border:0;border-radius:0;background:none}.seg button.on{background:var(--gold);color:#fff;font-weight:600}
+.sideSw{display:none}
+/* מתג מראה (theme): פיל עם ידית נגררת + סמלי חמה/ירח; checkbox אמיתי אך מוסתר-ויזואלית (נגישות: מקלדת/קורא-מסך) */
+.themeSw{position:relative;display:inline-flex;align-items:center;cursor:pointer;flex:none}
+.themeSw input{position:absolute;opacity:0;width:1px;height:1px}
+.themeSw .trk{position:relative;width:3.1rem;height:1.6rem;background:var(--pn2);border:1px solid var(--ln);border-radius:99px;transition:background .2s,border-color .2s}
+.themeSw .trk::before{content:"☀";position:absolute;inset-inline-start:.34rem;top:50%;transform:translateY(-50%);font-size:.88rem;line-height:1;opacity:1;color:var(--gold);transition:opacity .2s}
+.themeSw .trk::after{content:"☾";position:absolute;inset-inline-end:.32rem;top:50%;transform:translateY(-50%);font-size:.88rem;line-height:1;opacity:.45;color:var(--mu);transition:opacity .2s}
+.themeSw .thb{position:absolute;top:1px;inset-inline-start:1px;width:1.4rem;height:1.4rem;border-radius:50%;background:var(--pn);border:1px solid var(--ln);box-shadow:0 1px 2px rgba(90,65,20,.2);transition:inset-inline-start .2s cubic-bezier(.4,0,.2,1),background .2s,border-color .2s}
+.themeSw input:focus-visible~.trk{outline:2px solid var(--ac);outline-offset:2px}
+.themeSw input:checked~.trk{background:#241b11;border-color:#3c2e1a}
+.themeSw input:checked~.trk::before{opacity:.45}
+.themeSw input:checked~.trk::after{opacity:1;color:#d7a847}
+.themeSw input:checked~.trk .thb{inset-inline-start:calc(100% - 1.4rem - 2px);background:#2c2114;border-color:#5f5236}
+.tourBtn{color:var(--ac);border-color:var(--ac)}
+.tourBtn:hover{background:var(--acs)}
+/* משיכת-תשומת-לב ל-5 השניות הראשונות בלבד (ראו app.js) — טבעת-זוהר פועמת + מעבר-רקע עדין, בגווני
+   var(--ac)/var(--acs) הקיימים כבר (לא צבעים חדשים) כדי שישתלב עם המראה הקיים בשני ה-theme. */
+@keyframes tourAttract{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ac) 45%,transparent);background:var(--pn)}50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--ac) 0%,transparent);background:var(--acs)}}
+.tourBtn.attract{animation:tourAttract 1.2s ease-in-out 4}
+@media (prefers-reduced-motion: reduce){.tourBtn.attract{animation:none}}
+/* ---------- סיור מודרך (Driver.js — vendor/driver.css, נטען offline) ----------
+   עיצוב-מחדש של מחלקות driver-* הסטנדרטיות כך שישתלבו ב-theme (גוויל/לילה, משתני --pn/--ln/--tx/--ac/--r
+   הרגילים של האתר — מתעדכן אוטומטית בין הבהיר לכהה, בדיוק כמו כל שאר הממשק) ובכיווניות RTL (document
+   כבר dir="rtl" — אבל כמה כללים ב-driver.css משתמשים ב-margin-left פיזי-מוחלט שלא "מתהפך" לבד; מתוקן
+   כאן נקודתית). מיקום-בפועל של הפופ-אובר/המלבן-המודגש (spotlight) מחושב ב-JS ע״י הספרייה עצמה (ערכי
+   top/left/right מוחלטים בפיקסלים) ולכן לא תלוי-כיווניות מבחינת המיקום עצמו, רק מבחינת זרימת-הטקסט/
+   כפתורים *בתוך* הפופ-אובר. */
+/* הערה: *בלי* all:unset כאן — driver.css הבסיסי (vendor/driver.css) כבר עושה all:unset על .driver-popover
+   ומיד אחריו, באותו כלל-CSS, קובע position:fixed/z-index/top/right משלו (קריטי למיקום/שכבת-התצוגה של
+   הפופ-אובר מעל ה-overlay) — כלל *נפרד* ומאוחר-יותר עם all:unset היה "מאפס" את אלה שוב, בלי להגדירם
+   מחדש, והפופ-אובר היה הופך ל-position:static לא-לחיץ מתחת ל-overlay. לכן כאן רק override נקודתי. */
+.driver-popover.gtTourPopover{box-sizing:border-box;direction:rtl;text-align:right;font:15px/1.5 var(--ui);background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 10px 30px -10px rgba(0,0,0,.35);padding:1rem 1.1rem;min-width:17rem;max-width:21rem}
+.gtTourPopover .driver-popover-title{font:700 1.05rem/1.4 var(--tf);color:var(--ac);margin:0 0 .3rem}
+.gtTourPopover .driver-popover-description{font-size:.88rem;line-height:1.6;color:var(--tx)}
+.gtTourPopover .driver-popover-footer{margin-top:.9rem}
+.gtTourPopover .driver-popover-progress-text{font-size:.76rem;color:var(--mu)}
+.gtTourPopover .driver-popover-footer-btn{all:unset;box-sizing:border-box;background:var(--pn2);border:1px solid var(--ln);color:var(--tx);border-radius:8px;padding:.3rem .8rem;font-size:.82rem;cursor:pointer;transition:border-color .12s,background .12s}
+.gtTourPopover .driver-popover-footer-btn:hover,.gtTourPopover .driver-popover-footer-btn:focus{background:var(--acs);border-color:var(--ac);color:var(--ac)}
+.gtTourPopover .driver-popover-navigation-btns button+button{margin-left:0;margin-inline-start:.4rem}
+.gtTourPopover .driver-popover-close-btn{all:unset;position:absolute;inset-inline-end:0;top:0;width:2rem;height:1.8rem;display:grid;place-content:center;color:var(--mu);cursor:pointer;font-size:1.05rem}
+.gtTourPopover .driver-popover-close-btn:hover{color:var(--tx)}
+.gtTourPopover .driver-popover-arrow{border-width:7px}
+.gtTourPopover .driver-popover-arrow-side-left{border-left-color:var(--pn)!important}
+.gtTourPopover .driver-popover-arrow-side-right{border-right-color:var(--pn)!important}
+.gtTourPopover .driver-popover-arrow-side-top{border-top-color:var(--pn)!important}
+.gtTourPopover .driver-popover-arrow-side-bottom{border-bottom-color:var(--pn)!important}
+.driver-active-element{border-radius:8px!important}
+/* workspace grid: 4 columns, שורה אחת, כל הפאנלים באותו גובה (פנל הסינון מוזג לתוך פנל התוצאות ומוחלף איתו בלחיצת כפתור) */
+.ws{flex:1;min-height:0;display:grid;gap:var(--g);padding:0 var(--g) var(--g);grid-template-columns:minmax(14rem,2.6fr) minmax(0,1.7fr) minmax(0,1.7fr) minmax(14rem,2.6fr);grid-template-rows:minmax(0,1fr)}
+.side{display:contents}
+.pn{min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 1px 2px rgba(90,65,20,.07);overflow:hidden}
+.ws>.side>.pn,.ws .pn{grid-row:1}
+.side[data-k=A]{--ac:#23527f;--markbg:#cfd9e3}.side[data-k=B]{--ac:#8a2f40;--markbg:#e5d1d5}
+.side[data-k=A] .res{grid-column:1}.side[data-k=A] .ctr{grid-column:2}
+.side[data-k=B] .ctr{grid-column:3}.side[data-k=B] .res{grid-column:4}
+.hd{flex:none;display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.5rem .8rem;border-bottom:1px solid var(--ln2);border-top:3px solid var(--ac);background:var(--pn2)}
+.hd h2{margin:0;font-size:.95rem;font-weight:700;color:var(--ac);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hd .m{color:var(--mu);font-size:.78rem}
+.filtToggle{flex:none;width:1.9rem;height:1.9rem;padding:0;border-radius:8px;font-size:1rem;line-height:1;display:inline-grid;place-content:center;color:var(--mu)}
+.filtToggle.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.sc{flex:1;min-height:0;overflow:auto;padding:.6rem .8rem;scrollbar-width:thin;scrollbar-color:var(--sb) transparent}
+/* עטיפת גוף פנל התוצאות (כל מה שמתחת ל-.hd): position:relative כדי ש-.filtPane יוכל "לרחף" מעליה במידות קבועות */
+.resBody{flex:1;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden}
+/* עטיפת רשימת-התוצאות (#rl{k}) + הסקרולר-המותאם (.fsTrack) — position:relative בגודל-flex:1 קבוע, כדי
+   ש-#rl{k} (position:absolute;inset:0 בתוכה) ימלא אותה במדויק בכל מצב, ללא תלות בגובה .sum/.tsBar המשתנה. */
+.resList{flex:1;min-height:0;position:relative}
+.resList>.sc{position:absolute;inset:0;scrollbar-width:none}
+.resList>.sc::-webkit-scrollbar{width:0;height:0}
+/* ============ סקרולר-מותאם לרשימת-התוצאות (בסגנון Google Photos) ============
+   מחליף את פס-הגלילה הרגיל: ידית פרופורציונלית דו-כיוונית (גרירה חופשית, קשורה ישירות ל-scrollTop —
+   לא "קפיצות" בין עוגנים בדידים), עם סימוני-משפחת-גימטריה על המסלול (באותם צבעים כמו שאר האפליקציה,
+   ראו GEM_FAMILIES/famColorOf ב-app.js) ובועת-תווית חיה שמופיעה רק תוך-כדי גרירה/ריחוף על הידית. */
+.fsTrack{position:absolute;top:.3rem;bottom:.3rem;left:3px;width:6px;z-index:4;border-radius:4px;background:color-mix(in srgb,var(--sb) 40%,transparent);cursor:pointer}
+.fsTick{position:absolute;left:0;width:100%;height:3px;border-radius:2px;opacity:.7;pointer-events:none}
+.fsThumb{position:absolute;left:-2px;width:10px;border-radius:6px;background:var(--sb);cursor:grab;box-shadow:0 0 0 2px var(--pn);transition:background .1s}
+.fsThumb:hover,.fsThumb.dragging{background:var(--ac)}
+.fsThumb.dragging{cursor:grabbing}
+/* הבועה כעת שתי שורות (לפי בקשת המשתמש): שורה 1 = תווית-הקבוצה הקרובה (שיטה·ערך), שורה 2 = "תוצאה
+   X מתוך Y" — המיקום המשוער בתוך *כל* התוצאות (לא רק מה שבפועל מרונדר כרגע ב-DOM, ראו renderWindow
+   ב-app.js). display:flex+column במקום white-space:nowrap על הבועה עצמה; כל שורה נשארת nowrap+ellipsis
+   בפני עצמה כדי שלא "תישבר" לשתי שורות נוספות אם הטקסט ארוך. */
+.fsBubble{position:absolute;left:18px;top:50%;transform:translateY(-50%) scale(.9);transform-origin:left center;background:var(--pn);color:var(--tx);border:1px solid var(--ln);padding:.4rem .8rem;border-radius:8px;font:700 .78rem var(--tf);box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .12s ease,transform .12s ease;z-index:6;max-width:16rem;display:flex;flex-direction:column;gap:.15rem}
+.fsBubbleL1,.fsBubbleL2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsBubbleL2{font-weight:600;opacity:.8;font-size:.72rem}
+.fsThumb:hover .fsBubble,.fsThumb.dragging .fsBubble{opacity:1;transform:translateY(-50%) scale(1)}
+/* גלילה-וירטואלית (ראו renderWindow ב-app.js): רק "חלון" של עד N (= תוצאות מקס׳ לשיטה) שורות מרונדר
+   בפועל ב-DOM בכל רגע; שני .rlSpacer (לפני/אחרי החלון) תופסים את הגובה המוערך של השורות שלא מרונדרות,
+   כך שפס-הגלילה (האמיתי, מוסתר, ו-.fsTrack המותאם שמשתמש באותו scrollHeight/scrollTop) מתנהג כאילו *כל*
+   התוצאות קיימות — בלי לשלם את מחיר-ה-DOM של רינדור כולן. .rlRows היא עטיפה "שקופה" מבחינה ויזואלית
+   (אין לה עיצוב משלה) סביב השורות-בפועל, שמשמשת רק למדידת הגובה-הממוצע-לשורה (offsetHeight/count) כדי
+   לחדד את האומדן בכל רינדור. */
+/* פנל הסינון (.filtPane) נשאר תמיד ב-DOM, position:absolute בגודל קבוע (inset:0) מעל .resBody.
+   הפתיחה/סגירה מונפשת ב-transform+opacity בלבד (לא בגובה אמיתי) כדי שהריצה תהיה חלקה על ה-GPU,
+   בלי reflow בכל פריים — גם אם תוכן הפנל ארוך. translateY(100%)→0 נותן אפקט "גלילה" מלמטה למעלה. */
+.filtPane{position:absolute;inset:0;overflow:auto;transform:translateY(100%);opacity:0;pointer-events:none;background:var(--pn);transition:transform .32s cubic-bezier(.22,.61,.36,1),opacity .24s ease}
+.filtPane.open{transform:translateY(0);opacity:1;pointer-events:auto}
+.sc::-webkit-scrollbar{width:8px;height:8px}.sc::-webkit-scrollbar-track{background:transparent}.sc::-webkit-scrollbar-thumb{background:var(--sb);border-radius:8px;border:2px solid var(--pn)}.sc::-webkit-scrollbar-thumb:hover{background:var(--ac)}
+.sec{margin:0 0 .9rem}.sec>h3{margin:0 0 .35rem;font-size:.78rem;font-weight:600;color:var(--mu);display:flex;flex-direction:column;gap:.15rem}
+.sec>h3 .hint{font-weight:400;font-size:.7rem;color:var(--mu);opacity:.85}
+.rowb{display:flex;gap:.35rem;margin:0 0 .4rem;flex-wrap:wrap}
+/* שבבי שיטות גימטריה (chip grid) — מחליף רשימת checkbox אנכית */
+.chipRow{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.3rem}
+.chip{display:flex;align-items:center;justify-content:center;gap:.35rem;padding:.4rem .5rem;border:1.5px solid var(--ln);border-radius:10px;background:#fff;font-size:.8rem;cursor:pointer;transition:all .12s;text-align:center}
+.chip:hover{border-color:var(--ac);background:var(--acs)}
+.chip.on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.chip.all{grid-column:1/-1;border-style:dashed}
+.cbh{position:absolute;opacity:0;width:0;height:0}
+/* עץ מקורות — כרטיסי קטגוריה עם פס צבע (Accent לפי קטגוריה) */
+.srcTree{display:flex;flex-direction:column;gap:.5rem}
+/* פנל "סוגי גימטריה לחיפוש": 3 עצי-המשפחות בשורה אחת למעלה (מימין לשמאל: רגילה · אתב״ש · אטב״ח, לפי סדר-DOM
+   ב-GEM_FAMILIES) ומילוי כקלף רביעי באותו רוחב, ללא "הכול" נפרד ("srcCard" קיימת כבר מספקת את המראה) */
+.smTree{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;align-items:start}
+.smTree .srcLeaves{margin-top:.3rem}
+.srcCard{border-radius:11px;background:#fff;border:1px solid var(--ln2);border-inline-start:4px solid var(--c,var(--ac));overflow:hidden;box-shadow:0 1px 3px rgba(90,65,20,.06)}
+.srcHd{display:flex;align-items:center;gap:.4rem;padding:.5rem .6rem}
+.srcHd .nm{font-weight:700;font-size:.86rem}
+.srcBody{padding:0 .6rem .5rem;display:flex;flex-direction:column}
+.srcGrp{border-top:1px dashed var(--ln2);padding-top:.3rem;margin-top:.25rem}
+.srcGrp:first-child{border-top:0;padding-top:0;margin-top:0}
+.srcGrpHd{display:flex;align-items:center;gap:.4rem;padding:.15rem 0;font-size:.82rem;font-weight:600}
+.srcLeaves{margin-inline-start:.45rem;border-inline-start:1px solid var(--ln2);padding-inline-start:.65rem;margin-top:.15rem}
+.srcLeaf{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:.18rem 0}
+.srcLeaf.mod{background:var(--acs);margin:0 -.4rem;padding:.18rem .4rem;border-radius:7px}
+.leafMain{flex:1;min-width:0;padding:0!important}
+.rngTag,.rngLink{flex:none;font-size:.7rem;border-radius:99px;padding:.1rem .55rem;cursor:pointer;white-space:nowrap}
+.rngTag{background:var(--ac);color:#fff;font-weight:600}
+.rngLink{color:var(--ac);border:1px dashed var(--ln);background:transparent}
+.rngLink:hover{border-color:var(--ac);background:var(--acs)}
+.rngA{font-size:.72rem;color:var(--ac);text-decoration:underline;text-underline-offset:2px;cursor:pointer;flex:none}
+.rngEd{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;background:var(--pn2);border-radius:8px;padding:.4rem .5rem;margin:.15rem 0 .35rem}
+.rngEd .prs{font-size:.76rem;padding:.2rem .4rem;border-radius:7px;max-width:11rem}
+.rngInp{display:flex;align-items:center;gap:.2rem;font-size:.72rem;color:var(--mu)}
+.rngInp .rin{width:2.3rem;text-align:center;padding:.15rem;font-size:.74rem;border-radius:5px}
+/* checkbox */
+.cb{appearance:none;flex:none;width:1.05rem;height:1.05rem;margin:0;border:1.5px solid #b3a176;border-radius:5px;background:#fff;display:inline-grid;place-content:center;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s}
+.cb:hover{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs)}
+.cb:checked,.cb:indeterminate{background:var(--ac);border-color:var(--ac)}
+.cb:checked::after{content:"";width:.28rem;height:.55rem;border:solid #fff;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+.cb:indeterminate::after{content:"";width:.5rem;height:2px;background:#fff;border-radius:2px}
+.opt{display:flex;align-items:center;gap:.5rem;padding:.2rem .35rem;border-radius:7px;cursor:pointer}.opt:hover{background:var(--acs)}.opt.off{color:var(--mu)}
+/* source tree */
+.node{min-width:0}.node>.opt{padding-inline-start:.1rem;min-width:0}.node>.opt>label.opt{min-width:0}.hd h2{min-width:0}.sc{overflow-x:hidden}.sc.doc{overflow-x:auto}.tw{width:1.1rem;height:1.1rem;border:0;background:none;padding:0;color:var(--mu);font-size:.7rem;flex:none}.tw:hover{background:none;color:var(--ac)}.kids{margin-inline-start:.95rem;border-inline-start:1px solid var(--ln2);padding-inline-start:.35rem}
+.nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ct{color:var(--mu);font-size:.72rem}
+.rng{display:flex;align-items:center;gap:.3rem;font-size:.85rem;min-width:0}.rng input{flex:1;min-width:0;width:2.6rem;padding:.28rem .2rem;cursor:text;text-align:center}
+/* center */
+.ctr .inp{flex:none;padding:.7rem .8rem;border-bottom:1px solid var(--ln2)}
+textarea{width:100%;resize:none;height:5.6rem;background:#fff;border:1px solid var(--ln);border-radius:9px;padding:.55rem .75rem;font:1.35rem/1.5 var(--tf)}textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs);outline:0}
+.inp .meta{display:flex;align-items:center;gap:.5rem;margin-top:.4rem;color:var(--mu);font-size:.8rem;flex-wrap:wrap}.inp .meta .sp{flex:1}
+.inp input[type=number]{width:5.5rem;cursor:text;padding:.1rem .4rem}
+.gr{display:flex;align-items:center;gap:.6rem;padding:.35rem .6rem;border:1px solid var(--ln2);border-radius:9px;margin-bottom:.35rem;border-inline-start:5px solid var(--c,var(--ln2));background:#fff;cursor:pointer}
+.gr:hover{border-color:var(--ac)}
+.gr.off{opacity:.5}.gr .mn{flex:1;min-width:0;font-size:.8rem;font-weight:700;color:var(--tx)}.gr .mn small{display:flex;align-items:center;gap:.3rem;color:var(--mu);font-size:.72rem;min-width:0}
+.gr .mn small .noteTxt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr .mn small .cpy{width:1.3rem;height:1.3rem;font-size:.68rem;flex:none;margin-inline-start:0}
+/* אותו עיקרון במילוי: עמודת-עיגולים (bdgCol) עם ההתאמות הקטנות מעל עיגול-המקורות הגדול, בין השם למספר */
+.gr .bdgCol{display:flex;flex-direction:column;align-items:flex-start;gap:.2rem}
+/* מקום קבוע ל-3 עיגולי-התאמה בשורה (רשת, לא flex-wrap חופשי) — שורה נוספת נפתחת אוטומטית אם יש יותר מ-3 */
+.gr .bdgSmall{display:grid;grid-template-columns:repeat(3,1.3rem);gap:.2rem}
+/* רגילה/כולל/עם-תיבות/עם-אותיות — מלבן אחד מחולק ל-4 עמודות שוות-רוחב, בלי שורת-הערה אפורה (v1.16.0) */
+.gr4{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ln2);border-radius:9px;overflow:hidden;background:#fff;margin-bottom:.35rem;box-shadow:0 1px 2px rgba(90,65,20,.06)}
+.gr4cell{position:relative;padding:.4rem .45rem .5rem;cursor:pointer;border-inline-start:1px solid var(--ln2);border-top:3px solid var(--c,var(--ln2));background:#fff;transition:background .14s;display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.gr4cell:first-child{border-inline-start:0}
+.gr4cell:hover{background:var(--pn2)}
+.gr4cell.off{opacity:.5}
+/* הכותרת תמיד בשורה משלה — תגי-ההתאמה בשורה נפרדת מתחתיה (עוטפת אם יש כמה) כך שלעולם לא דורסים אותה */
+.gr4cell .mn{min-width:0;font-size:.74rem;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* העמודה הראשונה בכל מלבן (רגילה/אתב״ש/אטב״ח — השיטה הבסיסית) מעט גדולה יותר מעמודות הבונוס +כולל/+תיבות/+אותיות */
+.gr4cell:first-child .mn{font-size:.8rem}
+/* סדר קבוע בתוך כל מלבן: כותרת (mn) ← ערך (num) מיד מתחתיה ← עיגול-המקורות הגדול (bdgH) ← עיגולי-ההתאמה
+   הקטנים (bdgSmall) בשורה התחתונה. */
+/* ערך-הגימטריה ועיגול-התוצאות ממורכזים אופקית בתוך המלבן (לא הכותרת ולא עיגולי-ההתאמה) */
+.gr4cell .num{margin-top:.02rem;text-align:center}
+/* עיגולי-ההתאמה הקטנים (bdgSmall) תמיד מתחת לעיגול-המקורות הגדול (bdgH) — שתי "שורות" בתוך bdgRow, לא זו-לצד-זו.
+   bdgSmall: רשת קבועה של 3 עמודות (מקום מקובע לכל עיגול, לא משתנה לפי כמות) — אם יש יותר מ-3 התאמות
+   נפתחת שורה נוספת אוטומטית (grid-auto-rows), במקום flex-wrap חופשי שהיה גורם לרוחב-עיגול משתנה. */
+.gr4cell .bdgRow{display:flex;flex-direction:column;align-items:center;gap:.2rem;min-height:1.05rem;margin-top:.3rem}
+.gr4cell .bdgSmall{justify-self:center}
+.gr4cell .bdgSmall{display:grid;grid-template-columns:repeat(3,1.05rem);gap:.2rem}
+.gr4cell .bdg{min-width:1.05rem;height:1.05rem;padding:0 .28rem;font-size:.6rem;line-height:1.05rem}
+/* עטיפה למלבן ה-4-עמודות + שורת-הערה (המחרוזת המומרת, לאתב״ש/אטב״ח בלבד) לאורך כל רוחב המלבן, כמסגרת אחת */
+.gr4Wrap{border:1px solid var(--ln2);border-radius:9px;overflow:hidden;background:#fff;margin-bottom:.35rem;box-shadow:0 1px 2px rgba(90,65,20,.06)}
+.gr4Wrap .gr4{border:0;border-radius:0;margin-bottom:0;box-shadow:none}
+/* מילוי (עטוף ב-.gr4Wrap): פס-הצבע של התאמה מוצג כצלע עליונה, כמו ב-gr4cell של אתב״ש/אטב״ח — לא כפס בצד */
+.gr4Wrap .gr{border:0;border-top:3px solid var(--c,var(--ln2));border-radius:0;margin-bottom:0;box-shadow:none}
+/* שורת נוטריקון מקוננת בתוך מלבן ה"רגילה" (ראו renderCenter ב-app.js): מפריד דק, ובלי style="--c:…"
+   כך שפס-הצבע העליון של gr4cell נופל לברירת-המחדל הניטרלית (var(--ln2)) — לא מקבל צבע-משפחה כמו שאר המלבנים. */
+.notDivider{border:0;border-top:1px solid var(--ln2);margin:0}
+.gr4cell.disabled{cursor:default}
+.gr4cell.disabled:hover{background:#fff}
+.gr4cell.disabled .mn{opacity:.75}
+/* צביעת-האות שחולצה בתוצאת-נוטריקון (שורות נוטריקון משולבות ברשימת-התוצאות הרגילה #rl{k} — אין קונטיינר
+   נפרד): אותה שפת-עיצוב בדיוק כמו הדגשת-מילה-שלמה (mark, למעלה) — מלבן (לא אליפסה) + פס תחתון מלא (לא
+   underline מקווקו/זוהר). צהוב = התאמה מילולית מדויקת (אותן אותיות, אותו סדר), ירוק = התאמה ערכית-בלבד
+   (לא אותן אותיות כלל, רק ערך שווה) — שני אלה צבע-קבוע, כי הם מסמנים *סוג התאמה* ולא צד. כחול/צירופים
+   (glowP, ברירת-המחדל) כן תלוי-צד — בדיוק כמו mark — דרך var(--ac) (כחול בצד א׳, בורדו בצד ב׳). */
+.glowY{background:var(--glowYbg);color:inherit;border-bottom:2px solid #e0b400;border-radius:3px;padding:0 .1rem}
+.glowP{background:var(--markbg);color:inherit;border-bottom:2px solid var(--ac);border-radius:3px;padding:0 .1rem}
+.glowG{background:var(--glowGbg);color:inherit;border-bottom:2px solid #2fa84f;border-radius:3px;padding:0 .1rem}
+.radioRow{display:flex;gap:.6rem;margin-top:.3rem;flex-wrap:nowrap}
+.gr4Note{display:flex;align-items:center;gap:.4rem;padding:.3rem .55rem;border-top:1px solid var(--ln2);background:var(--pn2);font-size:.72rem;color:var(--mu)}
+.gr4Note .noteTxt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr4Note .cpy{width:1.3rem;height:1.3rem;font-size:.68rem;flex:none;margin-inline-start:0}
+.wrow{padding:.4rem .8rem 0}
+.num{font:700 1.2rem var(--tf);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+.bdg{min-width:1.3rem;height:1.3rem;padding:0 .35rem;border-radius:99px;border:0;background:var(--c);color:#fff;font-size:.72rem;font-weight:700}.bdg:hover{background:var(--c);filter:brightness(1.12)}
+/* עיגול-מידע נוסף: מספר ההתאמות שנמצאו בפועל במקורות (בחיפוש) לערך הזה. לפני לחיצה (לא נבחר): צבע ניטרלי
+   של האפליקציה (var(--pn2)/var(--ln)/var(--mu) — כמו כרטיסי/תגיות אחרים באתר) + greyout קל (opacity) כדי
+   להדגיש שהוא לא פעיל כרגע. .bdgH.on (אחרי לחיצה, כש-"ממוין" לפי העיגול הזה): צבע-הצד (--ac) במלואו —
+   כחול לצד א׳, אדום לצד ב׳. */
+.bdgH{display:inline-flex;align-items:center;justify-content:center;min-width:1.3rem;height:1.3rem;padding:0 .35rem;border-radius:99px;border:1.5px solid var(--ln);background:var(--pn2);color:var(--mu);font-size:.72rem;font-weight:700;cursor:default;opacity:.55}
+.gr4cell .bdgH{min-width:1.05rem;height:1.05rem;padding:0 .28rem;font-size:.6rem;border-width:1.3px}
+.bdgH.on{opacity:1;border-color:var(--ac);color:var(--ac);background:var(--acs)}
+.sum{padding:.4rem .8rem;color:var(--mu);font-size:.82rem;border-bottom:1px solid var(--ln2)}.sum b{color:var(--ac)}
+/* results */
+.gh{position:sticky;top:-.6rem;margin:0 -.8rem .4rem;padding:.3rem .8rem;background:var(--pn2);border-bottom:1px solid var(--ln2);font-size:.78rem;font-weight:600;color:var(--ac);z-index:1}
+/* content-visibility:auto — עם רשימת-תוצאות של אלפי כרטיסים, הדפדפן מדלג על חישוב הפריסה (layout) של כרטיסים
+   שאינם קרובים למסך, במקום לחשב את כולם בבת-אחת. קריטי כדי שמעבר תצוגה (הצגה/הסתרה של הפנל) לא יגרום
+   ל-reflow סינכרוני כבד כשיש הרבה תוצאות — ללא זה, un-hide של רשימה גדולה יכול לקחת מאות מ"ש ברצף אחד.
+   contain-intrinsic-size נותן גובה-שיער ראשוני (ומזכיר את הגובה האמיתי אחרי שהכרטיס נראה פעם אחת), כדי
+   שהגלילה לא תקפוץ בצורה בולטת לפני שכרטיס נכנס לתצוגה בפעם הראשונה. */
+.rs{content-visibility:auto;contain-intrinsic-size:auto 90px;display:block;width:100%;text-align:start;margin:0 0 .4rem;padding:.45rem .65rem;border-radius:9px;border:1px solid var(--ln2);background:#fff}
+.rs:hover{border-color:var(--ac);background:#fff}.rs.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--acs);background:var(--acs)}
+/* .searching (ראו run()/step() ב-app.js): בזמן שחיפוש עדיין רץ, renderWindow בונה-מחדש את כל ה-DOM של
+   חלון-התוצאות בכל רענון-חי (עד פעם ב-150 מ״ש) — גם אם עכבר המשתמש נח ללא-תזוזה בדיוק מעל מיקום-המסך של
+   השורה הראשונה. הדפדפן מאבד ומחשב-מחדש את מצב ה-:hover עבור אלמנט-ה-DOM "החדש" שתופס את אותו המקום בכל
+   פעם שהוא מוחלף — מה שנראה כהבהוב (flicker) חוזר-ונשנה של המסגרת/הרקע המודגשים סביב התוצאה שתחת העכבר,
+   למרות שהעכבר עצמו לא זז כלל (באג שדווח, כולל וידאו). הפתרון: כל עוד מתווספת מחלקת .searching לתיבת-
+   התוצאות (#rl{k}) — מנטרלים את אפקט-ה-hover לגמרי, כך שאין מה "להבהב"; ברגע שהחיפוש נגמר (ה-class
+   מוסר) ה-hover חוזר להגיב כרגיל לתנועת-עכבר אמיתית.
+   :not(.on) חיוני כאן! בלעדיו, לכלל הזה יש specificity (0,3,0) — גבוה מ-.rs.on (0,2,0) — ולכן הוא היה
+   "מנצח" גם על שורה *נבחרת* (ראו תיקון v2.8.3: ה-class "on" נאפית ב-HTML מההתחלה, כך שאפשר לבחור שורה
+   תוך-כדי חיפוש בלי להפעיל אנימציית-transition). בלי ה-:not(.on), כש-העכבר נח בדיוק מעל שורה *שנבחרה*
+   וה-DOM שלה ממשיך להיהרס-ולהיבנות-מחדש, מצב ה-hover שלה (כמתואר למעלה) ממשיך להיות לא-יציב, וכל פעם
+   שה-hover "נתפס" הוא היה דורס את העיצוב-הנבחר (מסגרת+רקע) בחזרה לבסיס — הבהוב קל יותר מהקודם, אבל
+   עדיין הבהוב (באג שדווח). עם :not(.on), שורה נבחרת תמיד שומרת על העיצוב-הנבחר שלה ללא תלות ב-hover,
+   כל עוד mash .searching פעיל — ורק שורות *לא*-נבחרות מאבדות את אפקט-ה-hover בזמן הטעינה. */
+.searching .rs:not(.on):hover{border-color:var(--ln2);background:#fff}
+.rs .rf{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;font-size:.8rem;color:var(--mu)}.rs .rf b{color:var(--tx);font-size:.9rem}
+.tag{border:1px solid var(--ln);border-radius:99px;padding:0 .5rem;font-size:.7rem;background:var(--pn2);color:var(--mu)}
+.tag.meth{border-color:var(--ac);color:var(--ac);font-weight:600}
+.tag.prs{border-color:#6d8f1a;color:#6d8f1a}
+.tag.seder{border-color:#8a6d1f;color:#8a6d1f}
+.tagArrow{color:var(--mu);font-size:.72rem;flex:none}
+.cpy{margin-inline-start:auto;flex:none;width:1.6rem;height:1.6rem;display:inline-grid;place-content:center;border:1px solid var(--ln);border-radius:7px;background:var(--pn);color:var(--mu);font-size:.85rem;line-height:1;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
+.cpy:hover{border-color:var(--ac);background:var(--acs);color:var(--ac)}
+.cx{font:1.05rem/1.7 var(--tf);margin-top:.15rem;cursor:text}mark{background:var(--markbg);color:inherit;border-bottom:2px solid var(--ac);border-radius:3px;padding:0 .1rem}
+.rs .rf b{cursor:text}
+.cx b{font-weight:700;color:#5e4518}
+/* סינון טקסטואלי חופשי בתוך תוצאות החיפוש — שורה קבועה מתחת לכותרת הפנל */
+.tsBar{flex:none;display:flex;align-items:center;gap:.4rem;padding:.45rem .8rem;border-bottom:1px solid var(--ln2);background:var(--pn)}
+.tsIcon{color:var(--mu);font-size:.85rem;flex:none;display:inline-flex}
+.tsIcon svg{width:.95rem;height:.95rem;display:block}
+.tfInp{flex:1;min-width:0;border:1px solid var(--ln);border-radius:8px;padding:.3rem .6rem;font-size:.85rem;background:#fff}
+.tfInp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs);outline:0}
+.tsFuzz{display:flex;align-items:center;gap:.25rem;color:var(--mu);font-size:.72rem;cursor:pointer;flex:none;white-space:nowrap}
+.tsFuzz .cb{width:.95rem;height:.95rem}
+.tsCount{flex:none;color:var(--mu);font-size:.7rem;white-space:nowrap}
+.tsClear{flex:none}
+/* הדגשת מילים בתוך .cx שתואמות את הסינון הטקסטואלי: hlT = התאמה מדויקת, hlF = התאמה היתולית בלבד */
+.cx .hlT{background:#ffe9a8;border-radius:2px;padding:0 .05rem}
+.cx .hlF{background:#eadcff;border-radius:2px;padding:0 .05rem;border-bottom:1px dashed #8a5fc2}
+.emp{color:var(--mu);font-size:.85rem;padding:.4rem .2rem}
+/* dialogs / docs */
+.dlg{width:min(900px,94vw);height:min(80vh,720px);padding:0;border:1px solid var(--ln);border-radius:var(--r);background:var(--pn);color:var(--tx);direction:rtl}.dlg[open]{display:flex;flex-direction:column}.dlg::backdrop{background:rgba(37,30,19,.4)}
+.dlg.about{width:min(460px,94vw);height:auto;max-height:min(80vh,620px)}
+.aboutBox{padding:1rem 1.1rem;line-height:1.55}.aboutBox .row{display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--ln2)}.aboutBox .row:last-child{border-bottom:none}.aboutBox .k{color:var(--mu);flex:0 0 7rem}.aboutBox .v{flex:1;min-width:0}.aboutBox .v a{color:var(--ac)}.aboutBox .tag{margin-top:.2rem}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:.5rem .8rem;border-bottom:1px solid var(--ln2);border-top:3px solid var(--gold);background:var(--pn2)}.dh h2{margin:0;font-size:1.05rem;color:#5e4518}.x{padding:.1rem .55rem}
+.doc h2{font-size:1rem;color:#5e4518;margin:1.1rem 0 .4rem}.doc h2:first-child{margin-top:0}.doc table{width:100%;border-collapse:collapse}.doc th,.doc td{padding:.3rem .5rem;text-align:start;border-bottom:1px solid var(--ln2)}.doc th{background:var(--pn2);color:var(--mu);font-size:.8rem}
+.doc .ok{color:#2f7d4f}.doc .bad{color:#b3364a}.doc .warn{color:#a8681a}.doc code{background:var(--pn2);padding:0 .3rem;border-radius:4px}
+/* חלון "שיטות הגימטריה": כרטיסי שיטות + רשת שבבים לטבלאות אטב״ח/מילוי (ניצול רוחב החלון במקום טבלה צרה וארוכה אנכית) */
+.mcards{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:.3rem}
+.mcard{background:#fff;border:1px solid var(--ln2);border-radius:10px;padding:.55rem .65rem}
+.mcard b{font-size:.88rem;color:var(--ac)}
+.mcard p{margin:.3rem 0;font-size:.76rem;color:var(--mu);line-height:1.4}
+.mcard .ex{display:flex;gap:.4rem;flex-wrap:wrap;font-size:.72rem}
+.mcard .ex span{background:var(--pn2);border-radius:6px;padding:.1rem .45rem}
+.doc .chipWrap{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.3rem}
+.doc .chipWrap.miluiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem}
+.doc .chipWrap .tag{text-align:center}
+@media(max-width:700px){.mcards{grid-template-columns:repeat(2,1fr)}.doc .chipWrap.miluiGrid{grid-template-columns:repeat(2,1fr)}}
+/* responsive: keep one screen */
+@media(max-width:1439px){
+  .ws{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  .side{display:grid;gap:var(--g);min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .ctr textarea{height:3.4rem;font-size:1.15rem}.ctr .inp{padding:.5rem .8rem}
+  .side[data-k=A] .res{grid-column:1}.side[data-k=A] .ctr{grid-column:2}
+  .side[data-k=B] .ctr{grid-column:1}.side[data-k=B] .res{grid-column:2}
+}
+@media(max-width:859px){.sideSw{display:inline-flex}.brand span,.inl{display:none}.top{flex-wrap:wrap}
+  .ws{grid-template-columns:minmax(0,1fr)}body[data-view=A] .side[data-k=B],body[data-view=B] .side[data-k=A]{display:none}
+  .side{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+  .side .res{grid-row:1}.side .ctr{grid-row:2}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ============ מראה כהה: "לילה בגוויל" (toggle ליד "שיטות גימטריה") ============
+   אותו מבנה/רכיבים/פריסה בדיוק כמו המראה הבהיר — רק שינוי ערכי-צבע. רוב הצבעים כבר מגיעים ממשתני
+   --root (למעלה), כך שדי בהגדרה-מחדש שלהם כאן; המקומות שבהם הצבע היה "קשיח" בקוד (למשל #fff כרקע
+   קלף/שדה-קלט, או #5e4518 כצבע-מותג) מקבלים override נקודתי משלהם, סלקטור-סלקטור, למטה. */
+:root[data-theme=dark]{--bg:#1c160e;--pn:#241b11;--pn2:#2c2114;--ln:#3c2e1a;--ln2:#352918;--tx:#efe3c9;--mu:#b19d73;--gold:#d7a847;--acs:color-mix(in srgb,var(--ac) 16%,#241b11);--sb:#5f5236;--sel:#3f6d66;--glowYbg:#544110;--glowGbg:#2d3f21}
+:root[data-theme=dark] .side[data-k=A]{--ac:#5e9bd8;--markbg:#373c3f}
+:root[data-theme=dark] .side[data-k=B]{--ac:#e08a96;--markbg:#543831}
+:root[data-theme=dark] .pn{box-shadow:0 0 0 1px rgba(255,255,255,.02) inset,0 16px 34px -18px rgba(0,0,0,.7)}
+:root[data-theme=dark] .brand h1,:root[data-theme=dark] .cx b,:root[data-theme=dark] .dh h2,:root[data-theme=dark] .doc h2{color:var(--gold)}
+:root[data-theme=dark] select{background-image:linear-gradient(45deg,transparent 50%,var(--mu) 50%),linear-gradient(135deg,var(--mu) 50%,transparent 50%)}
+:root[data-theme=dark] .chip,:root[data-theme=dark] .srcCard,:root[data-theme=dark] .gr,:root[data-theme=dark] .gr4,:root[data-theme=dark] .gr4cell,:root[data-theme=dark] .gr4Wrap,:root[data-theme=dark] .rs,:root[data-theme=dark] .rs:hover,:root[data-theme=dark] .gr4cell.disabled:hover,:root[data-theme=dark] .mcard{background:var(--pn2)}
+:root[data-theme=dark] .chip,:root[data-theme=dark] textarea,:root[data-theme=dark] .tfInp{color:var(--tx)}
+:root[data-theme=dark] .cb{border-color:#6b5b36;background:var(--pn2)}
+:root[data-theme=dark] textarea,:root[data-theme=dark] .tfInp{background:var(--pn2)}
+:root[data-theme=dark] .dlg::backdrop{background:rgba(0,0,0,.6)}
+:root[data-theme=dark] .tag.prs{border-color:#9bc24a;color:#9bc24a}
+:root[data-theme=dark] .tag.seder{border-color:var(--gold);color:var(--gold)}
+:root[data-theme=dark] .doc .ok{color:#5fbb7f}
+:root[data-theme=dark] .doc .bad{color:#e37c8f}
+:root[data-theme=dark] .doc .warn{color:#e0a85a}
+:root[data-theme=dark] .cx .hlT{background:#6b5420;color:#ffe9a8}
+:root[data-theme=dark] .cx .hlF{background:#3a2d57;color:#d9c7ff;border-bottom-color:#a685e0}

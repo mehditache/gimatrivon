@@ -1,0 +1,31 @@
+Copyright (c) 2026 Gad Zvi Mehditache. All rights reserved.
+
+This license applies to the application code only — the HTML, CSS and
+JavaScript files that make up גימטריבון / Gimatrivon (including but not
+limited to index.html, styles.css, app.js, engine.js, and the build/test
+scripts under scripts/ and tests/), and to the original selection,
+arrangement and structure of this code.
+
+No part of this application's code may be copied, modified, distributed,
+sublicensed, or used, in whole or in part, in any form or by any means,
+without the prior written permission of the copyright holder.
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---
+
+IMPORTANT — this license does NOT extend to the text corpus bundled with
+the application (generated/corpus.bundle.js) or to its source files under
+data/. That text (Tanakh, Mishnah, and any additional sources such as
+Rashi, Targum Onkelos or Targum Yonatan) originates from third parties —
+primarily Sefaria (sefaria.org) and the specific editions it hosts — and
+remains governed by its own license terms, which this project cannot
+override. See ATTRIBUTION.md for the specific license of each part of the
+corpus (currently verified: Tanakh is CC-BY-SA; Mishnah is Public Domain;
+Rashi/Onkelos/Targum Yonatan are not verified in this project) and for the
+attribution and ShareAlike obligations that apply when redistributing it.

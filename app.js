@@ -1,0 +1,1386 @@
+(function () {
+'use strict';
+const VERSION = '2.9.7'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+// v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
+// נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
+// מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
+// (חיבור/החסרה על פני כל התיבות) ולא ה-overhead של בדיקות הסינון. לכן נשמר המסלול הפשוט והמהיר,
+// עם API שתומך בכמה יעדים בבת אחת (לשימוש עתידי), ללא פגיעה בביצועים.
+const E = window.GematriaEngine, B = window.CORPUS_BUNDLE, $ = s => document.querySelector(s), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// "תוצאות מקס' לשיטה": בעבר בקרה נבחרת-ע״י-משתמש (.limitSel) בשני פנלי-הסינון; הוסרה — ערך-קבוע יחיד בלבד.
+const RESULTS_LIMIT_PER_METHOD = 500;
+function getLimit() { return RESULTS_LIMIT_PER_METHOD; }
+const verEl = document.getElementById('ver'); if (verEl) verEl.textContent = 'v' + VERSION;
+document.title = `גימטריבון - ${VERSION}`; // כותרת טאב הדפדפן — לא "סביבת עבודה"
+const COLORS = ['#2563a8', '#2f8f5b', '#7a4bb5', '#c47a1a', '#c2415a', '#1a8f92', '#8a8a10', '#c2571f', '#9d2f8f', '#4b5563', '#6d8f1a', '#a0522d'];
+
+/* ---------- שפה (עברית/אנגלית): L(he) מחזיר תרגום-אנגלי כש-LANG==='en' (אם קיים ב-EN), אחרת את העברית
+   המקורית כמו-שהיא — ברירת-מחדל בטוחה למחרוזת שלא תורגמה. דיפולט=עברית, נשמר ל-localStorage. מכוון/הגייה
+   (לא תרגום) לשמות-שיטות-גימטריה שאין להן מונח אנגלי מקובל (למשל "כולל"→"Kollel") לפי בקשת המשתמש.
+   טקסט הקורפוס עצמו (פסוקים/משניות, שמות-ספרים/פרשות) אינו מתורגם בכוונה — זה "הדאטה", לא ממשק האפליקציה;
+   מילות-המבנה סביבו (למשל "פרק"/"משנה"/"רש״י על") כן מתורגמות (ראו PFX_EN/heNum למטה). */
+let LANG = (() => { try { return localStorage.getItem('gimatrivonLang') === 'en' ? 'en' : 'he'; } catch (e) { return 'he'; } })();
+const EN = {
+  'תנ״ך · משנה · רש״י · תרגומים': 'Tanakh · Mishnah · Rashi · Targumim', 'בחירת צד': 'Side selection',
+  'מעבר בין מראה גוויל למראה לילה': 'Switch between parchment and night themes', 'מראה כהה (לילה בגוויל)': 'Dark theme (night parchment)',
+  'הפעלת סיור מודרך קצר באפליקציה': 'Start a short guided tour of the app', '? סיור מודרך': '? Guided Tour',
+  'שיטות גימטריה': 'Gematria Methods', 'מידע על האפליקציה': 'About the app', 'ℹ אודות': 'ℹ About',
+  'טוען קורפוס…': 'Loading corpus…', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
+  'שיטות הגימטריה': 'Gematria Methods', 'אודות גימטריבון': 'About Gimatrivon',
+  'סינון': 'Filter', 'תוצאות החיפוש במקורות': 'Search Results in Sacred Texts', 'צד א׳': 'Side A', 'צד ב׳': 'Side B', 'קלט': 'Input',
+  'סינון טקסטואלי בתוך התוצאות…': 'Text filter within results…',
+  'כולל הטיות קרובות (הסרת תחיליות/סיומות נפוצות) — לא מדויק, לא תופס טיות פועל פנימיות': 'Includes close inflections (removes common prefixes/suffixes) — not exact, does not catch internal verb inflections',
+  'הטיות': 'Inflections', 'נקה': 'Clear', 'סוגי גימטריה לחיפוש': 'Gematria types to search',
+  'הצג התאמות לפסוק שלם או משנה שלמה בלבד': 'Show matches for a whole verse or mishnah only',
+  'התאמת נוטריקון': 'Notarikon matching',
+  'קובע מתי מילת-החיפוש נחשבת תואמת לחילוץ (ר״ת/אות ב׳/אות ג׳/ס״ת) בתוך פסוק': 'Determines when the search word counts as matching an extraction (acronym/2nd letter/3rd letter/last letters) within a verse',
+  'גימטרית': 'Numeric', 'אותיות (צירופים)': 'Letters (permutations)', 'טקסטואלית (מדויקת)': 'Textual (exact)',
+  'עץ מקורות וטווח בתוך כל ספר': 'Source tree and range within each book',
+  'מ/עד = פרק:פסוק (או פרשה, לספרי התורה/רש״י/אונקלוס) · ריק = כל הספר': "From/to = chapter:verse (or parsha, for Torah/Rashi/Onkelos books) · empty = whole book",
+  'הכול': 'All', 'הקלד ביטוי לחישוב - החישוב והחיפוש מתבצע תוך כדי הקלדה': 'Type an expression in Hebrew to calculate and search',
+  'או לפי מספר': 'Or by number', 'העתק': 'Copy', 'הועתק ✓': 'Copied ✓',
+  'קובע אילו שיטות של מילת החיפוש פעילות (לערך המילה, לחיפוש ולהשוואה)': 'Determines which methods are active for the search word (for its value, search and comparison)',
+  'לחצו על שיטה כדי להפעיל/לכבות אותה': 'Click a method to turn it on/off', 'פתח/סגור': 'Open/close',
+  'בחר פרשה…': 'Choose a parsha…', 'בחר פרשה': 'Choose a parsha', 'אפס': 'Reset',
+  'לחצו לעריכת הטווח': 'Click to edit the range', 'פרשה/טווח': 'Parsha/range', 'טווח': 'Range', 'פרשת ': 'Parsha ',
+  'מ ': 'From ', 'עד ': 'to ', 'פרק': 'Ch.', "פס׳": 'Ver.', 'מפרק': 'From chapter', 'מפסוק': 'From verse', 'עד פרק': 'To chapter', 'עד פסוק': 'To verse',
+  'רגילה': 'Regular', 'אתב״ש': 'Atbash', 'אטב״ח': 'Atbach', '+כולל': '+Kollel', '+תיבות': '+Words', '+אותיות': '+Letters', 'מילוי': 'Milui',
+  'עם הכולל': 'With Kollel', 'עם מספר תיבות': 'With Word Count', 'עם מספר אותיות': 'With Letter Count',
+  'אתב״ש עם הכולל': 'Atbash with Kollel', 'אתב״ש עם מספר תיבות': 'Atbash with Word Count', 'אתב״ש עם מספר אותיות': 'Atbash with Letter Count',
+  'אטב״ח עם הכולל': 'Atbach with Kollel', 'אטב״ח עם מספר תיבות': 'Atbach with Word Count', 'אטב״ח עם מספר אותיות': 'Atbach with Letter Count',
+  'ר״ת': 'Acronym', 'אות ב׳': '2nd Letter', 'אות ג׳': '3rd Letter', 'ס״ת': 'Last Letters', 'נוטריקון': 'Notarikon',
+  'נוטריקון: ר״ת': 'Acronym', 'נוטריקון: אות ב׳': '2nd Letter', 'נוטריקון: אות ג׳': '3rd Letter', 'נוטריקון: ס״ת': 'Last Letters',
+  'התאמה מילולית מדויקת: האותיות שחולצו מאייתות את מילת-החיפוש בדיוק, באותו סדר': 'Exact literal match: the extracted letters spell the search word exactly, in the same order',
+  'התאמת צירוף-אותיות: אותן אותיות של מילת-החיפוש, אך בסדר שונה (לא מאייתות אותה בדיוק)': 'Letter-combination match: the same letters as the search word, but in a different order (not spelling it exactly)',
+  'התאמה ערכית בלבד: הערך הגימטרי תואם, ללא השוואת-אותיות למילת-החיפוש': 'Numeric match only: the gematria value matches, without comparing letters to the search word',
+  'שיטת הגימטריה של הפסוק': 'Gematria method of the verse', 'שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה': 'Gematria method of the search word in which the match was found',
+  'תיבות': 'words', 'העתק את הפסוק/המשנה ללוח': 'Copy the verse/mishnah to clipboard', 'העתק את המחרוזת המומרת ללוח': 'Copy the transformed string to clipboard',
+  'מספר': 'Number', 'של הפסוק': 'of the verse', 'ערך': 'value', 'התאמות': 'matches', 'של מילת החיפוש': 'of the search word',
+  'אין תוצאות התואמות את הסינון הטקסטואלי.': 'No results match the text filter.', 'אין התאמות בטווח שנבחר.': 'No matches in the selected range.',
+  'מחפש…': 'Searching…', 'הקורפוס עדיין נטען…': 'The corpus is still loading…',
+  'סמן לפחות סוג גימטריה אחד לחיפוש בפסוקים (⚙).': 'Select at least one gematria type to search verses with (⚙).',
+  'סמן לפחות סוג גימטריה אחד עבור מילת החיפוש.': 'Select at least one gematria type for the search word.',
+  'סמן לפחות מקור אחד בעץ המקורות.': 'Select at least one source in the source tree.',
+  'התחל להקליד — התוצאות יופיעו כאן בזמן אמת.': 'Start typing — results will appear here in real time.',
+  'התאמה': 'match', 'מתוך': 'of', 'לחצו להפעלת שיטה זו': 'click to enable this method', 'לחצו לכיבוי שיטה זו': 'click to disable this method',
+  'התאמות במקורות': 'matches in sources', 'התאמות נוטריקון': 'notarikon matches', 'פעיל, לחצו לביטול': 'active, click to cancel',
+  'לחצו למיון התוצאות לפי שיטה זו': 'click to sort results by this method',
+  'הקלד טקסט בשני הצדדים כדי להשוות ביניהם.': 'Type text on both sides to compare them.',
+  'אין התאמות בין השיטות המסומנות בשני הצדדים.': 'No matches between the checked methods on both sides.',
+  'התאמות בין השיטות המסומנות בשני הצדדים.': 'matches between the checked methods on both sides.',
+  'אותיות': 'letters', 'מילים': 'words',
+  'נוטריקון: ': 'Notarikon: ', ' נוטריקון': ' notarikon', ' — נוטריקון': ' — notarikon',
+};
+function L(he) { return LANG === 'en' ? (EN[he] != null ? EN[he] : he) : he; }
+const MN = {}; E.METHODS.forEach(m => { MN[m.id] = m.name; });
+// שלוש משפחות הגימטריה שמוצגות כמלבן 4-עמודות (בסיס/+כולל/+תיבות/+אותיות): רגילה/אתב״ש/אטב״ח.
+// משותף ל-renderCenter (תצוגת המלבנים) ול-drawSearchMethods (פנל הסינון בעץ) כדי שהמבנה/התוויות יישארו עקביים.
+const GEM_FAMILIES = [
+  { key: 'regular', name: 'רגילה', color: '#2563a8', ids: ['regular', 'kollel', 'words', 'letters'], labels: { regular: 'רגילה', kollel: '+כולל', words: '+תיבות', letters: '+אותיות' } },
+  { key: 'atbash', name: 'אתב״ש', color: '#c2415a', ids: ['atbash', 'atbashKollel', 'atbashWords', 'atbashLetters'], labels: { atbash: 'אתב״ש', atbashKollel: '+כולל', atbashWords: '+תיבות', atbashLetters: '+אותיות' } },
+  { key: 'atbach', name: 'אטב״ח', color: '#1a8f92', ids: ['atbach', 'atbachKollel', 'atbachWords', 'atbachLetters'], labels: { atbach: 'אטב״ח', atbachKollel: '+כולל', atbachWords: '+תיבות', atbachLetters: '+אותיות' } },
+];
+// שמות קצרים לשיטות הגימטריה (MN הוא השם המלא מ-engine.js, כגון "עם הכולל"/"עם מספר תיבות"/"עם מספר אותיות") —
+// משמש רק לתיוג "שיטת הגימטריה של מילת החיפוש" בתוצאות (לא לשיטת הגימטריה של הפסוק עצמו, שממשיכה להציג שם מלא).
+const MNS = {};
+GEM_FAMILIES.forEach(f => { f.ids.forEach(id => { MNS[id] = id === f.ids[0] ? f.name : `${f.name} ${f.labels[id]}`; }); });
+MNS.milui = 'מילוי';
+const FAM_OF = {}; GEM_FAMILIES.forEach(f => { f.ids.forEach(id => { FAM_OF[id] = f; }); });
+// צבעי-"משפחה" עבור הסקרולר-המותאם (fast-scroll) בפנל-התוצאות: שלוש המשפחות משתמשות באותם צבעים בדיוק
+// כמו בשאר האפליקציה (f.color — כבר בשימוש ב-.srcCard/.bdg); נוטריקון ומילוי (שאינם חלק מ-GEM_FAMILIES)
+// מקבלים צבע-ייעודי משלהם, שלא בשימוש אצל אף משפחה אחרת.
+const NOTARIKON_FAM_COLOR = '#2f8f52', MILUI_FAM_COLOR = '#6a4f99';
+function famKeyOf(method) { if (NOTARIKON_IDS.includes(method)) return 'notarikon'; if (method === 'milui') return 'milui'; const f = FAM_OF[method]; return f ? f.key : method; }
+function famColorOf(method) { if (NOTARIKON_IDS.includes(method)) return NOTARIKON_FAM_COLOR; if (method === 'milui') return MILUI_FAM_COLOR; const f = FAM_OF[method]; return f ? f.color : MILUI_FAM_COLOR; }
+// בונה תווית מקובצת-וממוזגת לרשימת שיטות-מילה שתואמות יחד (wms): כש-מילה תואמת כמה סיומות של *אותה* משפחה
+// (למשל רגילה +כולל וגם רגילה +תיבות — ערכים שווים במקרה) הן מתאחדות לתווית אחת "רגילה +כולל +תיבות" במקום
+// שתי תוויות נפרדות; וכש-כמה *משפחות* חולקות בדיוק אותה קבוצת-סיומות (כלומר גם ערכי-המילה שלהן שווים, לא רק
+// שם-הסיומת), שמות-המשפחות מתמזגים ("רגילה ואתב״ש +כולל +תיבות") במקום לחזור על הסיומות לכל משפחה בנפרד.
+function wmsLabel(wms) {
+  if (!wms || !wms.length) return '';
+  const byFam = new Map(); // famKey -> {fam, sufSet, base}
+  const singles = []; // ids שלא שייכים לאף משפחה (כרגע רק מילוי)
+  for (const id of wms) {
+    const fam = FAM_OF[id];
+    if (!fam) { singles.push(id); continue; }
+    if (!byFam.has(fam.key)) byFam.set(fam.key, { fam, sufSet: new Set(), base: false });
+    const g = byFam.get(fam.key);
+    if (id === fam.ids[0]) g.base = true; else g.sufSet.add(id);
+  }
+  const groups = []; // {sigKey, sufLabels, fams}
+  for (const { fam, sufSet, base } of byFam.values()) {
+    const sufIds = fam.ids.slice(1).filter(id => sufSet.has(id)); // בסדר קבוע: קולל, תיבות, אותיות
+    // מזהה-קיבוץ לפי *משמעות* הסיומות (התוויות הקצרות, כגון "+כולל,+תיבות") ולא לפי מזהה-ה-id הגולמי —
+    // ה-id עצמו שונה בין משפחות לאותה סיומת (kollel לעומת atbashKollel), ולכן קיבוץ לפי id לא היה מאחד משפחות.
+    const sigKey = (base ? 'B' : '') + sufIds.map(id => fam.labels[id]).join(',');
+    let grp = groups.find(g => g.sigKey === sigKey);
+    if (!grp) { grp = { sigKey, sufLabels: sufIds.map(id => L(fam.labels[id])), fams: [] }; groups.push(grp); }
+    grp.fams.push(L(fam.name));
+  }
+  const joinHe = arr => LANG === 'en'
+    ? (arr.length <= 1 ? (arr[0] || '') : arr.length === 2 ? `${arr[0]} and ${arr[1]}` : `${arr.slice(0, -1).join(', ')} and ${arr[arr.length - 1]}`)
+    : (arr.length <= 1 ? (arr[0] || '') : arr.length === 2 ? `${arr[0]} ו${arr[1]}` : `${arr.slice(0, -1).join(', ')} ו${arr[arr.length - 1]}`);
+  const parts = groups.map(g => { const famTxt = joinHe(g.fams); return g.sufLabels.length ? `${famTxt} ${g.sufLabels.join('/ ')}` : famTxt; });
+  for (const id of singles) parts.push(L(MNS[id]) || id);
+  return parts.join(' / ');
+}
+const CK = ['tanakh', 'mishnah', 'rashi', 'onkelos', 'yonatan', 'bartenura', 'dict'], CN = B.books.reduce((o, b) => (o[b.cat] = b.category, o), {});
+const CN_EN = { 0: 'Tanakh', 1: 'Mishnah', 2: 'Rashi', 3: 'Onkelos', 4: 'Targum Yonatan', 5: 'Bartenura', 6: 'Dictionary' };
+const catName = cat => LANG === 'en' ? (CN_EN[cat] || CN[cat]) : CN[cat];
+// שמות-ספרים/פרקים-מסכת/קבוצות-עץ-המקורות/פרשות באנגלית (שמות-תקניים מקובלים) — לפי בקשת המשתמש "עץ
+// המקורות כולו צריך להיות באנגלית". לא נוגע בטקסט-הקורפוס עצמו (פסוקים/משניות) — רק בכותרות-הניווט.
+const BOOK_EN = {
+  'בראשית': 'Genesis', 'שמות': 'Exodus', 'ויקרא': 'Leviticus', 'במדבר': 'Numbers', 'דברים': 'Deuteronomy',
+  'יהושע': 'Joshua', 'שופטים': 'Judges', 'שמואל א': 'I Samuel', 'שמואל ב': 'II Samuel', 'מלכים א': 'I Kings', 'מלכים ב': 'II Kings',
+  'ישעיהו': 'Isaiah', 'ירמיהו': 'Jeremiah', 'יחזקאל': 'Ezekiel', 'הושע': 'Hosea', 'יואל': 'Joel', 'עמוס': 'Amos', 'עובדיה': 'Obadiah',
+  'יונה': 'Jonah', 'מיכה': 'Micah', 'נחום': 'Nahum', 'חבקוק': 'Habakkuk', 'צפניה': 'Zephaniah', 'חגי': 'Haggai', 'זכריה': 'Zechariah', 'מלאכי': 'Malachi',
+  'תהילים': 'Psalms', 'משלי': 'Proverbs', 'איוב': 'Job', 'שיר השירים': 'Song of Songs', 'רות': 'Ruth', 'איכה': 'Lamentations',
+  'קהלת': 'Ecclesiastes', 'אסתר': 'Esther', 'דניאל': 'Daniel', 'עזרא': 'Ezra', 'נחמיה': 'Nehemiah', 'דברי הימים א': 'I Chronicles', 'דברי הימים ב': 'II Chronicles',
+  'משנה ברכות': 'Mishnah Berakhot', 'משנה ביכורים': 'Mishnah Bikkurim', 'משנה חלה': 'Mishnah Challah', 'משנה דמאי': 'Mishnah Demai',
+  'משנה כלאים': 'Mishnah Kilayim', 'משנה מעשר שני': 'Mishnah Maaser Sheni', 'משנה מעשרות': 'Mishnah Maasrot', 'משנה ערלה': 'Mishnah Orlah',
+  'משנה פאה': 'Mishnah Peah', 'משנה שביעית': 'Mishnah Sheviit', 'משנה תרומות': 'Mishnah Terumot', 'משנה ביצה': 'Mishnah Beitzah',
+  'משנה חגיגה': 'Mishnah Chagigah', 'משנה עירובין': 'Mishnah Eruvin', 'משנה מגילה': 'Mishnah Megillah', 'משנה מועד קטן': 'Mishnah Moed Katan',
+  'משנה פסחים': 'Mishnah Pesachim', 'משנה ראש השנה': 'Mishnah Rosh Hashanah', 'משנה שבת': 'Mishnah Shabbat', 'משנה שקלים': 'Mishnah Shekalim',
+  'משנה סוכה': 'Mishnah Sukkah', 'משנה תענית': 'Mishnah Taanit', 'משנה יומא': 'Mishnah Yoma', 'משנה גיטין': 'Mishnah Gittin',
+  'משנה כתובות': 'Mishnah Ketubot', 'משנה קידושין': 'Mishnah Kiddushin', 'משנה נזיר': 'Mishnah Nazir', 'משנה נדרים': 'Mishnah Nedarim',
+  'משנה סוטה': 'Mishnah Sotah', 'משנה יבמות': 'Mishnah Yevamot', 'משנה עבודה זרה': 'Mishnah Avodah Zarah', 'משנה בבא בתרא': 'Mishnah Bava Batra',
+  'משנה בבא קמא': 'Mishnah Bava Kamma', 'משנה בבא מציעא': 'Mishnah Bava Metzia', 'משנה עדיות': 'Mishnah Eduyot', 'משנה הוריות': 'Mishnah Horayot',
+  'משנה מכות': 'Mishnah Makkot', 'משנה סנהדרין': 'Mishnah Sanhedrin', 'משנה שבועות': 'Mishnah Shevuot', 'פרקי אבות': 'Pirkei Avot',
+  'משנה ערכין': 'Mishnah Arakhin', 'משנה בכורות': 'Mishnah Bekhorot', 'משנה חולין': 'Mishnah Chullin', 'משנה כריתות': 'Mishnah Keritot',
+  'משנה קינים': 'Mishnah Kinnim', 'משנה מעילה': 'Mishnah Meilah', 'משנה מנחות': 'Mishnah Menachot', 'משנה מדות': 'Mishnah Middot',
+  'משנה תמיד': 'Mishnah Tamid', 'משנה תמורה': 'Mishnah Temurah', 'משנה זבחים': 'Mishnah Zevachim', 'משנה כלים': 'Mishnah Keilim',
+  'משנה מכשירין': 'Mishnah Makhshirin', 'משנה מקואות': 'Mishnah Mikvaot', 'משנה נגעים': 'Mishnah Negaim', 'משנה נדה': 'Mishnah Niddah',
+  'משנה אהלות': 'Mishnah Oholot', 'משנה פרה': 'Mishnah Parah', 'משנה טהרות': 'Mishnah Tahorot', 'משנה טבול יום': 'Mishnah Tevul Yom',
+  'משנה עוקצים': 'Mishnah Uktzin', 'משנה ידים': 'Mishnah Yadayim', 'משנה זבים': 'Mishnah Zavim',
+  'ערכין': 'Arakhin', 'בכורות': 'Bekhorot', 'חולין': 'Chullin', 'כריתות': 'Keritot', 'קינים': 'Kinnim', 'מעילה': 'Meilah',
+  'מנחות': 'Menachot', 'מדות': 'Middot', 'תמיד': 'Tamid', 'תמורה': 'Temurah', 'זבחים': 'Zevachim', 'ביצה': 'Beitzah',
+  'חגיגה': 'Chagigah', 'עירובין': 'Eruvin', 'מגילה': 'Megillah', 'מועד קטן': 'Moed Katan', 'פסחים': 'Pesachim', 'ראש השנה': 'Rosh Hashanah',
+  'שבת': 'Shabbat', 'שקלים': 'Shekalim', 'סוכה': 'Sukkah', 'תענית': 'Taanit', 'יומא': 'Yoma', 'גיטין': 'Gittin', 'כתובות': 'Ketubot',
+  'קידושין': 'Kiddushin', 'נזיר': 'Nazir', 'נדרים': 'Nedarim', 'סוטה': 'Sotah', 'יבמות': 'Yevamot', 'עבודה זרה': 'Avodah Zarah',
+  'בבא בתרא': 'Bava Batra', 'בבא קמא': 'Bava Kamma', 'בבא מציעא': 'Bava Metzia', 'עדיות': 'Eduyot', 'הוריות': 'Horayot', 'מכות': 'Makkot',
+  'סנהדרין': 'Sanhedrin', 'שבועות': 'Shevuot', 'כלים': 'Keilim', 'מכשירין': 'Makhshirin', 'מקואות': 'Mikvaot', 'נגעים': 'Negaim',
+  'נדה': 'Niddah', 'אהלות': 'Oholot', 'עוקצים': 'Uktzin', 'פרה': 'Parah', 'טהרות': 'Tahorot', 'טבול יום': 'Tevul Yom', 'ידים': 'Yadayim',
+  'זבים': 'Zavim', 'ברכות': 'Berakhot', 'ביכורים': 'Bikkurim', 'חלה': 'Challah', 'דמאי': 'Demai', 'כלאים': 'Kilayim',
+  'מעשר שני': 'Maaser Sheni', 'מעשרות': 'Maasrot', 'ערלה': 'Orlah', 'פאה': 'Peah', 'שביעית': 'Sheviit', 'תרומות': 'Terumot',
+  'מילון עברי': 'Hebrew Dictionary',
+};
+const bookName = he => LANG === 'en' ? (BOOK_EN[he] || he) : he;
+const GROUP_EN = {
+  'תורה': 'Torah', 'נביאים': 'Prophets', 'כתובים': 'Writings',
+  'סדר זרעים': 'Seder Zeraim', 'סדר מועד': 'Seder Moed', 'סדר נשים': 'Seder Nashim',
+  'סדר נזיקין': 'Seder Nezikin', 'סדר קדשים': 'Seder Kodashim', 'סדר טהרות': 'Seder Tahorot',
+  'מילון עברי': 'Hebrew Dictionary',
+};
+const groupName = he => LANG === 'en' ? (GROUP_EN[he] || he) : he;
+const PARSHA_EN = {
+  'בראשית': 'Bereshit', 'נח': 'Noach', 'לך לך': 'Lech Lecha', 'וירא': 'Vayera', 'חיי שרה': 'Chayei Sarah', 'תולדות': 'Toldot',
+  'ויצא': 'Vayetzei', 'וישלח': 'Vayishlach', 'וישב': 'Vayeshev', 'מקץ': 'Miketz', 'ויגש': 'Vayigash', 'ויחי': 'Vayechi',
+  'שמות': 'Shemot', 'וארא': 'Vaera', 'בא': 'Bo', 'בשלח': 'Beshalach', 'יתרו': 'Yitro', 'משפטים': 'Mishpatim', 'תרומה': 'Terumah',
+  'תצוה': 'Tetzaveh', 'כי תשא': 'Ki Tisa', 'ויקהל': 'Vayakhel', 'פקודי': 'Pekudei',
+  'ויקרא': 'Vayikra', 'צו': 'Tzav', 'שמיני': 'Shemini', 'תזריע': 'Tazria', 'מצורע': 'Metzora', 'אחרי מות': 'Achrei Mot',
+  'קדושים': 'Kedoshim', 'אמור': 'Emor', 'בהר': 'Behar', 'בחוקותי': 'Bechukotai',
+  'במדבר': 'Bamidbar', 'נשא': "Naso", 'בהעלותך': "Beha'alotcha", 'שלח לך': 'Shlach', 'קרח': 'Korach', 'חקת': 'Chukat',
+  'בלק': 'Balak', 'פינחס': 'Pinchas', 'מטות': 'Matot', 'מסעי': 'Masei',
+  'דברים': 'Devarim', 'ואתחנן': 'Vaetchanan', 'עקב': 'Eikev', 'ראה': "Re'eh", 'שופטים': 'Shoftim', 'כי תצא': 'Ki Teitzei',
+  'כי תבוא': 'Ki Tavo', 'נצבים': 'Nitzavim', 'וילך': 'Vayelech', 'האזינו': "Ha'azinu", 'וזאת הברכה': 'Vezot Haberachah',
+};
+const parshaName = he => LANG === 'en' ? (PARSHA_EN[he] || he) : he;
+/* ---------- נוטריקון: ר״ת / אות ב׳ / אות ג׳ / ס״ת ---------- */
+// שורה מקוננת בתוך מלבן ה"רגילה" (לא כפתור/קופסה נפרדת) — תמיד גלויה, "מנוטרלת" (לא לחיצה, בלי פס-צבע,
+// בלי עיגולי-התאמה-לצד-שני), מציגה רק מונה-תוצאות חי לכל אחת מ-4 שיטות-החילוץ. מקורות-החיפוש מוגבלים
+// תמיד לתנ״ך/משנה/אונקלוס/יונתן (NOTARIKON_CATS), בחיתוך עם עץ-המקורות שנבחר לצד (st.sel) — לא עץ נפרד.
+const NOTARIKON_IDS = ['notRt', 'notB', 'notC', 'notSt'];
+const NOTARIKON_LABELS = { notRt: 'ר״ת', notB: 'אות ב׳', notC: 'אות ג׳', notSt: 'ס״ת' };
+NOTARIKON_IDS.forEach(m => { MN[m] = 'נוטריקון: ' + NOTARIKON_LABELS[m]; }); // משולב ברשימה המאוחדת (showMore) — כותרת-קבוצה/תגית-שורה משתמשות ב-MN כרגיל
+const NOTARIKON_POS = E.NOTARIKON_POS; // {notRt:0, notB:1, notC:2, notSt:-1}
+const NOTARIKON_CATS = new Set([0, 1, 3, 4]); // תנ״ך, משנה, אונקלוס, יונתן (לא רש״י/ברטנורא/מילון)
+const NOTARIKON_BOOKS = new Set(B.books.map((b, i) => i).filter(i => NOTARIKON_CATS.has(B.books[i].cat)));
+const NOTARIKON_MAXWINDOW = 12;
+const HEB_MARK = /[֑-ׇֽֿׁׂׅׄ]/; // ניקוד+טעמים — כמו MARKS הפנימי ב-engine.js
+const baseify = s => [...s].map(c => E.FINALS[c] || c).join(''); // סופית→בסיס, להשוואת-אותיות עקבית (כמו val() הפנימי ב-engine)
+// אשכולות-אותיות (אות בסיס + כל סימני-הניקוד/הטעמים שנדבקים אחריה) בתוך טקסט-מקור (עם ניקוד) — לצורך
+// הדגשת-אות-בודדת בתצוגה (צביעת האות שחולצה, לא כל התיבה). מחזיר [{ch,start,end}] לפי סדר-הופעה.
+function hebClusters(orig) {
+  const out = [];
+  for (let i = 0; i < orig.length; i++) {
+    if (/[א-ת]/.test(orig[i])) { const start = i; let j = i + 1; while (j < orig.length && HEB_MARK.test(orig[j])) j++; out.push({ ch: orig[i], start, end: j }); i = j - 1; }
+  }
+  return out;
+}
+// טווחי-הדגשה (per-token, אבסולוטי לפי אינדקס ב-IDX.toks) של האות שחולצה בחלון [l,r) לפי שיטת-נוטריקון נתונה
+function notarikonSpansFor(T, l, r, method) {
+  const pos = NOTARIKON_POS[method], spans = [];
+  for (let t = l; t < r; t++) { const cl = hebClusters(T[t]); if (!cl.length) continue; const i2 = pos < 0 ? cl.length + pos : pos; if (i2 < 0 || i2 >= cl.length) continue; spans.push({ tokenIdx: t, start: cl[i2].start, end: cl[i2].end }); }
+  return spans;
+}
+// כמו cxHtml אבל מדגיש רק תו-אות בודד לכל תיבה (לא תיבה שלמה) — לצביעת צהוב-זוהר/סגול-זוהר/ירוק-זוהר של אות
+// הנוטריקון. title (ראו תג-span) — לא באג! יש כאן בכוונה שלושה גוונים שונים, ולמשתמש אין דרך להבין את
+// המשמעות בלי להצביע (hover) על ההדגשה — לכן מוסיפים טקסט-הסבר קצר לכל גוון (ראו קריאה ל-notGlowTitle למטה).
+function notarikonCxHtml(T, s, e, spans, cls, title) {
+  const spanMap = new Map(); spans.forEach(sp => spanMap.set(sp.tokenIdx, sp));
+  const parts = [];
+  for (let t = s; t < e; t++) { const orig = T[t], sp = spanMap.get(t); parts.push(sp ? esc(orig.slice(0, sp.start)) + `<span class="${cls}" title="${esc(title)}">${esc(orig.slice(sp.start, sp.end))}</span>` + esc(orig.slice(sp.end)) : esc(orig)); }
+  return parts.join(' ');
+}
+// טקסט-ההסבר (tooltip) לכל אחד משלושת גווני-ההדגשה של תוצאת-נוטריקון — ראו notGlow בקריאה (showMore/renderWindow)
+const NOTARIKON_GLOW_TITLE = {
+  glowY: 'התאמה מילולית מדויקת: האותיות שחולצו מאייתות את מילת-החיפוש בדיוק, באותו סדר',
+  glowP: 'התאמת צירוף-אותיות: אותן אותיות של מילת-החיפוש, אך בסדר שונה (לא מאייתות אותה בדיוק)',
+  glowG: 'התאמה ערכית בלבד: הערך הגימטרי תואם, ללא השוואת-אותיות למילת-החיפוש',
+};
+const SIDE = { A: 'צד א׳', B: 'צד ב׳' }, KS = ['A', 'B'];
+function heNum(n) { if (LANG === 'en') return String(n); let s = ''; for (const [v, l] of [[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק'],[90,'צ'],[80,'פ'],[70,'ע'],[60,'ס'],[50,'נ'],[40,'מ'],[30,'ל'],[20,'כ'],[10,'י'],[9,'ט'],[8,'ח'],[7,'ז'],[6,'ו'],[5,'ה'],[4,'ד'],[3,'ג'],[2,'ב'],[1,'א']]) while (n >= v) { s += l; n -= v; } return s.replace('יה', 'טו').replace('יו', 'טז'); }
+const fmt = n => n == null ? '—' : n.toLocaleString('he-IL');
+function copyText(txt) { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { const x = document.createElement('textarea'); x.value = txt; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); } catch (er) {} x.remove(); }); }
+const PFX = ['', '', 'רש״י על ', 'אונקלוס ', 'תרגום יונתן על ', 'ברטנורא על ', ''];
+const PFX_EN = ['', '', 'Rashi on ', 'Onkelos ', 'Targum Yonatan on ', 'Bartenura on ', ''];
+const RAWTXT = B.units.map(u => u[4]); // טקסט גולמי (לפני טוקניזציה, עדיין עם נקודות) לכל יחידה — לפי אותו סדר כמו IDX.units — משמש לחילוץ ד״ה
+
+/* ---------- עץ המקורות: קטגוריה ← קבוצה ← ספר ---------- */
+const TREE = []; B.books.forEach((b, i) => { let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
+TREE.forEach(c => { c.ids = [].concat(...c.groups.map(g => g.ids)); });
+const ALL = new Set(B.books.map((_, i) => i));
+const CATCOLORS = { 0: '#23527f', 1: '#8a6d1f', 2: '#6d8f1a', 3: '#9d2f8f', 4: '#c2571f', 5: '#1a8f92', 6: '#6d4b1f' };
+
+/* ---------- 54 פרשות השבוע (פרק:פסוק, חלוקה מסורתית) — רלוונטי רק לספרי החומש ולמקבילים (רש״י/אונקלוס) ---------- */
+const PARASHOT = [
+  ['בראשית', 'בראשית', 1, 1, 6, 8], ['בראשית', 'נח', 6, 9, 11, 32], ['בראשית', 'לך לך', 12, 1, 17, 27], ['בראשית', 'וירא', 18, 1, 22, 24],
+  ['בראשית', 'חיי שרה', 23, 1, 25, 18], ['בראשית', 'תולדות', 25, 19, 28, 9], ['בראשית', 'ויצא', 28, 10, 32, 3], ['בראשית', 'וישלח', 32, 4, 36, 43],
+  ['בראשית', 'וישב', 37, 1, 40, 23], ['בראשית', 'מקץ', 41, 1, 44, 17], ['בראשית', 'ויגש', 44, 18, 47, 27], ['בראשית', 'ויחי', 47, 28, 50, 26],
+  ['שמות', 'שמות', 1, 1, 6, 1], ['שמות', 'וארא', 6, 2, 9, 35], ['שמות', 'בא', 10, 1, 13, 16], ['שמות', 'בשלח', 13, 17, 17, 16],
+  ['שמות', 'יתרו', 18, 1, 20, 23], ['שמות', 'משפטים', 21, 1, 24, 18], ['שמות', 'תרומה', 25, 1, 27, 19], ['שמות', 'תצוה', 27, 20, 30, 10],
+  ['שמות', 'כי תשא', 30, 11, 34, 35], ['שמות', 'ויקהל', 35, 1, 38, 20], ['שמות', 'פקודי', 38, 21, 40, 38],
+  ['ויקרא', 'ויקרא', 1, 1, 5, 26], ['ויקרא', 'צו', 6, 1, 8, 36], ['ויקרא', 'שמיני', 9, 1, 11, 47], ['ויקרא', 'תזריע', 12, 1, 13, 59],
+  ['ויקרא', 'מצורע', 14, 1, 15, 33], ['ויקרא', 'אחרי מות', 16, 1, 18, 30], ['ויקרא', 'קדושים', 19, 1, 20, 27], ['ויקרא', 'אמור', 21, 1, 24, 23],
+  ['ויקרא', 'בהר', 25, 1, 26, 2], ['ויקרא', 'בחוקותי', 26, 3, 27, 34],
+  ['במדבר', 'במדבר', 1, 1, 4, 20], ['במדבר', 'נשא', 4, 21, 7, 89], ['במדבר', 'בהעלותך', 8, 1, 12, 16], ['במדבר', 'שלח לך', 13, 1, 15, 41],
+  ['במדבר', 'קרח', 16, 1, 18, 32], ['במדבר', 'חקת', 19, 1, 22, 1], ['במדבר', 'בלק', 22, 2, 25, 9], ['במדבר', 'פינחס', 25, 10, 30, 1],
+  ['במדבר', 'מטות', 30, 2, 32, 42], ['במדבר', 'מסעי', 33, 1, 36, 13],
+  ['דברים', 'דברים', 1, 1, 3, 22], ['דברים', 'ואתחנן', 3, 23, 7, 11], ['דברים', 'עקב', 7, 12, 11, 25], ['דברים', 'ראה', 11, 26, 16, 17],
+  ['דברים', 'שופטים', 16, 18, 21, 9], ['דברים', 'כי תצא', 21, 10, 25, 19], ['דברים', 'כי תבוא', 26, 1, 29, 8], ['דברים', 'נצבים', 29, 9, 30, 20],
+  ['דברים', 'וילך', 31, 1, 31, 30], ['דברים', 'האזינו', 32, 1, 32, 52], ['דברים', 'וזאת הברכה', 33, 1, 34, 12],
+].map(([book, name, fc, fv, tc, tv]) => ({ book, name, fc, fv, tc, tv }));
+// ספרים שחלוקת הפרשות חלה עליהם: חמשת ספרי התורה עצמם, וכל ספר רש״י/אונקלוס שמקביל לאחד מהם (g==='תורה' מזהה את שניהם — ראו build-sources.py)
+const TORAH_IDS = new Set(B.books.map((b, i) => i).filter(i => B.books[i].g === 'תורה'));
+const parashotFor = i => PARASHOT.filter(p => p.book === B.books[i].heTitle);
+// הפרשה שבה נמצא פסוק נתון (u = {b,ch,n}), רק לספרי התורה/רש״י-על-תורה/אונקלוס; אחרת ''
+function parashaOf(u) {
+  if (!TORAH_IDS.has(u.b)) return '';
+  const pos = u.ch * 1000 + (u.n || 0);
+  const p = parashotFor(u.b).find(p => pos >= p.fc * 1000 + p.fv && pos <= p.tc * 1000 + p.tv);
+  return p ? p.name : '';
+}
+// ד״ה (דיבור המתחיל) לפירוש רש״י: כל פירוש בקורפוס פותח במילות הפסוק המפורשות ואז נקודה (למשל "בראשית ברא. אמר רבי יצחק…") —
+// נבדק על מדגם רחב ועובד באופן עקבי. ri = אינדקס היחידה (כמו ב-IDX.units/RAWTXT, אותו סדר).
+function dibburFor(ri) { const raw = RAWTXT[ri] || ''; const idx = raw.indexOf('.'); return idx > 0 ? raw.slice(0, idx).trim() : ''; }
+// קיצור טקסט ארוך עם "…" (לד״ה / להערות שיטת מילוי-אתב״ש-אטב״ח) — הערך המלא תמיד זמין ב-title (mouse hover)
+const trunc = (s, n) => s.length > (n || 26) ? s.slice(0, n || 26).trim() + '…' : s;
+// [טיוטה — לא סופי, ממתין לאישור] הוספת מקף תצוגתי-בלבד בתוך השם המפורש (יהוה ← יה-וה) בטקסט-הפסוק
+// המוצג בתוצאות. לא נוגע ב-T (מערך התיבות המקורי) עצמו — רק במחרוזת שמוצגת/מועתקת מתוכו — ולכן לא
+// משפיע על חישוב גימטרי/חיפוש/השוואה בשום צורה (אלה כבר רצו לפני שהתוצאה בכלל הגיעה לכאן). מזהה לפי
+// *אותיות-הבסיס בלבד* (מתעלם מניקוד/טעמים, שעלולים לשבת בין האותיות) — ולכן תופס גם "יְהֹוָה" עם טעמים.
+// דורש בדיוק 4 אותיות עבריות במילה שמאייתות י-ה-ו-ה (לא תת-מחרוזת בתוך מילה ארוכה יותר).
+const HEB_LETTER_RE = /[א-ת]/;
+function shemHyphenDisplay(word) {
+  const pos = []; for (let i = 0; i < word.length; i++) if (HEB_LETTER_RE.test(word[i])) pos.push(i);
+  if (pos.length !== 4 || pos.map(i => word[i]).join('') !== 'יהוה') return word;
+  const cut = pos[2]; // אחרי "יה" (2 האותיות הראשונות), לפני "ו" (האות השלישית)
+  return word.slice(0, cut) + '-' + word.slice(cut);
+}
+// רינדור קטע "קונטקסט" (.cx) עם כמה שכבות סימון חופפות: <mark> על התאמת החיפוש, <b> על ד״ה (דיבור המתחיל) ברש״י,
+// וטווחי הדגשה אופציונליים (tfRanges) לסינון הטקסטואלי החופשי בתוצאות — פיצול לפי כל נקודות הגבול
+// (התחלה/סוף קונטקסט, סוף ד״ה, התחלה/סוף ההתאמה, כל טווח הדגשה) כדי שכל שכבה תיושם רק בטווח הנכון, גם כשהן חופפות.
+function cxHtml(T, s, e, ml, mr, boldEnd, tfRanges) {
+  boldEnd = Math.min(Math.max(boldEnd, s), e);
+  const extraPts = []; (tfRanges || []).forEach(x => { extraPts.push(x.a, x.b); });
+  const pts = [...new Set([s, boldEnd, ml, mr, e, ...extraPts])].filter(p => p >= s && p <= e).sort((a, b) => a - b);
+  const tfrAt = p => (tfRanges || []).find(x => p >= x.a && p < x.b);
+  // בונים קודם רשימת "חלקים" שטוחה (מילה/רווח + דגל inMark), ורק בסוף ממזגים ריצות רצופות של inMark:true
+  // לתגית <mark> אחת יחידה — ולא עוטפים כל מקטע (ואת הרווחים שביניהם) בתגית <mark> נפרדת משלו. עטיפה נפרדת
+  // לכל מקטע הייתה יוצרת "תפרים" חזותיים בין התיבות (ל-mark יש border-radius+padding משלה), כך שקו-התחתון
+  // הכחול נראה מפוצל/לא-רציף גם אחרי שהרווח עצמו צויר בתוך mark. תיבת <mark> אחת רציפה פותרת את זה לגמרי.
+  const parts = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1]; if (a >= b) continue;
+    let seg = esc(T.slice(a, b).map(shemHyphenDisplay).join(' '));
+    if (boldEnd > s && a < boldEnd) seg = `<b>${seg}</b>`;
+    const tfr = tfrAt(a);
+    if (tfr) seg = `<span class="${tfr.cls}">${seg}</span>`;
+    const inMark = a >= ml && a < mr;
+    if (parts.length) { const gapInMark = a - 1 >= ml && a - 1 < mr && inMark; parts.push({ text: ' ', mark: gapInMark }); }
+    parts.push({ text: seg, mark: inMark });
+  }
+  let out = '', i2 = 0;
+  while (i2 < parts.length) {
+    if (parts[i2].mark) { let buf = ''; while (i2 < parts.length && parts[i2].mark) { buf += parts[i2].text; i2++; } out += `<mark>${buf}</mark>`; }
+    else { out += parts[i2].text; i2++; }
+  }
+  return out;
+}
+
+/* ---------- סינון טקסטואלי חופשי בתוך תוצאות החיפוש (לא קשור לחישוב הגימטרי) ---------- */
+// "היתולי": הסרה היוריסטית של תחיליות/סיומות נפוצות — תופס הרבה מהטיות השם/הסמיכות הנפוצות,
+// אך לא טיות פועל פנימיות (שינוי אותיות באמצע המילה, כמו כתב/כותב) — אין לכך פתרון בלי מנתח מורפולוגי אמיתי.
+// תחילית אחת בלבד (לא שתיים) וסיומת אחת, ואורך-שארית מינימלי של 3 — הסרה כפולה/אגרסיבית מדי גורמת
+// להתנגשויות שגויות בין מילים לא-קשורות (למשל "שלשה"→"שה" ו"משה"→"שה" מתנגשות בטעות).
+const FUZZ_PRE = 'והבכלמש', FUZZ_SUF = ['ים', 'ות', 'הם', 'הן', 'נו', 'ך', 'ת', 'ה'];
+function rootForm(w) {
+  let s = w;
+  if (s.length > 3 && FUZZ_PRE.includes(s[0])) s = s.slice(1);
+  for (const suf of FUZZ_SUF) { if (s.length - suf.length >= 3 && s.endsWith(suf)) { s = s.slice(0, -suf.length); break; } }
+  return s;
+}
+// רווח בתחילת/בסוף שאילתת הסינון (q הגולמי, לפני נרמול) לא מתעלמים ממנו: הוא דורש גבול-מילה באותו צד —
+// "דן" (בלי רווחים) תופס גם "עדן"/"דני" (הכלה חופשית), אך " דן " (עם רווחים) תופס רק "דן" כמילה שלמה.
+const qBounds = q => ({ lead: /^\s/.test(q), trail: /\s$/.test(q) });
+// האם טקסט-יחידה גולמי (rawText, עם ניקוד/טעמים) תואם שאילתת סינון q, במצב מדויק (fuzzy=false) או היתולי (fuzzy=true)
+function tfMatch(rawText, q, fuzzy) {
+  if (!q || !q.trim()) return true;
+  const qn = E.normalizeText(q).normalizedText; if (!qn) return true;
+  const { lead, trail } = qBounds(q);
+  const n = E.normalizeText(rawText);
+  const needle = (lead ? ' ' : '') + qn + (trail ? ' ' : ''), hay = ' ' + n.normalizedText + ' ';
+  if (hay.includes(needle)) return true;
+  if (!fuzzy) return false;
+  const qWords = qn.split(' ').filter(Boolean); if (qWords.length !== 1) return false;
+  const qRoot = rootForm(qWords[0]);
+  return n.words.some(w => { const wr = rootForm(w); return wr === qRoot || wr.includes(qRoot) || qRoot.includes(wr); });
+}
+// טווחי הדגשה (מילה-מילה) לצורך סימון חזותי בתוך .cx: hlT = התאמה מדויקת, hlF = התאמה היתולית בלבד.
+// שאילתה של מילה בודדת: הכלה חופשית (או עם גבול-מילה לפי qBounds) + תמיכה בהיתולי.
+// שאילתה של כמה מילים (ביטוי): מחפשים רצף תיבות תואם — בדיוק כמו ש-tfMatch בודק התאמת מחרוזת על הטקסט המחובר-ברווחים:
+// המילה הראשונה בביטוי יכולה להיות סיומת חופשית של התיבה הראשונה (או שוות-ערך אם יש גבול-מילה משמאל),
+// המילה האחרונה יכולה להיות תחילית חופשית של התיבה האחרונה (או שוות-ערך אם יש גבול-מילה מימין),
+// והמילים שבאמצע חייבות להתאים בדיוק (הן תחומות משני צדדים ברווחים אמיתיים). ללא תמיכה בהיתולי לביטויים (כמו ב-tfMatch).
+function tfWordRanges(T, s, e, q, fuzzy) {
+  const qn = E.normalizeText(q || '').normalizedText, qWords = qn.split(' ').filter(Boolean);
+  if (!qWords.length) return [];
+  const { lead, trail } = qBounds(q || ''), out = [];
+  if (qWords.length === 1) {
+    const qSingle = qWords[0], qRoot = rootForm(qSingle);
+    for (let t = s; t < e; t++) {
+      const tk = E.tokens(T[t])[0]; if (!tk) continue; const w = tk.norm; if (!w) continue;
+      const okLead = !lead || w.startsWith(qSingle), okTrail = !trail || w.endsWith(qSingle);
+      if (w.includes(qSingle) && okLead && okTrail) out.push({ a: t, b: t + 1, cls: 'hlT' });
+      else if (fuzzy) { const wr = rootForm(w); if (wr === qRoot || wr.includes(qRoot) || qRoot.includes(wr)) out.push({ a: t, b: t + 1, cls: 'hlF' }); }
+    }
+    return out;
+  }
+  const n = qWords.length;
+  for (let t = s; t + n <= e; t++) {
+    let ok = true;
+    for (let j = 0; j < n; j++) {
+      const tk = E.tokens(T[t + j])[0]; const w = tk ? tk.norm : '';
+      if (!w) { ok = false; break; }
+      if (j === 0) ok = lead ? w === qWords[j] : w.endsWith(qWords[j]);
+      else if (j === n - 1) ok = trail ? w === qWords[j] : w.startsWith(qWords[j]);
+      else ok = w === qWords[j];
+      if (!ok) break;
+    }
+    if (ok) out.push({ a: t, b: t + n, cls: 'hlT' });
+  }
+  return out;
+}
+// אינדקסים של st.all בסדר-התצוגה בפועל — null אם אין לא סינון טקסטואלי ולא מיון-לפי-עיגול פעילים (משתמשים
+// ב-st.all ישירות, בסדר המקורי). אחרת תמיד מוחזר מערך: קודם מוחל סינון טקסטואלי (אם יש), ואז — אם יש
+// מיון-לפי-עיגול פעיל (st.hitsSort) — התוצאות ששייכות לשיטה הנבחרת (wms כולל אותה) מועלות לראש הרשימה
+// (מיון-יציב: סדר-המקור נשמר בתוך כל קבוצה), בלי לסנן כלום.
+// התאמת-הסינון-הטקסטואלי (tfMatch) לא זולה — מנרמלת את טקסט הפסוק (הסרת ניקוד/טעמים וכו׳) בכל קריאה.
+// התוצאה נשמרת ישירות על אובייקט-השורה (r.__tfQ/__tfFuzzy/__tfOk) ומחושבת-מחדש רק אם שאילתת-הסינון או
+// מצב-ההיתולי השתנו מאז הבדיקה האחרונה על אותה שורה בדיוק — כך שכל שורה מנורמלת פעם אחת לכל ערך-שאילתה,
+// לא בכל קריאה (ראו גם warmTfCache, שמנצלת את אותה cache כדי לפזר את עלות-הנרמול הראשונית על כמה "חתיכות").
+function tfRowOk(st, r) {
+  if (r.__tfQ === st.tf && r.__tfFuzzy === st.fuzzy) return r.__tfOk;
+  const u2 = IDX.units[r.u], s2 = IDX.start[r.u], e2 = IDX.start[r.u + 1];
+  const ok = tfMatch(IDX.toks.slice(s2, e2).join(' '), st.tf, st.fuzzy);
+  r.__tfQ = st.tf; r.__tfFuzzy = st.fuzzy; r.__tfOk = ok;
+  return ok;
+}
+// מחממת מראש את ה-cache של tfRowOk עבור קבוצת-שורות נתונה (לא כל st.all) — משמש את topUpHitsSort כדי לפזר
+// את עלות-הנרמול-הראשונית על פני כמה שיטות-חיפוש/חתיכות, במקום שתיפול כולה בבת-אחת בקריאה הסופית ל-showMore
+// (עם רבבות שורות, הנרמול החד-פעמי הזה יכול לקחת יותר משנייה ברצף אחד — "דיליי" מורגש, גם בלי "הקפאה" מוחלטת).
+function warmTfCache(st, rows) { if (st.tf && st.tf.trim()) for (const r of rows) tfRowOk(st, r); }
+function visibleIdx(st) {
+  const hasTf = st.tf && st.tf.trim(), hasSort = !!st.hitsSort;
+  if (!hasTf && !hasSort) return null;
+  let idx = st.all.map((_, i) => i);
+  if (hasTf) idx = idx.filter(i => tfRowOk(st, st.all[i]));
+  // עיגולי-נוטריקון (ר״ת/אות ב׳/אות ג׳/ס״ת): מקודמות לפי r.method עצמו (לא wms — שורות-נוטריקון תמיד
+  // מתויגות wms:['regular'], וזה לא ייחודי-לשיטה; method כן, מבדיל בין 4 שיטות-החילוץ).
+  if (hasSort) { const id = st.hitsSort, isNot = NOTARIKON_IDS.includes(id), hit = [], rest = []; idx.forEach(i => { const r = st.all[i]; (isNot ? r.method === id : (r.wms && r.wms.includes(id))) ? hit.push(i) : rest.push(i); }); idx = hit.concat(rest); }
+  return idx;
+}
+// הופך/מבטל מיון-לפי-עיגול-תוצאות עבור שיטה ספציפית (id) בצד k: מעלה את התוצאות הרלוונטיות לראש פנל
+// התוצאות-מהמקורות (בלי לאבד אף תוצאה), ומסמן את העיגול כ"פעיל" (צבוע בצבע הצד). לחיצה על אותו עיגול
+// שוב מבטלת את המיון ומחזירה לסדר הרגיל; לחיצה על עיגול אחר מחליפה את יעד-המיון (רק אחד פעיל בכל רגע, לכל צד).
+function hitsSortToggle(k, id) {
+  const st = S[k];
+  if (st.hitsSort === id) {
+    // ביטול מיון: כל הנתונים הרלוונטיים כבר טעונים (או שלא היו קיימים מלכתחילה) — אין צורך בחיפוש חדש,
+    // רק הצגה-מחדש בסדר הרגיל (מהיר, בלי לפנות שוב לקורפוס).
+    // scrollTop=0 לפני renderWindow(k,0): כדי שהחלון-החדש יוצג מההתחלה ממש, לא יישאר "תקוע" באיזשהו
+    // scrollTop ישן שכבר לא רלוונטי לתוכן/למיקום-הלוגי החדש.
+    st.hitsSort = null; $('#rl' + k).scrollTop = 0; renderWindow(k, 0); renderCenter();
+    return;
+  }
+  st.hitsSort = id;
+  // עיגולי-נוטריקון: כל שיטת-חילוץ נסרקת תמיד בתקציב (limit) עצמאי משלה, לא משותף/מתחרה עם שיטות אחרות
+  // (בניגוד לחיפוש הרגיל) — כלומר כל מה שנמצא כבר טעון ב-st.all עד אותו תקציב, ואין מה "להשלים" מהקורפוס.
+  if (NOTARIKON_IDS.includes(id)) { $('#rl' + k).scrollTop = 0; renderWindow(k, 0); renderCenter(); return; }
+  // לא מספיק לסדר-מחדש את st.all הקיים: יעדים ששייכים לשיטה הזו עלולים כלל לא להיות טעונים בו עדיין
+  // (תקציב-החיפוש-המשותף-לשיטה כבר "נגמר" על יעדים אחרים שעובדו קודם בתור). חיפוש-מחדש-מלא (run) היה
+  // עובד אבל איטי (כמה שניות) — במקום זה, חיפוש-השלמה ממוקד (topUpHitsSort) שמביא רק את מה שבאמת חסר.
+  topUpHitsSort(k, id);
+}
+
+/* ---------- מצב לכל צד ---------- */
+// st.ms = שיטות הגימטריה של מילת החיפוש (לחישוב ערכי המילה ולהשוואה בין צד א׳/ב׳)
+// st.sms = שיטות הגימטריה לחיפוש בפסוקים (איך מחושבים הפסוקים בקורפוס) — עצמאי לגמרי מ-st.ms
+// st.ranges: Map<bookIndex,{fc,fv,tc,tv,pname?}> — טווח פרק:פסוק פר-ספר (ללא ערך = כל הספר); pname אם הוגדר ע״י בחירת פרשה
+// winStart/winCount/avgRowH/groups/groupsTotal: שדות הגלילה-הוירטואלית (ראו renderWindow/computeGroups
+// למטה) — לא חלק מ"שדות-הגדרה" הסיור שומר/משחזר (SETTINGS_FIELDS), ממש כמו all/info/cur: מתמלאים-מחדש
+// נכון מעצמם בכל renderWindow/computeGroups.
+const S = {}; KS.forEach(k => { S[k] = { text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: [], winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false }; });
+let IDX = null, CM = null, FOCUS = null;
+
+/* ---------- בניית המסך ---------- */
+const TITLES = { filt: 'סינון', res: 'תוצאות החיפוש במקורות', ctr: SIDE };
+function sideHtml(k) {
+  return `<section class="side" data-k="${k}">
+  <section class="pn res" data-mode="res" aria-label="${L('תוצאות החיפוש במקורות')} ${L(SIDE[k])}">
+    <div class="hd"><h2 id="rh${k}">${L(TITLES.res)}</h2><button class="filtToggle" id="ft${k}" title="${L('סינון')}" aria-label="${L('סינון')}">⚙</button></div>
+    <div class="resBody">
+      <div class="tsBar" id="tsb${k}">
+        <span class="tsIcon" aria-hidden="true"><svg viewBox="0 0 22 22"><circle cx="9.5" cy="9.5" r="5.8" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="13.7" y1="13.7" x2="19" y2="19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+        <input type="text" id="tf${k}" class="tfInp" placeholder="${L('סינון טקסטואלי בתוך התוצאות…')}" aria-label="${L('סינון טקסטואלי בתוך תוצאות החיפוש')} ${L(SIDE[k])}">
+        <label class="tsFuzz" title="${L('כולל הטיות קרובות (הסרת תחיליות/סיומות נפוצות) — לא מדויק, לא תופס טיות פועל פנימיות')}">
+          <input type="checkbox" class="cb" id="tfz${k}"><span>${L('הטיות')}</span>
+        </label>
+        <span class="tsCount" id="tfc${k}" hidden></span>
+        <button class="sm tsClear" id="tfx${k}" hidden>${L('נקה')}</button>
+      </div>
+      <div class="sum" id="rs${k}" aria-live="polite"></div>
+      <div class="resList">
+        <div class="sc" id="rl${k}"></div>
+        <div class="fsTrack" id="fsTrack${k}"><div class="fsThumb" id="fsThumb${k}"><div class="fsBubble" id="fsBubble${k}"></div></div></div>
+      </div>
+      <div class="sc filtPane" id="fp${k}">
+        <div class="sec"><h3>${L('סוגי גימטריה לחיפוש')}</h3><div id="ms${k}" class="smTree"></div></div>
+        <div class="sec"><label class="opt"><input type="checkbox" class="cb" id="fu${k}"><span>${L('הצג התאמות לפסוק שלם או משנה שלמה בלבד')}</span></label></div>
+        <div class="sec"><h3>${L('התאמת נוטריקון')}<span class="hint">${L('קובע מתי מילת-החיפוש נחשבת תואמת לחילוץ (ר״ת/אות ב׳/אות ג׳/ס״ת) בתוך פסוק')}</span></h3>
+          <div class="radioRow">
+            <label class="opt"><input type="radio" name="notMode${k}" class="cb" data-notmode="gem"><span>${L('גימטרית')}</span></label>
+            <label class="opt"><input type="radio" name="notMode${k}" class="cb" data-notmode="perm" checked><span>${L('אותיות (צירופים)')}</span></label>
+            <label class="opt"><input type="radio" name="notMode${k}" class="cb" data-notmode="lit"><span>${L('טקסטואלית (מדויקת)')}</span></label>
+          </div>
+        </div>
+        <div class="sec"><h3>${L('עץ מקורות וטווח בתוך כל ספר')}<span class="hint">${L('מ/עד = פרק:פסוק (או פרשה, לספרי התורה/רש״י/אונקלוס) · ריק = כל הספר')}</span></h3><div class="rowb"><button class="sm" data-t="all">${L('הכול')}</button><button class="sm" data-t="none">${L('נקה')}</button></div><div id="tr${k}" class="srcTree"></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="pn ctr" aria-label="${L('קלט')} ${L(SIDE[k])}"><div class="hd"><h2>${L(SIDE[k])}</h2><span class="m" id="st${k}"></span></div>
+    <div class="inp"><textarea id="t${k}" placeholder="${L('הקלד ביטוי לחישוב - החישוב והחיפוש מתבצע תוך כדי הקלדה')}" aria-label="${L('קלט')} ${L(SIDE[k])}"></textarea>
+    <div class="meta"><label>${L('או לפי מספר')} <input id="nm${k}" type="number" min="1"></label><span class="sp"></span><button class="sm" data-a="clear">${L('נקה')}</button><button class="sm" data-a="copy">${L('העתק')}</button></div></div>
+    <div class="sum" id="cs${k}"></div>
+    <div class="rowb wrow" id="wrb${k}" title="${L('קובע אילו שיטות של מילת החיפוש פעילות (לערך המילה, לחיפוש ולהשוואה)')}"><button class="sm" data-t="all">${L('הכול')}</button><button class="sm" data-t="none">${L('נקה')}</button></div>
+    <div class="sc" id="gr${k}" title="${L('לחצו על שיטה כדי להפעיל/לכבות אותה')}"></div></section></section>`;
+}
+$('#ws').innerHTML = KS.map(sideHtml).join('');
+// פתיחה/סגירה של פנל הסינון (.filtPane): הפנל ממוקם position:absolute (מעל .resBody) בגודל קבוע,
+// וה"גלילה מלמטה למעלה" מתבצעת ע"י transform בלבד (translateY + opacity) — ולא ע"י שינוי גובה אמיתי
+// (max-height/גריד) — כדי שההנפשה תרוץ על ה-GPU (compositor) בלי reflow בכל פריים, גם כשתוכן הפנל
+// כבד (רשימת ספרים/שבבים ארוכה). זו הסיבה שהגרסה הקודמת "תקעה" — אנימציה על גובה-אמיתי מכריחה את
+// הדפדפן לחשב מחדש את הפריסה בכל פריים.
+function toggleFilt(k, force) {
+  const sec = $('#ft' + k).closest('.pn.res'), toFilt = force != null ? force : sec.dataset.mode !== 'filt';
+  sec.dataset.mode = toFilt ? 'filt' : 'res';
+  $('#rs' + k).hidden = toFilt; $('#rl' + k).hidden = toFilt; $('#tsb' + k).hidden = toFilt;
+  const fp = $('#fp' + k);
+  fp.classList.toggle('open', toFilt);
+  fp.inert = !toFilt; // כשהפנל סגור ומוסט מחוץ לתצוגה, לא ניתן לנווט/להתמקד בפקדים שבתוכו
+  $('#rh' + k).textContent = toFilt ? L(TITLES.filt) + ' — ' + L(SIDE[k]) : L(TITLES.res);
+  $('#ft' + k).classList.toggle('on', toFilt);
+}
+KS.forEach(k => { $('#ft' + k).onclick = () => toggleFilt(k); });
+
+/* ---------- עץ + סוגי גימטריה לחיפוש בפסוקים (st.sms) ---------- */
+// בנוי בדיוק כמו עץ המקורות (srcCard/srcHd/tw/srcLeaves) — כרטיס מתקפל לכל משפחה (רגילה/אתב״ש/אטב״ח) עם
+// תיבת-סימון-הורה (מסמנת/מבטלת את 4 השיטות ביחד, כולל השיטה הבסיסית עצמה כאחד הילדים) ומונה "X/4". שלושת
+// הכרטיסים בשורה אחת למעלה (גריד 3 עמודות), מסודרים מימין לשמאל לפי GEM_FAMILIES: רגילה · אתב״ש · אטב״ח.
+// מילוי — כרטיס רביעי באותו גריד (ללא חץ-קיפול/מונה, אין לו "ילדים"), באותו רוחב כמו שאר הכרטיסים.
+// אין עוד checkbox "הכול" נפרד (הוסר לבקשת המשתמש).
+const MILUI_COLOR = '#8a6d1f';
+function drawSearchMethods(k) {
+  const st = S[k];
+  const famHtml = GEM_FAMILIES.map(f => {
+    const c = f.ids.filter(id => st.sms.has(id)).length, open = st.smOpen.has(f.key);
+    const leaves = open ? `<div class="srcLeaves">${f.ids.map(id => `<label class="opt"><input type="checkbox" class="cb" data-m="${id}" ${st.sms.has(id) ? 'checked' : ''}><span class="nm">${L(f.labels[id])}</span></label>`).join('')}</div>` : '';
+    return `<div class="srcCard" style="--c:${f.color}"><div class="srcHd"><button class="tw" data-fo="${f.key}" aria-expanded="${open}" aria-label="${L('פתח/סגור')}">${open ? '▾' : '◂'}</button><label class="opt" style="flex:1;padding:0"><input type="checkbox" class="cb" data-fam="${f.key}" ${c === f.ids.length ? 'checked' : ''} data-p="${c > 0 && c < f.ids.length ? 1 : 0}"><span class="nm">${L(f.name)}</span><span class="ct">${c}/${f.ids.length}</span></label></div>${leaves}</div>`;
+  }).join('');
+  const miluiHtml = `<div class="srcCard" style="--c:${MILUI_COLOR}"><div class="srcHd"><label class="opt" style="flex:1;padding:0"><input type="checkbox" class="cb" data-m="milui" ${st.sms.has('milui') ? 'checked' : ''}><span class="nm">${L('מילוי')}</span></label></div></div>`;
+  $('#ms' + k).innerHTML = famHtml + miluiHtml;
+  $('#ms' + k).querySelectorAll('[data-p="1"]').forEach(x => { x.indeterminate = true; });
+}
+const cnt = (st, ids) => ids.reduce((s, i) => s + st.sel.has(i), 0);
+function grpToggleHtml(key, name, ids, c, open) {
+  return `<button class="tw" data-o="${key}" aria-expanded="${open}" aria-label="${L('פתח/סגור')}">${open ? '▾' : '◂'}</button><label class="opt" style="flex:1;padding:0"><input type="checkbox" class="cb" data-ids="${ids.join(',')}" ${c === ids.length ? 'checked' : ''} data-p="${c > 0 && c < ids.length ? 1 : 0}"><span class="nm" title="${esc(name)}">${esc(name)}</span><span class="ct">${ids.length > 1 ? c + '/' + ids.length : ''}</span></label>`;
+}
+// תגית הטווח המוצגת כש-סגור: שם פרשה אם הוגדר כזה, אחרת "פרק:פסוק–פרק:פסוק"
+function leafTag(st, i) {
+  const rg = st.ranges.get(i); if (!rg) return '';
+  if (rg.pname) return L('פרשת ') + parshaName(rg.pname);
+  const f = rg.fc ? heNum(rg.fc) + (rg.fv ? ':' + heNum(rg.fv) : '') : '', t = rg.tc ? heNum(rg.tc) + (rg.tv ? ':' + heNum(rg.tv) : '') : '';
+  return (f || t) ? `${f}–${t}` : '';
+}
+function leafHtml(st, i) {
+  const b = B.books[i], on = st.sel.has(i), open = st.rngOpen.has(i), rg = st.ranges.get(i), tag = leafTag(st, i), torah = TORAH_IDS.has(i);
+  let sub = '';
+  if (open) {
+    const opts = torah ? parashotFor(i).map(p => `<option value="${esc(p.name)}" ${rg && rg.pname === p.name ? 'selected' : ''}>${esc(parshaName(p.name))}</option>`).join('') : '';
+    sub = `<div class="rngEd">
+      ${torah ? `<select class="prs" data-rb="${i}" aria-label="${L('בחר פרשה')}"><option value="">${L('בחר פרשה…')}</option>${opts}</select>` : ''}
+      <span class="rngInp">${L('מ ')}<input type="number" min="1" class="rin" data-rb="${i}" data-f="fc" value="${rg && rg.fc ? rg.fc : ''}" placeholder="${L('פרק')}" aria-label="${L('מפרק')}"> : <input type="number" min="1" class="rin" data-rb="${i}" data-f="fv" value="${rg && rg.fv ? rg.fv : ''}" placeholder="${L("פס׳")}" aria-label="${L('מפסוק')}"></span>
+      <span class="rngInp">${L('עד ')}<input type="number" min="1" class="rin" data-rb="${i}" data-f="tc" value="${rg && rg.tc ? rg.tc : ''}" placeholder="${L('פרק')}" aria-label="${L('עד פרק')}"> : <input type="number" min="1" class="rin" data-rb="${i}" data-f="tv" value="${rg && rg.tv ? rg.tv : ''}" placeholder="${L("פס׳")}" aria-label="${L('עד פסוק')}"></span>
+      ${rg ? `<span class="rngA" data-rreset="${i}">${L('אפס')}</span>` : ''}
+      <span class="rngA" data-rclose="${i}">${L('סגור')}</span>
+    </div>`;
+  }
+  return `<div class="srcLeaf${rg ? ' mod' : ''}"><label class="opt leafMain"><input type="checkbox" class="cb" data-ids="${i}" ${on ? 'checked' : ''}><span class="nm" title="${esc(bookName(b.heTitle))}">${esc(bookName(b.heTitle))}</span></label>` +
+    (open ? `<span class="rngA" data-rclose="${i}">✕</span>` : tag ? `<span class="rngTag" data-ropen="${i}" title="${L('לחצו לעריכת הטווח')}">${esc(tag)}</span>` : `<span class="rngLink" data-ropen="${i}">${L(torah ? 'פרשה/טווח' : 'טווח')}</span>`) +
+    `</div>${sub}`;
+}
+function grpHtml(st, key, name, ids, open) {
+  return `<div class="srcGrp"><div class="srcGrpHd">${grpToggleHtml(key, name, ids, cnt(st, ids), open)}</div>${open ? `<div class="srcLeaves">${ids.map(i => leafHtml(st, i)).join('')}</div>` : ''}</div>`;
+}
+function drawTree(k) {
+  const st = S[k], root = $('#tr' + k), sc = root.closest('.sc'), top = sc.scrollTop;
+  root.innerHTML = TREE.map(c => {
+    const open = st.open.has(c.key);
+    const body = open ? `<div class="srcBody">${c.groups.map(g => grpHtml(st, g.key, groupName(g.name), g.ids, st.open.has(g.key))).join('')}</div>` : '';
+    return `<div class="srcCard" style="--c:${CATCOLORS[c.cat] || 'var(--ac)'}"><div class="srcHd">${grpToggleHtml(c.key, catName(c.cat), c.ids, cnt(st, c.ids), open)}</div>${body}</div>`;
+  }).join('');
+  root.querySelectorAll('[data-p="1"]').forEach(x => { x.indeterminate = true; }); sc.scrollTop = top;
+}
+function bind(k) {
+  const st = S[k], q = s => document.querySelector(`.side[data-k=${k}] ${s}`);
+  $('#ms' + k).onchange = e => {
+    const t = e.target;
+    if (t.dataset.fam != null) { const f = GEM_FAMILIES.find(x => x.key === t.dataset.fam); f.ids.forEach(id => t.checked ? st.sms.add(id) : st.sms.delete(id)); }
+    else t.checked ? st.sms.add(t.dataset.m) : st.sms.delete(t.dataset.m);
+    drawSearchMethods(k); run(k);
+  };
+  $('#ms' + k).onclick = e => { const tw = e.target.closest('.tw[data-fo]'); if (!tw) return; const o = tw.dataset.fo; st.smOpen.has(o) ? st.smOpen.delete(o) : st.smOpen.add(o); drawSearchMethods(k); };
+  $('#wrb' + k).onclick = e => { const t = e.target.dataset.t; if (!t) return; st.ms = t === 'all' ? new Set(E.METHODS.map(m => m.id)) : new Set(); run(k); renderCenter(); };
+  $('#gr' + k).addEventListener('click', e => { const ncp = e.target.closest('.cpy'); if (ncp) { e.stopPropagation(); return doCopy(ncp); } if (e.target.closest('.bdg,.bdgH')) return; const row = e.target.closest('.gr,.gr4cell'); if (!row || row.classList.contains('disabled')) return; const m = row.dataset.m; if (!m) return; st.ms.has(m) ? st.ms.delete(m) : st.ms.add(m); run(k); renderCenter(); });
+  $('#gr' + k).addEventListener('keydown', e => { const ncp = e.target.closest('.cpy'); if (!ncp) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); doCopy(ncp); } });
+  const debRun = () => { clearTimeout(st.timer); st.timer = setTimeout(() => run(k), 350); }; // ממתינים שההקלדה "תירגע" לפני שמריצים חיפוש כבד
+  // עדכון טווח פר-ספר (Map st.ranges): patch חלקי על {fc,fv,tc,tv,pname}; טווח ריק לגמרי מוסר מה-Map
+  const patchRange = (i, patch) => { const rg = Object.assign({}, st.ranges.get(i), patch); if (!rg.fc && !rg.fv && !rg.tc && !rg.tv) st.ranges.delete(i); else st.ranges.set(i, rg); };
+  const tr = $('#tr' + k);
+  tr.onchange = e => {
+    const t = e.target;
+    if (t.dataset.ids != null) { t.dataset.ids.split(',').map(Number).forEach(i => t.checked ? st.sel.add(i) : st.sel.delete(i)); drawTree(k); run(k); return; }
+    if (t.classList.contains('prs')) { const i = +t.dataset.rb, p = parashotFor(i).find(x => x.name === t.value); if (p) st.ranges.set(i, { fc: p.fc, fv: p.fv, tc: p.tc, tv: p.tv, pname: p.name }); else st.ranges.delete(i); drawTree(k); run(k); return; }
+  };
+  tr.oninput = e => { const t = e.target; if (!t.classList.contains('rin')) return; const i = +t.dataset.rb, v = t.value ? parseInt(t.value, 10) : undefined; patchRange(i, { [t.dataset.f]: v, pname: undefined }); debRun(); };
+  tr.onclick = e => {
+    const tw = e.target.closest('.tw[data-o]'); if (tw) { const o = tw.dataset.o; st.open.has(o) ? st.open.delete(o) : st.open.add(o); drawTree(k); return; }
+    const op = e.target.closest('[data-ropen]'); if (op) { st.rngOpen.add(+op.dataset.ropen); drawTree(k); return; }
+    const cl = e.target.closest('[data-rclose]'); if (cl) { st.rngOpen.delete(+cl.dataset.rclose); drawTree(k); return; }
+    const rs = e.target.closest('[data-rreset]'); if (rs) { const i = +rs.dataset.rreset; st.ranges.delete(i); drawTree(k); run(k); return; }
+  };
+  q('.filtPane .rowb').onclick = e => { const t = e.target.dataset.t; if (!t) return; st.sel = t === 'all' ? new Set(ALL) : new Set(); drawTree(k); run(k); };
+  $('#t' + k).oninput = e => { st.text = e.target.value; renderCenter(); debRun(); };
+  $('#nm' + k).oninput = e => { st.num = e.target.value; debRun(); };
+  q('.meta').onclick = e => { const a = e.target.dataset.a; if (!a) return; if (a === 'clear') { st.text = ''; st.num = ''; $('#t' + k).value = ''; $('#nm' + k).value = ''; renderCenter(); run(k); } else { const t = E.METHODS.filter(m => st.ms.has(m.id)).map(m => L(MN[m.id]) + ': ' + fmt(E.calculateGematria(st.text, m.id).value)).join('\n'); copyText(L(SIDE[k]) + ': ' + st.text + '\n' + t); e.target.textContent = L('הועתק ✓'); setTimeout(() => { e.target.textContent = L('העתק'); }, 1200); } };
+  const doCopy = cp => { copyText(cp.dataset.copy); cp.textContent = '✓'; setTimeout(() => { cp.textContent = '⧉'; }, 900); };
+  $('#rl' + k).onclick = e => { const cp = e.target.closest('.cpy'); if (cp) { e.stopPropagation(); return doCopy(cp); } const b = e.target.closest('.rs'); if (!b) return; select(k, +b.dataset.i); };
+  $('#rl' + k).addEventListener('keydown', e => { const cp = e.target.closest('.cpy'); if (!cp) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); doCopy(cp); } });
+  // גלילה אינסופית: טוענים את מנת ה-100 הבאה כשמתקרבים לתחתית הרשימה (במקום כפתור "הצג עוד")
+  $('#rl' + k).addEventListener('scroll', () => { fsLayout(k); maybeShiftWindow(k); });
+  // סינון טקסטואלי חופשי בתוך התוצאות המוצגות (לא קשור לחישוב הגימטרי) — מהיר, פועל על מה שכבר נמצא בזיכרון
+  const tfDeb = () => { clearTimeout(st.tfTimer); st.tfTimer = setTimeout(() => tfRebuild(k), 80); };
+  $('#tf' + k).oninput = e => { st.tf = e.target.value; tfDeb(); };
+  $('#tfz' + k).onchange = e => { st.fuzzy = e.target.checked; tfRebuild(k); };
+  $('#fu' + k).onchange = e => { st.fullUnit = e.target.checked; run(k); };
+  $('#tfx' + k).onclick = () => { st.tf = ''; $('#tf' + k).value = ''; tfRebuild(k); };
+  $('#fp' + k).querySelectorAll('input[data-notmode]').forEach(r => { r.onchange = () => { if (r.checked) { st.notMode = r.dataset.notmode; runNotarikon(k); } }; });
+  drawSearchMethods(k); drawTree(k); fsInit(k);
+}
+
+// מספר ההתאמות בפועל שנמצאו בחיפוש-במקורות (st.info) עבור ערך-המילה שחושב לפי שיטה ספציפית (id) —
+// סוכם על פני כל שיטות-החיפוש הפעילות (st.info נבנה פר (שיטת-חיפוש, יעד), עם wms = רשימת שיטות-המילה
+// שהניבו אותו יעד). מוצג כעיגול-מידע נוסף (ללא צבע-מילוי) ליד תגי-ההתאמה בין הצדדים.
+function sourceHits(st, id) { return (st.info || []).reduce((s, x) => s + (!x.notarikon && x.wms && x.wms.includes(id) ? x.total : 0), 0); }
+
+/* ---------- אזור מרכזי: ערכי כל סוגי הגימטריה + השוואה בין הצדדים ---------- */
+function renderCenter() {
+  const res = {}; KS.forEach(k => { res[k] = {}; E.METHODS.forEach(m => { res[k][m.id] = E.calculateGematria(S[k].text, m.id); }); });
+  CM = E.compareAll(S.A.text, S.B.text, E.METHODS.map(m => m.id).filter(m => S.A.ms.has(m)), E.METHODS.map(m => m.id).filter(m => S.B.ms.has(m)));
+  CM.matches.forEach(m => { m.color = COLORS[(m.id - 1) % COLORS.length]; });
+  const empty = !S.A.text.trim() || !S.B.text.trim();
+  KS.forEach(k => {
+    const st = S[k], n = E.normalizeText(st.text), side = k === 'A' ? 'a' : 'b';
+    $('#st' + k).textContent = `${L('אותיות')} ${n.normalizedText.replace(/ /g, '').length} · ${L('מילים')} ${n.words.length}`;
+    $('#cs' + k).innerHTML = empty ? L('הקלד טקסט בשני הצדדים כדי להשוות ביניהם.') : CM.matches.length ? `<b>${CM.matches.length}</b> ${L('התאמות בין השיטות המסומנות בשני הצדדים.')}` : L('אין התאמות בין השיטות המסומנות בשני הצדדים.');
+    // רגילה/אתב״ש/אטב״ח מוצגות כל אחת כמלבן 4-עמודות (בסיס/+כולל/+תיבות/+אותיות) — 3 מלבנים כאלה, לפי
+    // GEM_FAMILIES (משותף עם פנל הסינון). לאתב״ש/אטב״ח (לא לרגילה, שאין לה "המרה") מתווספת שורת-הערה
+    // לאורך כל רוחב המלבן, עם המחרוזת המומרת בלבד (ללא טקסט-המקור/נוסחה — לבקשת המשתמש). מילוי נשאר
+    // שורת-הערה בודדת (מלבן נפרד) כמו היום.
+    const hasTxt = !!st.text.trim();
+    const gr4Html = GEM_FAMILIES.map(f => {
+      const cells = `<div class="gr4">${f.ids.map(id => {
+        const r = res[k][id], on = st.ms.has(id), mine = CM.matches.filter(x => x[side].method === id), hl = mine.find(x => x.id === FOCUS) || mine[0];
+        const matchBdgs = mine.map(x => `<button class="bdg" style="--c:${x.color}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
+        const badges = matchBdgs ? `<div class="bdgSmall">${matchBdgs}</div>` : '';
+        // עיגול-התוצאות מוצג תמיד (גם "0" כשאין עדיין/בכלל התאמות) כדי שהערך יוכל "לגדול" באופן חי תוך
+        // כדי חיפוש בלי שהעיגול יקפוץ פנימה/החוצה מהתא (מה שהיה גורם לקפיצות-פריסה קטנות).
+        const hits = sourceHits(st, id), hitOn = st.hitsSort === id ? ' on' : '', hitsBdg = `<span class="bdgH${hitOn}" data-m="${id}" title="${fmt(hits)} ${L('התאמות במקורות')}${hitOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(hits)}</span>`;
+        return `<div class="gr4cell${on ? '' : ' off'}" data-m="${id}" style="--c:${hl ? hl.color : 'var(--ln2)'}" title="${L(f.labels[id])} · ${fmt(r.value)}${on ? ' · ' + L('לחצו לכיבוי שיטה זו') : ' · ' + L('לחצו להפעלת שיטה זו')}"><div class="mn">${L(f.labels[id])}</div><div class="num">${fmt(r.value)}</div><div class="bdgRow">${hitsBdg}${badges}</div></div>`;
+      }).join('')}</div>`;
+      if (f.key === 'regular') {
+        // שורת נוטריקון מקוננת בתוך אותו מלבן (לא כפתור/קופסה נפרדת) — תמיד גלויה, בלי פס-צבע עליון
+        // (אין style="--c:…"), במראה מנוטרל (gr4cell.disabled): רק מונה-תוצאות חי לכל שיטת-חילוץ,
+        // ללא ערך-גי' (תמיד שווה ל'רגילה' שכבר מוצג למעלה) וללא עיגולי-התאמה-לצד-שני.
+        const notCells = NOTARIKON_IDS.map(m => { const c = (st.notCounts && st.notCounts[m]) || 0, hitOn = st.hitsSort === m ? ' on' : ''; return `<div class="gr4cell disabled" data-m="${m}" title="${L(NOTARIKON_LABELS[m])} — ${L('נוטריקון')}"><div class="mn">${L(NOTARIKON_LABELS[m])}</div><div class="bdgRow"><span class="bdgH${hitOn}" data-m="${m}" title="${fmt(c)} ${L('התאמות נוטריקון')}${hitOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(c)}</span></div></div>`; }).join('');
+        return `<div class="gr4Wrap">${cells}<hr class="notDivider"><div class="gr4">${notCells}</div></div>`;
+      }
+      const baseR = res[k][f.ids[0]], noteFull = hasTxt ? (baseR.transformedText || '') : '';
+      const note = `<div class="gr4Note" title="${noteFull ? esc(noteFull) : ''}">${noteFull ? `<span class="cpy" role="button" tabindex="0" title="${L('העתק את המחרוזת המומרת ללוח')}" data-copy="${esc(noteFull)}">⧉</span>` : ''}<span class="noteTxt">${noteFull ? esc(noteFull) : '&nbsp;'}</span></div>`;
+      return `<div class="gr4Wrap">${cells}${note}</div>`;
+    }).join('');
+    // מילוי: אותה "מראה" כמו אתב״ש/אטב״ח — מלבן + שורת-הערה לאורך כל הרוחב בתחתית, עם המחרוזת המומרת
+    // בלבד (שמות-האותיות המלאים, ללא נוסחת-הסכום), במקום ההערה-הקטנה-ליד-השם הישנה.
+    const restHtml = E.METHODS.filter(m => m.id === 'milui').map(m => { const r = res[k][m.id], on = st.ms.has(m.id), mine = CM.matches.filter(x => x[side].method === m.id), hl = mine.find(x => x.id === FOCUS) || mine[0];
+      const noteFull = hasTxt ? (r.transformedText || '') : '';
+      const hits = sourceHits(st, m.id), hitsOn = st.hitsSort === m.id ? ' on' : '', hitsBdg = `<span class="bdgH${hitsOn}" data-m="${m.id}" title="${fmt(hits)} ${L('התאמות במקורות')}${hitsOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(hits)}</span>`;
+      const matchBdgs = mine.map(x => `<button class="bdg" style="--c:${x.color}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
+      // שורה שטוחה אחת (לא עמודה מוערמת כמו ב-gr4cell הצר): משמאל לימין — ערך, עיגול-תוצאות, עיגולי-התאמה, כותרת
+      const row = `<div class="gr${on ? '' : ' off'}" data-m="${m.id}" style="--c:${hl ? hl.color : 'var(--ln2)'}" title="${on ? L('לחצו לכיבוי שיטה זו') : L('לחצו להפעלת שיטה זו')}"><div class="mn">${L(m.name)}</div>${matchBdgs}${hitsBdg}<span class="num">${fmt(r.value)}</span></div>`;
+      const note = `<div class="gr4Note" title="${noteFull ? esc(noteFull) : ''}">${noteFull ? `<span class="cpy" role="button" tabindex="0" title="${L('העתק את המחרוזת המומרת ללוח')}" data-copy="${esc(noteFull)}">⧉</span>` : ''}<span class="noteTxt">${noteFull ? esc(noteFull) : '&nbsp;'}</span></div>`;
+      return `<div class="gr4Wrap">${row}${note}</div>`; }).join('');
+    $('#gr' + k).innerHTML = gr4Html + restHtml;
+    $('#gr' + k).querySelectorAll('.bdg').forEach(b => { b.onclick = () => { FOCUS = FOCUS === +b.dataset.f ? null : +b.dataset.f; renderCenter(); }; });
+    $('#gr' + k).querySelectorAll('.bdgH').forEach(b => { b.onclick = () => hitsSortToggle(k, b.dataset.m); });
+  });
+}
+// עדכון-חי *קל-משקל* של רק המספרים-המשתנים (עיגולי "התאמות במקורות"/נוטריקון) בתאי-שיטות-הגימטריה, לשימוש
+// בלולאת-החיפוש הפעילה (step() ב-run(), עד פעם ב-150 מ"ש) — בלי להרוס-ולבנות-מחדש את כל רשת-התאים
+// (renderCenter המלא עושה innerHTML על #gr{k} כולו). בדיוק כמו ב-appendLiveRows/renderWindow ברשימת-
+// התוצאות (ראו ההערות שם): הריסה-ובנייה-מחדש חוזרת-ונשנית של אלמנטים גורמת למשפחת-באגי-ההבהוב (מסגרת/
+// hover/סמן-עכבר) כש-העכבר נח מעל אחד מהמלבנים תוך-כדי חישוב — שדווח גם כאן. הפתרון: מעדכנים רק את
+// ה-textContent/title של עיגולי-ה-"בדגה" הקיימים (לפי data-m), בלי לגעת בשאר התא (מסגרת/צבע/מבנה) —
+// כי אלה ממילא לא משתנים תוך-כדי חיפוש בודד (רק מספר-ההתאמות גדל בהדרגה). renderCenter המלא עדיין
+// משמש בכל שינוי *מבני* אמיתי (הקלדה, הפעלה/כיבוי שיטה, תחילת/סיום חיפוש וכו').
+function updateCenterCounts(k) {
+  const st = S[k], root = $('#gr' + k);
+  if (!root) return;
+  root.querySelectorAll('.bdgH[data-m]').forEach(el => {
+    const m = el.dataset.m, isNot = NOTARIKON_IDS.includes(m);
+    const hits = isNot ? ((st.notCounts && st.notCounts[m]) || 0) : sourceHits(st, m);
+    const on = el.classList.contains('on');
+    el.textContent = fmt(hits);
+    el.title = LANG === 'en'
+      ? `${fmt(hits)} ${isNot ? 'notarikon' : 'source'} matches${on ? ' — active, click to cancel' : ' — click to sort results by this method'}`
+      : `${fmt(hits)} התאמות ${isNot ? 'נוטריקון' : 'במקורות'}${on ? ' — פעיל, לחצו לביטול' : ' — לחצו למיון התוצאות לפי שיטה זו'}`;
+  });
+}
+
+/* ---------- חיפוש ---------- */
+// ייחוס לתצוגה — "הערה N" הוסרה לגמרי לבקשת המשתמש (מספור פנימי של קטעי פירוש, לא משמעותי למשתמש)
+const ref = u => {
+  const b = B.books[u.b]; if (b.kind === 'word') return u.t;
+  const p = (LANG === 'en' ? PFX_EN[b.cat] : PFX[b.cat]) + bookName(b.heTitle);
+  if (b.kind === 'mishnah') return LANG === 'en' ? `${p} ch. ${heNum(u.ch)} mishnah ${heNum(u.n)}` : `${p} פרק ${heNum(u.ch)} משנה ${heNum(u.n)}`;
+  if (b.kind === 'talmud') return LANG === 'en' ? `${p} ${heNum(u.ch)} side ${u.s === 1 ? 'a' : 'b'}${u.k ? `, line ${u.n}` : ''}` : `${p} ${heNum(u.ch)} ע״${u.s === 1 ? 'א' : 'ב'}${u.k ? `, שורה ${u.n}` : ''}`;
+  return `${p} ${heNum(u.ch)}:${heNum(u.n)}`;
+};
+// חיפוש מדורג (chunked): כל שיטת-חיפוש נסרקת כ"חתיכה" נפרדת, עם "נשימה" לדפדפן (setTimeout) בין חתיכה לחתיכה —
+// כך המסך לא קופא גם כשכל השיטות/המקורות פעילים, התוצאות מופיעות בהדרגה, ואפשר לבטל חיפוש ישן (st.gen)
+// ברגע שמתחיל חיפוש חדש (למשל כשממשיכים להקליד) בלי לחכות שהישן יסתיים.
+// מחשב את "הקשר-החיפוש" הבסיסי של צד (k): מילת/מספר-החיפוש, שיטות פעילות, תקציב-תוצאות, מסנן-מקורות,
+// וערכי מילת-החיפוש לפי כל שיטת-מילה. משותף בין run() (חיפוש מלא) ל-topUpHitsSort() (חיפוש-השלמה ממוקד),
+// כדי לא לשכפל את הלוגיקה (כולל חוק אי-ההתאמה ב-targetsFor).
+function buildSearchContext(st) {
+  const q = st.text, num = parseInt(st.num, 10);
+  const wms = E.METHODS.map(m => m.id).filter(m => st.ms.has(m)); // שיטות של מילת החיפוש
+  const sms = E.METHODS.map(m => m.id).filter(m => st.sms.has(m)); // שיטות לחיפוש בפסוקים
+  const limit = getLimit();
+  const filt = { books: st.sel.size === ALL.size ? null : st.sel, ranges: st.ranges.size ? st.ranges : null, fullUnit: st.fullUnit };
+  // ערכי מילת החיפוש לפי כל שיטת-מילה פעילה (מחושב פעם אחת; המספר, אם הוזן, לא תלוי בשיטת-מילה כלשהי)
+  const wmVal = new Map();
+  if (!num) for (const wm of wms) { const v = E.calculateGematria(q, wm).value; if (v) wmVal.set(wm, v); }
+  // בונה את רשימת היעדים לשיטת-חיפוש נתונה (sm) — עם דה-דופ לערכים זהים, ובכפוף לחוק אי-ההתאמה:
+  // קולל/עם-תיבות/עם-אותיות לעולם לא ייחשבו התאמה כנגד קולל/עם-תיבות/עם-אותיות (ראו E.pairAllowed),
+  // כך שלכל שיטת-חיפוש יכולה להיות רשימת-יעדים שונה (שיטת-מילה אסורה לצמד הזה פשוט לא תורמת יעד עבורו).
+  const targetsFor = sm => {
+    if (num) return [{ value: num, tag: [] }];
+    const vmap = new Map();
+    for (const [wm, v] of wmVal) { if (!E.pairAllowed(wm, sm)) continue; if (!vmap.has(v)) vmap.set(v, []); vmap.get(v).push(wm); }
+    return [...vmap].map(([value, srcWms]) => ({ value, tag: srcWms }));
+  };
+  return { q, num, wms, sms, limit, filt, wmVal, targetsFor };
+}
+// חיפוש-השלמה ממוקד: נקרא כשמפעילים מיון-לפי-עיגול-תוצאות (hitsSortToggle) על שיטת-מילה מסוימת. ייתכן
+// שהיעד שמתויג בשיטה הזו כלל לא נטען ל-st.all (תקציב-התוצאות המשותף-לשיטת-חיפוש "נוצל" ע״י יעדים אחרים
+// שעובדו קודם בתור של run() המקורי — גם אם הוא נספר נכון ב-st.info). במקום להריץ run() מחדש על *כל*
+// הצירופים (איטי — יכול לקחת כמה שניות), מריצים E.search רק על היעד הבודד המתויג בשיטה הזו, לכל שיטת-חיפוש
+// פעילה בנפרד, עם תקציב-תוצאות עצמאי (לא תלוי במה שנוצל כבר) — ומחליפים רק את השורות של אותו (שיטה,יעד)
+// הספציפי ב-st.all/st.info, בלי לגעת בשאר הנתונים שכבר טעונים נכון. שדה-הסינון הטקסטואלי (st.tf) ממשיך
+// לפעול כרגיל על גבי התוצאה (visibleIdx/showMore לא השתנו).
+function topUpHitsSort(k, id) {
+  const st = S[k]; if (!IDX || !st.all.length) { renderCenter(); return; } // אין (עדיין) מה למיין — רק משקף את מצב "פעיל" בעיגול
+  const ctx = buildSearchContext(st);
+  st.gen = (st.gen || 0) + 1; const myGen = st.gen; // מבטל חיפוש-מדורג ישן של אותו צד, כמו run()
+  // רצות כל שיטות-החיפוש (sms) ברצף אחד, סינכרוני לגמרי (ללא setTimeout ביניהן), היה עלול "להקפיא" את
+  // הדפדפן לרגע מורגש כש-st.all כבר גדול (סינון-טקסטואלי פעיל מכביד את ה-filter/concat החוזרים על כל שיטה) —
+  // לכן, בדיוק כמו ב-run(), מתקדמים שיטה-שיטה דרך setTimeout(...,0) כדי לתת לדפדפן "לנשום" בין כל אחת.
+  const queue = ctx.sms.map(sm => ({ sm, tg: ctx.targetsFor(sm).find(t => t.tag.includes(id)) })).filter(x => x.tg);
+  let pos = 0;
+  const finish = () => {
+    const box = $('#rl' + k); box.scrollTop = 0; // ראו הערה ב-hitsSortToggle על אותו תיקון
+    if (!st.all.length) box.innerHTML = '<div class="emp">אין התאמות בטווח שנבחר.</div>';
+    else { const fi = renderWindow(k, 0); if (st.cur < 0 && fi != null) select(k, fi); }
+    updateTfBar(k); renderCenter();
+  };
+  const step = () => {
+    if (myGen !== st.gen) return; // חיפוש חדש יותר (הקלדה/סינון) כבר התחיל — מפסיקים בשקט
+    if (pos >= queue.length) return finish();
+    const { sm, tg } = queue[pos++];
+    const r = E.search(IDX, [tg], [sm], ctx.filt, ctx.limit);
+    const c = r.counts[sm] ? r.counts[sm].get(tg.value) : 0;
+    st.info = st.info.filter(x => !(x.method === sm && x.target === tg.value));
+    if (c) st.info.push({ method: sm, target: tg.value, wms: tg.tag, total: c });
+    st.all = st.all.filter(x => !(x.method === sm && x.target === tg.value));
+    // E.search מחזיר תמיד אובייקטי-שורה *חדשים* (לא את אותם אובייקטים מהחיפוש-המקורי) — גם אם היה
+    // cache חם של tfRowOk על שורות קודמות שמייצגות בפועל את אותם פסוקים, השורות החדשות מתחילות בלי cache
+    // כלל. מחממים אותו כאן, שורה-שורה לכל "חתיכה" (שיטה), כדי לפזר את עלות-הנרמול-הראשונית על פני כל
+    // ה-setTimeout-ים — במקום שהיא תיפול כולה בבת-אחת בתוך renderWindow() היחיד שרץ ב-finish() (עם רבבות
+    // שורות זה היה גורם ל"דיליי" מורגש-בבירור, גם בלי הקפאה מוחלטת).
+    const newRows = r.results.length ? r.results.map(x => Object.assign(x, { target: x.value, wms: x.tag })) : [];
+    warmTfCache(st, newRows);
+    if (newRows.length) st.all = st.all.concat(newRows);
+    setTimeout(step, 0);
+  };
+  setTimeout(step, 0);
+}
+// חיפוש הנוטריקון (ר״ת/אות ב׳/אות ג׳/ס״ת) — עצמאי לגמרי מ-run() (לא חלק מ-sms/ms, אין עוד כפתור-הפעלה),
+// נקרא תמיד מתוך run() כדי שיתעדכן בכל טריגר (הקלדה/שינוי עץ-מקורות/מגבלת-תוצאות וכו') בלי לשכפל קריאות
+// בכל האתרים שקוראים ל-run(). ה-target הוא ערך ה'רגילה' של מילת/ביטוי-החיפוש (או st.num אם הוזן מספר —
+// במקרה הזה אין "אותיות מילת-חיפוש" להשוואה מילולית, כך שהתאמה-טקסטואלית תחזיר 0 תוצאות).
+// שורות-הנוטריקון מתמזגות ישירות ל-st.all/st.info (אותו מנגנון בדיוק כמו תוצאות-חיפוש רגילות — showMore,
+// סינון טקסטואלי, גלילה אינסופית, ולחיצה-על-עיגול-כדי-להקפיץ-למעלה) — לא רשימה/קונטיינר נפרד. wms:['regular']
+// (ערך ה'רגילה' של מילת-החיפוש הוא תמיד היעד) כדי שתווית-הקבוצה/השורה ("רגילה") ייבנו ע״י wmsLabel הקיים
+// בלי קוד מיוחד, ו-method נשאר notRt/notB/notC/notSt (מזהה ל-showMore שמדובר בשורת-נוטריקון, לרינדור
+// צביעת-האות-הבודדת ולקידום-לפי-עיגול ב-visibleIdx/hitsSortToggle).
+function runNotarikon(k) {
+  const st = S[k]; st.notGen = (st.notGen || 0) + 1; const myGen = st.notGen;
+  const finish = (counts, rows, target) => {
+    if (myGen !== st.notGen) return;
+    st.notCounts = counts;
+    if (rows.length) {
+      st.info = st.info.concat(NOTARIKON_IDS.filter(m => counts[m]).map(m => ({ method: m, target, wms: ['regular'], total: counts[m], notarikon: true })));
+      st.all = st.all.concat(rows);
+      // שימו-לב: *לא* בוחרים (select) כאן, בכוונה — runNotarikon בדרך-כלל מסיים *לפני* ש-run()'s step()-loop
+      // החיצוני (שיטות-חיפוש רגילות) מסיים; אם היינו בוחרים כבר כאן, הבחירה הייתה מתווספת-מחדש (class "on")
+      // על אלמנט-DOM חדש בכל רענון-חי נוסף של הלולאה החיצונית (עד שזו מסיימת) — בדיוק אותו באג-הבהוב-מסגרת
+      // שתואר ע״י המשתמש (כולל וידאו), רק דרך מסלול-קוד נפרד. הבחירה-הראשונית היחידה קורית ב-run()'s step(),
+      // ברגע שה-run *כולו* נגמר (ראו liveRefresh(k, true) שם) — מאוחר אחרי ש-st.all כבר כולל גם את שורות-
+      // הנוטריקון שנוספו כאן.
+      // appendLiveRows (לא renderWindow ישירות!) — ראו ההערה המפורטת ליד appendLiveRows/liveRefresh: קריאה
+      // ישירה ל-renderWindow כאן הייתה הורסת-ובונה-מחדש את כל ה-DOM, כולל שורות שכבר הוצגו ואולי נבחרו/
+      // ה-עכבר מעליהן ע״י המשתמש תוך-כדי שהחיפוש הראשי (run()'s step()) עדיין רץ — בדיוק הבאג שדווח (זמן-
+      // ההתרחשות תאם במדויק לרגע ש-runNotarikon מסיים, בד״כ קצת אחרי תחילת החיפוש הראשי).
+      if (!appendLiveRows(k)) { renderWindow(k, 0); }
+      updateTfBar(k);
+    }
+    // updateCenterCounts (לא renderCenter המלא!) — מאותה סיבה בדיוק כמו ה-appendLiveRows למעלה: runNotarikon
+    // מסיים בד״כ *תוך-כדי* שהחיפוש הראשי עדיין רץ, ו-renderCenter המלא היה הורס-ובונה-מחדש את כל מלבני-
+    // השיטות (כולל אלה שהעכבר אולי מעליהם באותו רגע) — הבהוב נוסף שדווח, הפעם במלבני השיטות עצמם.
+    updateCenterCounts(k);
+  };
+  if (!IDX) return; // ייקרא שוב דרך KS.forEach(run) ברגע שהאינדקס מוכן
+  const num = parseInt(st.num, 10);
+  const target = num ? num : E.calculateGematria(st.text, 'regular').value;
+  const books = new Set(); NOTARIKON_BOOKS.forEach(b => { if (st.sel.has(b)) books.add(b); });
+  if (!target || (!num && !E.normalizeText(st.text).words.length) || !books.size) { finish({}, [], 0); return; }
+  const filt = { books, ranges: st.ranges.size ? st.ranges : null };
+  const compareLetters = num ? null : baseify(E.normalizeText(st.text).normalizedText.replace(/ /g, ''));
+  const literalOnly = st.notMode === 'lit', permOnly = st.notMode === 'perm';
+  const limit = getLimit();
+  E.ensureNotarikonAsync(IDX, err => {
+    if (err || myGen !== st.notGen) return;
+    const counts = {}, rows = [];
+    NOTARIKON_IDS.forEach(m => { const r = E.searchNotarikon(IDX, target, [m], filt, limit, { maxWindow: NOTARIKON_MAXWINDOW, compareLetters, literalOnly, permOnly }); counts[m] = r.counts[m] || 0; rows.push(...r.results); });
+    finish(counts, rows, target);
+  });
+}
+function run(k) {
+  const st = S[k]; st.gen = (st.gen || 0) + 1; const myGen = st.gen; // מבטל כל חיפוש מדורג קודם של הצד הזה
+  if (!IDX) { $('#rs' + k).textContent = L('הקורפוס עדיין נטען…'); return; }
+  const box = $('#rl' + k);
+  st.all = []; st.cur = -1; st.winStart = 0; st.winCount = 0; st.info = []; box.innerHTML = ''; box.classList.add('searching'); updateTfBar(k);
+  runNotarikon(k); // אחרי האיפוס (לא לפניו) — כדי שמסקנה-סינכרונית (אינדקס-נוטריקון כבר בנוי) לא תימחק ע״י האיפוס
+  renderCenter(); // מרענן מייד את עיגולי-המידע (כולל איפוסם) — גם אם החיפוש נעצר כאן (למשל טקסט ריק) ולא מגיע לסופו
+  const say = h => { $('#rs' + k).innerHTML = h; };
+  const { q, num, wms, sms, limit, filt, targetsFor } = buildSearchContext(st);
+  if (!sms.length) return say(L('סמן לפחות סוג גימטריה אחד לחיפוש בפסוקים (⚙).'));
+  if (!num && !wms.length) return say(L('סמן לפחות סוג גימטריה אחד עבור מילת החיפוש.'));
+  if (!st.sel.size) return say(L('סמן לפחות מקור אחד בעץ המקורות.'));
+  if (!num && !E.normalizeText(q).words.length) return say(L('התחל להקליד — התוצאות יופיעו כאן בזמן אמת.'));
+  const t0 = performance.now();
+  // כל שיטת-חיפוש נסרקת כ"חתיכה" נפרדת: נבדק בעבר שפיצול עדין יותר לפי *טווח יחידות* (כמה פרוסות
+  // לכל שיטה) רק האט את הזמן הכולל — ל-setTimeout יש overhead לא-מבוטל, וכפל הקריאות עלה יותר משהחיסכון
+  // בחסימת ה-thread היה שווה. *אבל* כששיטת-מילה אחת (או יותר) מפיקה כמה ערכי-יעד שונים (למשל "רגילה"
+  // ו"קולל" לא שוות כשיש כמה מילים, או מילוי/אתב״ש/אטב״ח שאינן מוגבלות ע״י חוק אי-ההתאמה) — ל-engine.js
+  // יש לולאת-יעדים פנימית (`tmap`) שרצה *בלי לוותר על ה-thread* בין יעד ליעד, ועם טקסט-חיפוש ארוך/חריג
+  // שמפיק 3-4 ערכים שונים לכמה שיטות-חיפוש בבת-אחת, זה יכול לחסום את הדפדפן לזמן ממושך בפנייה אחת בלבד
+  // (כולל לחיצות על כפתורים כמו מעבר לתצוגת התוצאות, שמחכות בתור עד שהחסימה משתחררת). לכן כאן מפרקים כל
+  // שיטת-חיפוש לתור שטוח של (שיטה, יעד-בודד) — יחידת-העבודה הקטנה ביותר (המסלול המהיר של "שני מצביעים"
+  // ב-engine.js) — ונותנים לדפדפן "לנשום" בין *כל* יעד בודד, לא רק בין שיטת-חיפוש לשיטת-חיפוש. ה-"מגבלת
+  // תוצאות לשיטת חיפוש" (limit) נשמרת זהה למקור ע״י תקציב פוחת (smLimitLeft) המשותף לכל יעדי אותה שיטה.
+  // רק אם עדיין אין מה להציג (אין תוצאות-נוטריקון שכבר נותרו ע״י runNotarikon למעלה — ראו הערה שם; קריאה
+  // אסינכרונית-למעשה-אך-מתבצעת-מיידית כש-ensureNotarikonAsync מוצא את אינדקס-הנוטריקון כבר בנוי, *בתוך*
+  // אותה קריאה סינכרונית ל-run) — מציגים את "מחפש…"; אחרת היינו מוחקים תוצאות-נוטריקון אמיתיות שכבר
+  // הוצגו, ובלי לנקות אותן בהמשך (ל-step למטה אין דרך לדעת שצריך לנקות, כי st.all.length כבר לא 0 מראש).
+  say(L('מחפש…')); if (!st.all.length) box.innerHTML = `<div class="emp">${L('מחפש…')}</div>`;
+  // אם יש מיון-לפי-עיגול-תוצאות פעיל (st.hitsSort — לחיצה על עיגול-המקורות): היעדים ששייכים לשיטת-המילה
+  // הזו (tg.tag כולל אותה) מוזזים לראש רשימת-היעדים של כל שיטת-חיפוש, לפני בניית התור — כך שהם מקבלים
+  // עדיפות על התקציב-המשותף-לשיטה (smLimitLeft) ובאמת נטענים ל-st.all (לא רק נספרים ב-st.info), במקום
+  // שהתקציב יתמלא ע״י יעדים אחרים שמופיעים ראשונים בסדר הטבעי.
+  const queue = []; for (const sm of sms) { const list = targetsFor(sm); if (st.hitsSort) list.sort((a, b) => (b.tag.includes(st.hitsSort) ? 1 : 0) - (a.tag.includes(st.hitsSort) ? 1 : 0)); for (const tg of list) queue.push({ sm, tg }); }
+  const smLimitLeft = {}; sms.forEach(sm => { smLimitLeft[sm] = limit; });
+  // שיטות-חיפוש שלא קיבלו אף יעד (למשל קולל/תיבות/אותיות כש-*כל* שיטות-המילה הפעילות אסורות עליהן לפי חוק
+  // אי-ההתאמה) לא יופיעו בתור כלל — נחשבות "גמורות" כבר מההתחלה, כדי שמונה ההתקדמות (X/Y שיטות) יהיה מדויק.
+  const zeroTargetSms = sms.length - new Set(queue.map(x => x.sm)).size;
+  let total = 0, pos = 0, smsDone = 0, lastSm = null;
+  // עדכון-חי של רשימת-התוצאות תוך-כדי הסריקה: renderWindow (כמו renderCenter) לא נקרא על כל "חתיכה"
+  // בודדת (יכולות להיות מאות) — תמיד בונה-מחדש את כל חלון-התצוגה (עד N = getLimit() שורות, ראו renderWindow)
+  // ולא רק מוסיף שורות, אז העלות-לקריאה דומה בכל המקרים (עם/בלי סינון-טקסטואלי/מיון) — ולכן, בניגוד לגרסה
+  // הקודמת, אין יותר צורך להבחין בין "חי בלי הגבלה" ל"חי מוגבל-קצב" לפי tf/hitsSort: תמיד מוגבל-קצב לעד
+  // פעם ב-150 מ״ש (חוץ מה"חתיכה" הראשונה, שתמיד נענית מיד — כדי שתחושת-התגובתיות לא תיפגע).
+  // *אם המשתמש כבר גלל הרחק מתחילת הרשימה* (st.winStart !== 0) — לא "קופצים" לו בחזרה לראש על כל עדכון-חי:
+  // רק מרעננים את המידע התלוי-בסך-הכול (groups/ticks/thumb), בלי לגעת בחלון שהוא רואה כרגע (ראו liveRefresh).
+  let lastLiveRender = performance.now(), lastLiveRefresh = performance.now();
+  const step = () => {
+    if (myGen !== st.gen) return; // חיפוש חדש יותר כבר התחיל — מפסיקים את זה בשקט
+    if (pos >= queue.length) {
+      say(LANG === 'en' ? `<b>${fmt(total)}</b> matches in ${Math.round(performance.now() - t0)} ms` : `<b>${fmt(total)}</b> התאמות ב-${Math.round(performance.now() - t0)} מ״ש`);
+      box.classList.remove('searching'); // ראו הערה למעלה ליד ההוספה — רק מעכשיו :hover שוב מגיב-מיידית כרגיל
+      if (!st.all.length) box.innerHTML = `<div class="emp">${L('אין התאמות בטווח שנבחר.')}</div>`;
+      else liveRefresh(k, true);
+      updateTfBar(k);
+      renderCenter(); // מרענן את עיגולי-המידע (מספר ההתאמות במקורות) במלבנים עם התוצאה הסופית של החיפוש
+      return;
+    }
+    const { sm, tg } = queue[pos++];
+    if (sm !== lastSm) { smsDone++; lastSm = sm; }
+    const r = E.search(IDX, [tg], [sm], filt, Math.max(0, smLimitLeft[sm]));
+    total += r.total; smLimitLeft[sm] -= r.results.length;
+    const c = r.counts[sm] ? r.counts[sm].get(tg.value) : 0;
+    if (c) st.info.push({ method: sm, target: tg.value, wms: tg.tag, total: c });
+    if (r.total) {
+      st.all = st.all.concat(r.results.map(x => Object.assign(x, { target: x.value, wms: x.tag })));
+      const firstChunk = st.all.length === r.results.length;
+      const liveNow = performance.now();
+      if (firstChunk || liveNow - lastLiveRefresh > 150) { liveRefresh(k); lastLiveRefresh = liveNow; }
+    }
+    say(LANG === 'en'
+      ? `<b>${fmt(total)}</b> matches · searching… (${smsDone + zeroTargetSms}/${sms.length} methods) · ${Math.round(performance.now() - t0)} ms`
+      : `<b>${fmt(total)}</b> התאמות · מחפש… (${smsDone + zeroTargetSms}/${sms.length} שיטות) · ${Math.round(performance.now() - t0)} מ״ש`);
+    const nowT = performance.now();
+    if (c && nowT - lastLiveRender > 150) { updateCenterCounts(k); lastLiveRender = nowT; } // עדכון-חי מוגבל-קצב של עיגולי-התוצאות (בלי הרס-ובנייה-מחדש — ראו הערה ליד updateCenterCounts)
+    setTimeout(step, 0);
+  };
+  setTimeout(step, 0);
+}
+// מציג את המנה הבאה של תוצאות (עד 100). אם st.tf מוגדר (שדה הסינון הטקסטואלי), מתבצע דיפדוף על רשימת
+// האינדיקסים המסוננת (idx) במקום על st.all ישירות — כך שה-"הצג עוד" וכותרות הקבוצה ממשיכים לעבוד נכון.
+/* ---------- גלילה וירטואלית בפנל-התוצאות ----------
+   לפי בקשת המשתמש: פס-הגלילה (וה-scrollbar-המותאם fsTrack/fsThumb) צריכים "להרגיש" כאילו *כל* התוצאות
+   (idx.length — יכול להגיע לעשרות-אלפים: עד "תוצאות מקס׳ לשיטה" כפול מספר השיטות הפעילות) מרונדרות,
+   אבל בפועל רק חלון של עד N = getLimit() ("תוצאות מקס׳ לשיטה" — אותו ערך בדיוק, לפי ההנחיה) שורות אמיתיות
+   נמצא ב-DOM בכל רגע; ה-DOM גדל/קטן לפי מיקום-הגלילה, לא רק גדל ללא-הגבלה (כמו שהיה עד כה, עם showMore
+   מצטבר). כל הנתונים (st.all) כבר נמצאים בזיכרון במלואם ברגע שהחיפוש מתקדם — זו לא "אחזור מרחוק לפי
+   offset" אלא חיתוך (slice) של מערך שכבר קיים, ולכן לא נדרש שינוי במנוע (engine.js): החידוש הוא ברינדור
+   בלבד (renderWindow), לא באיך הנתונים מובאים.
+   עיצוב: box (#rl{k}) מכיל תמיד שלושה ילדים — .rlSpacer (לפני) / .rlRows (השורות עצמן, עד N) / .rlSpacer
+   (אחרי) — בגבהים מוערכים (st.avgRowH, מתעדן בכל רינדור לפי המדידה בפועל של .rlRows.offsetHeight/count).
+   כך ש-box.scrollHeight תמיד מייצג (בקירוב טוב והולך-ומשתפר) את הגובה הכולל של *כל* התוצאות — וה-
+   scrollbar-המותאם הקיים (fsLayout, שממשיך לעבוד על scrollHeight/scrollTop בלי שינוי) "מרגיש" נכון אוטומטית.
+   כותרת-קבוצה (.gh): נקבעת כעת לפי st.groups (מחושב אנליטית ע״י computeGroups על *כל* idx, לא רק מה
+   שמרונדר) — ולא לפי מדידת-DOM בזמן-אמת כמו קודם (fsMeasure הישן) — פתרון נקי יותר שגם פותר לחלוטין את
+   בעיית-התזמון המקורית של position:sticky (שם המדידה חייבת הייתה לקרות *לפני* שהכותרת "נתקעת"). בנוסף,
+   אם החלון מתחיל *באמצע* קבוצה (למשל אחרי קפיצה ישירה ע״י גרירת ה-thumb) — תמיד מוצגת כותרת לשורה
+   הראשונה של החלון בכל מקרה (לא רק כש-היא *באמת* תחילת-קבוצה), כך שתמיד יש הקשר ("איזו שיטה/ערך אני רואה
+   עכשיו"), בדיוק כמו שכותרת-דביקה (sticky) אמורה להתנהג. */
+// עובר על *כל* idx (לא רק החלון המרונדר) וקובע את רשימת גבולות-הקבוצה (שינוי method/target) — משמש גם
+// לקביעת הכותרות בתוך renderWindow וגם ל-fsBuildTicks/fsBubbleLines (עצמאי לגמרי ממה שבפועל מרונדר).
+function computeGroups(k) {
+  const st = S[k], idxArr = visibleIdx(st), total = idxArr ? idxArr.length : st.all.length;
+  const groups = []; let prevR = null;
+  for (let p = 0; p < total; p++) {
+    const i = idxArr ? idxArr[p] : p, r = st.all[i];
+    if (!prevR || prevR.method !== r.method || prevR.target !== r.target) groups.push({ pos: p, method: r.method, target: r.target });
+    prevR = r;
+  }
+  st.groups = groups; st.groupsTotal = total;
+}
+// בונה HTML של שורה בודדת (+ כותרת-קבוצה אם רלוונטי) במיקום p (במרחב-ה-idx). משותף ל-renderWindow (בנייה
+// מלאה) ול-appendLiveRows (הוספה אינקרמנטלית — ראו שם) כדי שלא יהיו שני עותקים של אותו HTML-template
+// שעלולים להתבדר-זה-מזה. מחלקת "on" (התוצאה הנבחרת) נאפית ישירות כאן ב-HTML של הכפתור, *לא* מתווספת בנפרד
+// אחרי ההכנסה ל-DOM — כי ל-.rs (כפתור) יש transition כללי על border-color/background/box-shadow (מוגדר על
+// button), ואם ה-class הייתה מתווספת לאלמנט *קיים*, זה היה נחשב "שינוי" ומפעיל את ה-transition מחדש בכל
+// רענון-חי — בדיוק באג-ההבהוב שדווח (גם כש-הבחירה אוטומטית וגם כש-המשתמש בוחר בעצמו בלחיצה תוך-כדי חיפוש).
+function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
+  const i = idxArr ? idxArr[p] : p, r = st.all[i], u = IDX.units[r.u], s = IDX.start[r.u], e = IDX.start[r.u + 1], T = IDX.toks;
+  let h = '';
+  // forceHeaderAt: שימוש ע״י renderWindow בלבד (ראו שם) — תמיד מציג כותרת לשורה הראשונה-בחלון (p===start),
+  // גם אם היא לא *באמת* תחילת-קבוצה (למשל אחרי קפיצה ישירה ע״י גרירת ה-thumb לאמצע קבוצה), כדי שתמיד יהיה
+  // הקשר ("איזו שיטה/ערך אני רואה עכשיו"). ב-appendLiveRows אין צורך בזה כלל: שם p=0 הוא *תמיד* גם תחילת-
+  // הקבוצה הראשונה-בפועל (computeGroups תמיד מוסיף גבול ב-pos=0), כך ש-groupPos.has(p) כבר מכסה את זה.
+  if (p === forceHeaderAt || groupPos.has(p)) {
+    const f = st.info.find(x => x.method === r.method && x.target === r.target);
+    const wmTag = f && f.wms && f.wms.length ? ` (= ${wmsLabel(f.wms)} ${L('של מילת החיפוש')})` : '';
+    h += `<div class="gh" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')} · ${L('ערך')} ${fmt(r.target)}${wmTag}${f ? ` · ${fmt(f.total)} ${L('התאמות')}` : ''}</div>`;
+  }
+  const wmLbl = (r.wms && r.wms.length) ? wmsLabel(r.wms) : L('מספר');
+  const copyTxt = `${ref(u)}\n${T.slice(s, e).join(' ')}`;
+  const bk = B.books[u.b], prs = parashaOf(u), seder = bk.cat === 1 ? bk.g : '';
+  const metaTag = prs ? `<span class="tag prs">${esc(parshaName(prs))}</span>` : seder ? `<span class="tag seder">${esc(groupName(seder))}</span>` : '';
+  // ד״ה ברש״י: לא מוצג כתגית נפרדת ליד הייחוס — מודגש (bold) בתוך גוף הפירוש עצמו (.cx), ע״י ספירת התיבות של הד״ה
+  const dhLen = (bk.cat === 2 || bk.cat === 5) ? E.tokens(dibburFor(r.u)).length : 0, boldEnd = dhLen ? s + dhLen : s;
+  const tfRanges = (st.tf && st.tf.trim()) ? tfWordRanges(T, s, e, st.tf, st.fuzzy) : null;
+  // שורת-נוטריקון (method ∈ notRt/notB/notC/notSt): צביעת האות הבודדת שחולצה (צהוב-זוהר = גם מילולי,
+  // ירוק-זוהר = ערכי-בלבד) במקום הדגשת-כל-החלון הרגילה של cxHtml (אין תמיכה ב-tfRanges כאן — זניח,
+  // שדה-הסינון-הטקסטואלי עדיין מסנן איזה שורות מוצגות דרך tfRowOk, רק ההדגשה-בתוך-הטקסט לא חלה כאן).
+  const isNot = NOTARIKON_IDS.includes(r.method);
+  const notGlow = r.literal ? 'glowY' : (r.perm ? 'glowP' : 'glowG');
+  const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
+  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag" title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span><span>${r.r - r.l} ${L('תיבות')}</span><span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span></div><div class="cx">${cxContent}</div></button>`;
+  return h;
+}
+// בונה-מחדש את כל תוכן #rl{k} כחלון של עד N שורות המתחיל ב-start (במרחב-ה-idx, לא בהכרח במרחב st.all) —
+// מחליף לגמרי את showMore הישן (לא עוד "הוספה" מצטברת). מחזיר את אינדקס-st.all של השורה הראשונה בחלון
+// (לשימוש ע״י הקוראים לבחירה-ראשונית, select(k,…)), או null אם אין תוצאות כלל.
+function renderWindow(k, start) {
+  const st = S[k], box = $('#rl' + k);
+  computeGroups(k);
+  const total = st.groupsTotal;
+  if (!total) {
+    st.winStart = 0; st.winCount = 0;
+    if (st.tf && st.tf.trim() && st.all.length) box.innerHTML = `<div class="emp">${L('אין תוצאות התואמות את הסינון הטקסטואלי.')}</div>`;
+    updateTfBar(k); fsBuildTicks(k); fsLayout(k);
+    return null;
+  }
+  const idxArr = visibleIdx(st);
+  const WINDOW = Math.max(1, getLimit());
+  start = Math.max(0, Math.min(start, total - 1));
+  const count = Math.min(WINDOW, total - start);
+  st.winStart = start; st.winCount = count;
+  const groupPos = new Set(st.groups.map(g => g.pos));
+  let h = '';
+  for (let p = start; p < start + count; p++) h += buildRowHtml(st, p, idxArr, groupPos, start);
+  const rowH = st.avgRowH || 110; // אומדן ראשוני — מתעדן למטה לפי מדידה בפועל
+  const beforeH = Math.round(start * rowH), afterH = Math.round((total - start - count) * rowH);
+  box.innerHTML = `<div class="rlSpacer" style="height:${beforeH}px"></div><div class="rlRows">${h}</div><div class="rlSpacer" style="height:${afterH}px"></div>`;
+  const rowsEl = box.querySelector('.rlRows');
+  if (rowsEl && count) { const measured = rowsEl.offsetHeight / count; if (measured > 10) st.avgRowH = st.avgRowH ? (st.avgRowH * 0.5 + measured * 0.5) : measured; }
+  if (st.cur >= 0) { const c = box.querySelector(`[data-i="${st.cur}"]`); if (c) c.classList.add('on'); }
+  updateTfBar(k); fsBuildTicks(k); fsLayout(k);
+  return idxArr ? idxArr[start] : start;
+}
+// עדכון-חי *אינקרמנטלי* (ללא הרס-ובנייה-מחדש של כל ה-DOM) לשימוש תוך-כדי חיפוש פעיל, כש-אין שום סיבה
+// שהסדר-הקיים ישתנה (ראו תנאי-ה-fallback למטה): מוסיף ל-.rlRows רק את השורות ה-*חדשות* (שלא היו קיימות
+// בפעם הקודמת), בלי לגעת כלל באלמנטים הקיימים. זה פותר את כל משפחת-באגי-ההבהוב (border/hover/box-shadow,
+// וגם סמן-העכבר שה"קפיצה" בין אלמנטים גורמת לו "לקפוץ" בין cursor:pointer לברירת-המחדל) בבת-אחת ומהשורש —
+// שורות קיימות (כולל זו שהעכבר מעליה, כולל זו שנבחרה) פשוט *לא נוגעים בהן בכלל* יותר, אז אין להן שום סיבה
+// "להבהב". מחזיר true אם ההוספה-האינקרמנטלית בוצעה בהצלחה, false אם צריך fallback לבנייה-מחדש-מלאה
+// (renderWindow) — למשל כש-יש סינון-טקסטואלי/מיון-לפי-עיגול פעילים (visibleIdx מחזיר מערך לא-טריוויאלי,
+// והסדר/זהות-האלמנטים יכולים להשתנות עם כל תוצאה חדשה שנוספת — "הוספה-בטוחה" כבר לא מובטחת), או כש-החלון
+// לא מתחיל מההתחלה (st.winStart!==0 — המשתמש גלל/קפץ הרחק), או כש-עדיין אין .rlRows בנוי כלל (רינדור ראשון).
+function appendLiveRows(k) {
+  const st = S[k], box = $('#rl' + k);
+  if (st.winStart !== 0 || visibleIdx(st)) return false; // tf/hitsSort פעילים — הסדר לא-יציב, לא בטוח להוסיף
+  const rowsEl = box.querySelector('.rlRows');
+  if (!rowsEl) return false; // עדיין אין רינדור ראשוני — renderWindow הרגיל יטפל בזה
+  computeGroups(k);
+  const total = st.groupsTotal, WINDOW = Math.max(1, getLimit());
+  const renderedCount = rowsEl.querySelectorAll('.rs').length;
+  const targetCount = Math.min(WINDOW, total);
+  st.winCount = targetCount;
+  if (targetCount > renderedCount) { // יש שורות-חדשות להוסיף בסוף (עד תקרת-החלון)
+    const groupPos = new Set(st.groups.map(g => g.pos));
+    let h = '';
+    for (let p = renderedCount; p < targetCount; p++) h += buildRowHtml(st, p, null, groupPos);
+    rowsEl.insertAdjacentHTML('beforeend', h);
+    const measured = rowsEl.offsetHeight / targetCount; if (measured > 10) st.avgRowH = st.avgRowH ? (st.avgRowH * 0.5 + measured * 0.5) : measured;
+  } // אם targetCount===renderedCount (החלון כבר מלא) — אין מה להוסיף; עדיין מעדכנים afterSpacer/groups/ticks למטה
+  const rowH = st.avgRowH || 110, afterH = Math.round((total - targetCount) * rowH);
+  const afterSpacer = box.lastElementChild; if (afterSpacer && afterSpacer.classList.contains('rlSpacer')) afterSpacer.style.height = afterH + 'px';
+  updateTfBar(k); fsBuildTicks(k); fsLayout(k);
+  return true;
+}
+// עדכון-חי תוך-כדי חיפוש (נקרא מתוך run()'s step()): אם המשתמש עדיין בתחילת הרשימה (לא גלל/קפץ הרחק ממנה)
+// מרעננים את החלון מההתחלה כרגיל; אחרת לא "קופצים" לו — רק מרעננים את מה שתלוי-בסך-הכול (קבוצות/סימוני-
+// מסלול/מיקום-הידית), כי st.all רק גדל (concat), לא משתנה-בדיעבד, אז החלון שהוא כבר רואה עדיין תקף במדויק.
+function liveRefresh(k, finalize) {
+  const st = S[k];
+  // finalize=true רק מתוך step()'s branch-הסיום (ראו run): כל עוד החיפוש עדיין רץ, *לא* בוחרים (select)
+  // אוטומטית את התוצאה הראשונה — רק כש-החיפוש *נגמר*. זו בחירת-UX (לא לקפוץ-לבחירה לפני שהתמונה סופית),
+  // לא עניין של הבהוב: הבהוב-ה-DOM-מחדש טופל בשורש (ראו buildRowHtml/appendLiveRows) כך שגם בחירה *ידנית*
+  // ע״י המשתמש תוך-כדי חיפוש-פעיל (קליק) לא מהבהבת יותר כלל.
+  if (st.winStart !== 0) { computeGroups(k); fsBuildTicks(k); fsLayout(k); return; }
+  // appendLiveRows (מועדף): מוסיף רק את השורות-החדשות בסוף .rlRows, בלי לגעת בשורות הקיימות — כך ששום
+  // אלמנט-DOM קיים (כולל זה שהעכבר מעליו, כולל זה שנבחר) לא נהרס-ונבנה-מחדש בזמן חיפוש-פעיל, מה שמחסל
+  // מהשורש את כל משפחת-באגי-ההבהוב (מסגרת/hover/box-shadow/סמן-העכבר) ולא רק סימפטום בודד שלה. חוזר false
+  // (ונופל ל-renderWindow המלא) רק כש-זה לא-בטוח: רינדור ראשוני (.rlRows עוד לא קיים) או סינון/מיון פעילים.
+  if (appendLiveRows(k)) { if (finalize && st.cur < 0) { const idxArr = visibleIdx(st); const fi = idxArr ? idxArr[0] : 0; if (st.all[fi]) select(k, fi); } return; }
+  const fi = renderWindow(k, 0); if (finalize && st.cur < 0 && fi != null) select(k, fi);
+}
+/* ---------- סקרולר-מותאם לרשימת-התוצאות (fast-scroll, בסגנון Google Photos) ----------
+   ראו הערת-CSS ב-styles.css (.fsTrack וכו׳) לרקע-העיצוב. שלוש פונקציות-ליבה (+maybeShiftWindow, חדשה):
+   fsBuildTicks — מחושבת אנליטית (מ-st.groups, לא מדידת-DOM) בכל renderWindow/liveRefresh.
+   fsLayout — נקראת בכל גלילה/שינוי-תוכן; מעדכנת גובה/מיקום הידית לפי היחס clientHeight/scrollHeight —
+     ממשיכה לעבוד בלי שינוי, כי box.scrollHeight כבר מייצג נכון (בקירוב) את הגובה הכולל בזכות ה-spacers.
+   fsPositionAt — ממירה scrollTop נוכחי למיקום-לוגי-משוער (0..total-1) בתוך *כל* התוצאות.
+   maybeShiftWindow — הלב של הגלילה הוירטואלית: כש-מיקום-הגלילה זז מספיק הרחק ממרכז החלון המרונדר כרגע
+     (היסטרזיס, כדי לא לבנות-מחדש על כל פיקסל), בונים-מחדש חלון חדש הממורכז סביב המיקום הנוכחי. נקראת גם
+     מ-scroll רגיל וגם מגרירת ה-thumb/קליק על ה-track — באותה נוסחה בדיוק, כך שהתנהגות "קפיצה ישירה"
+     (גרירת הידית לאמצע) ו"גלילה טבעית" (עכבר/מגע) מתכנסות לאותו מנגנון. */
+function fsPositionAt(k, scrollTop) {
+  const st = S[k], box = $('#rl' + k), total = st.groupsTotal || 0; if (!total) return 0;
+  const maxScroll = Math.max(1, box.scrollHeight - box.clientHeight);
+  const frac = Math.max(0, Math.min(1, scrollTop / maxScroll));
+  return Math.min(total - 1, Math.round(frac * (total - 1)));
+}
+function maybeShiftWindow(k) {
+  const st = S[k], box = $('#rl' + k), total = st.groupsTotal || 0; if (!total) return;
+  const count = Math.min(Math.max(1, getLimit()), total);
+  const pos = fsPositionAt(k, box.scrollTop);
+  const desired = Math.max(0, Math.min(total - count, pos - Math.floor(count / 2)));
+  const threshold = Math.max(20, Math.floor(count / 4));
+  const atStart = desired === 0 && st.winStart !== 0;
+  const atEnd = desired + count >= total && st.winStart + st.winCount < total;
+  if (atStart || atEnd || Math.abs(desired - st.winStart) >= threshold) renderWindow(k, desired);
+}
+function fsBuildTicks(k) {
+  const st = S[k], track = $('#fsTrack' + k); if (!track) return;
+  const total = st.groupsTotal || 0, seen = new Set(); let h = '';
+  if (total) (st.groups || []).forEach(g => {
+    const fam = famKeyOf(g.method); if (seen.has(fam)) return; seen.add(fam);
+    h += `<div class="fsTick" style="top:${(g.pos / total * 100).toFixed(2)}%;background:${famColorOf(g.method)}"></div>`;
+  });
+  const thumb = track.querySelector('.fsThumb');
+  track.innerHTML = h; if (thumb) track.appendChild(thumb);
+}
+function fsLayout(k) {
+  const box = $('#rl' + k), track = $('#fsTrack' + k); if (!track) return;
+  const thumb = track.querySelector('.fsThumb'); if (!thumb) return;
+  const trackH = track.clientHeight; if (!trackH) return;
+  const ratio = box.clientHeight / Math.max(1, box.scrollHeight);
+  const th = Math.max(34, trackH * ratio);
+  const maxScroll = box.scrollHeight - box.clientHeight;
+  const pos = maxScroll > 0 ? (box.scrollTop / maxScroll) * (trackH - th) : 0;
+  thumb.style.height = th + 'px'; thumb.style.top = pos + 'px';
+}
+// שתי שורות לבועת-התווית (לפי בקשת המשתמש): שורה 1 = הקבוצה (שיטה·ערך) הקרובה למיקום הנוכחי, שורה 2 =
+// "תוצאה X מתוך Y" — Y הוא *כל* התוצאות (groupsTotal), לא רק מה שבפועל מרונדר כרגע.
+function fsBubbleLines(k, scrollTop) {
+  const st = S[k], total = st.groupsTotal || 0;
+  if (!total) return ['', ''];
+  const pos = fsPositionAt(k, scrollTop);
+  let g = null; for (const x of st.groups) { if (x.pos <= pos) g = x; else break; }
+  const line1 = g ? `${L(MN[g.method])} · ${L('ערך')} ${fmt(g.target)}` : '';
+  const line2 = LANG === 'en' ? `result ${fmt(pos + 1)} of ${fmt(total)}` : `תוצאה ${fmt(pos + 1)} מתוך ${fmt(total)}`;
+  return [line1, line2];
+}
+// אתחול חד-פעמי (לכל צד) של גרירת-הידית ולחיצה-על-המסלול — נקרא מתוך bind(k)
+function fsInit(k) {
+  const box = $('#rl' + k), track = $('#fsTrack' + k), thumb = $('#fsThumb' + k), bubble = $('#fsBubble' + k);
+  if (!track) return;
+  const updateBubble = () => { const [l1, l2] = fsBubbleLines(k, box.scrollTop); bubble.innerHTML = `<div class="fsBubbleL1">${esc(l1)}</div><div class="fsBubbleL2">${esc(l2)}</div>`; };
+  let dragging = false, startY = 0, startTop = 0;
+  thumb.addEventListener('pointerdown', e => {
+    dragging = true; thumb.classList.add('dragging'); thumb.setPointerCapture(e.pointerId);
+    startY = e.clientY; startTop = box.scrollTop; updateBubble(); e.preventDefault();
+  });
+  window.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const trackH = track.clientHeight, th = thumb.offsetHeight, trackRange = trackH - th;
+    const maxScroll = box.scrollHeight - box.clientHeight;
+    const deltaScroll = trackRange > 0 ? ((e.clientY - startY) / trackRange) * maxScroll : 0;
+    box.scrollTop = Math.max(0, Math.min(maxScroll, startTop + deltaScroll));
+    maybeShiftWindow(k); fsLayout(k); updateBubble();
+  });
+  window.addEventListener('pointerup', e => { if (!dragging) return; dragging = false; thumb.classList.remove('dragging'); try { thumb.releasePointerCapture(e.pointerId); } catch (_) {} });
+  thumb.addEventListener('pointerenter', () => { if (!dragging) updateBubble(); });
+  track.addEventListener('pointerdown', e => {
+    if (e.target === thumb || thumb.contains(e.target)) return;
+    const r = track.getBoundingClientRect(), th = thumb.offsetHeight, trackRange = track.clientHeight - th;
+    const yRatio = Math.max(0, Math.min(1, (e.clientY - r.top - th / 2) / Math.max(1, trackRange)));
+    box.scrollTop = yRatio * (box.scrollHeight - box.clientHeight);
+    maybeShiftWindow(k); fsLayout(k);
+  });
+  new ResizeObserver(() => fsLayout(k)).observe(box);
+}
+// מרענן את תווית "X מתוך Y" וכפתור הניקוי ליד שדה הסינון הטקסטואלי
+function updateTfBar(k) {
+  const st = S[k], cnt = $('#tfc' + k), clr = $('#tfx' + k); if (!cnt) return;
+  const has = !!(st.tf && st.tf.trim()); cnt.hidden = !has; clr.hidden = !has;
+  if (has) { const idx = visibleIdx(st); cnt.textContent = LANG === 'en' ? `${fmt(idx.length)} of ${fmt(st.all.length)}` : `${fmt(idx.length)} מתוך ${fmt(st.all.length)}`; }
+}
+// מאפס את תצוגת התוצאות ובונה אותה מחדש (נקרא כשמשתנה שדה הסינון הטקסטואלי/ה-checkbox ההיתולי)
+function tfRebuild(k) { $('#rl' + k).scrollTop = 0; renderWindow(k, 0); }
+function select(k, i) {
+  const st = S[k], r = st.all[i]; if (!r) return; st.cur = i; $('#rl' + k).querySelectorAll('.rs.on').forEach(x => x.classList.remove('on')); const el = $('#rl' + k).querySelector(`[data-i="${i}"]`); if (el) el.classList.add('on');
+}
+
+/* ---------- חלונות מידע ---------- */
+function renderDocs() {
+  const ex = ['אבא', 'דן'];
+  const how = LANG === 'en' ? {
+    regular: 'Sum of letter values; final letters = regular', kollel: 'Regular + 1', words: 'Regular + word count', letters: 'Regular + letter count',
+    milui: "Each letter is replaced by its full spelled-out name and calculated (ג=Gimel=83)", atbash: 'Substitution א↔ת, ב↔ש… then Regular', atbach: 'Each letter substituted per the Atbach table (below), then Regular',
+    atbashKollel: 'Atbash + 1', atbashWords: 'Atbash + word count', atbashLetters: 'Atbash + letter count',
+    atbachKollel: 'Atbach + 1', atbachWords: 'Atbach + word count', atbachLetters: 'Atbach + letter count',
+  } : {
+    regular: 'סכום ערכי האותיות; סופיות = רגילות', kollel: 'רגילה + 1', words: 'רגילה + מספר התיבות', letters: 'רגילה + מספר האותיות', milui: 'כל אות מוחלפת בשמה המלא ומחושבת (ג=גימל=83)', atbash: 'החלפה א↔ת, ב↔ש… ואז רגילה', atbach: 'החלפת כל אות לפי טבלת אטב״ח (למטה), ואז רגילה',
+    atbashKollel: 'אתב״ש + 1', atbashWords: 'אתב״ש + מספר התיבות', atbashLetters: 'אתב״ש + מספר האותיות',
+    atbachKollel: 'אטב״ח + 1', atbachWords: 'אטב״ח + מספר התיבות', atbachLetters: 'אטב״ח + מספר האותיות',
+  };
+  // תצוגת כרטיסים (לא טבלה) לשיטות — ניצול טוב יותר של רוחב החלון; טבלאות אטב״ח/מילוי כרשת שבבים אחידה (כמו אטב״ח כבר הוצג) במקום טבלה צרה וארוכה אנכית
+  $('#methodsDoc').innerHTML = `<h2>${L('שיטות הגימטריה')}</h2><div class="mcards">${E.METHODS.map(m => `<div class="mcard"><b>${L(m.name)}</b><p>${how[m.id]}</p><div class="ex">${ex.map(x => `<span>${esc(x)}: ${E.calculateGematria(x, m.id).value}</span>`).join('')}</div></div>`).join('')}</div>
+  <h2>${LANG === 'en' ? 'Atbach Table' : 'טבלת אטב״ח'}</h2><div class="chipWrap">${Object.entries(E.getAtbachTable()).map(([a, b]) => `<span class="tag">${a} ↔ ${b}</span>`).join('')}</div>
+  <h2>${LANG === 'en' ? 'Milui Table' : 'טבלת המילוי'}</h2><div class="chipWrap miluiGrid">${Object.keys(E.MILUI_NAMES).map(k => `<span class="tag">${k} = ${esc(E.MILUI_NAMES[k])} (${E.MILUI[k]})</span>`).join('')}</div>
+  <p class="emp">${LANG === 'en'
+    ? 'Words = words after normalization (a hyphen separates words; punctuation, vowel points and cantillation marks are not counted). The spelling of letter names in Milui can be changed via <code>MILUI_NAMES</code> in engine.js.'
+    : 'תיבות = מילים לאחר נרמול (מקף מפריד תיבות; פיסוק, ניקוד וטעמים אינם נספרים). איות שמות האותיות במילוי ניתן לשינוי ב-<code>MILUI_NAMES</code> בקובץ engine.js.'}</p>`;
+}
+$('#openMethods').onclick = () => $('#dlgMethods').showModal();
+// "אודות": מידע בסיסי על האפליקציה והמפתח. חלק מהשדות (רישיון/אתר) הם placeholder ("מוק") ולא מחויבים
+// כרגע למידע אמיתי — אפשר להחליף בעתיד בלי לשנות את שאר הקוד, רק את האובייקט ABOUT_INFO כאן.
+const ABOUT_INFO = { dev: 'Gad Zvi Mehditache', email: 'mehditache@gmail.com', license: 'קנייני — כל הזכויות שמורות (Proprietary / All Rights Reserved)', licenseEn: 'Proprietary — All Rights Reserved', site: '—' };
+function renderAbout() {
+  const unitsCount = IDX ? IDX.units.length : (B && B.units ? B.units.length : 0);
+  const en = LANG === 'en';
+  $('#aboutDoc').innerHTML = `<div class="aboutBox">
+    <div class="row"><span class="k">${en ? 'App name' : 'שם האפליקציה'}</span><span class="v"><b>גימטריבון</b> (Gimatrivon)</span></div>
+    <div class="row"><span class="k">${en ? 'Version' : 'גרסה'}</span><span class="v">${esc(VERSION)}</span></div>
+    <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi and Targumim — runs entirely locally (no internet/server).' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י ותרגומים — פועל לגמרי מקומית (ללא אינטרנט/שרת).'}</span></div>
+    <div class="row"><span class="k">${en ? 'Corpus' : 'קורפוס'}</span><span class="v">${unitsCount ? fmt(unitsCount) + (en ? ' units (verses/mishnahs)' : ' יחידות (פסוקים/משניות)') : (en ? 'Loading…' : 'נטען…')}</span></div>
+    <div class="row"><span class="k">${en ? 'Developer' : 'מפתח'}</span><span class="v">${esc(ABOUT_INFO.dev)}</span></div>
+    <div class="row"><span class="k">${en ? 'Email' : 'דוא״ל'}</span><span class="v"><a href="mailto:${esc(ABOUT_INFO.email)}">${esc(ABOUT_INFO.email)}</a></span></div>
+    <div class="row"><span class="k">${en ? 'License' : 'רישיון'}</span><span class="v">${esc(en ? ABOUT_INFO.licenseEn : ABOUT_INFO.license)}</span></div>
+  </div>`;
+}
+$('#openAbout').onclick = () => { renderAbout(); $('#dlgAbout').showModal(); };
+document.querySelectorAll('[data-close]').forEach(x => { x.onclick = () => x.closest('dialog').close(); });
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+$('#sideSw').onclick = e => { const v = e.target.dataset.v; if (!v) return; document.body.dataset.view = v; document.querySelectorAll('#sideSw button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); };
+/* ---------- מראה (theme): toggle "לילה בגוויל" ---------- */
+// שחזור/שמירת הבחירה ב-localStorage; הקריאה הראשונית ל-data-theme מתבצעת כבר ב-<head> (script מוקדם) כדי למנוע "הבהוב" של המראה הבהיר בטעינה
+// מחליף את data-theme על <html> — אך *לפני* כן מנתק-זמנית מה-DOM את שתי רשימות-התוצאות (#rlA/#rlB),
+// שעלולות להכיל אלפי כרטיסי-תוצאה (וכל כרטיס, כמה אלמנטי <mark>). שורש-באג-קיפאון-ידוע (נמדד עם
+// Chrome DevTools Tracing — UpdateLayoutTree): שינוי משתנה-CSS מותאם-אישית (custom property, למשל --ac/--tx)
+// על :root מכריח recalculation של ה-style המחושב עבור *כל* אלמנט-צאצא שמשתמש בו, כולל אלפי כרטיסי-תוצאה
+// שמחוץ-למסך — על אף ש-content-visibility:auto על .rs (ראו styles.css) כבר פותר layout/paint עבורם, הוא
+// *לא* פוטר אותם מ-style recalculation כש-ההפעלה מגיעה משינוי ירושה מ-:root (נמדד: עם 7,000 כרטיסים,
+// UpdateLayoutTree לבדו לקח ~770 מ"ש — חסימה סינכרונית מורגשת כ"קיפאון" ממשי של כל הדף). הפתרון: אלמנט
+// המנותק-לגמרי מה-DOM (לא רק content-visibility:hidden — זה נבדק ולא הספיק, עדיין ~540 מ"ש) *אינו מקבל
+// style כלל*, ללא קשר לשינויי-משתנים ב-:root — וכש-הוא מוחזר ל-DOM מיד אח"כ (סינכרונית, באותו tick, כדי
+// שלא ייפתח חלון-זמן ל-JS אחר, כגון טעינה-מדורגת של חיפוש פעיל, לרוץ באמצע), content-visibility:auto "רואה"
+// אותו כאילו הוכנס-מחדש לראשונה ומיישם נכון את ההדלגה שלו על כרטיסים מחוץ-למסך מההתחלה. נמדד אחרי התיקון:
+// UpdateLayoutTree ירד ל-~75 מ"ש (כמו רשימה של כמה מאות שורות בלבד) — אין יותר קיפאון, גם עם רשימות
+// ענקיות, וגם אם מחליפים תוך-כדי חיפוש עדיין רץ (ה-scrollTop נשמר ומשוחזר במפורש כי הדפדפן לא מבטיח את זה
+// לאלמנט מנותק; שאר ה-state של החיפוש לא נוגע בכלל, כי הניתוק/חיבור מתבצעים סינכרונית ב-tick אחד).
+function setTheme(dark) {
+  const boxes = Array.from(document.querySelectorAll('.resList .sc'));
+  const info = boxes.map(el => ({ el, parent: el.parentNode, next: el.nextSibling, scrollTop: el.scrollTop }));
+  info.forEach(i => i.el.remove());
+  if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+  info.forEach(i => { i.parent.insertBefore(i.el, i.next); i.el.scrollTop = i.scrollTop; });
+}
+(() => {
+  const chk = $('#themeChk');
+  chk.checked = document.documentElement.getAttribute('data-theme') === 'dark';
+  chk.onchange = () => {
+    setTheme(chk.checked);
+    try { localStorage.setItem('gimatrivonTheme', chk.checked ? 'dark' : 'light'); } catch (e) {}
+  };
+})();
+
+/* ---------- שפה (עברית/אנגלית): כפתור #langSw ליד "תרגומים" בכותרת ----------
+   מעדכן את כל חלקי-הממשק הקבועים ב-index.html (שאינם מתעדכנים לבד, בניגוד לרוב התוכן שנוצר ע״י app.js —
+   ראו L()/EN למעלה) ואז בונה-מחדש את שני הצדדים (sideHtml+bind, בדיוק כמו seedDemoQuery/restoreDemoQuery
+   בסיור המודרך למטה — תבנית קיימת ובטוחה) כדי שכל הטקסט שנוצר ב-sideHtml/drawTree/drawSearchMethods/
+   renderCenter/buildRowHtml יתורגם גם הוא, ומריץ run() מחדש כדי לרענן את תוצאות-החיפוש בשפה הנכונה. */
+function applyLangStatic() {
+  const en = LANG === 'en';
+  document.documentElement.lang = en ? 'en' : 'he';
+  const sideSwA = document.querySelector('#sideSw [data-v="A"]'), sideSwB = document.querySelector('#sideSw [data-v="B"]');
+  if (sideSwA) sideSwA.textContent = L('צד א׳'); if (sideSwB) sideSwB.textContent = L('צד ב׳');
+  const sideSw = $('#sideSw'); if (sideSw) sideSw.setAttribute('aria-label', L('בחירת צד'));
+  const themeLbl = document.querySelector('.themeSw'); if (themeLbl) themeLbl.title = L('מעבר בין מראה גוויל למראה לילה');
+  const themeChk = $('#themeChk'); if (themeChk) themeChk.setAttribute('aria-label', L('מראה כהה (לילה בגוויל)'));
+  const tourBtn = $('#startTour'); if (tourBtn) { tourBtn.title = L('הפעלת סיור מודרך קצר באפליקציה'); tourBtn.textContent = L('? סיור מודרך'); }
+  const methBtn = $('#openMethods'); if (methBtn) methBtn.textContent = L('שיטות גימטריה');
+  const aboutBtn = $('#openAbout'); if (aboutBtn) { aboutBtn.title = L('מידע על האפליקציה'); aboutBtn.textContent = L('ℹ אודות'); }
+  const ws = $('#ws'); if (ws) ws.setAttribute('aria-label', L('סביבת עבודה'));
+  const tagline = document.querySelector('.brand .tagline'); if (tagline) tagline.textContent = L('תנ״ך · משנה · רש״י · תרגומים');
+  const h1 = document.querySelector('.brand h1'); if (h1) h1.textContent = en ? 'Gimatrivon' : 'גימטריבון';
+  document.title = en ? `Gimatrivon - ${VERSION}` : `גימטריבון - ${VERSION}`;
+  const verEl = $('#ver'); if (verEl) verEl.title = L('מספר גרסה');
+  const methH2 = document.querySelector('#dlgMethods .dh h2'); if (methH2) methH2.textContent = L('שיטות הגימטריה');
+  const aboutH2 = document.querySelector('#dlgAbout .dh h2'); if (aboutH2) aboutH2.textContent = en ? 'About Gimatrivon' : 'אודות גימטריבון';
+  document.querySelectorAll('[data-close]').forEach(x => x.setAttribute('aria-label', L('סגור')));
+  if (!IDX) { const st = $('#status'); if (st) st.textContent = L('טוען קורפוס…'); }
+  const langBtn = $('#langSw'); if (langBtn) langBtn.textContent = en ? 'עב' : 'EN';
+}
+function applyLang() {
+  try { localStorage.setItem('gimatrivonLang', LANG); } catch (e) {}
+  applyLangStatic();
+  // בונים מחדש את שני הצדדים (מבנה+טקסט בשפה הנכונה) ומשחזרים את מצב-ההגדרה הקיים לתוכם — אותו דפוס
+  // בדיוק כמו seedDemoQuery/refreshSideDom בסיור המודרך (ראו שם), רק בלי לשנות את ה-state עצמו.
+  $('#ws').innerHTML = KS.map(sideHtml).join('');
+  KS.forEach(k => { $('#ft' + k).onclick = () => toggleFilt(k); });
+  KS.forEach(bind);
+  KS.forEach(refreshSideDom);
+  renderCenter();
+  renderDocs();
+  if ($('#dlgAbout') && $('#dlgAbout').open) renderAbout();
+}
+applyLangStatic();
+(() => {
+  const langBtn = $('#langSw'); if (!langBtn) return;
+  langBtn.onclick = () => { LANG = LANG === 'en' ? 'he' : 'en'; applyLang(); };
+})();
+
+/* ---------- סיור מודרך ("? סיור מודרך") ----------
+   בעבר (עד v2.6.2) הייתה כאן "הדגמה" אוטומטית: סמן-עכבר מדומה שהריץ חיפושים אמיתיים (כולל שינוי-theme
+   על אלפי תוצאות) ללא פיקוח המשתמש — גרמה לקיפאון דפדפן אמיתי (תוקן בנפרד, אך רק עבור theme; לא היתה
+   דרך למנוע סוג-בעיות דומה בעתיד כש"ממציאים" אינטראקציה שלא קיימת בשימוש האמיתי) ולמצבים לא-צפויים
+   ("חורים" בבחירת-מקורות כש-המשתמש הפריע תוך-כדי). הוחלפה כעת בסיור-הסברי מבוסס Driver.js (vendor/driver.js
+   — MIT, kamranahmed/driver.js, מצורף offline, ללא CDN): מצביע ומסביר אלמנטים אמיתיים בקצב שהמשתמש קובע
+   (הבא/הקודם/דלג/X/Esc), ואינו מדמה שום אינטראקציה שלא קיימת בשימוש אמיתי — לא "מקליד" תו-אחר-תו, לא
+   מלחיץ כפתורים, לא מחליף theme בפועל. עיצוב הפופ-אובר/ה-spotlight מותאם-ל-theme ולכיווניות (RTL)
+   ב-styles.css (בלוק "סיור מודרך").
+   חריג אחד, מכוון: בכל פתיחת סיור — גם אם האפליקציה *כבר בשימוש* (יש למשתמש טקסט/בחירות משלו בצד א׳
+   ו/או ב׳) — מנקים זמנית את שני הצדדים וטוענים-מראש זוג ביטויי-דוגמה, כדי שצעדי "תוצאות החיפוש"/"תוצאה
+   בודדת"/"השוואה בין הצדדים" תמיד יראו תוכן אמיתי ומוכר מראש, ולא את מצב-האפליקציה הנוכחי (שעלול להיות
+   ריק, לא קשור, או עם הרבה תוצאות שמקשות להצביע על דוגמה ברורה) — "אהבה" (צד א׳) ו"אחד" (צד ב׳), ששתיהן
+   שוות 13 בגימטריה רגילה (ההתאמה-הקלאסית "אהבה=13=אחד"), כדי שגם צעד-ההשוואה-בין-הצדדים יראה עיגול-התאמה
+   אמיתי. זו קריאה *רגילה* ל-run('A')/run('B') באותו מסלול-קוד המשמש כל חיפוש אמיתי (לא DOM מדומה/מפוברק)
+   — מוגבלת בכוונה לספר אחד, לשיטת-חיפוש אחת ולשיטת-מילה אחת (רגילה) כדי שתסתיים במהירות ותציג התאמה-
+   אחת-נקייה. **כל** שדות-ההגדרה הרלוונטיים של שני הצדדים (SETTINGS_FIELDS למטה — כולל מקורות/טווחים/
+   שיטות/סינון-טקסטואלי/מיון, לא רק הטקסט) נשמרים לפני הניקוי ומשוחזרים **במדויק** כש-הסיור נגמר (בכל
+   דרך — סיום, X, Esc, קליק על הרקע), כך שהמשתמש חוזר בדיוק למה שהיה לו לפני שלחץ על "סיור מודרך" —
+   ראו onDestroyed בהגדרות הסיור למטה. */
+// שדות-ה"הגדרה" של צד (st) שהסיור שומר/משחזר — לא כולל שדות-תוצאה-מחושבת (all/info/cur/notCounts/notGen/
+// winStart/winCount/avgRowH/groups/groupsTotal), שמתמלאים-מחדש נכון מעצמם ע״י run(k) כש-משחזרים את שדות-ההגדרה.
+const SETTINGS_FIELDS = ['text', 'num', 'ms', 'sms', 'sel', 'open', 'rngOpen', 'smOpen', 'ranges', 'tf', 'fuzzy', 'hitsSort', 'notMode', 'fullUnit'];
+function snapshotSettings(st) { const o = {}; SETTINGS_FIELDS.forEach(f => { o[f] = structuredClone(st[f]); }); return o; }
+function applySettings(st, snap) { SETTINGS_FIELDS.forEach(f => { st[f] = snap[f]; }); }
+// מרענן את כל ה-DOM שתלוי בשדות-ההגדרה (לא רק מריץ run()) — נקרא גם אחרי זריעת-הדוגמה וגם אחרי השחזור
+function refreshSideDom(k) {
+  const st = S[k];
+  $('#t' + k).value = st.text; $('#nm' + k).value = st.num; $('#tf' + k).value = st.tf; $('#tfz' + k).checked = st.fuzzy; $('#fu' + k).checked = st.fullUnit;
+  drawTree(k); drawSearchMethods(k); updateTfBar(k); run(k);
+}
+function seedDemoQuery() {
+  if (!IDX) return null;
+  const snap = { A: snapshotSettings(S['A']), B: snapshotSettings(S['B']) };
+  const seedOne = (k, word) => {
+    const st = S[k];
+    applySettings(st, {
+      text: word, num: '', ms: new Set(['regular']), sms: new Set(['regular']),
+      sel: new Set([0]), // רק בראשית — כדי שהחיפוש-לדוגמה יהיה מהיר וממוקד, לא "יחפור" בכל הקורפוס
+      open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(),
+      tf: '', fuzzy: true, hitsSort: null, notMode: 'lit', fullUnit: false, // שיטה אחת בלבד (רגילה) — התאמה נקייה אחת, לא "רעש" מכל 13 השיטות יחד
+    });
+    refreshSideDom(k);
+  };
+  seedOne('A', 'אהבה'); seedOne('B', 'אחד');
+  renderCenter();
+  return snap;
+}
+function restoreDemoQuery(snap) {
+  if (!snap) return;
+  KS.forEach(k => { applySettings(S[k], snap[k]); refreshSideDom(k); });
+  renderCenter();
+}
+function buildTourSteps() {
+  if (LANG === 'en') return [
+    { popover: { title: 'Welcome to Gimatrivon', description: 'A short tour (skip/exit any time) — two identical "columns" (A/B) that let you compare two expressions/searches side by side. Let\'s start with Side A.' } },
+    { element: '#tA', popover: { title: 'Typing an expression', description: 'Type a word or expression here — the gematria calculation and the search for matches in the corpus (Tanakh, Mishnah, Rashi and more) update instantly as you type. Side B (the second column) has an identical box.', side: 'bottom', align: 'start' } },
+    { element: '#grA', popover: { title: 'Gematria methods', description: 'Each row here is a calculation method (regular, kollel, milui and more). You can turn specific methods on/off — the value and the search update according to the active methods only.', side: 'left', align: 'start' } },
+    { element: '.resList', popover: { title: 'Search results', description: 'Matches found in the sources for the value you typed appear here, grouped by method. Clicking a result marks/highlights it (handy for keeping your place while scrolling, or comparing several results) — it does not open another screen. To copy a whole verse to the clipboard, click ⧉.', side: 'right', align: 'start' } },
+    { element: '.resList .rs', popover: { title: 'What a single result shows', description: 'Above each verse: an exact reference (book, chapter:verse), a category tag (Tanakh/Mishnah/Rashi/Targum) and sometimes a parsha/order too. Two gematria tags joined by an arrow ↔: the first is the method by which the verse\'s own value was computed, the second is the search-word method in which the match was found. "X words" is the length of the matching span, and the words that actually matched are highlighted in the text below.', side: 'top', align: 'start' } },
+    { element: '#ftA', popover: { title: 'Choosing sources and range', description: 'Clicking here opens a panel where you choose which books (and which chapter/parsha ranges) to search, and which gematria methods are included in the search itself and in notarikon matching.', side: 'bottom', align: 'end' } },
+    { element: '#grA .bdgH', popover: { title: 'Info circle: matches in sources', description: 'The number in this circle shows how many matches were actually found in the sources for this method. Clicking it sorts the results so matches for this method are shown first.', side: 'top', align: 'center' } },
+    { element: '.bdg', popover: { title: 'Automatic comparison between both sides', description: 'When both sides have an identical value in one of the active gematria methods, a small colored circle with a Hebrew letter appears next to the two matching methods — just like here: "ahava" (Side A) and "echad" (Side B) both equal 13 in regular gematria. Clicking the circle visually focuses that match on both sides together — useful when there are several matches at once.', side: 'top', align: 'center' } },
+    { element: '.tfInp', popover: { title: 'Filtering results', description: 'When there are many results, you can filter the displayed list by free text — useful for finding a specific result among many.', side: 'bottom', align: 'start' } },
+    { element: '.themeSw', popover: { title: 'App appearance', description: 'This toggle switches between a light "parchment" look and a dark "night" look, whichever you prefer.', side: 'bottom', align: 'end' } },
+    { element: '#startTour', popover: { title: "That's it, you're ready!", description: 'You can start this tour again any time from here.', side: 'bottom', align: 'end' } },
+  ];
+  return [
+    { popover: { title: 'ברוכים הבאים לגימטריבון', description: 'סיור קצר (אפשר לדלג/לצאת בכל רגע) — שתי "עמודות" זהות (א׳/ב׳) שמאפשרות להשוות בין שני ביטויים/חיפושים זה לצד זה. נתחיל מצד א׳.' } },
+    { element: '#tA', popover: { title: 'הקלדת ביטוי', description: 'מקלידים כאן מילה או ביטוי — החישוב הגימטרי וחיפוש ההתאמות בקורפוס (תנ״ך, משנה, רש״י ועוד) מתעדכנים מיד, תוך כדי ההקלדה. בצד ב׳ (העמודה השנייה) יש תיבה זהה.', side: 'bottom', align: 'start' } },
+    { element: '#grA', popover: { title: 'שיטות גימטריה', description: 'כל שורה כאן היא שיטת-חישוב (רגילה, קטן, מילוי ועוד). אפשר להדליק/לכבות שיטות ספציפיות — הערך והחיפוש מתעדכנים לפי השיטות הפעילות בלבד.', side: 'left', align: 'start' } },
+    { element: '.resList', popover: { title: 'תוצאות החיפוש', description: 'כאן מופיעות ההתאמות שנמצאו במקורות לערך שהקלדתם, מקובצות לפי שיטה. לחיצה על תוצאה מסמנת/מדגישה אותה (נוח לשמור מקום תוך-כדי גלילה או השוואה בין כמה תוצאות) — לא פותחת מסך נוסף. העתקת פסוק שלם ללוח: לחיצה על ⧉.', side: 'right', align: 'start' } },
+    { element: '.resList .rs', popover: { title: 'מה רואים בתוצאה בודדת', description: 'מעל כל פסוק: ייחוס מדויק (ספר, פרק:פסוק), תגית קטגוריה (תנ״ך/משנה/רש״י/תרגום) ולעיתים גם פרשה/סדר. שתי תגיות-גימטריה מחוברות בחץ ↔: הראשונה היא השיטה שלפיה חושב ערך הפסוק עצמו, השנייה היא שיטת מילת-החיפוש שבה נמצאה ההתאמה. "X תיבות" הוא אורך הקטע התואם, והמילים שתאמו בפועל מודגשות בתוך הטקסט למטה.', side: 'top', align: 'start' } },
+    { element: '#ftA', popover: { title: 'בחירת מקורות וטווח', description: 'לחיצה כאן פותחת פנל שבו בוחרים באילו ספרים (ואילו טווחי פרקים/פרשות) לחפש, ואילו שיטות-גימטריה ייכללו בחיפוש עצמו ובהתאמת-נוטריקון.', side: 'bottom', align: 'end' } },
+    { element: '#grA .bdgH', popover: { title: 'עיגול-מידע: תוצאות במקורות', description: 'המספר בעיגול הזה מציין כמה התאמות נמצאו בפועל במקורות לשיטה הזו. לחיצה עליו ממיינת את התוצאות כך שההתאמות של השיטה הזו יוצגו ראשונות.', side: 'top', align: 'center' } },
+    { element: '.bdg', popover: { title: 'השוואה אוטומטית בין שני הצדדים', description: 'כש-לשני הצדדים יש ערך זהה באחת משיטות הגימטריה הפעילות, מופיע עיגול-צבע קטן עם אות עברית ליד שתי השיטות שתואמות — בדיוק כמו כאן: "אהבה" (צד א׳) ו"אחד" (צד ב׳) שוות שתיהן 13 בגימטריה רגילה. לחיצה על העיגול ממקדת חזותית את ההתאמה הזו בשני הצדדים יחד — שימושי כש-יש כמה התאמות בו-זמנית.', side: 'top', align: 'center' } },
+    { element: '.tfInp', popover: { title: 'סינון תוצאות', description: 'כש-יש הרבה תוצאות, אפשר לסנן את הרשימה המוצגת לפי טקסט חופשי — שימושי למציאת תוצאה ספציפית מתוך הרבה.', side: 'bottom', align: 'start' } },
+    { element: '.themeSw', popover: { title: 'מראה האפליקציה', description: 'מתג זה מחליף בין מראה "גוויל" בהיר למראה "לילה" כהה, לפי הנוחות שלכם.', side: 'bottom', align: 'end' } },
+    { element: '#startTour', popover: { title: 'זהו, אפשר להתחיל!', description: 'אפשר להפעיל את הסיור הזה שוב בכל רגע מכאן.', side: 'bottom', align: 'end' } },
+  ];
+}
+function startTour() {
+  if (!window.driverjs) return;
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const demoSnap = seedDemoQuery();
+  let restored = false;
+  const restoreOnce = () => { if (restored) return; restored = true; restoreDemoQuery(demoSnap); };
+  const tour = window.driverjs.driver({
+    showProgress: true,
+    progressText: LANG === 'en' ? '{{current}} of {{total}}' : '{{current}} מתוך {{total}}',
+    nextBtnText: LANG === 'en' ? 'Next' : 'הבא',
+    prevBtnText: LANG === 'en' ? 'Previous' : 'הקודם',
+    doneBtnText: LANG === 'en' ? 'Done' : 'סיום',
+    closeBtnText: L('סגור'),
+    allowClose: true,
+    overlayOpacity: dark ? 0.55 : 0.5,
+    stagePadding: 6,
+    stageRadius: 8,
+    animate: true,
+    smoothScroll: true,
+    popoverClass: 'gtTourPopover',
+    skipMissingElement: true, // אם היעד של צעד מסוים לא קיים (למשל: למשתמש יש חיפוש-משלו בלי התאמה בין הצדדים) — מדלגים עליו בשקט, בלי פופ-אובר "תועה" במרכז המסך
+    steps: buildTourSteps(),
+    onDestroyed: restoreOnce, // סיום/X/Esc/קליק-רקע — כולם מגיעים לכאן; משחזרים את מצב שני הצדדים שהיה לפני הסיור
+  });
+  tour.drive();
+}
+$('#startTour').onclick = () => startTour();
+// משיכת-תשומת-לב עדינה לכפתור "סיור מודרך" ב-5 השניות הראשונות בלבד (לא חוזר, לא לולאה אינסופית) —
+// מניחה class שמפעיל אנימציה (ראו styles.css: .tourBtn.attract) ומסירה אותה אחרי 5 שניות; לחיצה על
+// הכפתור (או על כל מקום אחר) באמצע מפסיקה אותה מיידית (prefers-reduced-motion מכבד — ראו ה-CSS).
+(() => {
+  const btn = $('#startTour'); if (!btn) return;
+  btn.classList.add('attract');
+  const stop = () => btn.classList.remove('attract');
+  setTimeout(stop, 5000);
+  btn.addEventListener('pointerdown', stop, { once: true });
+})();
+
+
+KS.forEach(bind); renderDocs(); renderCenter();
+setTimeout(() => {
+  IDX = E.buildIndex(B.units.map(u => ({ c: CK[u[0]], b: u[1], ch: u[2], n: u[3], t: u[4], k: u[5], s: u[6] })));
+  $('#status').textContent = '';
+  KS.forEach(run);
+}, 40);
+})();

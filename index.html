@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>גימטריבון</title>
+<script>try{if(localStorage.getItem('gimatrivonTheme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
+<link rel="stylesheet" href="vendor/driver.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-view="A">
+<header class="top">
+  <div class="brand"><h1>גימטריבון</h1><span class="ver" id="ver" title="מספר גרסה"></span><span class="tagline">תנ״ך · משנה · רש״י · תרגומים</span></div>
+  <div class="seg sideSw" id="sideSw" role="group" aria-label="בחירת צד"><button data-v="A" class="on">צד א׳</button><button data-v="B">צד ב׳</button></div>
+  <div class="tools">
+    <label class="themeSw" title="מעבר בין מראה גוויל למראה לילה">
+      <input type="checkbox" id="themeChk" aria-label="מראה כהה (לילה בגוויל)">
+      <span class="trk"><span class="thb"></span></span>
+    </label>
+    <button id="langSw" class="langSw" type="button" title="Switch to English / החלף לעברית">EN</button>
+    <button id="startTour" class="tourBtn" title="הפעלת סיור מודרך קצר באפליקציה">? סיור מודרך</button>
+    <button id="openMethods">שיטות גימטריה</button>
+    <button id="openAbout" title="מידע על האפליקציה">ℹ אודות</button>
+    <span id="status" class="status" role="status">טוען קורפוס…</span>
+  </div>
+</header>
+<main class="ws" id="ws" aria-label="סביבת עבודה"></main>
+<dialog id="dlgMethods" class="dlg"><div class="dh"><h2>שיטות הגימטריה</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="methodsDoc"></div></dialog>
+<dialog id="dlgAbout" class="dlg about"><div class="dh"><h2>אודות גימטריבון</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="aboutDoc"></div></dialog>
+<script src="generated/corpus.bundle.js"></script>
+<script src="engine.js"></script>
+<script src="vendor/driver.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
