@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '2.9.7'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '2.10.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -25,6 +25,10 @@ const EN = {
   'מעבר בין מראה גוויל למראה לילה': 'Switch between parchment and night themes', 'מראה כהה (לילה בגוויל)': 'Dark theme (night parchment)',
   'הפעלת סיור מודרך קצר באפליקציה': 'Start a short guided tour of the app', '? סיור מודרך': '? Guided Tour',
   'שיטות גימטריה': 'Gematria Methods', 'מידע על האפליקציה': 'About the app', 'ℹ אודות': 'ℹ About',
+  'יצירת קשר עם המפתח': 'Contact the developer', '✉ צור קשר': '✉ Contact Us', 'צור קשר': 'Contact Us',
+  'שם': 'Name', 'אימייל': 'Email', 'הודעה': 'Message', 'שליחה': 'Send',
+  'שולח…': 'Sending…', 'ההודעה נשלחה בהצלחה!': 'Message sent successfully!',
+  'שליחה נכשלה — ודאו חיבור לאינטרנט ונסו שוב.': 'Failed to send — check your internet connection and try again.',
   'טוען קורפוס…': 'Loading corpus…', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
   'שיטות הגימטריה': 'Gematria Methods', 'אודות גימטריבון': 'About Gimatrivon',
   'סינון': 'Filter', 'תוצאות החיפוש במקורות': 'Search Results in Sacred Texts', 'צד א׳': 'Side A', 'צד ב׳': 'Side B', 'קלט': 'Input',
@@ -1160,21 +1164,62 @@ function renderDocs() {
 $('#openMethods').onclick = () => $('#dlgMethods').showModal();
 // "אודות": מידע בסיסי על האפליקציה והמפתח. חלק מהשדות (רישיון/אתר) הם placeholder ("מוק") ולא מחויבים
 // כרגע למידע אמיתי — אפשר להחליף בעתיד בלי לשנות את שאר הקוד, רק את האובייקט ABOUT_INFO כאן.
-const ABOUT_INFO = { dev: 'Gad Zvi Mehditache', email: 'mehditache@gmail.com', license: 'קנייני — כל הזכויות שמורות (Proprietary / All Rights Reserved)', licenseEn: 'Proprietary — All Rights Reserved', site: '—' };
+const ABOUT_INFO = { dev: 'Gad Zvi Mehditache', license: 'קנייני — כל הזכויות שמורות', licenseEn: 'Proprietary — All Rights Reserved', site: '—' };
 function renderAbout() {
   const unitsCount = IDX ? IDX.units.length : (B && B.units ? B.units.length : 0);
   const en = LANG === 'en';
   $('#aboutDoc').innerHTML = `<div class="aboutBox">
     <div class="row"><span class="k">${en ? 'App name' : 'שם האפליקציה'}</span><span class="v"><b>גימטריבון</b> (Gimatrivon)</span></div>
     <div class="row"><span class="k">${en ? 'Version' : 'גרסה'}</span><span class="v">${esc(VERSION)}</span></div>
-    <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi and Targumim — runs entirely locally (no internet/server).' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י ותרגומים — פועל לגמרי מקומית (ללא אינטרנט/שרת).'}</span></div>
+    <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi and Targumim.' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י ותרגומים.'}</span></div>
     <div class="row"><span class="k">${en ? 'Corpus' : 'קורפוס'}</span><span class="v">${unitsCount ? fmt(unitsCount) + (en ? ' units (verses/mishnahs)' : ' יחידות (פסוקים/משניות)') : (en ? 'Loading…' : 'נטען…')}</span></div>
     <div class="row"><span class="k">${en ? 'Developer' : 'מפתח'}</span><span class="v">${esc(ABOUT_INFO.dev)}</span></div>
-    <div class="row"><span class="k">${en ? 'Email' : 'דוא״ל'}</span><span class="v"><a href="mailto:${esc(ABOUT_INFO.email)}">${esc(ABOUT_INFO.email)}</a></span></div>
     <div class="row"><span class="k">${en ? 'License' : 'רישיון'}</span><span class="v">${esc(en ? ABOUT_INFO.licenseEn : ABOUT_INFO.license)}</span></div>
   </div>`;
 }
 $('#openAbout').onclick = () => { renderAbout(); $('#dlgAbout').showModal(); };
+/* ---------- "צור קשר" (EmailJS) ----------
+   היחיד בכל האפליקציה שדורש רשת בפועל: שאר גימטריבון עובד לגמרי אופליין (ראו tests/run-tests.js, בדיקת
+   "offline", שמחריגה בפירוש את הבלוק הזה — ראו שם לפרטים). ה-SDK של EmailJS נטען מ-CDN רק כשנלחץ בפועל
+   כפתור "שליחה" בטופס (lazy — פתיחת הדיאלוג עצמו, או עצם טעינת האפליקציה, אינה נוגעת ברשת כלל). אם אין
+   חיבור לאינטרנט ברגע הלחיצה, הטעינה/השליחה נכשלת בחן (הודעת-שגיאה בטופס), והאפליקציה ממשיכה לפעול
+   כרגיל בכל השאר. */
+// --- EMAILJS:START ---
+const EMAILJS_PUBLIC_KEY = 'E61ZjfIBFJSKU7q_k', EMAILJS_SERVICE_ID = 'service_audv8eb', EMAILJS_TEMPLATE_ID = 'template_zmmo3pg';
+let emailjsReady = null;
+function loadEmailJs() {
+  if (emailjsReady) return emailjsReady;
+  emailjsReady = new Promise((resolve, reject) => {
+    if (window.emailjs) { resolve(window.emailjs); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+    s.onload = () => { try { window.emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY }); resolve(window.emailjs); } catch (e) { reject(e); } };
+    s.onerror = () => reject(new Error('emailjs script failed to load'));
+    document.head.appendChild(s);
+  }).catch(e => { emailjsReady = null; throw e; }); // נכשל? לא "נועלים" כישלון לצמיתות — ניסיון הבא יטען מחדש
+  return emailjsReady;
+}
+$('#openContact').onclick = () => {
+  const st = $('#contactStatus'); if (st) st.textContent = '';
+  const f = $('#contactForm'); if (f) f.reset();
+  $('#dlgContact').showModal();
+};
+$('#contactForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#contactSend'), st = $('#contactStatus'), form = e.target;
+  btn.disabled = true; st.textContent = L('שולח…');
+  try {
+    const em = await loadEmailJs();
+    await em.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, form);
+    st.textContent = L('ההודעה נשלחה בהצלחה!');
+    form.reset();
+  } catch (err) {
+    st.textContent = L('שליחה נכשלה — ודאו חיבור לאינטרנט ונסו שוב.');
+  } finally {
+    btn.disabled = false;
+  }
+});
+// --- EMAILJS:END ---
 document.querySelectorAll('[data-close]').forEach(x => { x.onclick = () => x.closest('dialog').close(); });
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
 $('#sideSw').onclick = e => { const v = e.target.dataset.v; if (!v) return; document.body.dataset.view = v; document.querySelectorAll('#sideSw button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); };
@@ -1227,6 +1272,7 @@ function applyLangStatic() {
   const tourBtn = $('#startTour'); if (tourBtn) { tourBtn.title = L('הפעלת סיור מודרך קצר באפליקציה'); tourBtn.textContent = L('? סיור מודרך'); }
   const methBtn = $('#openMethods'); if (methBtn) methBtn.textContent = L('שיטות גימטריה');
   const aboutBtn = $('#openAbout'); if (aboutBtn) { aboutBtn.title = L('מידע על האפליקציה'); aboutBtn.textContent = L('ℹ אודות'); }
+  const contactBtn = $('#openContact'); if (contactBtn) { contactBtn.title = L('יצירת קשר עם המפתח'); contactBtn.textContent = L('✉ צור קשר'); }
   const ws = $('#ws'); if (ws) ws.setAttribute('aria-label', L('סביבת עבודה'));
   const tagline = document.querySelector('.brand .tagline'); if (tagline) tagline.textContent = L('תנ״ך · משנה · רש״י · תרגומים');
   const h1 = document.querySelector('.brand h1'); if (h1) h1.textContent = en ? 'Gimatrivon' : 'גימטריבון';
@@ -1234,6 +1280,11 @@ function applyLangStatic() {
   const verEl = $('#ver'); if (verEl) verEl.title = L('מספר גרסה');
   const methH2 = document.querySelector('#dlgMethods .dh h2'); if (methH2) methH2.textContent = L('שיטות הגימטריה');
   const aboutH2 = document.querySelector('#dlgAbout .dh h2'); if (aboutH2) aboutH2.textContent = en ? 'About Gimatrivon' : 'אודות גימטריבון';
+  const contactH2 = document.querySelector('#dlgContact .dh h2'); if (contactH2) contactH2.textContent = L('צור קשר');
+  const cNameLbl = document.querySelector('label[for="cName"]'); if (cNameLbl) cNameLbl.textContent = L('שם');
+  const cEmailLbl = document.querySelector('label[for="cEmail"]'); if (cEmailLbl) cEmailLbl.textContent = L('אימייל');
+  const cMsgLbl = document.querySelector('label[for="cMsg"]'); if (cMsgLbl) cMsgLbl.textContent = L('הודעה');
+  const contactSend = $('#contactSend'); if (contactSend) contactSend.textContent = L('שליחה');
   document.querySelectorAll('[data-close]').forEach(x => x.setAttribute('aria-label', L('סגור')));
   if (!IDX) { const st = $('#status'); if (st) st.textContent = L('טוען קורפוס…'); }
   const langBtn = $('#langSw'); if (langBtn) langBtn.textContent = en ? 'עב' : 'EN';

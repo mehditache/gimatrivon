@@ -21,12 +21,30 @@
     <button id="startTour" class="tourBtn" title="הפעלת סיור מודרך קצר באפליקציה">? סיור מודרך</button>
     <button id="openMethods">שיטות גימטריה</button>
     <button id="openAbout" title="מידע על האפליקציה">ℹ אודות</button>
+    <button id="openContact" title="יצירת קשר עם המפתח">✉ צור קשר</button>
     <span id="status" class="status" role="status">טוען קורפוס…</span>
   </div>
 </header>
 <main class="ws" id="ws" aria-label="סביבת עבודה"></main>
 <dialog id="dlgMethods" class="dlg"><div class="dh"><h2>שיטות הגימטריה</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="methodsDoc"></div></dialog>
 <dialog id="dlgAbout" class="dlg about"><div class="dh"><h2>אודות גימטריבון</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="aboutDoc"></div></dialog>
+<dialog id="dlgContact" class="dlg about contactDlg">
+  <div class="dh"><h2>צור קשר</h2><button class="x" data-close aria-label="סגור">✕</button></div>
+  <div class="sc doc contactBody">
+    <form id="contactForm">
+      <label for="cName">שם</label>
+      <input type="text" id="cName" name="from_name" autocomplete="name" required>
+      <label for="cEmail">אימייל</label>
+      <input type="email" id="cEmail" name="reply_to" autocomplete="email" required>
+      <label for="cMsg">הודעה</label>
+      <textarea id="cMsg" name="message" required></textarea>
+      <div class="contactActions">
+        <span id="contactStatus" class="status" role="status"></span>
+        <button type="submit" id="contactSend">שליחה</button>
+      </div>
+    </form>
+  </div>
+</dialog>
 <script src="generated/corpus.bundle.js"></script>
 <script src="engine.js"></script>
 <script src="vendor/driver.js"></script>

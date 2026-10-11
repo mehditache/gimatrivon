@@ -297,9 +297,27 @@ textarea{width:100%;resize:none;height:5.6rem;background:#fff;border:1px solid v
 .emp{color:var(--mu);font-size:.85rem;padding:.4rem .2rem}
 /* dialogs / docs */
 .dlg{width:min(900px,94vw);height:min(80vh,720px);padding:0;border:1px solid var(--ln);border-radius:var(--r);background:var(--pn);color:var(--tx);direction:rtl}.dlg[open]{display:flex;flex-direction:column}.dlg::backdrop{background:rgba(37,30,19,.4)}
+/* באנגלית: כותרת הדיאלוג (שיטות/אודות/צור קשר) משמאל, כפתור הסגירה מימין — קריאה טבעית ב-LTR */
+html[lang="en"] .dlg{direction:ltr}
 .dlg.about{width:min(460px,94vw);height:auto;max-height:min(80vh,620px)}
 .aboutBox{padding:1rem 1.1rem;line-height:1.55}.aboutBox .row{display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--ln2)}.aboutBox .row:last-child{border-bottom:none}.aboutBox .k{color:var(--mu);flex:0 0 7rem}.aboutBox .v{flex:1;min-width:0}.aboutBox .v a{color:var(--ac)}.aboutBox .tag{margin-top:.2rem}
 .dh{display:flex;justify-content:space-between;align-items:center;padding:.5rem .8rem;border-bottom:1px solid var(--ln2);border-top:3px solid var(--gold);background:var(--pn2)}.dh h2{margin:0;font-size:1.05rem;color:#5e4518}.x{padding:.1rem .55rem}
+/* חלון "צור קשר" (EmailJS) — במראה הבהיר בלבד הפס העליון/הכותרת/כפתור-השליחה בוורוד ייחודי, להבדיל אותו
+   חזותית משאר הדיאלוגים (שיטות/אודות, שנשארים בצבעי ה-theme הרגילים); במראה הכהה נשאר זהב כרגיל. */
+.contactBody{padding:1rem 1.2rem;overflow:auto;display:flex;flex-direction:column}
+.contactBody form{display:flex;flex-direction:column;gap:.15rem}
+.contactBody label{font-size:.85rem;color:var(--mu);margin-top:.55rem}
+.contactBody label:first-child{margin-top:0}
+.contactBody input,.contactBody textarea{width:100%;background:var(--pn2);border:1px solid var(--ln);border-radius:9px;padding:.5rem .7rem;font:inherit}
+.contactBody input:focus,.contactBody textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs);outline:0}
+.contactBody textarea{height:13.44rem;resize:vertical}
+.contactActions{display:flex;justify-content:flex-end;align-items:center;gap:.6rem;margin-top:.8rem}
+.contactActions .status{font-size:.8rem}
+#contactSend{background:var(--gold);color:#fff;font-weight:700;padding:.5rem 1.3rem;border-radius:8px;border:none;cursor:pointer}
+#contactSend:disabled{opacity:.6;cursor:default}
+:root:not([data-theme="dark"]) .contactDlg .dh{border-top-color:#d6477e}
+:root:not([data-theme="dark"]) .contactDlg .dh h2{color:#d6477e}
+:root:not([data-theme="dark"]) #contactSend{background:#d6477e}
 .doc h2{font-size:1rem;color:#5e4518;margin:1.1rem 0 .4rem}.doc h2:first-child{margin-top:0}.doc table{width:100%;border-collapse:collapse}.doc th,.doc td{padding:.3rem .5rem;text-align:start;border-bottom:1px solid var(--ln2)}.doc th{background:var(--pn2);color:var(--mu);font-size:.8rem}
 .doc .ok{color:#2f7d4f}.doc .bad{color:#b3364a}.doc .warn{color:#a8681a}.doc code{background:var(--pn2);padding:0 .3rem;border-radius:4px}
 /* חלון "שיטות הגימטריה": כרטיסי שיטות + רשת שבבים לטבלאות אטב״ח/מילוי (ניצול רוחב החלון במקום טבלה צרה וארוכה אנכית) */

@@ -180,9 +180,15 @@ t('notarikon', 'חלון לא חוצה יחידה (כמו ב-search הרגילה
 });
 
 // ---- offline static audit ----
+// חריג מכוון יחיד: בלוק "צור קשר" (EmailJS) ב-app.js, בין EMAILJS:START/EMAILJS:END — הדבר היחיד באפליקציה
+// שדורש רשת בפועל (וגם זה רק כש-המשתמש בעצמו לוחץ "שליחה" בטופס, ראו הערה שם). נבדק בנפרד למטה שהבלוק
+// אכן מבודד (לא "דולף" רשת לשאר הקוד) ושה-script הדינמי היחיד נטען רק דרך ה-CDN המוגדר, לא ממקור אחר.
 const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js'];
-t('offline', 'אין כתובות חיצוניות / fetch / XHR / CDN / פונטים חיצוניים', () => runtime.every(f => !/https?:\/\/|\bfetch\s*\(|XMLHttpRequest|@import|googleapis|cdn\.|WebSocket|navigator\.sendBeacon/i.test(fs.readFileSync(path.join(root, f), 'utf8'))));
+const EMAILJS_RE = /\/\/ --- EMAILJS:START ---[\s\S]*?\/\/ --- EMAILJS:END ---/;
+const stripEmailJs = s => s.replace(EMAILJS_RE, '');
+t('offline', 'אין כתובות חיצוניות / fetch / XHR / CDN / פונטים חיצוניים (מחוץ לבלוק EmailJS המבודד)', () => runtime.every(f => !/https?:\/\/|\bfetch\s*\(|XMLHttpRequest|@import|googleapis|cdn\.|WebSocket|navigator\.sendBeacon/i.test(stripEmailJs(fs.readFileSync(path.join(root, f), 'utf8')))));
+t('offline', 'בלוק EmailJS קיים פעם אחת בדיוק, וטוען אך ורק מ-cdn.jsdelivr.net', () => { const s = fs.readFileSync(path.join(root, 'app.js'), 'utf8'); const m = s.match(new RegExp(EMAILJS_RE, 'g')); return m && m.length === 1 && /https:\/\/cdn\.jsdelivr\.net\/npm\/@emailjs\/browser/.test(m[0]) && !/https?:\/\//g.test(m[0].replace(/https:\/\/cdn\.jsdelivr\.net\/npm\/@emailjs\/browser[^'"]*/, '')); });
 t('offline', 'כל קובצי ה-runtime קיימים', () => [...runtime, 'generated/corpus.bundle.js'].every(f => fs.existsSync(path.join(root, f))));
-t('offline', 'index.html טוען רק קבצים מקומיים', () => [...fs.readFileSync(path.join(root, 'index.html'), 'utf8').matchAll(/(?:src|href)="([^"]+)"/g)].every(m => !/^[a-z]+:|^\/\//i.test(m[1]) && fs.existsSync(path.join(root, m[1]))));
+t('offline', 'index.html טוען רק קבצים מקומיים (ה-script של EmailJS נטען דינמית מ-app.js, לא כ-tag קבוע ב-HTML)', () => [...fs.readFileSync(path.join(root, 'index.html'), 'utf8').matchAll(/(?:src|href)="([^"]+)"/g)].every(m => !/^[a-z]+:|^\/\//i.test(m[1]) && fs.existsSync(path.join(root, m[1]))));
 
 console.log('\n' + Object.entries(grp).map(([g, v]) => `${g}: ${v.p} passed, ${v.f} failed`).join('\n') + `\n\nTOTAL: ${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
