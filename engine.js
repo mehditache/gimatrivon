@@ -21,12 +21,22 @@ const val = c => VALUES[base(c)] || 0;
 const regOf = s => { let t = 0; for (const c of s) t += val(c); return t; };
 const MILUI = {}; Object.keys(MILUI_NAMES).forEach(k => { MILUI[k] = regOf(MILUI_NAMES[k]); });
 
-function tokens(text) { // [{orig, norm}] — norm = אותיות בלבד; מילים ללא אותיות נזרקות. משותף לחיפוש, לגימטריה ולאינדקס
+// v3.4.0: תיבה מקבלת גם maqafBefore — true אם היא חוברה לתיבה הקודמת במקף-עליון בלבד (־, ללא שום
+// רווח/תו-מפריד אחר ביניהן בטקסט המקורי) — למשל "אֶת־הָאָרֶץ". נדרש כדי שחיפוש "מילה בודדת/זוג-מקף" (ראו
+// search()'s filter.singleWord) יוכל להבחין בין שני-תיבות-שחוברו-במקף לבין שני-תיבות-רגילות-מופרדות-ברווח
+// — הבחנה שנמחקת לגמרי אם רק מפצלים לפי NON_LETTER_SEP (שמתייחס למקף ולרווח כאותו דבר בדיוק).
+function tokens(text) {
   const out = [];
-  for (const raw of String(text == null ? '' : text).replace(/<[^>]*>/g, ' ').split(NON_LETTER_SEP)) {
-    if (!raw) continue;
-    const norm = raw.replace(MARKS, '').replace(/[^א-ת]/g, '');
-    if (norm) out.push({ orig: raw, norm });
+  const parts = String(text == null ? '' : text).replace(/<[^>]*>/g, ' ').split(new RegExp('(' + NON_LETTER_SEP.source + ')'));
+  let maqafPending = false;
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      const raw = parts[i]; if (!raw) continue;
+      const norm = raw.replace(MARKS, '').replace(/[^א-ת]/g, '');
+      if (norm) { out.push({ orig: raw, norm, maqafBefore: maqafPending }); maqafPending = false; }
+    } else {
+      maqafPending = /^־+$/.test(parts[i]); // המפריד בין שתי התיבות הוא מקף(ים) בלבד — לא רווח/פיסוק אחר
+    }
   }
   return out;
 }
@@ -105,7 +115,7 @@ function buildIndex(units, opts) {
   const reg = new Int32Array(1500), mil = new Int32Array(1500), atb = new Int32Array(1500), ath = new Int32Array(1500), OFF = 0x5D0;
   for (const c of Object.keys(VALUES)) { const i = c.charCodeAt(0) - OFF; reg[i] = VALUES[c]; mil[i] = MILUI[c]; atb[i] = VALUES[ATBASH[c]]; ath[i] = ATBACH_TABLE ? VALUES[ATBACH_TABLE[c] || c] : 0; }
   for (const f of Object.keys(FINALS)) { const i = f.charCodeAt(0) - OFF, j = FINALS[f].charCodeAt(0) - OFF; reg[i] = reg[j]; mil[i] = mil[j]; atb[i] = atb[j]; ath[i] = ath[j]; }
-  const toks = [], R = [], L = [], M = [], A = [], H = [], start = new Int32Array(units.length + 1);
+  const toks = [], R = [], L = [], M = [], A = [], H = [], MQ = [], start = new Int32Array(units.length + 1);
   let n = 0;
   units.forEach((u, i) => {
     start[i] = n;
@@ -113,7 +123,7 @@ function buildIndex(units, opts) {
       const s = t.norm; let r = 0, m = 0, a = 0, h = 0;
       for (let k = 0; k < s.length; k++) { const c = s.charCodeAt(k) - OFF; r += reg[c]; m += mil[c]; a += atb[c]; h += ath[c]; }
       if (keepText) toks.push(t.orig);
-      R.push(r); L.push(s.length); M.push(m); A.push(a); H.push(h); n++;
+      R.push(r); L.push(s.length); M.push(m); A.push(a); H.push(h); MQ.push(t.maqafBefore ? 1 : 0); n++;
     }
   });
   start[units.length] = n;
@@ -124,7 +134,10 @@ function buildIndex(units, opts) {
   // אליאס-כולל חינמי בדיוק כמו W.kollel; תיבות/אותיות מחושבות ב-search() ישירות מהמערך הבסיסי + idx.L המשותף.
   W.atbashKollel = W.atbash; W.atbachKollel = W.atbach;
   const outUnits = keepText ? units : units.map(u => ({ c: u.c, b: u.b, ch: u.ch }));
-  return { units: outUnits, toks: keepText ? toks : null, start, W, L: Uint8Array.from(L) };
+  // MAQAF[i]=1 אם התיבה i חוברה במקף-עליון לתיבה i-1 (ראו tokens() למעלה) — משמש ב-search()'s
+  // filter.singleWord כדי להבחין בין זוג-תיבות-שחוברו-במקף (למשל "אֶת־הָאָרֶץ", נחשב "מילה אחת" לצורך
+  // הסינון הזה) לבין שתי תיבות רגילות המופרדות ברווח.
+  return { units: outUnits, toks: keepText ? toks : null, start, W, L: Uint8Array.from(L), MAQAF: Uint8Array.from(MQ) };
 }
 // targets: מספר יחיד (לתאימות לאחור) או מערך [{value, tag}] — כמה ערכי-יעד לאותה שיטה/שיטות בבת אחת.
 // כשיש כמה יעדים לאותה שיטה, מתבצע מעבר יחיד על הקורפוס (לא מעבר נפרד לכל יעד): עבור יעד בודד נשמר המסלול
@@ -156,6 +169,17 @@ function search(idx, targets, methods, filter, limit) {
     }
     return true;
   };
+  // filter.singleWord (אופציונלי, ברירת מחדל false, v3.4.0): כשדולק, נספרות/מוחזרות רק התאמות שאורכן
+  // (במספר תיבות) הוא בדיוק 1, או 2 כאשר שתי התיבות חוברו ביניהן במקף-עליון בטקסט המקורי (idx.MAQAF —
+  // ראו tokens()/buildIndex למעלה) — למשל "אֶת־הָאָרֶץ" נחשבת "מילה אחת" (שתי תיבות הצמודות-במקף), אבל
+  // שתי תיבות נפרדות המופרדות ברווח רגיל (גם אם סכומן יחד שווה ליעד) לא נחשבות. משולב עם fullUnit (לא
+  // סותר — אפשר לדלוק יחד: למשל "מילה בודדת שהיא גם כל הפסוק", פסוק בן-מילה-אחת).
+  const MQ = idx.MAQAF;
+  const passSpan = (l, r, s, e) => {
+    if (filter.fullUnit && !(l === s && r === e - 1)) return false;
+    if (filter.singleWord) { const len = r - l + 1; if (len !== 1 && !(len === 2 && MQ && MQ[l + 1])) return false; }
+    return true;
+  };
   // אתב״ש-תיבות/אטב״ח-תיבות ואתב״ש-אותיות/אטב״ח-אותיות: אין עבורן מערך-אינדקס אפוי ייעודי (אופטימיזציית
   // זיכרון, ~2MB במקום ~33MB) — הן נגזרות בזמן-ריצה מהמערך הבסיסי (אתב״ש/אטב״ח) בתוספת אורך-החלון (תיבות)
   // או סכום-רץ של idx.L (אותיות). אתב״ש-כולל/אטב״ח-כולל, לעומת זאת, הן אליאס חינמי כמו kollel הקיים —
@@ -181,7 +205,7 @@ function search(idx, targets, methods, filter, limit) {
           const s = idx.start[u], e = idx.start[u + 1]; let l = s, sum = 0;
           for (let r = s; r < e; r++) {
             sum += w[r]; while (sum > T && l <= r) sum -= w[l++];
-            if (sum === T && l <= r && (!filter.fullUnit || (l === s && r === e - 1))) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
+            if (sum === T && l <= r && passSpan(l, r, s, e)) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
           }
         }
       } else {
@@ -195,7 +219,7 @@ function search(idx, targets, methods, filter, limit) {
             const s = idx.start[u], e = idx.start[u + 1]; let l = s, sum = 0;
             for (let r = s; r < e; r++) {
               sum += w[r]; while (sum > T && l <= r) sum -= w[l++];
-              if (sum === T && l <= r && (!filter.fullUnit || (l === s && r === e - 1))) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
+              if (sum === T && l <= r && passSpan(l, r, s, e)) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
             }
           }
         }
@@ -214,7 +238,7 @@ function search(idx, targets, methods, filter, limit) {
             sumB += w[r]; if (Larr) sumL += Larr[r];
             let cur = wordsBase ? sumB + (r - l + 1) : sumB + sumL;
             while (cur > T && l <= r) { sumB -= w[l]; if (Larr) sumL -= Larr[l]; l++; cur = wordsBase ? sumB + (r - l + 1) : sumB + sumL; }
-            if (cur === T && l <= r && (!filter.fullUnit || (l === s && r === e - 1))) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
+            if (cur === T && l <= r && passSpan(l, r, s, e)) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
           }
         }
       } else {
@@ -227,7 +251,7 @@ function search(idx, targets, methods, filter, limit) {
               sumB += w[r]; if (Larr) sumL += Larr[r];
               let cur = wordsBase ? sumB + (r - l + 1) : sumB + sumL;
               while (cur > T && l <= r) { sumB -= w[l]; if (Larr) sumL -= Larr[l]; l++; cur = wordsBase ? sumB + (r - l + 1) : sumB + sumL; }
-              if (cur === T && l <= r && (!filter.fullUnit || (l === s && r === e - 1))) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
+              if (cur === T && l <= r && passSpan(l, r, s, e)) { cnt.set(tag.value, cnt.get(tag.value) + 1); total++; if (res.length < limit) res.push({ u, l, r: r + 1, method: m, value: tag.value, tag: tag.tag }); }
             }
           }
         }

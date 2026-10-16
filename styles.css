@@ -12,9 +12,17 @@
    מוגדר מחדש בכל אחד מ-.side[data-k=A/B] למטה (וב-[data-theme=dark] שוב, כי --ac גם הוא שונה בכהה);
    --glowYbg/--glowGbg אינם תלויי-צד (מבוססים על צבעים קבועים, לא על --ac) — ברירת-מחדל (בהיר) כאן, override
    יחיד בכהה. */
---glowYbg:#f8eec7;--glowGbg:#d1ecd8}
+--glowYbg:#f8eec7;--glowGbg:#d1ecd8;
+/* --acA/--acB/--markbgA/--markbgB: אותם צבעי-צד בדיוק כמו .side[data-k=A/B] (שורה למטה), אבל זמינים
+   גם *מחוץ* לעץ-ה-DOM של .side — קריטי למעטפת-הטלפון-הנייד (#mShell): שם פנלי-התוצאות/הקלט האמיתיים
+   עוברים (ראו app.js: setupMobileUX) אל מחוץ ל-.side[data-k=...] המקורי, כך שירושת ה-CSS custom property
+   הרגילה מ-.side לא מגיעה אליהם עוד — ומרכיבי-ה-UI החדשים של המעטפת (פיל בחירת-צד/תגיות/לוח-החישוב
+   המשולב) בכלל אינם צאצאים של .side מלכתחילה. הגדרה ב-:root נגישה מכל מקום, ומוגדרת-מחדש פעם אחת
+   ב-:root[data-theme=dark] למטה — בדיוק כמו ש-.side[data-k=A/B] כבר מוגדר-מחדש שם. */
+--acA:#23527f;--acB:#8a2f40;--markbgA:#cfd9e3;--markbgB:#e5d1d5}
 *{box-sizing:border-box}html,body{height:100%}[hidden]{display:none!important}
 body{margin:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:var(--tx);font:15px/1.5 var(--ui)}
+#stage{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
 button,select,input,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 /* בחירת טקסט: צבע אחיד בכל האתר (תכלת-אזמרגד רך) במקום ברירת המחדל הכחולה של הדפדפן; וטקסט ניתן לסימון בכל מקום,
@@ -105,9 +113,13 @@ select{appearance:none;padding-inline-end:1.7rem;background-image:linear-gradien
    מחליף את פס-הגלילה הרגיל: ידית פרופורציונלית דו-כיוונית (גרירה חופשית, קשורה ישירות ל-scrollTop —
    לא "קפיצות" בין עוגנים בדידים), עם סימוני-משפחת-גימטריה על המסלול (באותם צבעים כמו שאר האפליקציה,
    ראו GEM_FAMILIES/famColorOf ב-app.js) ובועת-תווית חיה שמופיעה רק תוך-כדי גרירה/ריחוף על הידית. */
-.fsTrack{position:absolute;top:.3rem;bottom:.3rem;left:3px;width:6px;z-index:4;border-radius:4px;background:color-mix(in srgb,var(--sb) 40%,transparent);cursor:pointer}
+/* touch-action:none על המסלול/הידית: בלי זה, גרירה במגע (טלפון) "מתחרה" עם ההתנהגות המובנית-של-הדפדפן
+   לפענוח מחוות-מגע (פאן/גלילה) על אותו אלמנט — ה-preventDefault() ב-pointerdown (ב-fsInit, app.js) לא
+   תמיד מספיק למנוע את זה בפועל, מה שהרגיש כ"הסקרולר נתקע" כש-מנסים לגרור אותו בטלפון (נתפס ממשוב-משתמש
+   אמיתי על מכשיר אמיתי — Playwright עם pointer-events מדומים לא חישף את זה). */
+.fsTrack{position:absolute;top:.3rem;bottom:.3rem;left:3px;width:6px;z-index:4;border-radius:4px;background:color-mix(in srgb,var(--sb) 40%,transparent);cursor:pointer;touch-action:none}
 .fsTick{position:absolute;left:0;width:100%;height:3px;border-radius:2px;opacity:.7;pointer-events:none}
-.fsThumb{position:absolute;left:-2px;width:10px;border-radius:6px;background:var(--sb);cursor:grab;box-shadow:0 0 0 2px var(--pn);transition:background .1s}
+.fsThumb{position:absolute;left:-2px;width:10px;border-radius:6px;background:var(--sb);cursor:grab;box-shadow:0 0 0 2px var(--pn);transition:background .1s;touch-action:none}
 .fsThumb:hover,.fsThumb.dragging{background:var(--ac)}
 .fsThumb.dragging{cursor:grabbing}
 /* הבועה כעת שתי שורות (לפי בקשת המשתמש): שורה 1 = תווית-הקבוצה הקרובה (שיטה·ערך), שורה 2 = "תוצאה
@@ -276,7 +288,10 @@ textarea{width:100%;resize:none;height:5.6rem;background:#fff;border:1px solid v
 .tag.prs{border-color:#6d8f1a;color:#6d8f1a}
 .tag.seder{border-color:#8a6d1f;color:#8a6d1f}
 .tagArrow{color:var(--mu);font-size:.72rem;flex:none}
-.cpy{margin-inline-start:auto;flex:none;width:1.6rem;height:1.6rem;display:inline-grid;place-content:center;border:1px solid var(--ln);border-radius:7px;background:var(--pn);color:var(--mu);font-size:.85rem;line-height:1;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
+/* הוסר margin-inline-start:auto (v3.4.0): זה דחף את כפתור-ההעתקה לקצה-ההפוך (שמאל, ב-RTL) של השורה,
+   מנותק-ויזואלית מכל שאר התגיות (שנשארות מיושרות לימין/ל-start) — במיוחד בולט כש-.rf עוטף לשורה שנייה
+   בטלפון. עכשיו הוא זורם באופן טבעי עם שאר התגיות, באותו צד (ימין). */
+.cpy{flex:none;width:1.6rem;height:1.6rem;display:inline-grid;place-content:center;border:1px solid var(--ln);border-radius:7px;background:var(--pn);color:var(--mu);font-size:.85rem;line-height:1;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
 .cpy:hover{border-color:var(--ac);background:var(--acs);color:var(--ac)}
 .cx{font:1.05rem/1.7 var(--tf);margin-top:.15rem;cursor:text}mark{background:var(--markbg);color:inherit;border-bottom:2px solid var(--ac);border-radius:3px;padding:0 .1rem}
 .rs .rf b{cursor:text}
@@ -344,11 +359,164 @@ html[lang="en"] .dlg{direction:ltr}
   .side{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
   .side .res{grid-row:1}.side .ctr{grid-row:2}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ============ טלפונים ניידים: UX משולב (לא יותר "סובבו לרוחב") ============
+   עד v2.x: טלפון (pointer:coarse + ממד-קצר≤500px) ננעל להציג מסך "סובבו את המכשיר" במאונך, ובמאוזן הוצג
+   עותק מוקטן (zoom) של פריסת-4-העמודות המלאה של המחשב. הוחלף לגמרי (v3.0.0) ב-UX ייעודי לטלפון שעובד
+   *במאונך* (לא דורש סיבוב כלל): #ws (הפריסה הרגילה) מוסתר ובמקומו #mShell מוצג — פנל-תוצאות אחד במסך-מלא
+   וגיליון-תחתון נגלל (bottom sheet) עם שני תיבות-קלט חד-שוריות ולוח-חישוב *משולב* אחד (לא שני לוחות
+   נפרדים) שמציג את ערכי-שני-הצדדים זה-לצד-זה בכל שיטה, כולל עיגולי-ההתאמה בין הצדדים (ראו app.js:
+   buildMobileGrid). אותו סף-זיהוי בדיוק כמו בעבר (pointer:coarse + ממד-קצר≤500px, בין אם לאורך ובין אם
+   לרוחב) — טאבלטים ממשיכים לקבל את ההתנהגות הרספונסיבית הרגילה (≤1439px/≤859px למעלה).
+   v3.1.0: הוסרה שורת-הבקרה הנפרדת (.mBar/#mSidePill) שהייתה תלויה מתחת לכותרת — הבקרה הועברה לפיל קטן
+   ליד "גימטריבון" ולשבבי-הסיכום הלחיצים של הגיליון התחתון. כותרת-הכלים המלאה (ערכת-נושא/שפה/סיור/שיטות/
+   אודות/צור-קשר) שהייתה נשברת-לכמה שורות בטלפון כווצה לכפתור תפריט יחיד (#mKebab, ⋮) שפותח רשימה נגללת
+   (#mMenuPanel) — כל פריט שם רק "מקליק" על הכפתור המקורי המתאים (שעדיין קיים ב-DOM, רק מוסתר ויזואלית),
+   בלי כפילות-לוגיקה.
+   v3.2.0: שני השינויים הנ״ל אוחדו לכלי אחד: הפיל-ליד-הכותרת ושבבי-הסיכום-בגיליון הוחלפו ב-#mSummaryBar —
+   שורה שנייה ברוחב-מלא מתחת לכותרת (לא בתוך שורת-הכותרת עצמה: התברר שאין שם מספיק מקום להציג גם תג-צד
+   וגם קטע-מהקלט וגם ערך-גימטרי בלי שהבקרה "תעלם" ויזואלית מרוב-דחיסות). כפתור "ערוך קלט" הוסר לגמרי —
+   פתיחת/סגירת הגיליון התחתון רק ע״י לחיצה/גרירה של הידית (#mSheetHandle). תג-"מידע על הקלט" (.cMeta,
+   "X אותיות · מילים Y") הוסר משורות-הקלט בגיליון — גרם לעיתים לגלישה אופקית של השורה (טקסט ה-status
+   המלא, לא רק ספירת-אותיות, היה ארוך מדי ל-flex:none/nowrap). וגם: מנגנון-הכיווץ של הגיליון התחתון שונה
+   לגמרי — כש-כיווץ-מבוסס-transform (translateY(calc(100% - X))) נשען על 100% מהגובה *של הגיליון עצמו*,
+   שבפועל מתברר כלא-יציב (נצפה: לחיצה בתוך תיבת-קלט מפעילה focus/scrollIntoView של הדפדפן שמזיז את בסיס-
+   המיקום-לפני-הטרנספורם מבלי שגובה/transform עצמם משתנים — "כיווץ" חלקי-בלבד שמשאיר את הגיליון "בולע" חלק
+   גדול מפנל-התוצאות, חוסם גלילה/מגע שם). הפתרון: כעת רק #mSheetBody (לא הגיליון כולו) מתכווץ/נפתח, ע״י
+   max-height+opacity על עצמו בלבד — הגיליון כולו גובהו *תמיד* תוכן-אמיתי (ללא transform כלל), כך שבמצב-
+   מכווץ גובהו הוא פשוט גובה-הידית בלבד, באופן יציב-לחלוטין שלא תלוי במאזין-פוקוס/גלילה כלשהו. */
+#mShell{display:none}
+#mKebab{display:none}
+#mSummaryBar{display:none}
+@media (pointer:coarse) and (max-width:500px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
+  .ws{display:none}
+  #mShell{display:flex;flex:1;min-height:0;flex-direction:column}
+  .top{flex-wrap:nowrap;gap:.5rem}
+  .brand{gap:.5rem;align-items:center}
+  .brand .tagline{display:none}
+  .sideSw,.tools>*:not(#status),#status{display:none}
+  #mKebab{display:inline-flex}
+  #mSummaryBar{display:flex}
+}
+#mKebab{margin-inline-start:auto;flex:none;width:2.1rem;height:2.1rem;border-radius:10px;font-size:1.3rem;line-height:1;padding:0;align-items:center;justify-content:center}
+#mSummaryBar{flex:none;gap:.4rem;padding:0 var(--g) .5rem}
+.mSumSeg{display:flex;align-items:center;gap:.35rem;min-width:0;flex:1;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:.35rem .55rem;box-shadow:0 1px 2px rgba(0,0,0,.06);transition:background .15s,box-shadow .15s}
+.mSumSeg[data-side=A]{--rowAc:var(--acA)}
+.mSumSeg[data-side=B]{--rowAc:var(--acB)}
+.mSumSeg.active{box-shadow:inset 0 0 0 1.5px var(--rowAc);background:var(--acs)}
+.mSumSeg .sTag{flex:none;font:700 .64rem var(--ui);color:#fff;border-radius:5px;padding:.04rem .38rem}
+.mSumSeg[data-side=A] .sTag{background:var(--acA)}
+.mSumSeg[data-side=B] .sTag{background:var(--acB)}
+.mSumSeg .sTxt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 .82rem var(--tf);color:var(--tx);text-align:start}
+.mSumSeg .sNum{flex:none;font:700 .72rem var(--ui);color:var(--mu)}
+.mMenuScrim{position:fixed;inset:0;background:rgba(0,0,0,0);pointer-events:none;transition:background .2s ease;z-index:20}
+.mMenuScrim.show{background:rgba(0,0,0,.25);pointer-events:auto}
+.mMenuPanel{position:fixed;top:3.2rem;inset-inline-end:.6rem;background:var(--pn);border:1px solid var(--ln);border-radius:14px;box-shadow:0 10px 30px -8px rgba(0,0,0,.35);min-width:11.5rem;z-index:21;padding:.4rem;display:flex;flex-direction:column;gap:.1rem;transform:translateY(-6px) scale(.97);opacity:0;pointer-events:none;transition:transform .16s ease,opacity .16s ease}
+.mMenuPanel.show{transform:translateY(0) scale(1);opacity:1;pointer-events:auto}
+.mMenuItem{display:flex;align-items:center;gap:.6rem;background:none;border:0;border-radius:9px;padding:.55rem .6rem;font:600 .82rem var(--ui);color:var(--tx);text-align:start}
+.mMenuItem:hover,.mMenuItem:active{background:var(--pn2);border-color:transparent}
+.mMenuItem .ic{flex:none;width:1.3rem;text-align:center;color:var(--mu)}
+.mMenuVer{font:600 .68rem var(--ui);color:var(--mu);padding:.45rem .6rem 0;border-top:1px solid var(--ln);margin-top:.25rem}
+.mStage{flex:1;min-height:0;position:relative;overflow:hidden}
+.mResPane{position:absolute;inset:0;display:none;flex-direction:column;min-height:0;padding:0 var(--g)}
+.mResPane.on{display:flex}
+.mResPane .pn{height:100%}
+/* משחזר את ירושת --ac/--markbg עבור .pn.res האמיתי שעבר לכאן (ראו app.js: enterMobileLayout) — במקור
+   ירש אותם מ-.side[data-k=A/B] (שורה למעלה), אבל מחוץ לעץ הזה (אחרי ה-appendChild) אין יותר ירושה, מה
+   שהיה שובר את צבעי-ההדגשה (mark/.glowP) ואת שאר האלמנטים התלויי-צד (⚙ מסומן, מיקוד, hover וכו') בטלפון —
+   בדיוק כמו ש-.mInputRow[data-side=X] כבר עושה עבור תיבת-הקלט למטה. */
+.mResPane[data-side=A]{--ac:var(--acA);--markbg:var(--markbgA)}
+.mResPane[data-side=B]{--ac:var(--acB);--markbg:var(--markbgB)}
+/* v3.4.0: .smTree (עץ "סוגי גימטריה לחיפוש") משותף בין דסקטופ לנייד, ו-3 העמודות הקבועות שמתאימות לפנל
+   רחב בדסקטופ בלתי-קריאות ברוחב-טלפון (כותרות נחתכות כמו "אטב"ח"→"אט...", "אותיות"→"אות..."). בנייד —
+   מאחר ו-.smTree תמיד מקונן בתוך .mResPane אחרי enterMobileLayout — עמודה בודדת, קריאה במלואה. */
+.mResPane .smTree{grid-template-columns:1fr}
+/* v3.4.0: מאז שהגיליון התחתון פתוח כברירת-מחדל (ראו setupMobileUX), ה-scrim (למטה) מכוסה מעל פנל-
+   התוצאות כל הזמן כברירת-מחדל — ובלי זה, כפתור-הסינון (⚙) ולוח-הסינון עצמו (.filtPane) היו נעשים
+   בלתי-ניתנים-ללחיצה-לצמיתות (ה-scrim חוסם את כל האירועים מתחתיו). מרימים את הכותרת (שם נמצא ⚙) ואת
+   לוח-הסינון-כש-פתוח מעל ה-scrim (z-index) כדי שהם תמיד נגישים, בלי להשפיע על שאר ה-scrim (עדיין מעמעם
+   ו-חוסם את רשימת-התוצאות הגולמית מתחתיו, וזה בסדר — שם ה-focus-המכוון הוא על הגיליון). */
+.mResPane .hd{position:relative;z-index:6}
+.mResPane .filtPane.open{z-index:6}
+.mScrim{position:absolute;inset:0;background:rgba(0,0,0,0);pointer-events:none;transition:background .28s ease;z-index:4}
+.mScrim.show{background:rgba(0,0,0,.32);pointer-events:auto}
+/* גיליון תחתון (bottom sheet): תמיד ב-DOM. v3.2.0: הכיווץ עצמו עבר מ-transform על הגיליון-כולו (לא-יציב,
+   ראו ההערה הגדולה למעלה) ל-max-height+opacity על #mSheetBody בלבד — גובה-הגיליון עצמו הוא תמיד "תוכן
+   אמיתי" (ללא position-trick), כך שבמצב-מכווץ מה שבאמת קובע את הגובה הנמוך הוא שהגוף פשוט לא תופס גובה
+   (0), לא "הוסתר-אחרי-הקצה" ע״י הזזה. */
+.mSheet{position:absolute;inset-inline:.5rem;bottom:.5rem;background:var(--pn2);border:1px solid var(--ln);border-radius:16px;box-shadow:0 -8px 24px -6px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.1);z-index:5;display:flex;flex-direction:column;max-height:86%;overflow-x:hidden}
+.mSheetHandle{flex:none;display:flex;flex-direction:column;align-items:center;padding:.5rem 0;cursor:pointer}
+.mGrip{width:2.4rem;height:.32rem;border-radius:99px;background:var(--ln)}
+.mSheetBody{flex:1;min-height:0;overflow:auto;padding:0 1rem 1rem;scrollbar-width:thin;scrollbar-color:var(--sb) transparent;transition:max-height .32s cubic-bezier(.22,.61,.36,1),opacity .2s ease;max-height:68vh;opacity:1}
+.mSheet.collapsed .mSheetBody{max-height:0;opacity:0;overflow:hidden;pointer-events:none}
+.mInputs{display:flex;flex-direction:column;gap:.55rem;margin-bottom:.7rem}
+.mInputRow{display:flex;align-items:center;gap:.6rem;background:var(--pn);border:1px solid var(--ln2);border-inline-start:4px solid var(--rowAc);border-radius:var(--r);padding:.3rem .7rem;box-shadow:0 1px 2px rgba(90,65,20,.06)}
+.mInputRow[data-side=A]{--rowAc:var(--acA);--ac:var(--acA)}
+.mInputRow[data-side=B]{--rowAc:var(--acB);--ac:var(--acB)}
+.mInputRow .cTag{flex:none;font:700 .72rem var(--ui);color:var(--rowAc)}
+.mInputRow:focus-within{box-shadow:0 0 0 3px var(--acs);border-color:var(--rowAc)}
+.mInpHost{flex:1;min-width:0}
+.mInpHost .inp{padding:0;border:0}
+.mInpHost textarea{height:2.5rem;padding:.45rem .1rem;font:600 1.05rem var(--tf);border:0;background:none}
+.mInpHost textarea:focus{box-shadow:none;outline:0}
+.mInpHost .inp .meta{display:none}
+.cMatchSum{display:flex;align-items:center;gap:.4rem;font:600 .78rem var(--ui);color:var(--tx);background:var(--acs);border:1px solid var(--ln);border-radius:9px;padding:.45rem .6rem;margin-bottom:.6rem}
+.cMatchSum b{color:var(--ac)}
+.cPanelHd{display:flex;align-items:baseline;justify-content:space-between;margin:.3rem 0 .55rem;gap:.5rem}
+.cPanelHd .cPanelTitle{font:700 .74rem var(--ui);color:var(--mu)}
+.cPanelHd .cLegend{display:flex;gap:.6rem;flex:none}
+.cLegend span{display:flex;align-items:center;gap:.28rem;font:700 .68rem var(--ui);color:var(--mu)}
+.cLegend .pDot{width:.55rem;height:.55rem;border-radius:99px}
+.cLegend .pDot.sideA{background:var(--acA)}.cLegend .pDot.sideB{background:var(--acB)}
+/* minmax(0,1fr) ולא 1fr סתם: טרק-גריד עם 1fr "סתם" מתנהג כ-minmax(auto,1fr) — כלומר לא מתכווץ מתחת
+   לרוחב-התוכן-המינימלי של העמודה (ל.ccNum המספרים, למשל "70,723", שלא נשברים לשורה). עם 4 עמודות וערכים
+   גדולים (במיוחד אחרי מיזוג-שני-הצדדים בלוח המשולב) זה היה דוחף את הגריד כולו לרוחב גדול מהמסך — בדיוק
+   הבאג שדווח ("גלישה שמאלה של ריבועי התוצאות"), כי מנגנון-הכיווץ הרגיל (shrink) של פריטי-גריד "מכבד"
+   את הרוחב-המינימלי-של-התוכן כברירת-מחדל, בניגוד לכוונה. minmax(0,1fr) מבטל את הרצפה הזו ומאלץ כיווץ
+   אמיתי (הטקסט עצמו מקבל overflow:hidden+text-overflow באלמנטים הרלוונטיים, ראו .ccChip/.ccNum למטה). */
+/* v3.3.0: "מלבנים עומדים" — 2 עמודות (לא 4) + ccVals מוערם אנכית (A מעל B) במקום זה-לצד-זה, כך שכל
+   ערך מקבל את מלוא-רוחב-התא ולא נחתך יותר בשלוש-נקודות (אושר ע"י המשתמש במוק, 2026-10-15). */
+.cGrid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin-bottom:.55rem}
+.cGridSingle{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.ccell{position:relative;background:var(--pn);border:1px solid var(--ln2);border-radius:var(--r);padding:.5rem .55rem .45rem;text-align:start;box-shadow:0 1px 2px rgba(90,65,20,.07);overflow:visible;cursor:default}
+.ccell::before{content:"";position:absolute;inset-inline:0;top:0;height:3px;border-radius:var(--r) var(--r) 0 0;background:linear-gradient(90deg,var(--barA,var(--acA)) 50%,var(--barB,var(--acB)) 50%)}
+/* הוסר opacity:.6 (v3.4.0): זה היה מטרתו לסמן חזותית ש-תאי-נוטריקון הם "מידע" ולא שיטה-לבחירה, אבל
+   בפועל זה דיהה גם את הטקסט/המספרים עצמם עד כדי בלתי-קריא (כך דווח ע"י המשתמש). הקו-העליון היה אמור
+   להישאר כסימון-עדין להבדל הזה — אבל "ניטרלי" (var(--ln)) יצא בפועל צבע חום/חרדלי שטוח ולא-מכוון (בעיקר
+   בולט במצב-כהה, #3c2e1a), בלי שום קשר-ויזואלי לשני-הצדדים שמוצגים בכרטיס גופו. דווח ע"י המשתמש ("יש
+   לצבוע את זה") — הוסרה הדריסה כליל (v3.4.1), כך שתאי-הנוטריקון מקבלים את אותו פס-גרדיאנט דו-צבעוני
+   (--acA/--acB) כמו תאי-השיטות הרגילים, עקבי עם זה שכל כרטיס-נוטריקון-בנייד כבר מציג את שני הצדדים יחד
+   (ccChip אחד לכל צד) — בשונה מ-.gr4cell בדסקטופ, ששם כל צד הוא פאנל נפרד, ולכן נשאר שם מכוון בניטרלי. */
+.ccMn{font:700 .78rem var(--ui);color:var(--tx);margin-bottom:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccVals{display:flex;flex-direction:column;gap:.3rem}
+/* overflow:visible (לא hidden) בכוונה: עיגול-ההתאמה (.ccBdg2) ממוקם מעל-לקצה-העליון-של-הצ'יפ
+   (top:-.55rem) כדי "לשבת" על הפינה, וכש-ל-ccChip יש overflow:hidden הוא נחתך ונעלם (באג אמיתי
+   שנגרם ע"י v3.2.1, שהוסיף overflow:hidden ל-ccChip כ"רשת-ביטחון" נגד גלישה — אך ההגנה-בפועל נגד
+   גלישה-אופקית כבר קיימת במקום הנכון: overflow:hidden+ellipsis+max-width על ccNum/ccHits עצמם, ו-
+   minmax(0,1fr) ברמת-הגריד — כך שאין צורך גם ב-overflow:hidden כאן, והוא רק הזיק לעיגול-ההתאמה). */
+.ccChip{position:relative;flex:none;min-width:0;max-width:100%;overflow:visible;border-radius:8px;padding:.32rem .55rem;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:.5rem;line-height:1.25;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.ccChip::after{content:"";flex:none;order:2;width:3px;align-self:stretch;border-radius:2px}
+.ccChip[data-k=A]{background:color-mix(in srgb,var(--acA) 10%,var(--pn))}
+.ccChip[data-k=A]::after{background:var(--acA)}
+.ccChip[data-k=B]{background:color-mix(in srgb,var(--acB) 10%,var(--pn))}
+.ccChip[data-k=B]::after{background:var(--acB)}
+.ccChip.off{opacity:.5}
+.ccChip.matched{background:color-mix(in srgb,var(--mc) 16%,var(--pn));box-shadow:inset 0 0 0 1.5px var(--mc)}
+.ccChip.matched.foc{box-shadow:inset 0 0 0 2px var(--mc),0 0 0 3px color-mix(in srgb,var(--mc) 30%,transparent);transform:translateY(-1px)}
+.ccChip .ccNum{order:0;font:700 .9rem var(--ui);color:var(--tx);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccChip .ccHits{order:1;border:0;background:none;padding:0;font:600 .64rem var(--ui);color:var(--mu);cursor:pointer;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccChip .ccHits.on{color:var(--ac);font-weight:700}
+.ccZero{font:700 .8rem var(--ui);color:var(--mu)}
+.ccBdg2{position:absolute;top:-.55rem;inset-inline-end:-.3rem;width:1.1rem;height:1.1rem;min-width:0;padding:0;border-radius:99px;border:2px solid var(--pn2);background:var(--mc);color:#fff;font:700 .62rem var(--ui);display:grid;place-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:2}
+.ccBdg2:hover{filter:brightness(1.12)}
+.ccNote{display:flex;align-items:center;gap:.5rem;font:600 .72rem var(--ui);color:var(--mu);margin:.1rem 0 .85rem;padding:.4rem .6rem;background:var(--pn);border:1px dashed var(--ln);border-radius:9px}
+.ccNote b{color:var(--tx)}
+.ccNote .cpy{flex:none;color:var(--ac)}
 /* ============ מראה כהה: "לילה בגוויל" (toggle ליד "שיטות גימטריה") ============
    אותו מבנה/רכיבים/פריסה בדיוק כמו המראה הבהיר — רק שינוי ערכי-צבע. רוב הצבעים כבר מגיעים ממשתני
    --root (למעלה), כך שדי בהגדרה-מחדש שלהם כאן; המקומות שבהם הצבע היה "קשיח" בקוד (למשל #fff כרקע
    קלף/שדה-קלט, או #5e4518 כצבע-מותג) מקבלים override נקודתי משלהם, סלקטור-סלקטור, למטה. */
-:root[data-theme=dark]{--bg:#1c160e;--pn:#241b11;--pn2:#2c2114;--ln:#3c2e1a;--ln2:#352918;--tx:#efe3c9;--mu:#b19d73;--gold:#d7a847;--acs:color-mix(in srgb,var(--ac) 16%,#241b11);--sb:#5f5236;--sel:#3f6d66;--glowYbg:#544110;--glowGbg:#2d3f21}
+:root[data-theme=dark]{--bg:#1c160e;--pn:#241b11;--pn2:#2c2114;--ln:#3c2e1a;--ln2:#352918;--tx:#efe3c9;--mu:#b19d73;--gold:#d7a847;--acs:color-mix(in srgb,var(--ac) 16%,#241b11);--sb:#5f5236;--sel:#3f6d66;--glowYbg:#544110;--glowGbg:#2d3f21;--acA:#5e9bd8;--acB:#e08a96;--markbgA:#373c3f;--markbgB:#543831}
 :root[data-theme=dark] .side[data-k=A]{--ac:#5e9bd8;--markbg:#373c3f}
 :root[data-theme=dark] .side[data-k=B]{--ac:#e08a96;--markbg:#543831}
 :root[data-theme=dark] .pn{box-shadow:0 0 0 1px rgba(255,255,255,.02) inset,0 16px 34px -18px rgba(0,0,0,.7)}

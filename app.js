@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '2.10.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.4.2'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -33,9 +33,12 @@ const EN = {
   'שיטות הגימטריה': 'Gematria Methods', 'אודות גימטריבון': 'About Gimatrivon',
   'סינון': 'Filter', 'תוצאות החיפוש במקורות': 'Search Results in Sacred Texts', 'צד א׳': 'Side A', 'צד ב׳': 'Side B', 'קלט': 'Input',
   'סינון טקסטואלי בתוך התוצאות…': 'Text filter within results…',
+  'סינון טקסטואלי בתוך תוצאות החיפוש': 'Text filter within search results',
   'כולל הטיות קרובות (הסרת תחיליות/סיומות נפוצות) — לא מדויק, לא תופס טיות פועל פנימיות': 'Includes close inflections (removes common prefixes/suffixes) — not exact, does not catch internal verb inflections',
   'הטיות': 'Inflections', 'נקה': 'Clear', 'סוגי גימטריה לחיפוש': 'Gematria types to search',
   'הצג התאמות לפסוק שלם או משנה שלמה בלבד': 'Show matches for a whole verse or mishnah only',
+  'רק מילה בודדת או זוג מילים עם מקף': 'Single word, or a maqaf-joined pair only',
+  'מגביל את ההתאמות למילה בודדת, או לשתי תיבות שמחוברות ביניהן במקף-עליון (מקף) בטקסט המקורי — לא כל צירוף של כמה מילים נפרדות': 'Restricts matches to a single word, or two words joined by a maqaf (upper hyphen) in the original text — not any combination of separate words',
   'התאמת נוטריקון': 'Notarikon matching',
   'קובע מתי מילת-החיפוש נחשבת תואמת לחילוץ (ר״ת/אות ב׳/אות ג׳/ס״ת) בתוך פסוק': 'Determines when the search word counts as matching an extraction (acronym/2nd letter/3rd letter/last letters) within a verse',
   'גימטרית': 'Numeric', 'אותיות (צירופים)': 'Letters (permutations)', 'טקסטואלית (מדויקת)': 'Textual (exact)',
@@ -74,6 +77,12 @@ const EN = {
   'התאמות בין השיטות המסומנות בשני הצדדים.': 'matches between the checked methods on both sides.',
   'אותיות': 'letters', 'מילים': 'words',
   'נוטריקון: ': 'Notarikon: ', ' נוטריקון': ' notarikon', ' — נוטריקון': ' — notarikon',
+  // UX נייד (v3.0.0): גיליון-תחתון עם קלט משולב + לוח-חישוב ממוזג (ראו app.js: setupMobileUX/buildMobileGrid)
+  'תוצאות': 'Results', 'בחירת צד לתצוגת תוצאות': 'Choose side for results view',
+  'ערוך קלט': 'Edit input', 'לוח חישוב משולב — לחצו על שיטה כדי להפעיל/לכבות אותה': 'Combined calculation panel — click a method to enable/disable it',
+  '(ריק)': '(empty)',
+  'אודות': 'About', 'סיור מודרך': 'Guided tour', 'שפה': 'Language', 'תפריט': 'Menu',
+  'מראה לילה': 'Night theme', 'מראה גוויל': 'Parchment theme',
 };
 function L(he) { return LANG === 'en' ? (EN[he] != null ? EN[he] : he) : he; }
 const MN = {}; E.METHODS.forEach(m => { MN[m.id] = m.name; });
@@ -235,6 +244,12 @@ const NOTARIKON_GLOW_TITLE = {
 const SIDE = { A: 'צד א׳', B: 'צד ב׳' }, KS = ['A', 'B'];
 function heNum(n) { if (LANG === 'en') return String(n); let s = ''; for (const [v, l] of [[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק'],[90,'צ'],[80,'פ'],[70,'ע'],[60,'ס'],[50,'נ'],[40,'מ'],[30,'ל'],[20,'כ'],[10,'י'],[9,'ט'],[8,'ח'],[7,'ז'],[6,'ו'],[5,'ה'],[4,'ד'],[3,'ג'],[2,'ב'],[1,'א']]) while (n >= v) { s += l; n -= v; } return s.replace('יה', 'טו').replace('יו', 'טז'); }
 const fmt = n => n == null ? '—' : n.toLocaleString('he-IL');
+// v3.4.1 (ציד-באגים): פרסור ערך תיבת "או לפי מספר" (st.num). קודם היה parseInt(st.num,10), שמחתך על
+// התו הלא-ספרתי הראשון — "1e3" → 1 במקום 1000 (ל-type=number הדפדפן בעצמו מתייחס אליו כ-1000 תקף).
+// Number(...) מטפל נכון במדע-נוד/רווחים-מקיפים/אפסים-מובילים; Math.trunc מטפל בערך-עשרוני ("13.5"→13),
+// בדיוק כמו קודם. #nm${k}'s onblur (למטה, ב-bind) משקף ערך-שלם-בפועל חזרה לתיבה אם המשתמש הקליד עשרוני,
+// כדי שהתיבה לא תציג "13.5" בזמן שבפועל מחפשים לפי 13.
+const numVal = s => { const n = Math.trunc(Number(s)); return Number.isFinite(n) ? n : NaN; };
 function copyText(txt) { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { const x = document.createElement('textarea'); x.value = txt; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); } catch (er) {} x.remove(); }); }
 const PFX = ['', '', 'רש״י על ', 'אונקלוס ', 'תרגום יונתן על ', 'ברטנורא על ', ''];
 const PFX_EN = ['', '', 'Rashi on ', 'Onkelos ', 'Targum Yonatan on ', 'Bartenura on ', ''];
@@ -444,7 +459,7 @@ function hitsSortToggle(k, id) {
 // winStart/winCount/avgRowH/groups/groupsTotal: שדות הגלילה-הוירטואלית (ראו renderWindow/computeGroups
 // למטה) — לא חלק מ"שדות-הגדרה" הסיור שומר/משחזר (SETTINGS_FIELDS), ממש כמו all/info/cur: מתמלאים-מחדש
 // נכון מעצמם בכל renderWindow/computeGroups.
-const S = {}; KS.forEach(k => { S[k] = { text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: [], winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false }; });
+const S = {}; KS.forEach(k => { S[k] = { text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: [], winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
 let IDX = null, CM = null, FOCUS = null;
 
 /* ---------- בניית המסך ---------- */
@@ -471,6 +486,7 @@ function sideHtml(k) {
       <div class="sc filtPane" id="fp${k}">
         <div class="sec"><h3>${L('סוגי גימטריה לחיפוש')}</h3><div id="ms${k}" class="smTree"></div></div>
         <div class="sec"><label class="opt"><input type="checkbox" class="cb" id="fu${k}"><span>${L('הצג התאמות לפסוק שלם או משנה שלמה בלבד')}</span></label></div>
+        <div class="sec"><label class="opt" title="${L('מגביל את ההתאמות למילה בודדת, או לשתי תיבות שמחוברות ביניהן במקף-עליון (מקף) בטקסט המקורי — לא כל צירוף של כמה מילים נפרדות')}"><input type="checkbox" class="cb" id="sw${k}"><span>${L('רק מילה בודדת או זוג מילים עם מקף')}</span></label></div>
         <div class="sec"><h3>${L('התאמת נוטריקון')}<span class="hint">${L('קובע מתי מילת-החיפוש נחשבת תואמת לחילוץ (ר״ת/אות ב׳/אות ג׳/ס״ת) בתוך פסוק')}</span></h3>
           <div class="radioRow">
             <label class="opt"><input type="radio" name="notMode${k}" class="cb" data-notmode="gem"><span>${L('גימטרית')}</span></label>
@@ -596,6 +612,10 @@ function bind(k) {
   q('.filtPane .rowb').onclick = e => { const t = e.target.dataset.t; if (!t) return; st.sel = t === 'all' ? new Set(ALL) : new Set(); drawTree(k); run(k); };
   $('#t' + k).oninput = e => { st.text = e.target.value; renderCenter(); debRun(); };
   $('#nm' + k).oninput = e => { st.num = e.target.value; debRun(); };
+  // v3.4.1: אם המשתמש הקליד ערך לא-שלם ("13.5"), רק ב-blur (לא תוך-כדי הקלדה, כדי לא "לבלוע" את הנקודה
+  // שהמשתמש אולי עדיין ממשיך אחריה) משקפים חזרה את הערך-השלם-בפועל שבו משתמש החיפוש (numVal, למעלה) —
+  // כדי שהתיבה לא תטעה ותציג "13.5" בזמן שבפועל התוצאות הן עבור 13.
+  $('#nm' + k).onblur = e => { const v = e.target.value; if (!v) return; const n = numVal(v); if (Number.isFinite(n) && String(n) !== v) { e.target.value = n; st.num = String(n); } };
   q('.meta').onclick = e => { const a = e.target.dataset.a; if (!a) return; if (a === 'clear') { st.text = ''; st.num = ''; $('#t' + k).value = ''; $('#nm' + k).value = ''; renderCenter(); run(k); } else { const t = E.METHODS.filter(m => st.ms.has(m.id)).map(m => L(MN[m.id]) + ': ' + fmt(E.calculateGematria(st.text, m.id).value)).join('\n'); copyText(L(SIDE[k]) + ': ' + st.text + '\n' + t); e.target.textContent = L('הועתק ✓'); setTimeout(() => { e.target.textContent = L('העתק'); }, 1200); } };
   const doCopy = cp => { copyText(cp.dataset.copy); cp.textContent = '✓'; setTimeout(() => { cp.textContent = '⧉'; }, 900); };
   $('#rl' + k).onclick = e => { const cp = e.target.closest('.cpy'); if (cp) { e.stopPropagation(); return doCopy(cp); } const b = e.target.closest('.rs'); if (!b) return; select(k, +b.dataset.i); };
@@ -607,6 +627,7 @@ function bind(k) {
   $('#tf' + k).oninput = e => { st.tf = e.target.value; tfDeb(); };
   $('#tfz' + k).onchange = e => { st.fuzzy = e.target.checked; tfRebuild(k); };
   $('#fu' + k).onchange = e => { st.fullUnit = e.target.checked; run(k); };
+  $('#sw' + k).onchange = e => { st.singleWord = e.target.checked; run(k); };
   $('#tfx' + k).onclick = () => { st.tf = ''; $('#tf' + k).value = ''; tfRebuild(k); };
   $('#fp' + k).querySelectorAll('input[data-notmode]').forEach(r => { r.onchange = () => { if (r.checked) { st.notMode = r.dataset.notmode; runNotarikon(k); } }; });
   drawSearchMethods(k); drawTree(k); fsInit(k);
@@ -667,6 +688,21 @@ function renderCenter() {
     $('#gr' + k).querySelectorAll('.bdg').forEach(b => { b.onclick = () => { FOCUS = FOCUS === +b.dataset.f ? null : +b.dataset.f; renderCenter(); }; });
     $('#gr' + k).querySelectorAll('.bdgH').forEach(b => { b.onclick = () => hitsSortToggle(k, b.dataset.m); });
   });
+  // UX נייד (v3.0.0, ראו המדריך למעלה ליד #mShell): אותו res/CM/FOCUS בדיוק שכבר חושבו למעלה, רק מרונדרים
+  // למבנה-תצוגה שונה (לוח משולב אחד, לא שני לוחות gr4). אם #mgr לא קיים (לא אמור לקרות — האלמנט תמיד
+  // ב-DOM, רק מוסתר ב-CSS כש-לא-נייד) פשוט מדלגים, בלי לקרוס.
+  if ($('#mgr')) buildMobileGrid(res);
+  if ($('#mMatchSum')) {
+    $('#mMatchSum').innerHTML = empty ? L('הקלד טקסט בשני הצדדים כדי להשוות ביניהם.') : CM.matches.length ? `<b>${CM.matches.length}</b> ${L('התאמות בין השיטות המסומנות בשני הצדדים.')}` : L('אין התאמות בין השיטות המסומנות בשני הצדדים.');
+    // v3.2.0: קטע-הקלט+הערך-הגימטרי של כל צד (שהוצג בעבר בשבבי-הסיכום בגיליון, .mPeekChip, שהוסרו)
+    // מוצג כעת ב-#mSummaryBar למעלה (ראו index.html/setupMobileUX) — אותם שדות, יעד שונה בלבד.
+    KS.forEach(k => {
+      const st = S[k];
+      const txt = $('#sumTxt' + k), num = $('#sumNum' + k);
+      if (txt) txt.textContent = st.text.trim() ? st.text : L('(ריק)');
+      if (num) num.textContent = st.text.trim() ? fmt(res[k].regular.value) : '';
+    });
+  }
 }
 // עדכון-חי *קל-משקל* של רק המספרים-המשתנים (עיגולי "התאמות במקורות"/נוטריקון) בתאי-שיטות-הגימטריה, לשימוש
 // בלולאת-החיפוש הפעילה (step() ב-run(), עד פעם ב-150 מ"ש) — בלי להרוס-ולבנות-מחדש את כל רשת-התאים
@@ -688,6 +724,189 @@ function updateCenterCounts(k) {
       ? `${fmt(hits)} ${isNot ? 'notarikon' : 'source'} matches${on ? ' — active, click to cancel' : ' — click to sort results by this method'}`
       : `${fmt(hits)} התאמות ${isNot ? 'נוטריקון' : 'במקורות'}${on ? ' — פעיל, לחצו לביטול' : ' — לחצו למיון התוצאות לפי שיטה זו'}`;
   });
+  // אותו עדכון-חי קל-משקל, גם על לוח-החישוב המשולב של UX הנייד (#mgr) — ראו buildMobileGrid למטה.
+  // ה-class ccHits הוא גם עיגול-"תוצאות במקורות" וגם עיגול-נוטריקון (disabled), מבדילים לפי NOTARIKON_IDS
+  // בדיוק כמו למעלה — data-k מזהה לאיזה צד (א׳/ב׳) העיגול הזה שייך בתוך התא הממוזג.
+  const mroot = $('#mgr');
+  if (mroot) {
+    mroot.querySelectorAll(`.ccHits[data-k="${k}"]`).forEach(el => {
+      const m = el.dataset.m, isNot = NOTARIKON_IDS.includes(m);
+      const hits = isNot ? ((st.notCounts && st.notCounts[m]) || 0) : sourceHits(st, m);
+      el.textContent = fmt(hits);
+    });
+  }
+}
+
+/* ============ UX נייד (v3.0.0): לוח-חישוב משולב (#mgr) ============
+   מחליף את שני מלבנים-ה-gr4 הנפרדים (אחד לכל צד) בתא *אחד* לכל שיטה, שמכיל את ערכי-שני-הצדדים זה-לצד-זה
+   ("צ'יפ" צבוע לכל צד) — ראו המוקים שהוצגו למשתמש לפני המימוש. קורא את *אותו* res/CM/FOCUS/st.ms שכבר
+   חושבו ב-renderCenter (לא מחשב שום דבר מחדש) כדי שההתאמות/המספרים תמיד זהים-בהכרח לאלה שמוצגים בלוח
+   הרגיל (לא עוד "מקור אמת" שעלול להתבדר ממנו). עיגולי-ההתאמה (ccBdg2) ועיגולי-"תוצאות במקורות" (ccHits)
+   משתמשים באותה data בדיוק כמו .bdg/.bdgH הרגילים — רק מסודרים אחרת ויזואלית. קליקים על הלוח מטופלים
+   ב-event-delegation יחיד שנרשם פעם אחת ב-setupMobileUX (לא נרשם-מחדש בכל renderCenter, כי #mgr עצמו
+   לא מוחלף/מנותק מה-DOM — רק innerHTML שלו מתעדכן). */
+function mobileChip(k, id, label, r, res) {
+  const st = S[k], side = k === 'A' ? 'a' : 'b';
+  const on = st.ms.has(id);
+  const mine = CM.matches.filter(x => x[side].method === id);
+  const hl = mine.find(x => x.id === FOCUS) || mine[0];
+  const hits = sourceHits(st, id), hitOn = st.hitsSort === id ? ' on' : '';
+  const matchBdg = hl ? `<button class="ccBdg2" data-k="${k}" data-match="${hl.id}" style="--mc:${hl.color}" title="${L('התאמה')} ${heNum(hl.id)}">${heNum(hl.id)}</button>` : '';
+  const barVar = hl ? `--bar${k}:${hl.color};` : '';
+  return { html: `<div class="ccChip${on ? '' : ' off'}${hl ? ' matched' : ''}" data-k="${k}" data-m="${id}" style="${hl ? `--mc:${hl.color}` : ''}" title="${L(label)} · ${fmt(r.value)}">${matchBdg}<span class="ccNum">${fmt(r.value)}</span><button class="ccHits${hitOn}" data-k="${k}" data-m="${id}" title="${fmt(hits)} ${L('התאמות במקורות')}">${fmt(hits)}</button></div>`, barVar };
+}
+function buildMobileGrid(res) {
+  const hasTxtA = !!S.A.text.trim(), hasTxtB = !!S.B.text.trim();
+  const famHtml = GEM_FAMILIES.map((f, fi) => {
+    // v3.4.1: לתא-השיטה *הראשון* בלבד יש id ייעודי (mgrFirstFam) — הסיור-המודרך-בנייד מצביע עליו, לא על
+    // כל #mgr (ראו bugfix בהמשך: #mgr כולו גבוה מ-1000px, גבוה בהרבה מגובה-המסך, ולכן ה-highlight של
+    // driver.js היה "נמתח" הרבה מעבר לתצוגה — בפועל נראה כאילו שום דבר לא מודגש/מטושטש).
+    const idAttr = fi === 0 ? ' id="mgrFirstFam"' : '';
+    let barA = '', barB = '';
+    const cellsHtml = f.ids.map(id => {
+      const a = mobileChip('A', id, f.labels[id], res.A[id], res), b = mobileChip('B', id, f.labels[id], res.B[id], res);
+      if (a.barVar) barA = a.barVar.match(/--barA:([^;]+)/)[1];
+      if (b.barVar) barB = b.barVar.match(/--barB:([^;]+)/)[1];
+      return `<div class="ccell" style="--barA:${barA || 'var(--acA)'};--barB:${barB || 'var(--acB)'}"><div class="ccMn">${L(f.labels[id])}</div><div class="ccVals">${a.html}${b.html}</div></div>`;
+    }).join('');
+    if (f.key === 'regular') {
+      const notCells = NOTARIKON_IDS.map(m => {
+        const cA = (S.A.notCounts && S.A.notCounts[m]) || 0, cB = (S.B.notCounts && S.B.notCounts[m]) || 0;
+        const hitOnA = S.A.hitsSort === m ? ' on' : '', hitOnB = S.B.hitsSort === m ? ' on' : '';
+        return `<div class="ccell disabled"><div class="ccMn">${L(NOTARIKON_LABELS[m])}</div><div class="ccVals">
+          <div class="ccChip" data-k="A"><button class="ccHits${hitOnA}" data-k="A" data-m="${m}" title="${L('התאמות נוטריקון')}">${fmt(cA)}</button></div>
+          <div class="ccChip" data-k="B"><button class="ccHits${hitOnB}" data-k="B" data-m="${m}" title="${L('התאמות נוטריקון')}">${fmt(cB)}</button></div>
+        </div></div>`;
+      }).join('');
+      return `<div class="cGrid4"${idAttr}>${cellsHtml}</div><hr class="notDivider"><div class="cGrid4">${notCells}</div>`;
+    }
+    const baseR_A = res.A[f.ids[0]], baseR_B = res.B[f.ids[0]];
+    const noteA = hasTxtA ? (baseR_A.transformedText || '') : '', noteB = hasTxtB ? (baseR_B.transformedText || '') : '';
+    const noteTxt = (noteA || noteB) ? `<b>${L('צד א׳')}</b> ${esc(noteA || '—')} &nbsp;·&nbsp; <b>${L('צד ב׳')}</b> ${esc(noteB || '—')}` : '&nbsp;';
+    const copyData = (noteA || noteB) ? `${L('צד א׳')}: ${noteA}\n${L('צד ב׳')}: ${noteB}` : '';
+    const note = `<div class="ccNote">${copyData ? `<span class="cpy" role="button" tabindex="0" title="${L('העתק את המחרוזת המומרת ללוח')}" data-copy="${esc(copyData)}">⧉</span>` : ''}<span class="noteTxt">${noteTxt}</span></div>`;
+    return `<div class="cGrid4"${idAttr}>${cellsHtml}</div>${note}`;
+  }).join('');
+  const miluiA = mobileChip('A', 'milui', 'מילוי', res.A.milui, res), miluiB = mobileChip('B', 'milui', 'מילוי', res.B.milui, res);
+  const mBarA = miluiA.barVar.match(/--barA:([^;]+)/), mBarB = miluiB.barVar.match(/--barB:([^;]+)/);
+  const miluiCell = `<div class="ccell" style="--barA:${mBarA ? mBarA[1] : 'var(--acA)'};--barB:${mBarB ? mBarB[1] : 'var(--acB)'}"><div class="ccMn">${L('מילוי')}</div><div class="ccVals">${miluiA.html}${miluiB.html}</div></div>`;
+  const noteMA = hasTxtA ? (res.A.milui.transformedText || '') : '', noteMB = hasTxtB ? (res.B.milui.transformedText || '') : '';
+  const miluiNoteTxt = (noteMA || noteMB) ? `<b>${L('צד א׳')}</b> ${esc(noteMA || '—')} &nbsp;·&nbsp; <b>${L('צד ב׳')}</b> ${esc(noteMB || '—')}` : '&nbsp;';
+  const miluiCopy = (noteMA || noteMB) ? `${L('צד א׳')}: ${noteMA}\n${L('צד ב׳')}: ${noteMB}` : '';
+  const miluiNote = `<div class="ccNote">${miluiCopy ? `<span class="cpy" role="button" tabindex="0" title="${L('העתק את המחרוזת המומרת ללוח')}" data-copy="${esc(miluiCopy)}">⧉</span>` : ''}<span class="noteTxt">${miluiNoteTxt}</span></div>`;
+  $('#mgr').innerHTML = famHtml + `<div class="cGridSingle cGrid4">${miluiCell}</div>${miluiNote}`;
+}
+// event-delegation יחיד על #mgr (נרשם פעם אחת ב-setupMobileUX) — מטפל בכל הקליקים האפשריים בתוך הלוח
+// הממוזג: עיגול-התאמה (ccBdg2, ממקד כמו .bdg הרגיל), עיגול-תוצאות (ccHits, ממיין כמו .bdgH הרגיל), כפתור-
+// העתקה (cpy, כמו בלוחות הרגילים), ולחיצה על ה"צ'יפ" עצמו (מדליק/מכבה את השיטה הזו ל*צד הזה בלבד* — בדיוק
+// כמו לחיצה על gr4cell בלוח הרגיל, רק שכאן שני הצדדים גלויים זה-לצד-זה באותו תא).
+function bindMobileGrid() {
+  const mgr = $('#mgr'); if (!mgr) return;
+  mgr.addEventListener('click', e => {
+    const mb = e.target.closest('.ccBdg2');
+    if (mb) { FOCUS = FOCUS === +mb.dataset.match ? null : +mb.dataset.match; renderCenter(); return; }
+    const hb = e.target.closest('.ccHits[data-m]');
+    if (hb) { hitsSortToggle(hb.dataset.k, hb.dataset.m); return; }
+    const cp = e.target.closest('.cpy');
+    if (cp) { copyText(cp.dataset.copy); cp.textContent = '✓'; setTimeout(() => { cp.textContent = '⧉'; }, 900); return; }
+    const chip = e.target.closest('.ccChip[data-m]');
+    if (chip) { const k = chip.dataset.k, m = chip.dataset.m, st = S[k]; st.ms.has(m) ? st.ms.delete(m) : st.ms.add(m); run(k); renderCenter(); }
+  });
+}
+
+/* ============ UX נייד (v3.0.0): מעטפת-הטלפון (#mShell) ============
+   מזהים "טלפון" לפי בדיוק אותו matchMedia שה-CSS משתמש בו (styles.css) — חייבים זהות מושלמת בין השניים,
+   אחרת ה-JS עלול "להזיז" אלמנטים לתוך מעטפת שה-CSS בכלל לא מציג (או להפך). ברגע שה-matchMedia משתנה
+   (סיבוב מכשיר/שינוי-גודל חלון, כולל במעבר בין טלפון לטאבלט כש-DevTools-emulation משתנה) — מעבירים
+   (לא משכפלים!) את פנלי-התוצאות/הקלט האמיתיים פנימה/החוצה, כך שאין אף פעם שני מופעים חיים של אותו
+   #rlA/#tA וכו' — תמיד בדיוק אחד, רק במקום אחר ב-DOM. */
+const MQ_PHONE = window.matchMedia('(pointer:coarse) and (max-width:500px), (pointer:coarse) and (orientation:landscape) and (max-height:500px)');
+let mobileActive = false;
+function enterMobileLayout() {
+  if (mobileActive) return; mobileActive = true;
+  KS.forEach(k => {
+    const resEl = document.querySelector(`.side[data-k="${k}"] .pn.res`);
+    const inpEl = document.querySelector(`.side[data-k="${k}"] .pn.ctr .inp`);
+    if (resEl) { resEl.dataset.k = k; $('#mRes' + k).appendChild(resEl); }
+    if (inpEl) { $('#mInpHost' + k).appendChild(inpEl); }
+  });
+  renderCenter();
+  // המסלול-המותאם (.fsTrack) נמדד לפי clientHeight בפועל — אפס כל עוד הפנל היה בתוך #ws המוסתר (display:none),
+  // לכן חייבים לחשב-מחדש אחרי שהפנל קיבל לראשונה גודל אמיתי (ברגע שעבר ל-#mShell הגלוי).
+  setTimeout(() => KS.forEach(fsLayout), 0);
+}
+function exitMobileLayout() {
+  if (!mobileActive) return; mobileActive = false;
+  KS.forEach(k => {
+    const sideEl = document.querySelector(`.side[data-k="${k}"]`);
+    const ctrEl = sideEl && sideEl.querySelector('.pn.ctr');
+    const resEl = $('#mRes' + k).querySelector('.pn.res');
+    const inpEl = $('#mInpHost' + k).querySelector('.inp');
+    if (resEl && sideEl) { delete resEl.dataset.k; sideEl.insertBefore(resEl, sideEl.firstChild); }
+    if (inpEl && ctrEl) { const sumEl = ctrEl.querySelector('.sum'); ctrEl.insertBefore(inpEl, sumEl); }
+  });
+  setTimeout(() => KS.forEach(fsLayout), 0);
+}
+function applyMobileLayout() { MQ_PHONE.matches ? enterMobileLayout() : exitMobileLayout(); }
+// טקסט תלוי-שפה של מעטפת-הנייד — מופרד מ-setupMobileUX כדי ש-applyLang יוכל לקרוא לו שוב (בלי לרשום
+// מחדש את כל המאזינים) כש-המשתמש מחליף שפה תוך-כדי שימוש בטלפון.
+function applyMobileLangStatic() {
+  const en = LANG === 'en';
+  $('#mSummaryBar').setAttribute('aria-label', L('בחירת צד לתצוגת תוצאות'));
+  $('#mPanelTitle').textContent = L('לוח חישוב משולב — לחצו על שיטה כדי להפעיל/לכבות אותה');
+  ['A', 'B'].forEach(k => {
+    const short = en ? k : (k === 'A' ? 'א׳' : 'ב׳');
+    $('#sumTag' + k).textContent = short; $('#mCTag' + k).textContent = short;
+  });
+  $('#mLegA').textContent = en ? 'A' : 'א׳'; $('#mLegB').textContent = en ? 'B' : 'ב׳';
+  $('#mKebab').setAttribute('title', L('תפריט')); $('#mKebab').setAttribute('aria-label', L('תפריט'));
+  $('#mmThemeTxt').textContent = ($('#themeChk').checked) ? L('מראה גוויל') : L('מראה לילה');
+  $('#mmLangTxt').textContent = en ? 'עברית' : 'English';
+  $('#mmTourTxt').textContent = L('סיור מודרך');
+  $('#mmMethodsTxt').textContent = L('שיטות גימטריה');
+  $('#mmAboutTxt').textContent = L('אודות');
+  $('#mmContactTxt').textContent = L('צור קשר');
+  $('#mMenuVer').textContent = 'v' + VERSION;
+}
+// mSide: הצד המוצג כרגע בפנל-התוצאות של הנייד — נשלט ע״י #mSummaryBar (למעלה, מתחת לכותרת; גם בורר-צד
+// וגם מציג קטע-מהקלט+ערך-גימטרי של כל צד — ראו renderCenter/index.html).
+let mSide = 'A';
+function setupMobileUX() {
+  bindMobileGrid();
+  applyMobileLangStatic();
+  const segs = () => document.querySelectorAll('.mSumSeg');
+  const renderMSide = () => {
+    segs().forEach(s => s.classList.toggle('active', s.dataset.side === mSide));
+    document.querySelectorAll('.mResPane').forEach(p => p.classList.toggle('on', p.dataset.side === mSide));
+  };
+  segs().forEach(s => { s.onclick = () => { mSide = s.dataset.side; renderMSide(); }; });
+  renderMSide();
+  // גיליון תחתון: פתיחה/סגירה רק ע״י לחיצה על הידית (כפתור "ערוך קלט" נפרד הוסר ב-v3.2.0) או ע״י הקלקה
+  // על המסך-הכהה (scrim) כש-פתוח. ראו styles.css להסבר על מנגנון-הכיווץ (max-height על #mSheetBody בלבד).
+  const sheet = $('#mSheet'), scrim = $('#mScrim');
+  const setSheetOpen = open => { sheet.classList.toggle('collapsed', !open); scrim.classList.toggle('show', open); };
+  $('#mSheetHandle').onclick = () => setSheetOpen(sheet.classList.contains('collapsed'));
+  scrim.onclick = () => setSheetOpen(false);
+  // v3.4.0: פנל-ההתאמות פתוח כברירת-מחדל בעת טעינת האפליקציה (לא מכווץ) — ב-HTML הסטטי הוא עדיין
+  // מתחיל עם class="collapsed" (כדי שלא "יהבהב" פתוח רגע לפני ש-JS מתחבר), ו-setupMobileUX פותח אותו
+  // מיידית כאן ברגע שה-handlers כבר מוכנים.
+  setSheetOpen(true);
+  // תפריט ⋮: לא כפילות-לוגיקה — כל פריט רק "מקליק" על הכפתור המקורי המתאים (שעדיין קיים ב-DOM, רק מוסתר
+  // ויזואלית בטלפון), כך שכל הלוגיקה (דיאלוגים, מעבר שפה/מראה) ממשיכה לרוץ ממקום אחד יחיד.
+  const menu = $('#mMenuPanel'), menuScrim = $('#mMenuScrim');
+  const setMenuOpen = open => { menu.classList.toggle('show', open); menu.setAttribute('aria-hidden', String(!open)); menuScrim.classList.toggle('show', open); };
+  $('#mKebab').onclick = () => setMenuOpen(!menu.classList.contains('show'));
+  menuScrim.onclick = () => setMenuOpen(false);
+  const proxy = (menuId, realId) => { $(menuId).onclick = () => { setMenuOpen(false); $(realId).click(); }; };
+  // מראה-כהה: הלייבל בתפריט ("מראה לילה"/"מראה גוויל") תלוי-מצב, ולא מתעדכן לבד ע״י ה-onchange של
+  // #themeChk (שאינו יודע כלל שהתפריט קיים) — לכן מרעננים אותו ידנית מיד אחרי ההקלקה.
+  $('#mmTheme').onclick = () => { setMenuOpen(false); $('#themeChk').click(); applyMobileLangStatic(); };
+  proxy('#mmLang', '#langSw'); proxy('#mmTour', '#startTour');
+  proxy('#mmMethods', '#openMethods'); proxy('#mmAbout', '#openAbout'); proxy('#mmContact', '#openContact');
+  MQ_PHONE.addEventListener('change', applyMobileLayout);
+  window.addEventListener('orientationchange', () => setTimeout(applyMobileLayout, 60));
+  window.addEventListener('resize', () => { if (mobileActive) KS.forEach(fsLayout); });
+  applyMobileLayout();
 }
 
 /* ---------- חיפוש ---------- */
@@ -706,11 +925,11 @@ const ref = u => {
 // וערכי מילת-החיפוש לפי כל שיטת-מילה. משותף בין run() (חיפוש מלא) ל-topUpHitsSort() (חיפוש-השלמה ממוקד),
 // כדי לא לשכפל את הלוגיקה (כולל חוק אי-ההתאמה ב-targetsFor).
 function buildSearchContext(st) {
-  const q = st.text, num = parseInt(st.num, 10);
+  const q = st.text, num = numVal(st.num);
   const wms = E.METHODS.map(m => m.id).filter(m => st.ms.has(m)); // שיטות של מילת החיפוש
   const sms = E.METHODS.map(m => m.id).filter(m => st.sms.has(m)); // שיטות לחיפוש בפסוקים
   const limit = getLimit();
-  const filt = { books: st.sel.size === ALL.size ? null : st.sel, ranges: st.ranges.size ? st.ranges : null, fullUnit: st.fullUnit };
+  const filt = { books: st.sel.size === ALL.size ? null : st.sel, ranges: st.ranges.size ? st.ranges : null, fullUnit: st.fullUnit, singleWord: st.singleWord };
   // ערכי מילת החיפוש לפי כל שיטת-מילה פעילה (מחושב פעם אחת; המספר, אם הוזן, לא תלוי בשיטת-מילה כלשהי)
   const wmVal = new Map();
   if (!num) for (const wm of wms) { const v = E.calculateGematria(q, wm).value; if (v) wmVal.set(wm, v); }
@@ -804,7 +1023,7 @@ function runNotarikon(k) {
     updateCenterCounts(k);
   };
   if (!IDX) return; // ייקרא שוב דרך KS.forEach(run) ברגע שהאינדקס מוכן
-  const num = parseInt(st.num, 10);
+  const num = numVal(st.num);
   const target = num ? num : E.calculateGematria(st.text, 'regular').value;
   const books = new Set(); NOTARIKON_BOOKS.forEach(b => { if (st.sel.has(b)) books.add(b); });
   if (!target || (!num && !E.normalizeText(st.text).words.length) || !books.size) { finish({}, [], 0); return; }
@@ -1104,27 +1323,44 @@ function fsInit(k) {
   const box = $('#rl' + k), track = $('#fsTrack' + k), thumb = $('#fsThumb' + k), bubble = $('#fsBubble' + k);
   if (!track) return;
   const updateBubble = () => { const [l1, l2] = fsBubbleLines(k, box.scrollTop); bubble.innerHTML = `<div class="fsBubbleL1">${esc(l1)}</div><div class="fsBubbleL2">${esc(l2)}</div>`; };
-  let dragging = false, startY = 0, startTop = 0;
+  // הגרירה *לא* מבצעת רינדור-כבד (renderWindow/maybeShiftWindow) ישירות על כל pointermove — יש כבר
+  // מאזין-scroll קבוע על box (ראו bind(k) למטה) שעושה בדיוק את זה בכל שינוי-scrollTop, כך שקריאה כפולה
+  // כאן רק מכפילה עבודה-כבדה (כולל renderWindow עם innerHTML+reflow) על כל אירוע-מגע, מה שבפועל היה שורש
+  // תחושת ה"גלילה לא חלקה": pointermove יכול לירות בתדירות גבוהה הרבה יותר מ-60Hz במגע אמיתי, ובלי
+  // throttling זה מציף את ה-thread הראשי. התיקון: ממזגים כל אירועי pointermove שמגיעים בין פריים לפריים
+  // לעדכון יחיד דרך requestAnimationFrame (תואם לקצב-הרענון האמיתי של המסך), ומשאירים ל-scroll-listener
+  // (שגם הוא טבעית מתואמת ל-vsync ע״י הדפדפן) את כל העבודה-הכבדה.
+  let dragging = false, startY = 0, startTop = 0, raf = 0, pendingY = null;
+  const applyPending = () => {
+    raf = 0;
+    if (pendingY == null) return;
+    const trackH = track.clientHeight, th = thumb.offsetHeight, trackRange = trackH - th;
+    const maxScroll = box.scrollHeight - box.clientHeight;
+    const deltaScroll = trackRange > 0 ? ((pendingY - startY) / trackRange) * maxScroll : 0;
+    box.scrollTop = Math.max(0, Math.min(maxScroll, startTop + deltaScroll));
+    updateBubble();
+  };
   thumb.addEventListener('pointerdown', e => {
     dragging = true; thumb.classList.add('dragging'); thumb.setPointerCapture(e.pointerId);
     startY = e.clientY; startTop = box.scrollTop; updateBubble(); e.preventDefault();
   });
   window.addEventListener('pointermove', e => {
     if (!dragging) return;
-    const trackH = track.clientHeight, th = thumb.offsetHeight, trackRange = trackH - th;
-    const maxScroll = box.scrollHeight - box.clientHeight;
-    const deltaScroll = trackRange > 0 ? ((e.clientY - startY) / trackRange) * maxScroll : 0;
-    box.scrollTop = Math.max(0, Math.min(maxScroll, startTop + deltaScroll));
-    maybeShiftWindow(k); fsLayout(k); updateBubble();
+    pendingY = e.clientY;
+    if (!raf) raf = requestAnimationFrame(applyPending);
   });
-  window.addEventListener('pointerup', e => { if (!dragging) return; dragging = false; thumb.classList.remove('dragging'); try { thumb.releasePointerCapture(e.pointerId); } catch (_) {} });
+  window.addEventListener('pointerup', e => {
+    if (!dragging) return;
+    dragging = false; thumb.classList.remove('dragging'); pendingY = null;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    try { thumb.releasePointerCapture(e.pointerId); } catch (_) {}
+  });
   thumb.addEventListener('pointerenter', () => { if (!dragging) updateBubble(); });
   track.addEventListener('pointerdown', e => {
     if (e.target === thumb || thumb.contains(e.target)) return;
     const r = track.getBoundingClientRect(), th = thumb.offsetHeight, trackRange = track.clientHeight - th;
     const yRatio = Math.max(0, Math.min(1, (e.clientY - r.top - th / 2) / Math.max(1, trackRange)));
     box.scrollTop = yRatio * (box.scrollHeight - box.clientHeight);
-    maybeShiftWindow(k); fsLayout(k);
   });
   new ResizeObserver(() => fsLayout(k)).observe(box);
 }
@@ -1294,10 +1530,17 @@ function applyLang() {
   applyLangStatic();
   // בונים מחדש את שני הצדדים (מבנה+טקסט בשפה הנכונה) ומשחזרים את מצב-ההגדרה הקיים לתוכם — אותו דפוס
   // בדיוק כמו seedDemoQuery/refreshSideDom בסיור המודרך (ראו שם), רק בלי לשנות את ה-state עצמו.
+  // אם UX-הנייד פעיל כרגע, .pn.res/.inp האמיתיים "חיים" כרגע בתוך #mShell, לא בתוך #ws — innerHTML על
+  // #ws לא היה נוגע בהם, אבל כן היה יוצר עותק *שני* חדש (עם אותם ids!) בתוך #ws. לכן קודם מחזירים אותם
+  // למקומם המקורי (exitMobileLayout, בטוח-לקרוא-תמיד — no-op אם ממילא לא במצב-נייד), ואז אחרי הבנייה-
+  // מחדש וה-bind, מכניסים-אותם-בחזרה (applyMobileLayout — ייכנס-מחדש רק אם עדיין בטלפון בפועל).
+  const wasMobile = mobileActive;
+  exitMobileLayout();
   $('#ws').innerHTML = KS.map(sideHtml).join('');
   KS.forEach(k => { $('#ft' + k).onclick = () => toggleFilt(k); });
   KS.forEach(bind);
   KS.forEach(refreshSideDom);
+  if (wasMobile) { applyMobileLangStatic(); applyMobileLayout(); }
   renderCenter();
   renderDocs();
   if ($('#dlgAbout') && $('#dlgAbout').open) renderAbout();
@@ -1330,13 +1573,13 @@ applyLangStatic();
    ראו onDestroyed בהגדרות הסיור למטה. */
 // שדות-ה"הגדרה" של צד (st) שהסיור שומר/משחזר — לא כולל שדות-תוצאה-מחושבת (all/info/cur/notCounts/notGen/
 // winStart/winCount/avgRowH/groups/groupsTotal), שמתמלאים-מחדש נכון מעצמם ע״י run(k) כש-משחזרים את שדות-ההגדרה.
-const SETTINGS_FIELDS = ['text', 'num', 'ms', 'sms', 'sel', 'open', 'rngOpen', 'smOpen', 'ranges', 'tf', 'fuzzy', 'hitsSort', 'notMode', 'fullUnit'];
+const SETTINGS_FIELDS = ['text', 'num', 'ms', 'sms', 'sel', 'open', 'rngOpen', 'smOpen', 'ranges', 'tf', 'fuzzy', 'hitsSort', 'notMode', 'fullUnit', 'singleWord'];
 function snapshotSettings(st) { const o = {}; SETTINGS_FIELDS.forEach(f => { o[f] = structuredClone(st[f]); }); return o; }
 function applySettings(st, snap) { SETTINGS_FIELDS.forEach(f => { st[f] = snap[f]; }); }
 // מרענן את כל ה-DOM שתלוי בשדות-ההגדרה (לא רק מריץ run()) — נקרא גם אחרי זריעת-הדוגמה וגם אחרי השחזור
 function refreshSideDom(k) {
   const st = S[k];
-  $('#t' + k).value = st.text; $('#nm' + k).value = st.num; $('#tf' + k).value = st.tf; $('#tfz' + k).checked = st.fuzzy; $('#fu' + k).checked = st.fullUnit;
+  $('#t' + k).value = st.text; $('#nm' + k).value = st.num; $('#tf' + k).value = st.tf; $('#tfz' + k).checked = st.fuzzy; $('#fu' + k).checked = st.fullUnit; $('#sw' + k).checked = st.singleWord;
   drawTree(k); drawSearchMethods(k); updateTfBar(k); run(k);
 }
 function seedDemoQuery() {
@@ -1348,7 +1591,7 @@ function seedDemoQuery() {
       text: word, num: '', ms: new Set(['regular']), sms: new Set(['regular']),
       sel: new Set([0]), // רק בראשית — כדי שהחיפוש-לדוגמה יהיה מהיר וממוקד, לא "יחפור" בכל הקורפוס
       open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(),
-      tf: '', fuzzy: true, hitsSort: null, notMode: 'lit', fullUnit: false, // שיטה אחת בלבד (רגילה) — התאמה נקייה אחת, לא "רעש" מכל 13 השיטות יחד
+      tf: '', fuzzy: true, hitsSort: null, notMode: 'lit', fullUnit: false, singleWord: false, // שיטה אחת בלבד (רגילה) — התאמה נקייה אחת, לא "רעש" מכל 13 השיטות יחד
     });
     refreshSideDom(k);
   };
@@ -1360,6 +1603,42 @@ function restoreDemoQuery(snap) {
   if (!snap) return;
   KS.forEach(k => { applySettings(S[k], snap[k]); refreshSideDom(k); });
   renderCenter();
+}
+// גרסה נפרדת של הסיור לפריסת-הנייד (v3.4.0): הסיור הדסקטופי מצביע על אלמנטים כמו #grA/.themeSw/#startTour
+// שעל הנייד הם בדיוק אלה ש-*נשארים מוסתרים* (display:none/0×0) אחרי enterMobileLayout — כי רק .inp
+// ו-.pn.res עצמם עוברים למעטפת-הנייד, לא כל #grA/.tools (ראו enterMobileLayout למעלה). עם
+// skipMissingElement:true זה לא "קורס", אבל בפועל מדלג בשקט על רוב הצעדים האלה, ומשאיר סיור חסר שלא
+// מסביר כלום על ה-UI הספציפי-לנייד (מתג א׳/ב׳, הגיליון התחתון, התפריט ⋮, לוח-החישוב הממוזג) — בדיוק מה
+// שדווח כ"לא עובד טוב". startTour() בוחר בין שתי הפונקציות לפי mobileActive.
+function buildMobileTourSteps() {
+  if (LANG === 'en') return [
+    { popover: { title: 'Welcome to Gimatrivon', description: 'A short tour (skip/exit any time) — two "sides" (A/B) you can compare side by side. Let\'s start with Side A.' } },
+    { element: '#tA', popover: { title: 'Typing an expression', description: 'Type a word or expression here — the gematria calculation and the search for matches update instantly as you type.', side: 'bottom', align: 'start' } },
+    { element: '.mSumSeg', popover: { title: 'Switching between sides', description: 'These two buttons switch which side\'s results are shown below — Side A and Side B have independent input and results.', side: 'bottom', align: 'start' } },
+    { element: '#mSheetHandle', popover: { title: 'The input & calculation panel', description: 'Drag or tap this handle to show or collapse the panel with both inputs and the combined calculation grid, without leaving the results view.', side: 'top', align: 'center' } },
+    { element: '#mgrFirstFam', popover: { title: 'Gematria methods', description: 'Each box here is a calculation method (regular, kollel, milui and more) for both sides at once — scroll down for more methods. Tapping a value turns that method on/off for the search.', side: 'top', align: 'center' } },
+    { element: '.resList', popover: { title: 'Search results', description: 'Matches found in the sources for the value you typed appear here, grouped by method. Tapping a result marks/highlights it. To copy a whole verse, tap ⧉.', side: 'top', align: 'start' } },
+    { element: '.resList .rs', popover: { title: 'What a single result shows', description: 'Above each verse: an exact reference, a category tag, and two gematria tags joined by ↔ (the verse\'s own method, then the search-word method that matched). The matching words are highlighted below.', side: 'top', align: 'start' } },
+    { element: '#ftA', popover: { title: 'Choosing sources and range', description: 'Tapping here opens a panel to choose which books (and chapter/parsha ranges) to search, and which gematria methods are included.', side: 'bottom', align: 'end' } },
+    { element: '.ccHits', popover: { title: 'Info circle: matches in sources', description: 'This number shows how many matches were actually found in the sources for this method and side. Tapping it sorts results so matches for this method appear first.', side: 'top', align: 'center' } },
+    { element: '.ccBdg2', popover: { title: 'Automatic comparison between both sides', description: 'When both sides share an identical value in an active method, a small colored badge appears — like here: "ahava" (A) and "echad" (B) both equal 13. Tapping it focuses that match on both sides.', side: 'top', align: 'center' } },
+    { element: '.tfInp', popover: { title: 'Filtering results', description: 'When there are many results, filter the displayed list by free text.', side: 'bottom', align: 'start' } },
+    { element: '#mKebab', popover: { title: "That's it, you're ready!", description: 'This menu holds appearance (light/dark), language, "About", contact, and this tour again any time.', side: 'bottom', align: 'end' } },
+  ];
+  return [
+    { popover: { title: 'ברוכים הבאים לגימטריבון', description: 'סיור קצר (אפשר לדלג/לצאת בכל רגע) — שני "צדדים" (א׳/ב׳) שאפשר להשוות ביניהם. נתחיל מצד א׳.' } },
+    { element: '#tA', popover: { title: 'הקלדת ביטוי', description: 'מקלידים כאן מילה או ביטוי — החישוב הגימטרי וחיפוש ההתאמות מתעדכנים מיד, תוך כדי ההקלדה.', side: 'bottom', align: 'start' } },
+    { element: '.mSumSeg', popover: { title: 'מעבר בין הצדדים', description: 'שני הכפתורים האלה מחליפים איזה צד מוצג למטה — לצד א׳ ולצד ב׳ יש קלט ותוצאות עצמאיים משלהם.', side: 'bottom', align: 'start' } },
+    { element: '#mSheetHandle', popover: { title: 'פנל הקלט והחישוב', description: 'גוררים או לוחצים על הידית הזו כדי להציג או לכווץ את הפנל עם הקלט של שני הצדדים ולוח-החישוב המשולב, בלי לצאת מתצוגת התוצאות.', side: 'top', align: 'center' } },
+    { element: '#mgrFirstFam', popover: { title: 'שיטות גימטריה', description: 'כל תא כאן הוא שיטת-חישוב (רגילה, קטן, מילוי ועוד) לשני הצדדים יחד — גוללים למטה לעוד שיטות. לחיצה על ערך מדליקה/מכבה את השיטה הזו לחיפוש.', side: 'top', align: 'center' } },
+    { element: '.resList', popover: { title: 'תוצאות החיפוש', description: 'כאן מופיעות ההתאמות שנמצאו במקורות, מקובצות לפי שיטה. לחיצה על תוצאה מסמנת/מדגישה אותה. העתקת פסוק שלם: לחיצה על ⧉.', side: 'top', align: 'start' } },
+    { element: '.resList .rs', popover: { title: 'מה רואים בתוצאה בודדת', description: 'מעל כל פסוק: ייחוס מדויק, תגית קטגוריה, ושתי תגיות-גימטריה מחוברות בחץ ↔ (שיטת הפסוק עצמו, ואז שיטת מילת-החיפוש שבה נמצאה ההתאמה). המילים שתאמו מודגשות למטה.', side: 'top', align: 'start' } },
+    { element: '#ftA', popover: { title: 'בחירת מקורות וטווח', description: 'לחיצה כאן פותחת פנל שבו בוחרים באילו ספרים (ואילו טווחים) לחפש, ואילו שיטות-גימטריה ייכללו.', side: 'bottom', align: 'end' } },
+    { element: '.ccHits', popover: { title: 'עיגול-מידע: תוצאות במקורות', description: 'המספר הזה מציין כמה התאמות נמצאו בפועל במקורות לשיטה ולצד הזה. לחיצה עליו ממיינת את התוצאות כך שההתאמות של השיטה הזו יוצגו ראשונות.', side: 'top', align: 'center' } },
+    { element: '.ccBdg2', popover: { title: 'השוואה אוטומטית בין שני הצדדים', description: 'כש-לשני הצדדים יש ערך זהה בשיטה פעילה, מופיע תג-צבע קטן — בדיוק כמו כאן: "אהבה" (א׳) ו"אחד" (ב׳) שוות שתיהן 13. לחיצה עליו ממקדת את ההתאמה הזו בשני הצדדים.', side: 'top', align: 'center' } },
+    { element: '.tfInp', popover: { title: 'סינון תוצאות', description: 'כש-יש הרבה תוצאות, אפשר לסנן את הרשימה המוצגת לפי טקסט חופשי.', side: 'bottom', align: 'start' } },
+    { element: '#mKebab', popover: { title: 'זהו, אפשר להתחיל!', description: 'בתפריט הזה נמצאים גם מראה (בהיר/כהה), שפה, "אודות", יצירת-קשר, ואפשר להפעיל את הסיור הזה שוב בכל רגע.', side: 'bottom', align: 'end' } },
+  ];
 }
 function buildTourSteps() {
   if (LANG === 'en') return [
@@ -1392,6 +1671,15 @@ function buildTourSteps() {
 function startTour() {
   if (!window.driverjs) return;
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  // בנייד: לפני שמתחילים, מוודאים שצד א׳ מוצג (ה-switcher) ושהגיליון התחתון פתוח (לא מכווץ) — אחרת
+  // צעדי-הסיור ש-מצביעים על #mgr/.resList-של-צד-א׳ יפנו לאלמנטים מוסתרים/בגובה-אפס. משתמשים ב-click
+  // אמיתי (לא במניפולציית-class ישירה) כדי להפעיל את אותה לוגיקה בדיוק שהמשתמש היה מפעיל בעצמו.
+  if (mobileActive) {
+    const segA = document.querySelector('.mSumSeg[data-side="A"]');
+    if (segA && !segA.classList.contains('active')) segA.click();
+    const sheet = $('#mSheet');
+    if (sheet && sheet.classList.contains('collapsed')) $('#mSheetHandle').click();
+  }
   const demoSnap = seedDemoQuery();
   let restored = false;
   const restoreOnce = () => { if (restored) return; restored = true; restoreDemoQuery(demoSnap); };
@@ -1410,7 +1698,22 @@ function startTour() {
     smoothScroll: true,
     popoverClass: 'gtTourPopover',
     skipMissingElement: true, // אם היעד של צעד מסוים לא קיים (למשל: למשתמש יש חיפוש-משלו בלי התאמה בין הצדדים) — מדלגים עליו בשקט, בלי פופ-אובר "תועה" במרכז המסך
-    steps: buildTourSteps(),
+    steps: mobileActive ? buildMobileTourSteps() : buildTourSteps(), // v3.4.0: סט-צעדים נפרד לנייד (ראו buildMobileTourSteps)
+    // v3.4.1: בנייד, יעדי-הצעדים מתחלקים בין תוכן *בתוך* הגיליון-התחתון (#tA/#mgrFirstFam/.ccHits/.ccBdg2
+    // — כולם חיים בתוך #mSheet) לבין תוכן *מאחורי* הגיליון (.resList/#ftA/.tfInp — חיים ב-.mResPane, שה-
+    // גיליון-הפתוח מכסה אותו לגמרי). בלי הלוגיקה הזו, אחרי הצעד "שיטות גימטריה" (שפותח את הגיליון) הסיור
+    // ממשיך ישר ל"תוצאות החיפוש" בלי להנמיך את הגיליון — כך שפנל-התוצאות שהצעד אמור להסביר עליו נשאר מוסתר
+    // מתחת לגיליון הפתוח (באג שדווח: "כשהסיור מסביר על פנל התוצאות הוא שוכח להנמיך את פנל השיטות"). הגיליון
+    // גם נפתח-מחדש כש-חוזרים לצעדי ה-#mgr (.ccHits/.ccBdg2 מגיעים *אחרי* צעדי-התוצאות ברשימה) וגם כש-לוחצים
+    // "הקודם" (onHighlightStarted נקרא תמיד, בשני הכיוונים — לא רק ב"הבא").
+    onHighlightStarted: !mobileActive ? undefined : (el, step) => {
+      const sheet = $('#mSheet'), scrim = $('#mScrim'); if (!sheet || !scrim) return;
+      const sel = step && step.element;
+      const needsOpen = ['#tA', '#mgrFirstFam', '.ccHits', '.ccBdg2'].includes(sel);
+      const needsClosed = ['.resList', '.resList .rs', '#ftA', '.tfInp'].includes(sel);
+      if (needsOpen) { sheet.classList.remove('collapsed'); scrim.classList.add('show'); }
+      else if (needsClosed) { sheet.classList.add('collapsed'); scrim.classList.remove('show'); }
+    },
     onDestroyed: restoreOnce, // סיום/X/Esc/קליק-רקע — כולם מגיעים לכאן; משחזרים את מצב שני הצדדים שהיה לפני הסיור
   });
   tour.drive();
@@ -1429,6 +1732,7 @@ $('#startTour').onclick = () => startTour();
 
 
 KS.forEach(bind); renderDocs(); renderCenter();
+setupMobileUX();
 setTimeout(() => {
   IDX = E.buildIndex(B.units.map(u => ({ c: CK[u[0]], b: u[1], ch: u[2], n: u[3], t: u[4], k: u[5], s: u[6] })));
   $('#status').textContent = '';

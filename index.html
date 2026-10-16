@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body data-view="A">
+<div id="stage">
 <header class="top">
   <div class="brand"><h1>גימטריבון</h1><span class="ver" id="ver" title="מספר גרסה"></span><span class="tagline">תנ״ך · משנה · רש״י · תרגומים</span></div>
   <div class="seg sideSw" id="sideSw" role="group" aria-label="בחירת צד"><button data-v="A" class="on">צד א׳</button><button data-v="B">צד ב׳</button></div>
@@ -24,8 +25,59 @@
     <button id="openContact" title="יצירת קשר עם המפתח">✉ צור קשר</button>
     <span id="status" class="status" role="status">טוען קורפוס…</span>
   </div>
+  <button id="mKebab" class="mKebabBtn" type="button" title="תפריט" aria-label="תפריט">⋮</button>
 </header>
+<!-- שורת-סיכום/מעבר-צדדים של הנייד: שורה שנייה ברוחב מלא מתחת לכותרת (לא דחוסה לתוך שורת-הכותרת עצמה —
+     התברר שאין שם מספיק מקום להציג גם תג-צד וגם קטע-מהקלט וגם ערך-גימטרי) — מחליפה גם את הפיל הקודם
+     (#mTitleSw) וגם את שבבי-הסיכום שהיו בגיליון התחתון (.mPeekChip/#mEditBtn, שהוסרו): שני כפתורים, אחד
+     לכל צד, שגם משמשים למעבר בין תצוגות-התוצאות וגם מציגים קטע-מהקלט+הערך-הגימטרי של אותו צד. -->
+<div class="mSummaryBar" id="mSummaryBar" role="group" aria-label="בחירת צד לתצוגת תוצאות">
+  <button class="mSumSeg active" data-side="A" type="button"><span class="sTag" id="sumTagA">א׳</span><span class="sTxt" id="sumTxtA"></span><span class="sNum" id="sumNumA"></span></button>
+  <button class="mSumSeg" data-side="B" type="button"><span class="sTag" id="sumTagB">ב׳</span><span class="sTxt" id="sumTxtB"></span><span class="sNum" id="sumNumB"></span></button>
+</div>
+<div class="mMenuScrim" id="mMenuScrim"></div>
+<div class="mMenuPanel" id="mMenuPanel" role="menu" aria-hidden="true">
+  <button class="mMenuItem" id="mmTheme" type="button" role="menuitemcheckbox"><span class="ic" aria-hidden="true">🌓</span><span class="t" id="mmThemeTxt"></span></button>
+  <button class="mMenuItem" id="mmLang" type="button" role="menuitem"><span class="ic" aria-hidden="true">EN</span><span class="t" id="mmLangTxt"></span></button>
+  <button class="mMenuItem" id="mmTour" type="button" role="menuitem"><span class="ic" aria-hidden="true">?</span><span class="t" id="mmTourTxt"></span></button>
+  <button class="mMenuItem" id="mmMethods" type="button" role="menuitem"><span class="ic" aria-hidden="true">∑</span><span class="t" id="mmMethodsTxt"></span></button>
+  <button class="mMenuItem" id="mmAbout" type="button" role="menuitem"><span class="ic" aria-hidden="true">ℹ</span><span class="t" id="mmAboutTxt"></span></button>
+  <button class="mMenuItem" id="mmContact" type="button" role="menuitem"><span class="ic" aria-hidden="true">✉</span><span class="t" id="mmContactTxt"></span></button>
+  <div class="mMenuVer" id="mMenuVer"></div>
+</div>
 <main class="ws" id="ws" aria-label="סביבת עבודה"></main>
+<!-- ============ מעטפת טלפון נייד (mobile shell) ============
+     פעילה רק ב-media query ייעודי (styles.css) במכשיר-מגע קטן (pointer:coarse + ממד-קצר≤500px, לאותם
+     טלפונים שקודם "ננעלו" לרוחב) — במצב הזה #ws מוסתר (display:none) והמעטפת הזו מוצגת במקומו, בתוך
+     אותו #stage (flex:1). ב-app.js (setupMobileUX): פנלי-התוצאות האמיתיים (.pn.res, עם כל ה-id-ים/
+     הלוגיקה/הגלילה-הוירטואלית שלהם) והקלט (.inp, עם textarea אמיתי) מ-side א׳/ב׳ *עוברים* (appendChild —
+     לא שכפול!) לתוך המעטפת הזו כש-ה-media query מתחיל להתאים, וחוזרים למקומם המקורי אם חוזרים לרוחב/
+     טאבלט — כך שאין שום דאטה/state כפול, רק סידור-מחדש של אותם אלמנטים. לוח-החישוב (#mgr) הוא היחיד
+     שמרונדר-מחדש במבנה שונה (ממוזג לשני-הצדדים-בכרטיס-אחד, ראו renderCenter→buildMobileGrid) — כי זו
+     ממש פריסה אחרת, לא רק סידור-מחדש של אותו תוכן. -->
+<div id="mShell" aria-hidden="true">
+  <div class="mStage" id="mStage">
+    <div class="mResPane on" data-side="A" id="mResA"></div>
+    <div class="mResPane" data-side="B" id="mResB"></div>
+    <div class="mScrim" id="mScrim"></div>
+    <div class="mSheet collapsed" id="mSheet">
+      <div class="mSheetHandle" id="mSheetHandle"><div class="mGrip"></div></div>
+      <div class="mSheetBody" id="mSheetBody">
+        <div class="mInputs">
+          <div class="mInputRow" data-side="A" id="mInpRowA"><span class="cTag" id="mCTagA">א׳</span><span class="mInpHost" id="mInpHostA"></span></div>
+          <div class="mInputRow" data-side="B" id="mInpRowB"><span class="cTag" id="mCTagB">ב׳</span><span class="mInpHost" id="mInpHostB"></span></div>
+        </div>
+        <div class="cMatchSum" id="mMatchSum"></div>
+        <div class="cPanelHd">
+          <span class="cPanelTitle" id="mPanelTitle"></span>
+          <span class="cLegend"><span><span class="pDot sideA"></span><span id="mLegA">א׳</span></span><span><span class="pDot sideB"></span><span id="mLegB">ב׳</span></span></span>
+        </div>
+        <div id="mgr" title=""></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
 <dialog id="dlgMethods" class="dlg"><div class="dh"><h2>שיטות הגימטריה</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="methodsDoc"></div></dialog>
 <dialog id="dlgAbout" class="dlg about"><div class="dh"><h2>אודות גימטריבון</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="aboutDoc"></div></dialog>
 <dialog id="dlgContact" class="dlg about contactDlg">
