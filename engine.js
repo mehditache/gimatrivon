@@ -4,6 +4,11 @@
 const VALUES = {א:1,ב:2,ג:3,ד:4,ה:5,ו:6,ז:7,ח:8,ט:9,י:10,כ:20,ל:30,מ:40,נ:50,ס:60,ע:70,פ:80,צ:90,ק:100,ר:200,ש:300,ת:400};
 const FINALS = {ך:'כ',ם:'מ',ן:'נ',ף:'פ',ץ:'צ'};
 const LETTER = /[א-ת]/, NON_LETTER_SEP = /[\s\u05BE\-–—_/\\.,;:!?()\[\]{}"'׳״<>|׀׃]+/;
+// v3.5.0: קבוצה-לוכדת של NON_LETTER_SEP, מחושבת *פעם אחת* (לא בכל קריאה ל-tokens!) — buildIndex קורא
+// ל-tokens() פעם לכל יחידה בקורפוס (כ-400,000 פעמים), וכל `new RegExp(...)` מקמפל ביטוי-רגולרי מחדש; זו
+// הייתה רוב-רובה של זמן-הטעינה (buildIndex נמדד בכ-4 שניות, ורוב הזמן הזה היה קומפילציית-regex חזרתית-
+// לחינם). דווח ע״י המשתמש: "שפר ביצועים... טעינה מהירה יותר".
+const NON_LETTER_SEP_CAP = new RegExp('(' + NON_LETTER_SEP.source + ')');
 const MARKS = /[\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/g; // ניקוד + טעמים (maqaf U+05BE stays a word separator)
 const MILUI_NAMES = {א:'אלף',ב:'בית',ג:'גימל',ד:'דלת',ה:'הא',ו:'ואו',ז:'זין',ח:'חית',ט:'טית',י:'יוד',כ:'כף',ל:'למד',מ:'מם',נ:'נון',ס:'סמך',ע:'עין',פ:'פא',צ:'צדי',ק:'קוף',ר:'ריש',ש:'שין',ת:'תו'};
 const ATBASH = {א:'ת',ב:'ש',ג:'ר',ד:'ק',ה:'צ',ו:'פ',ז:'ע',ח:'ס',ט:'נ',י:'מ',כ:'ל'};
@@ -27,12 +32,12 @@ const MILUI = {}; Object.keys(MILUI_NAMES).forEach(k => { MILUI[k] = regOf(MILUI
 // — הבחנה שנמחקת לגמרי אם רק מפצלים לפי NON_LETTER_SEP (שמתייחס למקף ולרווח כאותו דבר בדיוק).
 function tokens(text) {
   const out = [];
-  const parts = String(text == null ? '' : text).replace(/<[^>]*>/g, ' ').split(new RegExp('(' + NON_LETTER_SEP.source + ')'));
+  const parts = String(text == null ? '' : text).replace(/<[^>]*>/g, ' ').split(NON_LETTER_SEP_CAP);
   let maqafPending = false;
   for (let i = 0; i < parts.length; i++) {
     if (i % 2 === 0) {
       const raw = parts[i]; if (!raw) continue;
-      const norm = raw.replace(MARKS, '').replace(/[^א-ת]/g, '');
+      const norm = raw.replace(/[^א-ת]/g, ''); // v3.5.0: MARKS אינה מופיעה כלל בתוצאה אחרי [^א-ת] (אין חפיפה בין הטווחים) — replace(MARKS,'') מיותר, הוסר (היה כפל-regex לחינם על 2.18M תיבות)
       if (norm) { out.push({ orig: raw, norm, maqafBefore: maqafPending }); maqafPending = false; }
     } else {
       maqafPending = /^־+$/.test(parts[i]); // המפריד בין שתי התיבות הוא מקף(ים) בלבד — לא רווח/פיסוק אחר
@@ -273,7 +278,7 @@ function notarikonValueOf(norm, pos) { if (!norm) return 0; const i = pos < 0 ? 
 function notarikonBuildRange(idx, buf, uFrom, uTo) {
   const s0 = idx.start[uFrom], e0 = idx.start[uTo];
   for (let i = s0; i < e0; i++) {
-    const norm = idx.toks[i].replace(MARKS, '').replace(/[^א-ת]/g, '');
+    const norm = idx.toks[i].replace(/[^א-ת]/g, ''); // v3.5.0: ראו הערה ב-tokens() — replace(MARKS,'') מיותר
     buf.notRt[i] = notarikonValueOf(norm, 0); buf.notB[i] = notarikonValueOf(norm, 1);
     buf.notC[i] = notarikonValueOf(norm, 2); buf.notSt[i] = notarikonValueOf(norm, -1);
   }
