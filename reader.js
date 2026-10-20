@@ -687,8 +687,11 @@
   function rebuild() { if (!built) return; const qv = $r('#rdQ') ? $r('#rdQ').value : ''; built = false; PC.clear(); CMC.clear(); WC.clear(); build(); $r('#rdQ').value = qv; updClear(); render(); }
 
   /* ---------- מעבר בין מצבים (גימטריה / קריאה) ---------- */
-  function setMode(m, user) {
+  let curMode = null; // המסך האחרון שדווח ל-GA — לחיצה על המסך שכבר פתוח לא נספרת שוב
+  function setMode(m, user, via) {
     if (m !== 'read') m = 'gem';
+    if (m !== curMode && APP.trackEvent) APP.trackEvent('app_screen', { screen: m === 'read' ? 'reader' : 'gematria', via: via || (user ? 'switch' : 'load') });
+    curMode = m;
     document.body.dataset.mode = m;
     document.querySelectorAll('#modeSw button').forEach(b => { const on = b.dataset.mode === m; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
     try { localStorage.setItem('gimatrivonMode', m); } catch (e) {}
@@ -708,7 +711,7 @@
     const sw = $r('#modeSw');
     if (sw) sw.onclick = e => { const b = e.target.closest('button[data-mode]'); if (b) setMode(b.dataset.mode, true); };
     // הסיור המודרך מצביע על מסך הגימטריה — חוזרים אליו לפני שהסיור מתחיל
-    ['#startTour', '#mmTour'].forEach(s => { const b = $r(s); if (b) b.addEventListener('click', () => { if (document.body.dataset.mode === 'read') setMode('gem'); }, true); });
+    ['#startTour', '#mmTour'].forEach(s => { const b = $r(s); if (b) b.addEventListener('click', () => { if (document.body.dataset.mode === 'read') setMode('gem', false, 'tour'); }, true); });
     const lb = $r('#langSw'); if (lb) lb.addEventListener('click', () => setTimeout(() => { labelModeSw(); rebuild(); }, 0));
     let rt = 0;
     window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 120); });
