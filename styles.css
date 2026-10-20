@@ -602,8 +602,8 @@ html.gtNoAnim .driver-overlay *{transition:none!important}
 @font-face{font-family:"GimRashi";src:url(vendor/fonts/NotoRashiHebrew-hebrew.woff2) format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
 :root{--rdDesk:#2e2416;--rdBar:#382c1b;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdPaper:#fbf7ec;--rdEdge:#efe5cd;--rdInk:#2a2117;--rdMu:#8a7754;--rdGold:#98722c;--rdLine:#e4d7b9;
   --rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:#f6e39a;--rdOn:#e7c77e;--rdFlash:#f3dfa6}
-:root[data-theme=dark]{--rdDesk:#120d07;--rdBar:#1c150d;--rdPaper:#241b11;--rdEdge:#1b140c;--rdInk:#efe3c9;--rdMu:#b19d73;--rdGold:#d7a847;--rdLine:#3e3120;
-  --rdChip:#3a2c18;--rdChipTx:#e7c77e;--rdTrChip:#3d2226;--rdTrTx:#e08a96;--rdRow:#2e2416;--rdHl:#6b5520;--rdFlash:#5a4618}
+/* מראה לילה: הספר עצמו נשאר תמיד בהיר (בקשת המשתמש) — רק השולחן והסרגל סביבו מתכהים */
+:root[data-theme=dark]{--rdDesk:#120d07;--rdBar:#1c150d}
 .rdF,.reader .fN,.rdPrint .fN{font-family:"GimFrank","Frank Ruhl Libre","David","Times New Roman",serif}
 .reader .fR,.rdPrint .fR{font-family:"GimRashi","Noto Rashi Hebrew","GimFrank",serif}
 /* מתג המצב בכותרת */
@@ -654,7 +654,6 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px rgba(0,0,0,.45))}
 .rdBook.two::before,.rdBook.two::after{content:"";position:absolute;inset:4px -5px -5px -5px;border-radius:4px;background:#e3d8bf;z-index:-1}
 .rdBook.two::after{inset:2px -2.5px -2.5px -2.5px;background:#efe6d0}
-:root[data-theme=dark] .rdBook.two::before{background:#15100a}:root[data-theme=dark] .rdBook.two::after{background:#1e170e}
 .rdSpine{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:rgba(0,0,0,.18);pointer-events:none}
 .rdPage{position:relative;width:var(--rdPw);height:var(--rdPh);display:flex;flex-direction:column;overflow:hidden;padding:30px 40px 18px;background:var(--rdPaper);color:var(--rdInk);font-family:"GimFrank","Frank Ruhl Libre","David",serif;font-size:var(--rdFs);border-radius:3px}
 .rdPage.right{background:linear-gradient(to left,var(--rdPaper) 88%,var(--rdEdge));border-radius:3px 0 0 3px}
@@ -820,3 +819,10 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
   body.rdPrinting>*:not(#rdPrint){display:none!important}
   body.rdPrinting #rdPrint{display:block}
 }
+/* v3.9.1: משנה/פסוק ארוכים מעמוד מתפצלים בין עמודים — "…" בסוף החלק ובתחילת ההמשך */
+.rdCont{color:var(--rdMu);font-family:var(--ui);font-size:.8em}
+.rdMsh{margin:0 0 .35em}
+.rdMshH{display:flex;align-items:center;gap:10px;margin:.15em 0 .1em;font:700 .6em var(--ui);color:var(--rdGold);letter-spacing:.03em}
+.rdMshH::before,.rdMshH::after{content:"";flex:1;height:1px;background:var(--rdLine)}
+.rdMshH i{font-style:normal;font-weight:500;color:var(--rdMu)}
+.rdMsh p{margin:0;text-align:justify;line-height:1.95}

@@ -188,39 +188,59 @@
     return { W, H, narrow, two, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.tr, S.trFont, S.cmFont, isEn()].join('|') };
   }
 
-  // דיבורי המפרש של פרק: [{v, dh, body}] לפי סדר הפסוקים
+  // מילים של פסוק/משנה (בלי טעמים) — לפיצול משנה ארוכה בין עמודים
+  const WC = new Map();
+  const wordsOf = (b, ch, v) => { const k = b + ':' + ch + ':' + v; if (!WC.has(k)) WC.set(k, noTeamim(chText(b, ch, v) || '').split(/\s+/).filter(Boolean)); return WC.get(k); };
+  // דיבורי המפרש של פרק: [{v, dh, body, pos}] לפי הסדר. pos = מספר המילה בפסוק שבה מופיע הדיבור המתחיל
+  // (חיפוש קדימה מהדיבור הקודם; אם לא נמצא — אותו מקום כמו הקודם), כדי שכל דיבור יודפס באותו עמוד עם המילים שלו.
   const CMC = new Map();
   function cmEntries(b, ch) {
     const L = IX.links[b] || {}, key = b + ':' + ch; if (L.cm == null) return [];
     if (!CMC.has(key)) {
       const out = [];
-      versesOf(IX, b, ch).forEach(v => (chText(L.cm, ch, v) || []).forEach(t => splitComm(t).forEach(e => out.push({ v, dh: e.dh, body: e.body }))));
+      versesOf(IX, b, ch).forEach(v => {
+        const nw = wordsOf(b, ch, v).map(norm); let last = 0;
+        (chText(L.cm, ch, v) || []).forEach(t => splitComm(t).forEach(e => {
+          const dt = norm(e.dh.replace(/וכו['׳]?|וגו['׳]?/g, '')).split(' ').filter(Boolean);
+          let pos = -1;
+          if (dt.length) for (let i = last; i < nw.length && pos < 0; i++) if (nw[i] === dt[0] && (dt.length < 2 || i + 1 >= nw.length || nw[i + 1] === dt[1])) pos = i;
+          if (pos < 0 && dt.length) for (let i = last; i < nw.length && pos < 0; i++) if (nw[i] === dt[0]) pos = i;
+          if (pos >= 0) last = pos; else pos = last;
+          out.push({ v, dh: e.dh, body: e.body, pos });
+        }));
+      });
       CMC.set(key, out);
     }
     return CMC.get(key);
   }
-  // עמוד = { vs: [פסוקים], cm: [דיבורי מפרש] } — דיבורים שלא נכנסו עוברים לעמוד הבא (כמו בדפוס מקראות גדולות)
+  // עמוד = { segs: [{v, from, to}], cm: [דיבורים], vs: [פסוקים] }. כל עמוד מכיל טקסט (פסוק שלם, או חלק ממשנה ארוכה)
+  // ואת כל הפירוש שלו ורק אותו — פירוש לא "זולג" לעמוד אחר בלי הטקסט שלו.
   function pageInner(b, ch, pg, pageNo, q) {
-    const vs = pg.vs, tb = trBook(b), bk = IX.books[b], first = vs.length && vs[0] === versesOf(IX, b, ch)[0];
+    const segs = pg.segs, tb = trBook(b), bk = IX.books[b], v0 = versesOf(IX, b, ch)[0];
+    const first = segs.length && segs[0].v === v0 && segs[0].from === 0;
     const trCls = S.trFont === 'rashi' ? 'fR' : 'fN', cmCls = S.cmFont === 'rashi' ? 'fR' : 'fN';
-    const trTxt = v => { if (!tb) return ''; const t = chText(tb.b, ch, v); return t ? (S.trFont === 'rashi' ? noMarks(t) : noTeamim(t)) : ''; };
-    const main = v => hlHtml(noTeamim(chText(b, ch, v)), q);
-    const vn = v => '<span class="vn">' + num(v) + '</span>';
-    const rv = vs.length ? vs : [pg.cm[0].v, pg.cm[pg.cm.length - 1].v];
+    const trTxt = s => { if (!tb || s.from > 0) return ''; const t = chText(tb.b, ch, s.v); return t ? (S.trFont === 'rashi' ? noMarks(t) : noTeamim(t)) : ''; };
+    const whole = s => s.from === 0 && s.to >= wordsOf(b, ch, s.v).length;
+    const main = s => hlHtml(whole(s) ? noTeamim(chText(b, ch, s.v)) : wordsOf(b, ch, s.v).slice(s.from, s.to).join(' '), q) + (s.to < wordsOf(b, ch, s.v).length ? ' <span class="rdCont">…</span>' : '');
+    const vn = s => s.from === 0 ? '<span class="vn">' + num(s.v) + '</span>' : '<span class="rdCont">…</span> ';
+    const rv = segs.map(s => s.v);
     let html = '<header class="rdHead"><span>' + h(bkName(bk.heTitle)) + '</span><span class="mid">' + h(grpName(bk.g)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + num(ch) + ', ' + num(rv[0]) + (rv[rv.length - 1] !== rv[0] ? '–' + num(rv[rv.length - 1]) : '') + '</span></header>';
     const title = first ? '<div class="rdChTitle">' + (ch === 1 ? '<span class="bk">' + h(bkName(bk.heTitle)) + '</span>' : '') + '<span class="ch">' + T('פרק') + ' ' + num(ch) + '</span></div>' : '';
-    if (!vs.length) { /* עמוד המשך של המפרש בלבד */ } else if (S.view === 'book') {
-      html += '<div class="rdBody' + (tb ? ' withTr' : '') + '"><div class="rdTxt">' + title + '<p>' + vs.map(v => '<span class="rdV" data-v="' + v + '">' + vn(v) + main(v) + '</span>').join(' ') + '</p></div>';
-      if (tb) html += '<aside class="rdTr ' + trCls + '" aria-label="' + h(trLabel(tb.k)) + '"><div class="rdTrHd">' + h(trLabel(tb.k)) + '</div><p>' + vs.map(v => { const t = trTxt(v); return t ? '<span class="rdV" data-v="' + v + '">' + vn(v) + h(t) + '</span>' : ''; }).join(' ') + '</p></aside>';
+    if (isMishnah(b)) {
+      // משנה: כותרת לכל משנה ("משנה ה", ובהמשך של משנה מפוצלת "משנה ה (המשך)"), בשתי התצוגות — במשנה אין תרגום
+      html += '<div class="rdBody"><div class="rdTxt">' + title + segs.map(s => '<div class="rdMsh rdV" data-v="' + s.v + '"><div class="rdMshH"><span>' + T('משנה') + ' ' + num(s.v) + (s.from > 0 ? ' <i>(' + T('המשך') + ')</i>' : '') + '</span></div><p>' + (s.from > 0 ? '<span class="rdCont">…</span> ' : '') + main(s) + '</p></div>').join('') + '</div></div>';
+    } else if (S.view === 'book') {
+      html += '<div class="rdBody' + (tb ? ' withTr' : '') + '"><div class="rdTxt">' + title + '<p>' + segs.map(s => '<span class="rdV" data-v="' + s.v + '">' + vn(s) + main(s) + '</span>').join(' ') + '</p></div>';
+      if (tb) html += '<aside class="rdTr ' + trCls + '" aria-label="' + h(trLabel(tb.k)) + '"><div class="rdTrHd">' + h(trLabel(tb.k)) + '</div><p>' + segs.map(s => { const t = trTxt(s); return t ? '<span class="rdV" data-v="' + s.v + '">' + vn(s) + h(t) + '</span>' : ''; }).join(' ') + '</p></aside>';
       html += '</div>';
     } else {
       html += '<div class="rdBody rdRows' + (tb ? '' : ' noTr') + '">' + title + '<div class="rdRowHd"><span></span><span>' + T(isMishnah(b) ? 'משנה' : 'מקרא') + '</span>' + (tb ? '<span class="trh">' + h(trLabel(tb.k)) + '</span>' : '') + '</div>' +
-        vs.map(v => '<div class="rdRow" data-v="' + v + '"><span class="vnc">' + vn(v) + '</span><span class="he">' + main(v) + '</span>' + (tb ? '<span class="tr ' + trCls + '">' + h(trTxt(v)) + '</span>' : '') + '</div>').join('') + '</div>';
+        segs.map(s => '<div class="rdRow" data-v="' + s.v + '"><span class="vnc">' + (s.from === 0 ? vn(s) : '') + '</span><span class="he">' + (s.from > 0 ? '<span class="rdCont">…</span> ' : '') + main(s) + '</span>' + (tb ? '<span class="tr ' + trCls + '">' + h(trTxt(s)) + '</span>' : '') + '</div>').join('') + '</div>';
     }
     html += '<div class="rdSp"></div>';
     if (pg.cm.length) {
       const fx = s => S.cmFont === 'rashi' ? noMarks(s) : s;
-      html += '<section class="rdCm ' + cmCls + '" aria-label="' + h(cmLabel(b)) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(cmLabel(b)) + (vs.length && pg.cm[0].v < vs[0] ? ' <i>(' + T('המשך') + ')</i>' : '') + '</span></div><div class="rdCmBody">' +
+      html += '<section class="rdCm ' + cmCls + '" aria-label="' + h(cmLabel(b)) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(cmLabel(b)) + '</span></div><div class="rdCmBody">' +
         pg.cm.map(e => '<p data-v="' + e.v + '"><span class="cv">' + num(e.v) + '</span>' + (e.dh ? '<b>' + hlHtml(fx(e.dh), q) + '</b>' : '') + hlHtml(fx(e.body), q) + '</p>').join('') + '</div></section>';
     }
     html += '<div class="rdNum">' + num(pageNo) + '</div>';
@@ -230,11 +250,12 @@
 
   function pagesFor(b, ch) {
     const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
-    const probe = $r('#rdProbe'), vs = versesOf(IX, b, ch), ents = cmEntries(b, ch), pages = [];
+    const probe = $r('#rdProbe'), ents = cmEntries(b, ch), pages = [];
     probe.className = 'rdPage' + geo.cls;
-    const fits = pg => { probe.innerHTML = pageInner(b, ch, pg, pages.length + 1, ''); return !over(probe); };
-    const entsOfVs = list => ents.filter(e => list.includes(e.v));
-    const mainFrac = list => { probe.innerHTML = pageInner(b, ch, { vs: list, cm: [] }, 1, ''); return probe.querySelector('.rdSp').offsetTop / probe.clientHeight; };
+    // דיבורים של קטע: לפי מיקום הדיבור המתחיל במילים [from, to); הקטע האחרון של פסוק לוקח גם את מה שאחרי
+    const entsOf = s => { const n = wordsOf(b, ch, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
+    const mk = segs => ({ segs, vs: [...new Set(segs.map(s => s.v))], cm: [].concat(...segs.map(entsOf)) });
+    const fits = segs => { probe.innerHTML = pageInner(b, ch, mk(segs), pages.length + 1, ''); return !over(probe); };
     // הכמות הגדולה ביותר k (בין lo ל-max) שעבורה ok(k) — ok מונוטוני יורד; חיפוש דוהר+בינארי כדי למדוד מעט פעמים גם בפרקים ארוכים (תהלים קיט)
     const maxOk = (lo, max, ok) => {
       let good = lo, step = 1;
@@ -243,24 +264,22 @@
       while (bad - good > 1) { const mid = (good + bad) >> 1; if (ok(mid)) good = mid; else bad = mid; }
       return good;
     };
-    let Q = [], i = 0;
-    while (i < vs.length || Q.length) {
-      const R = vs.slice(i);
-      let k = 0;
-      if (R.length && (!Q.length || fits({ vs: [R[0]], cm: Q.slice(0, 1) }))) {
-        const cmFor = k => Q.concat(entsOfVs(R.slice(0, k - 1)));
-        // פסוק נוסף נכנס לעמוד אם כל הפירוש של הפסוקים שלפניו (כולל מה שנגרר מעמודים קודמים) עדיין נכנס איתו…
-        const kA = maxOk(1, R.length, k => fits({ vs: R.slice(0, k), cm: cmFor(k) }));
-        // …או, כשהטקסט עדיין תופס פחות מ-60% מהעמוד, אם לפחות דיבור אחד נכנס איתו (השאר נגרר הלאה, כמו בדפוס מקראות גדולות)
-        const kB = maxOk(1, R.length, k => mainFrac(R.slice(0, k)) <= 0.6 && fits({ vs: R.slice(0, k), cm: cmFor(k).slice(0, 1) }));
-        k = Math.max(kA, kB);
+    // תור הקטעים: בהתחלה כל פסוק שלם; קטע שלא נכנס לבד בעמוד ריק מתפצל במילים
+    const queue = versesOf(IX, b, ch).map(v => ({ v, from: 0, to: wordsOf(b, ch, v).length }));
+    while (queue.length) {
+      const segs = [];
+      // פסוקים שלמים עם כל הפירוש שלהם, כל עוד הם נכנסים
+      const k = fits([queue[0]]) ? maxOk(1, queue.length, k => fits(queue.slice(0, k))) : 0;
+      if (k) segs.push(...queue.splice(0, k));
+      else {
+        // פסוק/משנה ארוכים מעמוד שלם: חלק ראשון במילים, עם הדיבורים שלו, והשאר בעמוד הבא
+        const s = queue[0], n = s.to - s.from;
+        const w = n > 1 && fits([{ v: s.v, from: s.from, to: s.from + 1 }]) ? maxOk(1, n - 1, w => fits([{ v: s.v, from: s.from, to: s.from + w }])) : Math.min(n, Math.max(1, (ents.find(e => e.v === s.v && e.pos > s.from) || { pos: s.to }).pos - s.from));
+        segs.push({ v: s.v, from: s.from, to: s.from + w });
+        if (w < n) queue[0] = { v: s.v, from: s.from + w, to: s.to }; else queue.shift();
       }
-      const pv = R.slice(0, k); i += k;
-      const C = Q.concat(entsOfVs(pv));
-      let n = C.length && fits({ vs: pv, cm: C.slice(0, 1) }) ? maxOk(1, C.length, n => fits({ vs: pv, cm: C.slice(0, n) })) : 0;
-      if (!n && C.length && !pv.length) n = 1; // דיבור ארוך מעמוד שלם: עמוד נגלל
-      pages.push({ vs: pv, cm: C.slice(0, n) }); Q = C.slice(n);
-      if (pages.length > 400) break;
+      pages.push(mk(segs));
+      if (pages.length > 600) break;
     }
     probe.innerHTML = '';
     PC.set(key, pages); return pages;
@@ -283,7 +302,7 @@
     S.lock = null; if (idx < 0 || idx >= pages.length) idx = 0;
     S.p = Math.floor(idx / geo.per) * geo.per;
     const shown = pages.slice(S.p, S.p + geo.per);
-    S.anchor = (shown[0].vs[0] || shown[0].cm[0].v);
+    S.anchor = shown[0].segs[0].v;
     const book = $r('#rdBook');
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
     const side = i => geo.two ? (i ? 'left' : 'right') : 'single', nar = geo.cls;
@@ -531,7 +550,7 @@
     }, { passive: true });
   }
 
-  function rebuild() { if (!built) return; const qv = $r('#rdQ') ? $r('#rdQ').value : ''; built = false; PC.clear(); CMC.clear(); build(); $r('#rdQ').value = qv; updClear(); render(); }
+  function rebuild() { if (!built) return; const qv = $r('#rdQ') ? $r('#rdQ').value : ''; built = false; PC.clear(); CMC.clear(); WC.clear(); build(); $r('#rdQ').value = qv; updClear(); render(); }
 
   /* ---------- מעבר בין מצבים (גימטריה / קריאה) ---------- */
   function setMode(m, user) {
