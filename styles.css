@@ -604,8 +604,8 @@ html.gtNoAnim .driver-overlay *{transition:none!important}
   --rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:#f6e39a;--rdOn:#e7c77e;--rdFlash:#f3dfa6}
 /* הסביבה של הספר (שולחן, סרגל, כפתורים) לפי המראה: גוויל = בהיר, לילה = כהה. הספר עצמו תמיד בהיר (בקשת המשתמש).
    --rdG1..3 = שכבות שקופות לרקע ולמסגרות של כפתורים בסרגל (כהות על רקע בהיר, בהירות על רקע כהה) */
-:root{--rdDesk:#e6dcc6;--rdBar:#f3ecdc;--rdBarTx:#3a2d1a;--rdBarMu:#8a7754;--rdBarB:#d9caa6;--rdG1:rgba(70,50,15,.05);--rdG2:rgba(70,50,15,.09);--rdG3:rgba(70,50,15,.18);--rdShadow:rgba(80,55,20,.28);--rdOn:#b8913f}
-:root[data-theme=dark]{--rdDesk:#120d07;--rdBar:#1c150d;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdBarB:rgba(0,0,0,.35);--rdG1:rgba(255,255,255,.07);--rdG2:rgba(255,255,255,.11);--rdG3:rgba(255,255,255,.16);--rdShadow:rgba(0,0,0,.45);--rdOn:#e7c77e}
+:root{--rdDesk:#d8c49d;--rdDeskGlow:radial-gradient(ellipse at 50% 35%,#e6d5b2,#cfb88a 75%);--rdBar:#efe4cb;--rdBarTx:#3a2d1a;--rdBarMu:#7d6a48;--rdBarB:#cdb787;--rdG1:rgba(70,50,15,.05);--rdG2:rgba(70,50,15,.09);--rdG3:rgba(70,50,15,.18);--rdShadow:rgba(80,55,20,.28);--rdOn:#b8913f}
+:root[data-theme=dark]{--rdDesk:#120d07;--rdDeskGlow:radial-gradient(ellipse at 50% 40%,rgba(255,235,190,.07),transparent 70%);--rdBar:#1c150d;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdBarB:rgba(0,0,0,.35);--rdG1:rgba(255,255,255,.07);--rdG2:rgba(255,255,255,.11);--rdG3:rgba(255,255,255,.16);--rdShadow:rgba(0,0,0,.45);--rdOn:#e7c77e}
 .rdF,.reader .fN,.rdPrint .fN{font-family:"GimFrank","Frank Ruhl Libre","David","Times New Roman",serif}
 .reader .fR,.rdPrint .fR{font-family:"GimRashi","Noto Rashi Hebrew","GimFrank",serif}
 /* מתג המצב בכותרת */
@@ -681,7 +681,7 @@ body[data-mode=read] .reader{display:flex}
 .rdFs:hover .rdFsBub,.rdFs.drag .rdFsBub{opacity:1;transform:translateY(-50%) scale(1)}
 mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 /* שולחן + ספר */
-.rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,rgba(255,235,190,.07),transparent 70%)}
+.rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--rdDeskGlow)}
 .rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px var(--rdShadow))}
 .rdBook.two::before,.rdBook.two::after{content:"";position:absolute;inset:4px -5px -5px -5px;border-radius:4px;background:#e3d8bf;z-index:-1}
 .rdBook.two::after{inset:2px -2.5px -2.5px -2.5px;background:#efe6d0}
