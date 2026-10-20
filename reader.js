@@ -125,7 +125,7 @@
     'רש״י': 'Rashi', 'ברטנורא': 'Bartenura', 'פרק': 'Chapter', 'פסוק': 'Verse', 'משנה': 'Mishnah', 'תנ״ך': 'Tanakh', 'מקרא': 'Text',
     'פרק קודם': 'Previous chapter', 'פרק הבא': 'Next chapter', 'עמוד קודם': 'Previous page', 'עמוד הבא': 'Next page',
     'חיפוש, או קפיצה: ״שמות יב ב״': 'Search, or jump: "Exodus 12 2"', 'חיפוש מהיר או קפיצה למקום': 'Quick search or jump to a place',
-    'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'מציג': 'showing', 'אין תוצאות': 'No results',
+    'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'מציג': 'showing', 'אין תוצאות': 'No results',
     'מעבר אל': 'Go to', 'פתיחת': 'Open', 'מעבר לפרק ופסוק': 'Go to chapter and verse', 'סגירה': 'Close',
     'אפשר גם להקליד מקום בתיבת החיפוש': 'You can also type a place in the search box', 'דפדוף': 'turn pages',
     'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ממשיך ל': 'continues to ', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
@@ -455,28 +455,111 @@
   function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; }
   function scopeBooks() { if (S.scope === 'all') return IX.base.filter(i => IX.books[i].cat === IX.books[S.b].cat); return [S.b]; }
   function refLabel(r) { return bkName(IX.books[r.b].heTitle) + ' ' + num(r.ch) + (r.v ? ', ' + num(r.v) : ''); }
+  /* תוצאות החיפוש: כל ההתאמות (בלי תקרה) ברשימה וירטואלית, בדומה לרשימת התוצאות במסך הגימטריה.
+     רק השורות שבחלון הגלילה (ועוד מרווח) נמצאות ב-DOM; לכל שורה ולכל כותרת קבוצה גובה קבוע, ולכן המיקום של כל
+     פריט מחושב מראש (RS.off) והגובה הכולל של התוכן מדויק — פס הגלילה מתנהג כאילו הכל מרונדר.
+     קבוצות: לפי ספר (בכל התנ״ך / המשנה) או לפי פרק (בספר). פס גלילה מותאם (.rdFs) עם ידית לגרירה, בועה
+     ("בראשית · פרק ג" + "תוצאה X מתוך Y"), וסימונים על הפס בתחילת כל חלק (תורה/נביאים/כתובים, סדרי המשנה). */
+  const RH = 58, GH = 28, OVER = 12, cnt = n => n.toLocaleString('en-US'); // מספרי תוצאות בספרות, כמו במסך הגימטריה
+  let RS = null;
   function renderDrop() {
-    const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q;
+    const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
     if (!q.trim()) { d.hidden = true; return; }
     let html = '';
     const ref = parseRef(IX, q, S.b);
     if (ref) dropItems.push({ kind: 'ref', r: ref });
     else suggestBooks(IX, q, 4).forEach(b => dropItems.push({ kind: 'ref', r: { b, ch: chaptersOf(IX, b)[0], v: 0 } }));
-    if (dropItems.length) html += '<div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refLabel(it.r)) + '</span></button>').join('');
+    if (dropItems.length) html += '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refLabel(it.r)) + '</span></button>').join('') + '</div>';
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
-    const res = search(IX, q, scopeBooks(), { limit: 80, ch: S.scope === 'ch' ? S.ch : 0 });
-    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="cnt">' + (res.q.length < 2 ? '' : res.total ? num(res.total) + ' ' + T('תוצאות') + (res.total > res.hits.length ? ' · ' + T('מציג') + ' ' + num(res.hits.length) : '') : T('אין תוצאות')) + '</span></div>';
+    const res = search(IX, q, scopeBooks(), { limit: Infinity, ch: S.scope === 'ch' ? S.ch : 0 });
+    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="cnt">' + (res.q.length < 2 ? '' : res.total ? cnt(res.total) + ' ' + T('תוצאות') : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
-    html += dropItems.slice(start).map((it, j) => { const x = it.r, t = noTeamim(chText(x.b, x.ch, x.v)); return '<button type="button" class="rdDI hit" data-i="' + (start + j) + '" role="option"><span class="rf">' + h(refLabel(x)) + '</span><span class="sn">' + hlHtml(t, q) + '</span></button>'; }).join('');
+    if (res.hits.length) {
+      // רשימה שטוחה: כותרת קבוצה ואחריה התוצאות שלה; off = מיקום כל פריט בפיקסלים
+      const byBook = S.scope === 'all', key = x => byBook ? x.b : x.b + ':' + x.ch;
+      const items = [], off = [], ticks = []; let y = 0, prevK = null, prevG = null, gi = -1;
+      res.hits.forEach((x, j) => {
+        if (S.scope !== 'ch' && key(x) !== prevK) {
+          let n = 0; for (let t = j; t < res.hits.length && key(res.hits[t]) === key(x); t++) n++;
+          const g = IX.books[x.b].g; if (byBook && g !== prevG) { ticks.push({ y, g }); prevG = g; }
+          items.push({ gh: true, x, n }); off.push(y); y += GH; prevK = key(x); gi = items.length - 1;
+        }
+        items.push({ i: start + j, x, gi }); off.push(y); y += RH;
+      });
+      const pos = []; items.forEach((it, k) => { if (!it.gh) pos[it.i - start] = k; });
+      RS = { items, off, total: y, start, n: res.hits.length, pos, ticks, q, from: -1, to: -1 };
+      html += '<div class="rdRes"><div class="rdResBox" id="rdResBox"><div class="rdResIn" style="height:' + y + 'px"></div></div>' +
+        '<div class="rdResSticky" id="rdResSticky" aria-hidden="true"></div>' +
+        '<div class="rdFs" id="rdFs" aria-hidden="true">' + ticks.map(t => '<i class="rdFsTick" style="top:' + (100 * t.y / y).toFixed(2) + '%" title="' + h(grpName(t.g)) + '"></i>').join('') +
+        '<div class="rdFsThumb" id="rdFsThumb"><div class="rdFsBub" id="rdFsBub"></div></div></div></div>';
+    }
     d.innerHTML = html; d.hidden = false;
+    if (RS) { const box = $r('#rdResBox'); box.onscroll = () => resWin(); resWin(); }
     if (dropItems.length) setAct(0);
   }
+  const ghLabel = x => S.scope === 'all' ? bkName(IX.books[x.b].heTitle) : T('פרק') + ' ' + num(x.ch);
+  function firstAt(y) { // הפריט הראשון שתחתיתו מתחת ל-y (חיפוש בינארי ב-off)
+    let lo = 0, hi = RS.items.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (RS.off[m] <= y) lo = m; else hi = m - 1; }
+    return lo;
+  }
+  function resWin(force) {
+    if (!RS) return;
+    const box = $r('#rdResBox'); if (!box) return;
+    const top = box.scrollTop, hgt = box.clientHeight || 400;
+    const from = Math.max(0, firstAt(top) - OVER), to = Math.min(RS.items.length, firstAt(top + hgt) + OVER + 1);
+    if (force || from !== RS.from || to !== RS.to) {
+      RS.from = from; RS.to = to;
+      box.firstChild.innerHTML = RS.items.slice(from, to).map((it, k) => {
+        const y = RS.off[from + k], x = it.x;
+        if (it.gh) return '<div class="rdGh" style="top:' + y + 'px"><span>' + h(ghLabel(x)) + '</span><span class="n">' + cnt(it.n) + ' ' + T('תוצאות') + '</span></div>';
+        return '<button type="button" class="rdDI hit' + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + h(refLabel(x)) + '</span><span class="sn">' + hlHtml(noTeamim(chText(x.b, x.ch, x.v)), RS.q) + '</span></button>';
+      }).join('');
+    }
+    // כותרת דבוקה: הקבוצה של הפריט שבראש החלון (מוסתרת כשכותרת אמיתית בדיוק בראש)
+    const st = $r('#rdResSticky'), f = RS.items[firstAt(top)];
+    const g = f && (f.gh ? f : RS.items[f.gi]);
+    st.hidden = !g || (f.gh && RS.off[firstAt(top)] >= top - 1);
+    if (g && !st.hidden) st.innerHTML = '<span>' + h(ghLabel(g.x)) + '</span><span class="n">' + cnt(g.n) + ' ' + T('תוצאות') + '</span>';
+    fsLay();
+  }
+  function fsLay() {
+    const box = $r('#rdResBox'), tr = $r('#rdFs'), th = $r('#rdFsThumb'); if (!box || !tr) return;
+    const max = box.scrollHeight - box.clientHeight;
+    tr.hidden = max <= 4; if (tr.hidden) return;
+    const H = tr.clientHeight, t = Math.max(30, H * box.clientHeight / box.scrollHeight);
+    th.style.height = t + 'px'; th.style.top = (box.scrollTop / max) * (H - t) + 'px';
+    const k = Math.min(RS.items.length - 1, firstAt(box.scrollTop + box.clientHeight * (box.scrollTop / max)));
+    const it = RS.items[k], hit = it.gh ? RS.items[k + 1] : it;
+    $r('#rdFsBub').innerHTML = '<b>' + h(refLabel({ b: hit.x.b, ch: hit.x.ch, v: 0 })) + '</b><span>' + T('תוצאה') + ' ' + cnt(hit.i - RS.start + 1) + ' ' + T('מתוך') + ' ' + cnt(RS.n) + '</span>';
+  }
+  function fsBind() { // פעם אחת: גרירת הידית ולחיצה על הפס (האירועים מואצלים מ-#rdDrop כי התוכן נבנה מחדש)
+    let drag = null, raf = 0, py = 0;
+    const d = $r('#rdDrop');
+    const apply = () => { raf = 0; if (!drag) return; const box = $r('#rdResBox'), tr = $r('#rdFs'), th = $r('#rdFsThumb'); if (!box) return;
+      const rng = tr.clientHeight - th.offsetHeight, max = box.scrollHeight - box.clientHeight;
+      box.scrollTop = Math.max(0, Math.min(max, drag.top + (rng > 0 ? (py - drag.y) / rng * max : 0))); };
+    d.addEventListener('pointerdown', e => {
+      const th = e.target.closest('#rdFsThumb'), tr = e.target.closest('#rdFs'); if (!tr) return;
+      e.preventDefault(); const box = $r('#rdResBox');
+      if (!th) { const r = tr.getBoundingClientRect(), t = $r('#rdFsThumb').offsetHeight; box.scrollTop = Math.max(0, Math.min(1, (e.clientY - r.top - t / 2) / Math.max(1, r.height - t))) * (box.scrollHeight - box.clientHeight); }
+      drag = { y: e.clientY, top: box.scrollTop }; py = e.clientY; tr.classList.add('drag'); try { tr.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    d.addEventListener('pointermove', e => { if (!drag) return; py = e.clientY; if (!raf) raf = requestAnimationFrame(apply); });
+    const end = () => { if (!drag) return; drag = null; const tr = $r('#rdFs'); if (tr) tr.classList.remove('drag'); };
+    d.addEventListener('pointerup', end); d.addEventListener('pointercancel', end);
+  }
   function setAct(i) {
-    const btns = R.querySelectorAll('#rdDrop .rdDI'); if (!btns.length) return;
-    dropAct = (i + btns.length) % btns.length;
-    btns.forEach((b, j) => b.classList.toggle('act', j === dropAct));
-    btns[dropAct].scrollIntoView({ block: 'nearest' });
+    const n = dropItems.length; if (!n) return;
+    dropAct = (i + n) % n;
+    R.querySelectorAll('#rdDrop .rdDI').forEach(b => b.classList.toggle('act', Number(b.dataset.i) === dropAct));
+    const it = dropItems[dropAct];
+    if (it.kind === 'hit' && RS) {
+      const box = $r('#rdResBox'), k = RS.pos[dropAct - RS.start], y = RS.off[k], hdr = S.scope === 'ch' ? 0 : GH;
+      if (y - hdr < box.scrollTop) box.scrollTop = y - hdr; else if (y + RH > box.scrollTop + box.clientHeight) box.scrollTop = y + RH - box.clientHeight;
+      resWin(true);
+    } else { const b = R.querySelector('#rdDrop .rdDI[data-i="' + dropAct + '"]'); if (b) b.scrollIntoView({ block: 'nearest' }); if (RS && dropAct === 0) { $r('#rdResBox').scrollTop = 0; } }
   }
   function pickDrop(i) {
     const it = dropItems[i]; if (!it) return;
@@ -549,6 +632,7 @@
     });
     $r('#rdQClr').onclick = () => { q.value = ''; updClear(); closeDrop(); if (S.hl) { S.hl = ''; render(); } q.focus(); };
     $r('#rdDrop').addEventListener('mousedown', e => e.preventDefault()); // שהפוקוס לא יברח מהתיבה
+    fsBind();
     $r('#rdDrop').onclick = e => {
       const sc = e.target.closest('[data-scope]'); if (sc) { S.scope = sc.dataset.scope; save(); return renderDrop(); }
       const it = e.target.closest('.rdDI'); if (it) pickDrop(Number(it.dataset.i));

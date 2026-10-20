@@ -636,7 +636,7 @@ body[data-mode=read] .reader{display:flex}
 .reader .rdSetBtn .aa{font:700 17px "GimFrank",var(--tf);line-height:1}
 .reader .rdSetBtn:hover,.reader .rdSetBtn[aria-expanded=true]{border-color:var(--rdOn);background:rgba(255,255,255,.08)}
 /* רשימת חיפוש */
-.rdDrop{position:absolute;top:calc(100% + 6px);inset-inline-start:-1px;width:max(100%,440px);max-height:min(62vh,520px);overflow:auto;background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);padding:6px;z-index:30}
+.rdDrop{position:absolute;top:calc(100% + 6px);inset-inline-start:-1px;width:max(100%,480px);max-height:min(74vh,720px);overflow:hidden;display:flex;flex-direction:column;background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);padding:6px;z-index:30}
 .rdDH{font:700 11px var(--ui);color:var(--rdMu);padding:6px 8px 3px}
 .reader .rdDI{display:flex;align-items:center;gap:8px;width:100%;text-align:start;background:none;border:0;border-radius:8px;padding:7px 8px;color:var(--rdInk)}
 .reader .rdDI.hit{flex-direction:column;align-items:stretch;gap:2px}
@@ -648,6 +648,30 @@ body[data-mode=read] .reader{display:flex}
 .reader .rdDScope button{font-size:12px;padding:2px 10px;border-radius:99px;background:none;border:1px solid var(--rdLine);color:var(--rdInk)}
 .reader .rdDScope button.on{background:var(--rdGold);border-color:var(--rdGold);color:#fff}
 .rdDScope .cnt{margin-inline-start:auto;font-size:11.5px;color:var(--rdMu)}
+
+/* תוצאות החיפוש בקריאה: רשימה וירטואלית (שורות במיקום מוחלט בגובה קבוע) + פס גלילה מותאם, כמו במסך הגימטריה */
+.rdDRefs{flex:none;max-height:30%;overflow:auto}
+.rdDScope{flex:none}
+.rdRes{position:relative;flex:1 1 auto;min-height:0;display:flex}
+.rdResBox{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-inline-end:16px;overscroll-behavior:contain}
+.rdResBox::-webkit-scrollbar{display:none}
+.rdResIn{position:relative}
+.rdResIn>*{position:absolute;inset-inline:0}
+.reader .rdResIn .rdDI.hit{height:58px;padding:5px 8px;gap:1px;justify-content:center}
+.rdResIn .rdDI .sn{-webkit-line-clamp:1;line-height:1.75}
+.rdGh,.rdResSticky{height:28px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 8px;font:700 12.5px var(--ui);color:var(--rdGold);border-bottom:1px solid var(--rdLine)}
+.rdGh .n,.rdResSticky .n{font:600 11px var(--ui);color:var(--rdMu)}
+.rdResSticky{position:absolute;top:0;inset-inline-start:0;inset-inline-end:16px;background:var(--rdPaper);z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.rdResSticky[hidden]{display:none}
+.rdFs{position:absolute;top:4px;bottom:4px;inset-inline-end:3px;width:6px;border-radius:4px;background:color-mix(in srgb,var(--rdLine) 70%,transparent);cursor:pointer;touch-action:none;z-index:3}
+.rdFs[hidden]{display:none}
+.rdFsTick{position:absolute;inset-inline-start:-3px;width:12px;height:2px;border-radius:1px;background:var(--rdGold);opacity:.75;pointer-events:none}
+.rdFsThumb{position:absolute;inset-inline-start:-2px;width:10px;border-radius:6px;background:var(--rdMu);cursor:grab;box-shadow:0 0 0 2px var(--rdPaper);transition:background .1s}
+.rdFs:hover .rdFsThumb,.rdFs.drag .rdFsThumb{background:var(--rdGold)}
+.rdFs.drag .rdFsThumb{cursor:grabbing}
+.rdFsBub{position:absolute;inset-inline-end:18px;top:50%;transform:translateY(-50%) scale(.9);background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);padding:5px 10px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;display:flex;flex-direction:column;gap:1px;font:600 11px var(--ui);color:var(--rdMu)}
+.rdFsBub b{font:700 13px "GimFrank",var(--tf);color:var(--rdInk)}
+.rdFs:hover .rdFsBub,.rdFs.drag .rdFsBub{opacity:1;transform:translateY(-50%) scale(1)}
 mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 /* שולחן + ספר */
 .rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,rgba(255,235,190,.07),transparent 70%)}
@@ -776,7 +800,7 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
   .rdFoot .rdIco{display:inline-flex}
   .rdProg{width:auto;flex:1;max-width:140px}
   .rdFoot{padding:4px 8px 6px;gap:8px}
-  .rdDrop{width:100%;max-height:55vh}
+  .rdDrop{width:100%;max-height:62vh}
   .rdScrim{background:rgba(0,0,0,.45)}
   .rdPop{top:auto;bottom:0;inset-inline:0;width:auto;max-height:82%;border-radius:16px 16px 0 0;padding:12px 12px 16px}
   .rdJGrid{grid-template-columns:104px minmax(0,1fr) minmax(0,1fr);gap:6px;height:46vh}
