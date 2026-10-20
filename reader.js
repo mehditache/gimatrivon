@@ -241,12 +241,29 @@
     if (pg.cm.length) {
       const fx = s => S.cmFont === 'rashi' ? noMarks(s) : s;
       html += '<section class="rdCm ' + cmCls + '" aria-label="' + h(cmLabel(b)) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(cmLabel(b)) + '</span></div><div class="rdCmBody">' +
-        pg.cm.map(e => '<p data-v="' + e.v + '"><span class="cv">' + num(e.v) + '</span>' + (e.dh ? '<b>' + hlHtml(fx(e.dh), q) + '</b>' : '') + hlHtml(fx(e.body), q) + '</p>').join('') + '</div></section>';
+        pg.cm.map(e => '<p data-v="' + e.v + '"' + (e.cont ? ' class="cont"' : '') + '><span class="cv">' + num(e.v) + '</span>' + (e.cont ? '<span class="rdCont">…</span> ' : '') + (e.dh ? '<b>' + hlHtml(fx(e.dh), q) + '</b>' : '') + hlHtml(fx(e.body), q) + (e.cut ? ' <span class="rdCont">…</span>' : '') + '</p>').join('') + '</div></section>';
     }
     html += '<div class="rdNum">' + num(pageNo) + '</div>';
     return html;
   }
   const over = el => el.scrollHeight > el.clientHeight + 1;
+  // חיתוך רשימת דיבורים אחרי n מילים (דיבור מתחיל + פירוש): [מה שנשאר בעמוד, ההמשך]. חלק ראשון מסומן cut, ההמשך cont
+  const cmWordsOf = e => (e.dh ? e.dh.split(/\s+/).filter(Boolean) : []).concat(e.body.split(/\s+/).filter(Boolean));
+  const cmLen = e => cmWordsOf(e).length;
+  function cutCm(list, n) {
+    const keep = [], rest = []; let left = n;
+    list.forEach(e => {
+      const len = cmLen(e);
+      if (left >= len) { keep.push(e); left -= len; return; }
+      if (left <= 0) { rest.push(e); return; }
+      const ws = cmWordsOf(e), dn = e.dh ? e.dh.split(/\s+/).filter(Boolean).length : 0;
+      const a = ws.slice(0, left), z = ws.slice(left);
+      keep.push(Object.assign({}, e, { dh: a.slice(0, dn).join(' '), body: (left > dn ? ' ' : '') + a.slice(dn).join(' '), cut: true }));
+      rest.push(Object.assign({}, e, { dh: z.length > ws.length - dn ? z.slice(0, z.length - (ws.length - dn)).join(' ') : '', body: z.slice(Math.max(0, z.length - (ws.length - dn))).join(' '), cont: true, cut: false }));
+      left = 0;
+    });
+    return [keep, rest];
+  }
 
   function pagesFor(b, ch) {
     const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
@@ -254,8 +271,12 @@
     probe.className = 'rdPage' + geo.cls;
     // דיבורים של קטע: לפי מיקום הדיבור המתחיל במילים [from, to); הקטע האחרון של פסוק לוקח גם את מה שאחרי
     const entsOf = s => { const n = wordsOf(b, ch, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
-    const mk = segs => ({ segs, vs: [...new Set(segs.map(s => s.v))], cm: [].concat(...segs.map(entsOf)) });
-    const fits = segs => { probe.innerHTML = pageInner(b, ch, mk(segs), pages.length + 1, ''); return !over(probe); };
+    // carry = המשך של דיבורים ארוכים מהעמוד הקודם (פירוש שלא נכנס כולו בעמוד אחד עם הטקסט שלו, כמו רש״י על "בראשית").
+    // הוא בא בראש הפירוש בעמוד הבא, ותמיד עם טקסט חדש באותו עמוד. cut = כמה מילים של הפירוש להשאיר בעמוד (השאר עובר ל-carry).
+    let carry = [];
+    const mk = (segs, cut) => { const all = carry.concat(...segs.map(entsOf)); return { segs, vs: [...new Set(segs.map(s => s.v))], cm: cut == null ? all : cutCm(all, cut)[0] }; };
+    const fits = (segs, cut) => { probe.innerHTML = pageInner(b, ch, mk(segs, cut), pages.length + 1, ''); return !over(probe); };
+    const cmWords = segs => carry.concat(...segs.map(entsOf)).reduce((n, e) => n + cmLen(e), 0);
     // הכמות הגדולה ביותר k (בין lo ל-max) שעבורה ok(k) — ok מונוטוני יורד; חיפוש דוהר+בינארי כדי למדוד מעט פעמים גם בפרקים ארוכים (תהלים קיט)
     const maxOk = (lo, max, ok) => {
       let good = lo, step = 1;
@@ -270,15 +291,25 @@
       const segs = [];
       // פסוקים שלמים עם כל הפירוש שלהם, כל עוד הם נכנסים
       const k = fits([queue[0]]) ? maxOk(1, queue.length, k => fits(queue.slice(0, k))) : 0;
+      let cut = null;
       if (k) segs.push(...queue.splice(0, k));
       else {
         // פסוק/משנה ארוכים מעמוד שלם: חלק ראשון במילים, עם הדיבורים שלו, והשאר בעמוד הבא
         const s = queue[0], n = s.to - s.from;
-        const w = n > 1 && fits([{ v: s.v, from: s.from, to: s.from + 1 }]) ? maxOk(1, n - 1, w => fits([{ v: s.v, from: s.from, to: s.from + w }])) : Math.min(n, Math.max(1, (ents.find(e => e.v === s.v && e.pos > s.from) || { pos: s.to }).pos - s.from));
+        const one = fits([{ v: s.v, from: s.from, to: s.from + 1 }]);
+        let w = n > 1 && one ? maxOk(1, n - 1, w => fits([{ v: s.v, from: s.from, to: s.from + w }])) : Math.min(n, Math.max(1, (ents.find(e => e.v === s.v && e.pos > s.from) || { pos: s.to }).pos - s.from));
+        if (!one) {
+          // גם מילה אחת עם הפירוש שלה גדולה מעמוד: חותכים את הפירוש במילים, וממשיכים אותו בעמוד הבא עם המשך הפסוק
+          if (w >= n && n > 1) w = n - 1;
+          const seg = [{ v: s.v, from: s.from, to: s.from + w }];
+          cut = maxOk(0, cmWords(seg), c => fits(seg, c));
+        }
         segs.push({ v: s.v, from: s.from, to: s.from + w });
         if (w < n) queue[0] = { v: s.v, from: s.from + w, to: s.to }; else queue.shift();
       }
-      pages.push(mk(segs));
+      const pg = mk(segs, cut);
+      carry = cut == null ? [] : cutCm(carry.concat(...segs.map(entsOf)), cut)[1];
+      pages.push(pg);
       if (pages.length > 600) break;
     }
     probe.innerHTML = '';
