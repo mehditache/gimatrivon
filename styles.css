@@ -602,8 +602,10 @@ html.gtNoAnim .driver-overlay *{transition:none!important}
 @font-face{font-family:"GimRashi";src:url(vendor/fonts/NotoRashiHebrew-hebrew.woff2) format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
 :root{--rdDesk:#2e2416;--rdBar:#382c1b;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdPaper:#fbf7ec;--rdEdge:#efe5cd;--rdInk:#2a2117;--rdMu:#8a7754;--rdGold:#98722c;--rdLine:#e4d7b9;
   --rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:#f6e39a;--rdOn:#e7c77e;--rdFlash:#f3dfa6}
-/* מראה לילה: הספר עצמו נשאר תמיד בהיר (בקשת המשתמש) — רק השולחן והסרגל סביבו מתכהים */
-:root[data-theme=dark]{--rdDesk:#120d07;--rdBar:#1c150d}
+/* הסביבה של הספר (שולחן, סרגל, כפתורים) לפי המראה: גוויל = בהיר, לילה = כהה. הספר עצמו תמיד בהיר (בקשת המשתמש).
+   --rdG1..3 = שכבות שקופות לרקע ולמסגרות של כפתורים בסרגל (כהות על רקע בהיר, בהירות על רקע כהה) */
+:root{--rdDesk:#e6dcc6;--rdBar:#f3ecdc;--rdBarTx:#3a2d1a;--rdBarMu:#8a7754;--rdBarB:#d9caa6;--rdG1:rgba(70,50,15,.05);--rdG2:rgba(70,50,15,.09);--rdG3:rgba(70,50,15,.18);--rdShadow:rgba(80,55,20,.28);--rdOn:#b8913f}
+:root[data-theme=dark]{--rdDesk:#120d07;--rdBar:#1c150d;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdBarB:rgba(0,0,0,.35);--rdG1:rgba(255,255,255,.07);--rdG2:rgba(255,255,255,.11);--rdG3:rgba(255,255,255,.16);--rdShadow:rgba(0,0,0,.45);--rdOn:#e7c77e}
 .rdF,.reader .fN,.rdPrint .fN{font-family:"GimFrank","Frank Ruhl Libre","David","Times New Roman",serif}
 .reader .fR,.rdPrint .fR{font-family:"GimRashi","Noto Rashi Hebrew","GimFrank",serif}
 /* מתג המצב בכותרת */
@@ -614,27 +616,27 @@ body[data-mode=read] .reader{display:flex}
 .reader{flex:1;min-height:0;flex-direction:column;position:relative;container-type:inline-size;background:var(--rdDesk);color:var(--rdBarTx);font-family:var(--ui)}
 .reader button{color:inherit}
 /* סרגל עליון */
-.rdBar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--rdBar);border-bottom:1px solid rgba(0,0,0,.35);position:relative;z-index:20}
+.rdBar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--rdBar);border-bottom:1px solid var(--rdBarB);position:relative;z-index:20}
 .rdNav{display:flex;align-items:center;gap:4px;flex:none}
-.reader .rdIco{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,.14)}
-.reader .rdIco:hover:not(:disabled){background:rgba(255,255,255,.08);border-color:var(--rdOn)}
+.reader .rdIco{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:transparent;border:1px solid var(--rdG3)}
+.reader .rdIco:hover:not(:disabled){background:var(--rdG1);border-color:var(--rdOn)}
 .reader .rdIco:disabled{opacity:.35;cursor:default}
 .reader .rdIco.sm{width:24px;height:24px;border:0}
-.reader .rdWhere{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);font:600 15px "GimFrank",var(--tf);white-space:nowrap}
-.reader .rdWhere:hover,.reader .rdWhere[aria-expanded=true]{border-color:var(--rdOn);background:rgba(255,255,255,.1)}
-.rdSearch{flex:1;min-width:0;max-width:520px;position:relative;display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:var(--rdBarMu)}
-.rdSearch:focus-within{border-color:var(--rdOn);background:rgba(255,255,255,.1)}
+.reader .rdWhere{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;background:var(--rdG1);border:1px solid var(--rdG3);font:600 15px "GimFrank",var(--tf);white-space:nowrap}
+.reader .rdWhere:hover,.reader .rdWhere[aria-expanded=true]{border-color:var(--rdOn);background:var(--rdG2)}
+.rdSearch{flex:1;min-width:0;max-width:520px;position:relative;display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:9px;background:var(--rdG1);border:1px solid var(--rdG3);color:var(--rdBarMu)}
+.rdSearch:focus-within{border-color:var(--rdOn);background:var(--rdG2)}
 .rdSearch input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--rdBarTx);font:15px "GimFrank",var(--ui);padding:0}
 .rdSearch input::placeholder{color:var(--rdBarMu)}
 .rdSearch input::-webkit-search-cancel-button{display:none}
-.rdSearch kbd{flex:none;font:600 10.5px var(--ui);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:1px 5px;color:var(--rdBarMu);direction:ltr}
-.reader .rdSeg{display:inline-flex;flex:none;border:1px solid rgba(255,255,255,.16);border-radius:9px;overflow:hidden}
+.rdSearch kbd{flex:none;font:600 10.5px var(--ui);border:1px solid var(--rdG3);border-radius:5px;padding:1px 5px;color:var(--rdBarMu);direction:ltr}
+.reader .rdSeg{display:inline-flex;flex:none;border:1px solid var(--rdG3);border-radius:9px;overflow:hidden}
 .reader .rdSeg button{display:inline-flex;align-items:center;gap:6px;height:32px;border:0;border-radius:0;background:none;padding:0 12px;font-size:13px;white-space:nowrap}
-.reader .rdSeg button:hover{background:rgba(255,255,255,.08)}
+.reader .rdSeg button:hover{background:var(--rdG1)}
 .reader .rdSeg button.on{background:var(--rdOn);color:#2e2416;font-weight:600}
-.reader .rdSetBtn{flex:none;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;background:transparent;border:1px solid rgba(255,255,255,.16);font-size:13px}
+.reader .rdSetBtn{flex:none;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;background:transparent;border:1px solid var(--rdG3);font-size:13px}
 .reader .rdSetBtn .aa{font:700 17px "GimFrank",var(--tf);line-height:1}
-.reader .rdSetBtn:hover,.reader .rdSetBtn[aria-expanded=true]{border-color:var(--rdOn);background:rgba(255,255,255,.08)}
+.reader .rdSetBtn:hover,.reader .rdSetBtn[aria-expanded=true]{border-color:var(--rdOn);background:var(--rdG1)}
 /* רשימת חיפוש */
 .rdDrop{position:absolute;top:calc(100% + 6px);inset-inline-start:-1px;width:max(100%,480px);max-height:min(74vh,720px);overflow:hidden;display:flex;flex-direction:column;background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);padding:6px;z-index:30}
 .rdDH{font:700 11px var(--ui);color:var(--rdMu);padding:6px 8px 3px}
@@ -680,7 +682,7 @@ body[data-mode=read] .reader{display:flex}
 mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 /* שולחן + ספר */
 .rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,rgba(255,235,190,.07),transparent 70%)}
-.rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px rgba(0,0,0,.45))}
+.rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px var(--rdShadow))}
 .rdBook.two::before,.rdBook.two::after{content:"";position:absolute;inset:4px -5px -5px -5px;border-radius:4px;background:#e3d8bf;z-index:-1}
 .rdBook.two::after{inset:2px -2.5px -2.5px -2.5px;background:#efe6d0}
 .rdSpine{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:rgba(0,0,0,.18);pointer-events:none}
@@ -733,14 +735,14 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .rdNum{text-align:center;font:12px var(--ui);color:var(--rdMu);margin-top:8px}
 .rdMeasure{position:absolute;top:0;inset-inline-start:0;visibility:hidden;pointer-events:none;z-index:-1}
 /* כפתורי דפדוף */
-.reader .rdTurn{position:absolute;top:50%;margin-top:-22px;width:44px;height:44px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);z-index:2}
+.reader .rdTurn{position:absolute;top:50%;margin-top:-22px;width:44px;height:44px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--rdG1);border:1px solid var(--rdG3);z-index:2}
 .reader .rdTurn.prev{inset-inline-start:14px}.reader .rdTurn.next{inset-inline-end:14px}
-.reader .rdTurn:hover:not(:disabled){background:rgba(255,255,255,.14);border-color:var(--rdOn)}
+.reader .rdTurn:hover:not(:disabled){background:var(--rdG3);border-color:var(--rdOn)}
 .reader .rdTurn:disabled{opacity:.25;cursor:default}
 /* שורה תחתונה */
 .rdFoot{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;padding:6px 14px 8px;font-size:12px;color:var(--rdBarMu)}
 .rdFoot .rdIco{display:none}
-.rdProg{width:180px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
+.rdProg{width:180px;height:3px;border-radius:2px;background:var(--rdG2);overflow:hidden}
 .rdProg span{display:block;height:100%;background:var(--rdOn);margin-inline-start:0}
 /* חלוניות: הגדרות תצוגה / מעבר לפרק ופסוק */
 .rdScrim{position:absolute;inset:0;z-index:35}
