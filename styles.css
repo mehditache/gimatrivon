@@ -479,7 +479,10 @@ html[lang="en"] .dlg{direction:ltr}
 .cGrid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin-bottom:.55rem}
 .cGridSingle{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .ccell{position:relative;background:var(--pn);border:1px solid var(--ln2);border-radius:var(--r);padding:.5rem .55rem .45rem;text-align:start;box-shadow:0 1px 2px rgba(90,65,20,.07);overflow:visible;cursor:default}
-.ccell::before{content:"";position:absolute;inset-inline:0;top:0;height:3px;border-radius:var(--r) var(--r) 0 0;background:linear-gradient(90deg,var(--barA,var(--acA)) 50%,var(--barB,var(--acB)) 50%)}
+.ccell::before,.ccell::after{content:"";position:absolute;top:0;height:3px;width:50%}
+/* שני חצאי הפס הם שני אלמנטים (לא גרדיאנט אחד), כדי שבהבהוב-התאמה יהבהב רק החצי שבצבע העיגול */
+.ccell::before{left:0;border-top-left-radius:var(--r);background:var(--barA,var(--acA))}
+.ccell::after{right:0;border-top-right-radius:var(--r);background:var(--barB,var(--acB))}
 /* הוסר opacity:.6 (v3.4.0): זה היה מטרתו לסמן חזותית ש-תאי-נוטריקון הם "מידע" ולא שיטה-לבחירה, אבל
    בפועל זה דיהה גם את הטקסט/המספרים עצמם עד כדי בלתי-קריא (כך דווח ע"י המשתמש). הקו-העליון היה אמור
    להישאר כסימון-עדין להבדל הזה — אבל "ניטרלי" (var(--ln)) יצא בפועל צבע חום/חרדלי שטוח ולא-מכוון (בעיקר
@@ -534,3 +537,59 @@ html[lang="en"] .dlg{direction:ltr}
 :root[data-theme=dark] .doc .warn{color:#e0a85a}
 :root[data-theme=dark] .cx .hlT{background:#6b5420;color:#ffe9a8}
 :root[data-theme=dark] .cx .hlF{background:#3a2d57;color:#d9c7ff;border-bottom-color:#a685e0}
+
+/* v3.6.0: לחיצה על עיגול-התאמה → פס-הצבע של התאים המותאמים (בשני הצדדים) מהבהב 7 שניות (ראו focusMatch/BLINK_MS ב-app.js).
+   דסקטופ: הפס הוא border-top בצבע --c; נייד: הפס הוא ::before של .ccell. ה-animation-delay נקבע ב-inline style כדי שציור-מחדש לא יקפיץ את הפאזה. */
+@keyframes barBlink{0%,100%{border-top-color:var(--c);box-shadow:0 -3px 9px -1px var(--c)}50%{border-top-color:color-mix(in srgb,var(--c) 12%,transparent);box-shadow:none}}
+@keyframes barBlinkMB{0%,100%{opacity:1;box-shadow:0 0 9px 1px color-mix(in srgb,var(--barB) 55%,transparent)}50%{opacity:.12;box-shadow:none}}
+@keyframes barBlinkM{0%,100%{opacity:1;box-shadow:0 0 9px 1px color-mix(in srgb,var(--barA) 55%,transparent)}50%{opacity:.12;box-shadow:none}}
+.gr4cell.blinkBar,.gr4Wrap .gr.blinkBar{animation:barBlink .8s ease-in-out infinite}
+.ccell.blinkA::before{animation:barBlinkM .8s ease-in-out infinite}
+.ccell.blinkB::after{animation:barBlinkMB .8s ease-in-out infinite}
+/* שני עיגולי-ההתאמה עצמם (.bdg בדסקטופ, .ccBdg2 בנייד) — הבהוב בגודל/הילה באותו קצב ובאותה פאזה כמו הפס */
+@keyframes bdgBlink{0%,100%{transform:scale(1.18);box-shadow:0 0 0 3px color-mix(in srgb,var(--c,var(--mc)) 40%,transparent);opacity:1}50%{transform:scale(.85);box-shadow:none;opacity:.25}}
+.bdg.blinkBdg,.ccBdg2.blinkBdg{animation:bdgBlink .8s ease-in-out infinite}
+/* חלון-הסבר שני בסיור (ראו tourExtraShow ב-app.js): אותו מראה כמו פופ-אובר של driver.js, מעל שכבת-ההחשכה */
+.gtTourWin{position:fixed;z-index:1000000;box-sizing:border-box;background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 10px 30px -10px rgba(0,0,0,.35);padding:.8rem 1rem;font:15px/1.5 var(--ui);text-align:start}
+.gtTourWin .t{font:700 1.02rem/1.4 var(--tf);color:var(--ac);margin:0 0 .3rem}
+.gtTourWin .d{font-size:.88rem;line-height:1.6}
+.gtTourRing{position:fixed;z-index:999999;box-sizing:border-box;border:3px solid var(--ac);border-radius:10px;pointer-events:none;background:color-mix(in srgb,var(--pn) 30%,transparent);animation:tourRing 1.2s ease-in-out infinite}
+@keyframes tourRing{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ac) 50%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+/* מתג-נסתר "תצוגת סמארטפון" (setPhoneForced ב-app.js): #stage מצטמצם לרוחב טלפון. transform עליו (ולא על body — פופ-אובר/שכבת-ההחשכה
+   של הסיור הם ילדי body וחייבים להישאר יחסית לחלון) יוצר containing-block ל-position:fixed של הגיליון התחתון, כך שהוא נשאר בתוך המסגרת. */
+html.forcePhone,html.forcePhone body{background:#1d1812}
+html.forcePhone #stage{flex:1;width:390px;max-width:100%;align-self:center;position:relative;transform:translateZ(0);overflow:hidden;background:var(--bg);box-shadow:0 0 0 1px #000,0 12px 48px rgba(0,0,0,.55)}
+/* כיסוי-החשכה על תגית שלא מוסברת בתוך מלבן-פוקוס של הסיור (tourUnionDim) */
+.gtTourDim{position:fixed;z-index:10001;pointer-events:none;border-radius:6px}
+/* ---- forcePhone mirror (נוצר מהבלוקים @media(max-width:700/1439/859) ו-@media(pointer:coarse…) למעלה; לעדכן כשהם משתנים) ----
+   בצמצום-חלון רגיל אין pointer:coarse, ולכן המתג הנסתר (setPhoneForced) מפעיל את אותם כללים דרך html.forcePhone. */
+html.forcePhone .mcards{grid-template-columns:repeat(2,1fr)}
+html.forcePhone .doc .chipWrap.miluiGrid{grid-template-columns:repeat(2,1fr)}
+html.forcePhone .ws{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+html.forcePhone .side{display:grid;gap:var(--g);min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+html.forcePhone .ctr textarea{height:3.4rem;font-size:1.15rem}
+html.forcePhone .ctr .inp{padding:.5rem .8rem}
+html.forcePhone .side[data-k=A] .res{grid-column:1}
+html.forcePhone .side[data-k=A] .ctr{grid-column:2}
+html.forcePhone .side[data-k=B] .ctr{grid-column:1}
+html.forcePhone .side[data-k=B] .res{grid-column:2}
+html.forcePhone .sideSw{display:inline-flex}
+html.forcePhone .brand span,html.forcePhone .inl{display:none}
+html.forcePhone .top{flex-wrap:wrap}
+html.forcePhone .ws{grid-template-columns:minmax(0,1fr)}
+html.forcePhone body[data-view=A] .side[data-k=B],html.forcePhone body[data-view=B] .side[data-k=A]{display:none}
+html.forcePhone .side{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+html.forcePhone .side .res{grid-row:1}
+html.forcePhone .side .ctr{grid-row:2}
+html.forcePhone .ws{display:none}
+html.forcePhone #mShell{display:flex;flex:1;min-height:0;flex-direction:column}
+html.forcePhone .top{flex-wrap:nowrap;gap:.5rem}
+html.forcePhone .brand{gap:.5rem;align-items:center}
+html.forcePhone .brand .tagline{display:none}
+html.forcePhone .sideSw,html.forcePhone .tools>*:not(#status),html.forcePhone #status{display:none}
+html.forcePhone #mKebab{display:inline-flex}
+html.forcePhone #mSummaryBar{display:flex}
+
+/* מעבר-מחדש אחרי demo (ללא היעלמות/הופעה מחדש של הבועה) */
+html.gtNoAnim .driver-popover{animation:none!important;transition:none!important}
+html.gtNoAnim .driver-overlay *{transition:none!important}

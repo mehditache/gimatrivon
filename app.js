@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.5.4'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.6.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -461,6 +461,20 @@ function hitsSortToggle(k, id) {
 // נכון מעצמם בכל renderWindow/computeGroups.
 const S = {}; KS.forEach(k => { S[k] = { text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: [], winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
 let IDX = null, CM = null, FOCUS = null;
+// v3.6.0: לחיצה על עיגול-התאמה גורמת לפס-הצבע של התאים המותאמים ולשני העיגולים עצמם — בשני הצדדים — להבהב BLINK_MS. מסמנים *זמן*
+// (BLINK_AT) ולא class חד-פעמי, כי renderCenter מצייר את כל הלוח מחדש (גם בהקלדה/חיפוש חי) — כל ציור-מחדש בתוך
+// 7 השניות מחזיר את ה-class עם animation-delay שמשכיב את ההבהוב באותה פאזה, כך שאין "קפיצה". בסיום מסירים ידנית.
+const BLINK_MS = 7000, BLINK_PERIOD_MS = 800;
+let BLINK_AT = 0, blinkTimer = null;
+function blinkOn(hl) { return !!(hl && FOCUS != null && hl.id === FOCUS && Date.now() - BLINK_AT < BLINK_MS); }
+function blinkDelay() { return `animation-delay:-${((Date.now() - BLINK_AT) % BLINK_PERIOD_MS) / 1000}s;`; }
+function focusMatch(id, force) { // force: הדגמת-הסיור מדליקה תמיד (בלי "לחיצה שנייה מכבה")
+  FOCUS = !force && FOCUS === id ? null : id;
+  BLINK_AT = FOCUS != null ? Date.now() : 0;
+  clearTimeout(blinkTimer);
+  if (FOCUS != null) blinkTimer = setTimeout(() => document.querySelectorAll('.blinkBar,.blinkBdg,.blinkA,.blinkB').forEach(e => e.classList.remove('blinkBar', 'blinkBdg', 'blinkA', 'blinkB')), BLINK_MS);
+  renderCenter();
+}
 
 /* ---------- בניית המסך ---------- */
 const TITLES = { filt: 'סינון', res: 'תוצאות החיפוש במקורות', ctr: SIDE };
@@ -656,12 +670,13 @@ function renderCenter() {
     const gr4Html = GEM_FAMILIES.map(f => {
       const cells = `<div class="gr4">${f.ids.map(id => {
         const r = res[k][id], on = st.ms.has(id), mine = CM.matches.filter(x => x[side].method === id), hl = mine.find(x => x.id === FOCUS) || mine[0];
-        const matchBdgs = mine.map(x => `<button class="bdg" style="--c:${x.color}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
+        const matchBdgs = mine.map(x => `<button class="bdg${blinkOn(x) ? ' blinkBdg' : ''}" style="--c:${x.color};${blinkOn(x) ? blinkDelay() : ''}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
         const badges = matchBdgs ? `<div class="bdgSmall">${matchBdgs}</div>` : '';
         // עיגול-התוצאות מוצג תמיד (גם "0" כשאין עדיין/בכלל התאמות) כדי שהערך יוכל "לגדול" באופן חי תוך
         // כדי חיפוש בלי שהעיגול יקפוץ פנימה/החוצה מהתא (מה שהיה גורם לקפיצות-פריסה קטנות).
         const hits = sourceHits(st, id), hitOn = st.hitsSort === id ? ' on' : '', hitsBdg = `<span class="bdgH${hitOn}" data-m="${id}" title="${fmt(hits)} ${L('התאמות במקורות')}${hitOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(hits)}</span>`;
-        return `<div class="gr4cell${on ? '' : ' off'}" data-m="${id}" style="--c:${hl ? hl.color : 'var(--ln2)'}" title="${L(f.labels[id])} · ${fmt(r.value)}${on ? ' · ' + L('לחצו לכיבוי שיטה זו') : ' · ' + L('לחצו להפעלת שיטה זו')}"><div class="mn">${L(f.labels[id])}</div><div class="num">${fmt(r.value)}</div><div class="bdgRow">${hitsBdg}${badges}</div></div>`;
+        const bk = blinkOn(hl);
+        return `<div class="gr4cell${on ? '' : ' off'}${bk ? ' blinkBar' : ''}" data-m="${id}" style="--c:${hl ? hl.color : 'var(--ln2)'};${bk ? blinkDelay() : ''}" title="${L(f.labels[id])} · ${fmt(r.value)}${on ? ' · ' + L('לחצו לכיבוי שיטה זו') : ' · ' + L('לחצו להפעלת שיטה זו')}"><div class="mn">${L(f.labels[id])}</div><div class="num">${fmt(r.value)}</div><div class="bdgRow">${hitsBdg}${badges}</div></div>`;
       }).join('')}</div>`;
       if (f.key === 'regular') {
         // שורת נוטריקון מקוננת בתוך אותו מלבן (לא כפתור/קופסה נפרדת) — תמיד גלויה, בלי פס-צבע עליון
@@ -679,13 +694,13 @@ function renderCenter() {
     const restHtml = E.METHODS.filter(m => m.id === 'milui').map(m => { const r = res[k][m.id], on = st.ms.has(m.id), mine = CM.matches.filter(x => x[side].method === m.id), hl = mine.find(x => x.id === FOCUS) || mine[0];
       const noteFull = hasTxt ? (r.transformedText || '') : '';
       const hits = sourceHits(st, m.id), hitsOn = st.hitsSort === m.id ? ' on' : '', hitsBdg = `<span class="bdgH${hitsOn}" data-m="${m.id}" title="${fmt(hits)} ${L('התאמות במקורות')}${hitsOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(hits)}</span>`;
-      const matchBdgs = mine.map(x => `<button class="bdg" style="--c:${x.color}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
+      const matchBdgs = mine.map(x => `<button class="bdg${blinkOn(x) ? ' blinkBdg' : ''}" style="--c:${x.color};${blinkOn(x) ? blinkDelay() : ''}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
       // שורה שטוחה אחת (לא עמודה מוערמת כמו ב-gr4cell הצר): משמאל לימין — ערך, עיגול-תוצאות, עיגולי-התאמה, כותרת
-      const row = `<div class="gr${on ? '' : ' off'}" data-m="${m.id}" style="--c:${hl ? hl.color : 'var(--ln2)'}" title="${on ? L('לחצו לכיבוי שיטה זו') : L('לחצו להפעלת שיטה זו')}"><div class="mn">${L(m.name)}</div>${matchBdgs}${hitsBdg}<span class="num">${fmt(r.value)}</span></div>`;
+      const bk = blinkOn(hl), row = `<div class="gr${on ? '' : ' off'}${bk ? ' blinkBar' : ''}" data-m="${m.id}" style="--c:${hl ? hl.color : 'var(--ln2)'};${bk ? blinkDelay() : ''}" title="${on ? L('לחצו לכיבוי שיטה זו') : L('לחצו להפעלת שיטה זו')}"><div class="mn">${L(m.name)}</div>${matchBdgs}${hitsBdg}<span class="num">${fmt(r.value)}</span></div>`;
       const note = `<div class="gr4Note" title="${noteFull ? esc(noteFull) : ''}">${noteFull ? `<span class="cpy" role="button" tabindex="0" title="${L('העתק את המחרוזת המומרת ללוח')}" data-copy="${esc(noteFull)}">⧉</span>` : ''}<span class="noteTxt">${noteFull ? esc(noteFull) : '&nbsp;'}</span></div>`;
       return `<div class="gr4Wrap">${row}${note}</div>`; }).join('');
     $('#gr' + k).innerHTML = gr4Html + restHtml;
-    $('#gr' + k).querySelectorAll('.bdg').forEach(b => { b.onclick = () => { FOCUS = FOCUS === +b.dataset.f ? null : +b.dataset.f; renderCenter(); }; });
+    $('#gr' + k).querySelectorAll('.bdg').forEach(b => { b.onclick = () => focusMatch(+b.dataset.f); });
     $('#gr' + k).querySelectorAll('.bdgH').forEach(b => { b.onclick = () => hitsSortToggle(k, b.dataset.m); });
   });
   // UX נייד (v3.0.0, ראו המדריך למעלה ליד #mShell): אותו res/CM/FOCUS בדיוק שכבר חושבו למעלה, רק מרונדרים
@@ -751,9 +766,9 @@ function mobileChip(k, id, label, r, res) {
   const mine = CM.matches.filter(x => x[side].method === id);
   const hl = mine.find(x => x.id === FOCUS) || mine[0];
   const hits = sourceHits(st, id), hitOn = st.hitsSort === id ? ' on' : '';
-  const matchBdg = hl ? `<button class="ccBdg2" data-k="${k}" data-match="${hl.id}" style="--mc:${hl.color}" title="${L('התאמה')} ${heNum(hl.id)}">${heNum(hl.id)}</button>` : '';
+  const matchBdg = hl ? `<button class="ccBdg2${blinkOn(hl) ? ' blinkBdg' : ''}" data-k="${k}" data-match="${hl.id}" style="--mc:${hl.color};${blinkOn(hl) ? blinkDelay() : ''}" title="${L('התאמה')} ${heNum(hl.id)}">${heNum(hl.id)}</button>` : '';
   const barVar = hl ? `--bar${k}:${hl.color};` : '';
-  return { html: `<div class="ccChip${on ? '' : ' off'}${hl ? ' matched' : ''}" data-k="${k}" data-m="${id}" style="${hl ? `--mc:${hl.color}` : ''}" title="${L(label)} · ${fmt(r.value)}">${matchBdg}<span class="ccNum">${fmt(r.value)}</span><button class="ccHits${hitOn}" data-k="${k}" data-m="${id}" title="${fmt(hits)} ${L('התאמות במקורות')}">${fmt(hits)}</button></div>`, barVar };
+  return { foc: blinkOn(hl), html: `<div class="ccChip${on ? '' : ' off'}${hl ? ' matched' : ''}" data-k="${k}" data-m="${id}" style="${hl ? `--mc:${hl.color}` : ''}" title="${L(label)} · ${fmt(r.value)}">${matchBdg}<span class="ccNum">${fmt(r.value)}</span><button class="ccHits${hitOn}" data-k="${k}" data-m="${id}" title="${fmt(hits)} ${L('התאמות במקורות')}">${fmt(hits)}</button></div>`, barVar };
 }
 function buildMobileGrid(res) {
   const hasTxtA = !!S.A.text.trim(), hasTxtB = !!S.B.text.trim();
@@ -767,7 +782,8 @@ function buildMobileGrid(res) {
       const a = mobileChip('A', id, f.labels[id], res.A[id], res), b = mobileChip('B', id, f.labels[id], res.B[id], res);
       if (a.barVar) barA = a.barVar.match(/--barA:([^;]+)/)[1];
       if (b.barVar) barB = b.barVar.match(/--barB:([^;]+)/)[1];
-      return `<div class="ccell" style="--barA:${barA || 'var(--acA)'};--barB:${barB || 'var(--acB)'}"><div class="ccMn">${L(f.labels[id])}</div><div class="ccVals">${a.html}${b.html}</div></div>`;
+      const bk = a.foc || b.foc;
+      return `<div class="ccell${a.foc ? ' blinkA' : ''}${b.foc ? ' blinkB' : ''}" style="--barA:${barA || 'var(--acA)'};--barB:${barB || 'var(--acB)'};${bk ? blinkDelay() : ''}"><div class="ccMn">${L(f.labels[id])}</div><div class="ccVals">${a.html}${b.html}</div></div>`;
     }).join('');
     if (f.key === 'regular') {
       const notCells = NOTARIKON_IDS.map(m => {
@@ -789,7 +805,8 @@ function buildMobileGrid(res) {
   }).join('');
   const miluiA = mobileChip('A', 'milui', 'מילוי', res.A.milui, res), miluiB = mobileChip('B', 'milui', 'מילוי', res.B.milui, res);
   const mBarA = miluiA.barVar.match(/--barA:([^;]+)/), mBarB = miluiB.barVar.match(/--barB:([^;]+)/);
-  const miluiCell = `<div class="ccell" style="--barA:${mBarA ? mBarA[1] : 'var(--acA)'};--barB:${mBarB ? mBarB[1] : 'var(--acB)'}"><div class="ccMn">${L('מילוי')}</div><div class="ccVals">${miluiA.html}${miluiB.html}</div></div>`;
+  const mbk = miluiA.foc || miluiB.foc;
+  const miluiCell = `<div class="ccell${miluiA.foc ? ' blinkA' : ''}${miluiB.foc ? ' blinkB' : ''}" style="--barA:${mBarA ? mBarA[1] : 'var(--acA)'};--barB:${mBarB ? mBarB[1] : 'var(--acB)'};${mbk ? blinkDelay() : ''}"><div class="ccMn">${L('מילוי')}</div><div class="ccVals">${miluiA.html}${miluiB.html}</div></div>`;
   const noteMA = hasTxtA ? (res.A.milui.transformedText || '') : '', noteMB = hasTxtB ? (res.B.milui.transformedText || '') : '';
   const miluiNoteTxt = (noteMA || noteMB) ? `<b>${L('צד א׳')}</b> ${esc(noteMA || '—')} &nbsp;·&nbsp; <b>${L('צד ב׳')}</b> ${esc(noteMB || '—')}` : '&nbsp;';
   const miluiCopy = (noteMA || noteMB) ? `${L('צד א׳')}: ${noteMA}\n${L('צד ב׳')}: ${noteMB}` : '';
@@ -804,7 +821,7 @@ function bindMobileGrid() {
   const mgr = $('#mgr'); if (!mgr) return;
   mgr.addEventListener('click', e => {
     const mb = e.target.closest('.ccBdg2');
-    if (mb) { FOCUS = FOCUS === +mb.dataset.match ? null : +mb.dataset.match; renderCenter(); return; }
+    if (mb) { focusMatch(+mb.dataset.match); return; }
     const hb = e.target.closest('.ccHits[data-m]');
     if (hb) { hitsSortToggle(hb.dataset.k, hb.dataset.m); return; }
     const cp = e.target.closest('.cpy');
@@ -847,7 +864,25 @@ function exitMobileLayout() {
   });
   setTimeout(() => KS.forEach(fsLayout), 0);
 }
-function applyMobileLayout() { MQ_PHONE.matches ? enterMobileLayout() : exitMobileLayout(); }
+function applyMobileLayout() { (phoneForced || MQ_PHONE.matches) ? enterMobileLayout() : exitMobileLayout(); }
+/* מתג נסתר: "תצוגת סמארטפון" בחלון רגיל (למשל בתצוגה המקדימה של האפליקציה, שבה אין מסך-מגע). פריסת-הנייד נקבעת ע״י
+   matchMedia — מסך-מגע (pointer:coarse) *וגם* רוחב עד 500px — ולכן אי-אפשר להפעיל אותה בצמצום-חלון. כאן: (1) html.forcePhone
+   מפעיל ב-styles.css עותק-מראה של כללי ה-@media הרלוונטיים (לא קורא cssRules — בקובץ file:// הוא חסום); (2) הגוף מצטמצם
+   ל-390px; (3) applyMobileLayout מתייחס ל-phoneForced.
+   הפעלה/כיבוי: 5 לחיצות מהירות על הכותרת "גימטריבון", או #phone / #desktop בסוף הכתובת. */
+let phoneForced = false;
+function setPhoneForced(on) {
+  on = !!on; if (on === phoneForced) return; phoneForced = on;
+  document.documentElement.classList.toggle('forcePhone', on);
+  applyMobileLayout();
+  window.dispatchEvent(new Event('resize'));
+}
+(() => {
+  const h1 = document.querySelector('.brand h1'); let n = 0, t = 0;
+  if (h1) h1.addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; setPhoneForced(!phoneForced); } });
+  const fromHash = () => { if (location.hash === '#phone') setPhoneForced(true); else if (location.hash === '#desktop') setPhoneForced(false); };
+  window.addEventListener('hashchange', fromHash); setTimeout(fromHash, 0);
+})();
 // טקסט תלוי-שפה של מעטפת-הנייד — מופרד מ-setupMobileUX כדי ש-applyLang יוכל לקרוא לו שוב (בלי לרשום
 // מחדש את כל המאזינים) כש-המשתמש מחליף שפה תוך-כדי שימוש בטלפון.
 function applyMobileLangStatic() {
@@ -1563,8 +1598,8 @@ applyLangStatic();
    חריג אחד, מכוון: בכל פתיחת סיור — גם אם האפליקציה *כבר בשימוש* (יש למשתמש טקסט/בחירות משלו בצד א׳
    ו/או ב׳) — מנקים זמנית את שני הצדדים וטוענים-מראש זוג ביטויי-דוגמה, כדי שצעדי "תוצאות החיפוש"/"תוצאה
    בודדת"/"השוואה בין הצדדים" תמיד יראו תוכן אמיתי ומוכר מראש, ולא את מצב-האפליקציה הנוכחי (שעלול להיות
-   ריק, לא קשור, או עם הרבה תוצאות שמקשות להצביע על דוגמה ברורה) — "אהבה" (צד א׳) ו"אחד" (צד ב׳), ששתיהן
-   שוות 13 בגימטריה רגילה (ההתאמה-הקלאסית "אהבה=13=אחד"), כדי שגם צעד-ההשוואה-בין-הצדדים יראה עיגול-התאמה
+   ריק, לא קשור, או עם הרבה תוצאות שמקשות להצביע על דוגמה ברורה) — "עניו" (צד א׳) ו"סבלן" (צד ב׳), ששתיהן
+   שוות 137 (עניו ב"רגילה +כולל", סבלן באטב״ח), כדי שגם צעד-ההשוואה-בין-הצדדים יראה עיגול-התאמה
    אמיתי. זו קריאה *רגילה* ל-run('A')/run('B') באותו מסלול-קוד המשמש כל חיפוש אמיתי (לא DOM מדומה/מפוברק)
    — מוגבלת בכוונה לספר אחד, לשיטת-חיפוש אחת ולשיטת-מילה אחת (רגילה) כדי שתסתיים במהירות ותציג התאמה-
    אחת-נקייה. **כל** שדות-ההגדרה הרלוונטיים של שני הצדדים (SETTINGS_FIELDS למטה — כולל מקורות/טווחים/
@@ -1585,17 +1620,20 @@ function refreshSideDom(k) {
 function seedDemoQuery() {
   if (!IDX) return null;
   const snap = { A: snapshotSettings(S['A']), B: snapshotSettings(S['B']) };
-  const seedOne = (k, word) => {
+  const seedOne = (k, word, ms) => {
     const st = S[k];
     applySettings(st, {
-      text: word, num: '', ms: new Set(['regular']), sms: new Set(['regular']),
+      text: word, num: '', ms: new Set(ms), sms: new Set(['regular']),
       sel: new Set([0]), // רק בראשית — כדי שהחיפוש-לדוגמה יהיה מהיר וממוקד, לא "יחפור" בכל הקורפוס
       open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(),
-      tf: '', fuzzy: true, hitsSort: null, notMode: 'lit', fullUnit: false, singleWord: false, // שיטה אחת בלבד (רגילה) — התאמה נקייה אחת, לא "רעש" מכל 13 השיטות יחד
+      tf: '', fuzzy: true, hitsSort: null, notMode: 'lit', fullUnit: false, singleWord: false, // החיפוש בפסוקים (sms) ברגילה בלבד — לא "רעש" מכל 13 השיטות יחד
     });
     refreshSideDom(k);
   };
-  seedOne('A', 'אהבה'); seedOne('B', 'אחד');
+  // כל 13 השיטות פעילות בשני הצדדים — כך מופיעים 6 עיגולי-התאמה אמיתיים בין "עניו" ל"סבלן" (למשל עניו +כולל
+  // = סבלן באטב״ח = 137), והסיור מסביר את א׳, ג׳ ו-ו׳ מביניהם. החיפוש בפסוקים (sms) נשאר ברגילה בלבד.
+  const allM = E.METHODS.map(m => m.id);
+  seedOne('A', 'עניו', allM); seedOne('B', 'סבלן', allM);
   renderCenter();
   return snap;
 }
@@ -1610,61 +1648,231 @@ function restoreDemoQuery(snap) {
 // skipMissingElement:true זה לא "קורס", אבל בפועל מדלג בשקט על רוב הצעדים האלה, ומשאיר סיור חסר שלא
 // מסביר כלום על ה-UI הספציפי-לנייד (מתג א׳/ב׳, הגיליון התחתון, התפריט ⋮, לוח-החישוב הממוזג) — בדיוק מה
 // שדווח כ"לא עובד טוב". startTour() בוחר בין שתי הפונקציות לפי mobileActive.
+// v3.6.0: חלון-נוסף בסיור. driver.js מציג פופ-אובר אחד בלבד, והסיור צריך לפעמים *שני* חלונות-הסבר בו-זמנית (למשל צד א׳
+// וצד ב׳ של אותה התאמה). החלון השני הוא div צף משלו עם מסגרת-הדגשה סביב היעד שלו; מוצג מ-onHighlighted (אחרי שהגלילה
+// והאנימציה של driver נגמרו, אחרת המיקום מחושב לפני הגלילה) ומוסר בתחילת כל צעד/בסיום הסיור. מיקום: מנסים מתחת/מעל/
+// מימין/משמאל ליעד, ובוחרים את הראשון שנכנס במסך ולא מכסה את הפופ-אובר הראשי או את היעד הראשי.
+let tourExtras = [];
+function tourExtraClear() { tourExtras.forEach(e => e.remove()); tourExtras = []; }
+function tourExtraShow(w) {
+  tourExtraClear();
+  const target = typeof w.el === 'function' ? w.el() : document.querySelector(w.el);
+  const win = document.createElement('div'); win.className = 'gtTourWin'; win.dir = LANG === 'en' ? 'ltr' : 'rtl';
+  const t = document.createElement('div'); t.className = 't'; t.textContent = w.title;
+  const d = document.createElement('div'); d.className = 'd'; d.textContent = w.desc;
+  win.append(t, d); document.body.appendChild(win); tourExtras.push(win);
+  const vw = window.innerWidth, vh = window.innerHeight, M = 10;
+  win.style.width = Math.min(300, vw - 2 * M) + 'px';
+  const ww = win.offsetWidth, wh = win.offsetHeight;
+  const tr = target ? target.getBoundingClientRect() : null;
+  if (tr && tr.width && tr.height) {
+    const ring = document.createElement('div'); ring.className = 'gtTourRing';
+    ring.style.cssText = `left:${tr.left - 5}px;top:${tr.top - 5}px;width:${tr.width + 10}px;height:${tr.height + 10}px`;
+    document.body.appendChild(ring); tourExtras.push(ring);
+  }
+  const avoid = [document.querySelector('.driver-popover'), document.querySelector('.driver-active-element')].filter(Boolean).map(e => e.getBoundingClientRect());
+  const hit = (x, y) => avoid.some(r => x < r.right + 6 && x + ww > r.left - 6 && y < r.bottom + 6 && y + wh > r.top - 6);
+  const clampX = x => Math.max(M, Math.min(vw - ww - M, x)), clampY = y => Math.max(M, Math.min(vh - wh - M, y));
+  let pos = null;
+  if (tr && tr.width && tr.height) {
+    const cx = tr.left + tr.width / 2 - ww / 2, cy = tr.top + tr.height / 2 - wh / 2;
+    const cands = [[clampX(cx), tr.bottom + 14], [clampX(cx), tr.top - wh - 14], [tr.right + 14, clampY(cy)], [tr.left - ww - 14, clampY(cy)]];
+    pos = cands.find(([x, y]) => x >= M && y >= M && x + ww <= vw - M && y + wh <= vh - M && !hit(x, y)) || null;
+  }
+  if (!pos) { // אין יעד נראה (או אין מקום): בפינה פנויה של המסך
+    const corners = [[M, M], [vw - ww - M, M], [M, vh - wh - M], [vw - ww - M, vh - wh - M]];
+    pos = corners.find(([x, y]) => !hit(x, y)) || corners[0];
+  }
+  win.style.left = pos[0] + 'px'; win.style.top = pos[1] + 'px';
+}
+// v3.6.0: הסבר על עיגולי-ההתאמה בין שני הצדדים (א׳, ג׳, ו׳ מתוך 6) על מילות-ההדגמה (עניו / סבלן). לכל צעד שני חלונות — צד א׳
+// (הפופ-אובר הראשי) וצד ב׳ (win2) — והסיור *לוחץ בפועל* על העיגול (demo) כדי שיראו את ההבהוב בשני הצדדים. ההתאמות נשלפות
+// מ-E.compareAll על אותן 13 שיטות ש-seedDemoQuery מפעיל. בדסקטופ היעד הוא תא-השיטה (.gr4cell), בנייד — שבב-השיטה (.ccChip).
+function matchTourSteps(mobile) {
+  const en = LANG === 'en', WA = 'עניו', WB = 'סבלן', NA = en ? 'anav' : WA, NB = en ? 'savlan' : WB;
+  const ids = E.METHODS.map(m => m.id);
+  const ms = E.compareAll(WA, WB, ids, ids).matches;
+  const cell = (k, id) => mobile ? `.ccChip[data-k="${k}"][data-m="${id}"]` : `#gr${k} .gr4cell[data-m="${id}"]`;
+  const side = mobile ? 'top' : 'bottom', align = 'center';
+  const one = (n, intro) => {
+    const m = ms[n - 1]; if (!m) return null;
+    const la = L(MN[m.a.method]), lb = L(MN[m.b.method]), ch = heNum(m.id);
+    const lead = intro ? (en
+      ? `There are ${ms.length} match circles here; the colour and letter are the same on both sides for equal gematria values. Clicking a circle makes both sides blink. `
+      : `יש כאן ${ms.length} עיגולי-התאמה, צבע ואות זהים בשני הצדדים לערכי גימטריה זהים. לחיצה על עיגול תגרום להיבהוב בשני הצדדים. `) : '';
+    // הצעד הראשון כבר מסביר מה לחיצה עושה (lead); השני מסביר במלואו; האחרון בקצרה
+    const click = intro ? '' : n === 3
+      ? (en ? 'We just clicked the circle for you: the colour bar and both circles of this match now blink on both sides for 7 seconds. Click it again to stop.' : 'הרגע לחצנו בשבילכם על העיגול: פס-הצבע ושני עיגולי ההתאמה מהבהבים עכשיו בשני הצדדים במשך 7 שניות. לחיצה נוספת עליו עוצרת את ההבהוב.')
+      : (en ? 'We just clicked the circle for you: the colour bar and both circles blink.' : 'הרגע לחצנו בשבילכם על העיגול: פס-הצבע ושני עיגולי ההתאמה מהבהבים.');
+    return {
+      id: 'match' + n, element: cell('A', m.a.method),
+      demo: () => { focusMatch(m.id, true); return () => { if (FOCUS != null) focusMatch(FOCUS); }; },
+      popover: { title: en ? `Side A — match ${ch}` : `צד א׳ — התאמה ${ch}`, description: lead + (en ? `"${NA}" in "${la}" = ${m.value}. ` : `"${NA}" בשיטת "${la}" = ${m.value}. `) + click, side, align },
+      win2: { el: cell('B', m.b.method), title: en ? `Side B — match ${ch}` : `צד ב׳ — התאמה ${ch}`, desc: en ? `"${NB}" in "${lb}" = ${m.value}. The same value as on Side A, so the two methods match.` : `"${NB}" בשיטת "${lb}" = ${m.value}. אותו ערך כמו בצד א׳, ולכן שתי השיטות מותאמות.` },
+    };
+  };
+  const names = en ? 'circles א, ג and ו' : 'העיגולים א׳, ג׳ ו-ו׳';
+  return [one(1, names), one(3), one(6)].filter(Boolean);
+}
+// v3.6.0: עיגול-התוצאות ("כמה התאמות נמצאו בקורפוס") — שני חלונות: העיגול עצמו (פופ-אובר ראשי) ורשימת-התוצאות (win2),
+// והסיור לוחץ בפועל על העיגול של "עם הכולל" בצד א׳ כדי להראות שהתוצאות של השיטה עולות לראש הרשימה.
+function hitsTourStep(mobile) {
+  const en = LANG === 'en';
+  return {
+    id: 'hits', element: mobile ? '.ccHits[data-k="A"][data-m="kollel"]' : '#grA .gr4cell[data-m="kollel"] .bdgH',
+    demo: () => { if (S.A.hitsSort !== 'kollel') hitsSortToggle('A', 'kollel'); return () => { if (S.A.hitsSort === 'kollel') hitsSortToggle('A', 'kollel'); }; },
+    popover: {
+      title: en ? 'Info circle: number of results' : 'עיגול-מידע: מספר התוצאות',
+      description: en ? 'The number in this circle is how many matches were actually found in the sources for this method on Side A ("regular + kollel"). We just clicked it for you.' : 'המספר בעיגול הזה הוא כמה התאמות נמצאו בפועל במקורות עבור השיטה הזו בצד א׳ ("רגילה +כולל"). הרגע לחצנו עליו בשבילכם.',
+      side: mobile ? 'top' : 'bottom', align: 'center',
+    },
+    win2: { el: '#rlA', title: en ? 'The results list' : 'רשימת התוצאות', desc: en ? 'After the click, the matches of this method moved to the top of the list. Clicking the circle again restores the normal order.' : 'אחרי הלחיצה, ההתאמות של השיטה הזו עלו לראש הרשימה. לחיצה נוספת על העיגול מחזירה את הסדר הרגיל.' },
+  };
+}
+// v3.6.0: סינון בתוך התוצאות — הסיור מקליד בפועל מילה בתיבת-הסינון של צד א׳ ורואים את הרשימה מסתננת (שני חלונות: התיבה והרשימה).
+// ה-demo מחזיר undo (ניקוי-הסינון) שמופעל לפני המעבר לצעד אחר (ראו wrapTourSteps).
+function filterTourStep(mobile) {
+  const en = LANG === 'en', word = 'פרי';
+  return {
+    id: 'filter', element: '.tfInp',
+    demo: () => { const inp = $('#tfA'); inp.value = word; inp.dispatchEvent(new Event('input', { bubbles: true })); return () => { const x = $('#tfxA'); if (S.A.tf && x) x.click(); }; },
+    popover: { title: en ? 'Filtering results' : 'סינון תוצאות', description: en ? `When there are many results, type a word here and the list narrows instantly. We just typed "${word}" for you — only the verses containing it remain.` : `כש-יש הרבה תוצאות, מקלידים כאן מילה והרשימה מסתננת מיד. הרגע הקלדנו בשבילכם "${word}" — נשארו רק הפסוקים שמכילים אותה.`, side: 'bottom', align: 'start' },
+    win2: { el: '#rlA', title: en ? 'The filtered list' : 'הרשימה אחרי הסינון', desc: en ? 'Only matching verses are shown, with the typed word highlighted, and a counter next to the box shows how many remain. "Clear" brings everything back.' : 'מוצגים רק הפסוקים המתאימים, והמילה שהוקלדה מודגשת בהם; מונה ליד התיבה מראה כמה נשארו. הכפתור "נקה" מחזיר את כל התוצאות.' },
+  };
+}
+// v3.6.0: מתג המראה — הסיור מעביר בפועל למראה השני, ואחרי כמה שניות (או ביציאה/מעבר צעד) חוזר למראה שהיה.
+function tourThemeDemo() {
+  const chk = $('#themeChk'), was = chk.checked; let back = false;
+  const flip = v => { chk.checked = v; chk.onchange(); };
+  flip(!was);
+  const t = setTimeout(() => { if (!back) { back = true; flip(was); } }, 2600);
+  return () => { clearTimeout(t); if (!back) { back = true; if (chk.checked !== was) flip(was); } };
+}
+// מוסיף לכל צעד עם demo/undo: לפני מעבר "הבא"/"הקודם" מריצים את ה-undo של הצעד (למשל מבטלים מיקוד-התאמה/סינון/מיון) — *לפני*
+// ש-driver.js פותר את היעד של הצעד הבא, כך שהיעד הבא לא מוחלף ב-DOM אחרי שכבר סומן.
+// v3.6.0: תוצאה בודדת — צעד נפרד (עם פוקוס) לכל תווית בכותרת התוצאה הראשונה, עם הסבר על משמעותה. היעדים הם אלמנטים
+// בתוך .rs הראשון (ראו renderRow: <b>ייחוס</b>, .tag קטגוריה, .tag.prs/.seder, .tag.meth, .tagArrow, .tag, span תיבות, .cpy, <mark>).
+function resultTourSteps(mobile) {
+  const en = LANG === 'en', R = '.resList .rs ';
+  const one = (sel, title, desc, side) => ({ element: R + sel, popover: { title, description: desc, side: side || 'bottom', align: 'start' } });
+  // כמה תגיות סמוכות בצעד אחד: אלמנט-עזר צף (#gtTourUnion) שעוטף את כולן — driver.js מסמן אלמנט אחד בלבד
+  const group = (sels, title, desc) => ({ unionDim: true, element: () => tourUnion(sels.map(x => R + x)), popover: { title, description: desc, side: 'bottom', align: 'start' } });
+  return en ? [
+    group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'Result: reference, category and parsha / order', 'The reference is the exact place of the match: book and chapter:verse (for Mishnah — tractate, chapter and mishnah). The category tag says which part of the corpus the text belongs to (Tanakh, Mishnah, Rashi or Targum), and next to it, where relevant, appears the parsha of the verse, or for Mishnah its order (seder). The whole box is one result.'),
+    group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'Result: the two gematria methods', 'Two gematria tags joined by an arrow ↔: the first is the method by which the value of the verse (or of the matching part of it) was calculated, the second is the method of the word you searched, in which the match was found. The value is the same in both.'),
+    one('.rf .cpy', 'Result: copy', 'Copies the whole verse (or mishnah) to the clipboard.'),
+    one('.cx mark', 'Result: the highlighted words', 'The words that actually matched, highlighted inside the text of the verse.', 'top'),
+  ] : [
+    group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'תוצאה: ייחוס, קטגוריה ופרשה / סדר', 'הייחוס הוא המקום המדויק של ההתאמה: ספר ופרק:פסוק (במשנה — מסכת, פרק ומשנה). תגית הקטגוריה אומרת לאיזה חלק בקורפוס שייך הטקסט (תנ״ך, משנה, רש״י או תרגום), ולידה מופיעה, כשזה רלוונטי, הפרשה שאליה שייך הפסוק, ובמשנה — הסדר שבו היא נמצאת. כל התיבה היא תוצאה אחת: פסוק או משנה.'),
+    group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'תוצאה: שתי שיטות הגימטריה', 'שתי תגיות-גימטריה מחוברות בחץ ↔: הראשונה היא השיטה שלפיה חושב ערך הפסוק (או הקטע התואם בו), והשנייה היא שיטת מילת-החיפוש שלכם שבה נמצאה ההתאמה. הערך בשתיהן זהה.'),
+    one('.rf .cpy', 'תוצאה: העתקה', 'מעתיקה את הפסוק (או המשנה) כולו ללוח.'),
+    one('.cx mark', 'תוצאה: המילים המודגשות', 'המילים שתאמו בפועל, מודגשות בתוך טקסט הפסוק.', 'top'),
+  ];
+}
+// אלמנט-עזר צף שעוטף כמה אלמנטים (לצעד עם כמה תגיות). נוצר/מתעדכן בכל קריאה, ומוסר רק בסוף הסיור (tourUnionRemove) —
+// לא בתחילת צעד, כי driver.js כבר פתר את היעד לפני onHighlightStarted.
+let tourUnionInfo = null;
+// בתוך מלבן-הפוקוס של צעד-תגיות יכולות להיכנס תגיות שלא מוסברות בו (כשהתגיות עוטפות לשתי שורות, המלבן הוא התיבה החוסמת). כאן
+// מכהים אותן באותה כהות כמו שכבת-ההחשכה של driver.js, כך שנראות מוארות רק התגיות שמוסברות. נקרא מ-onHighlighted (אחרי
+// tourExtraClear של תחילת-הצעד, ולכן הכיסויים נרשמים ב-tourExtras ונמחקים בצעד הבא).
+function tourUnionDim() {
+  const info = tourUnionInfo; if (!info) return;
+  const row = info.els[0].closest('.rf'); if (!row) return;
+  const path = document.querySelector('.driver-overlay path'), op = path ? parseFloat(path.style.opacity) : 0.5;
+  const R = info.rect;
+  [...row.children].filter(c => !info.els.includes(c)).forEach(c => {
+    const r = c.getBoundingClientRect(); if (!r.width || !r.height) return;
+    const l = Math.max(r.left, R.l - 6), t = Math.max(r.top, R.t - 6), rr = Math.min(r.right, R.r + 6), bb = Math.min(r.bottom, R.b + 6);
+    if (rr <= l || bb <= t) return;
+    const d = document.createElement('div'); d.className = 'gtTourDim';
+    d.style.cssText = `left:${l}px;top:${t}px;width:${rr - l}px;height:${bb - t}px;background:rgba(0,0,0,${op})`;
+    document.body.appendChild(d); tourExtras.push(d);
+  });
+}
+function tourUnion(sels) {
+  const els = sels.map(x => document.querySelector(x)).filter(Boolean);
+  if (!els.length) return null;
+  const rs = els.map(e => e.getBoundingClientRect());
+  const l = Math.min(...rs.map(r => r.left)), t = Math.min(...rs.map(r => r.top)), r2 = Math.max(...rs.map(r => r.right)), b2 = Math.max(...rs.map(r => r.bottom));
+  tourUnionInfo = { els, rect: { l, t, r: r2, b: b2 } };
+  // אלמנט נפרד לכל צעד (לפי הסלקטורים) — אלמנט משותף נדרס כש-driver.js פותר את היעד של צעד אחר
+  const uid = 'gtTourUnion' + sels.join('|').length + sels[0].length;
+  let u = document.getElementById(uid);
+  if (!u) { u = document.createElement('div'); u.id = uid; u.className = 'gtTourUnionEl'; document.body.appendChild(u); }
+  u.style.cssText = `position:fixed;pointer-events:none;visibility:hidden;left:${l}px;top:${t}px;width:${r2 - l}px;height:${b2 - t}px`;
+  return u;
+}
+function tourUnionRemove() { document.querySelectorAll('.gtTourUnionEl').forEach(u => u.remove()); }
+// פנל-ההגדרות של התוצאות (⚙) — הסבר *כללי* בלבד: הסיור פותח אותו בפועל (toggleFilt) וסוגר אותו במעבר צעד (undo).
+function settingsPanelStep(mobile) {
+  const en = LANG === 'en';
+  return {
+    id: 'settings', element: '#fpA',
+    demo: () => { toggleFilt('A', true); return () => toggleFilt('A', false); },
+    popover: { title: en ? 'The results settings panel' : 'פנל ההגדרות של התוצאות',
+      description: en ? 'This is the panel the ⚙ button opens. In general, it lets you choose which gematria methods and which books are searched, and fine-tune how matches are counted. You do not need to set anything to start; the defaults suit most searches.' : 'זה הפנל שנפתח בלחיצה על ⚙. בגדול, כאן בוחרים באילו שיטות גימטריה ובאילו ספרים לחפש, ומכוונים איך נספרות ההתאמות. אין צורך להגדיר כלום כדי להתחיל — ברירות המחדל מתאימות לרוב החיפושים.',
+      side: mobile ? 'top' : 'left', align: 'start' },
+  };
+}
 function buildMobileTourSteps() {
   if (LANG === 'en') return [
     { popover: { title: 'Welcome to Gimatrivon', description: 'A short tour (skip/exit any time) — two "sides" (A/B) you can compare side by side. Let\'s start with Side A.' } },
     { element: '#tA', popover: { title: 'Typing an expression', description: 'Type a word or expression here — the gematria calculation and the search for matches update instantly as you type.', side: 'bottom', align: 'start' } },
     { element: '.mSumSeg', popover: { title: 'Switching between sides', description: 'These two buttons switch which side\'s results are shown below — Side A and Side B have independent input and results.', side: 'bottom', align: 'start' } },
     { element: '#mSheetHandle', popover: { title: 'The input & calculation panel', description: 'Drag or tap this handle to show or collapse the panel with both inputs and the combined calculation grid, without leaving the results view.', side: 'top', align: 'center' } },
-    { element: '#mgrFirstFam', popover: { title: 'Gematria methods', description: 'Each box here is a calculation method (regular, kollel, milui and more) for both sides at once — scroll down for more methods. Tapping a value turns that method on/off for the search.', side: 'top', align: 'center' } },
-    { element: '.resList', popover: { title: 'Search results', description: 'Matches found in the sources for the value you typed appear here, grouped by method. Tapping a result marks/highlights it. To copy a whole verse, tap ⧉.', side: 'top', align: 'start' } },
-    { element: '.resList .rs', popover: { title: 'What a single result shows', description: 'Above each verse: an exact reference, a category tag, and two gematria tags joined by ↔ (the verse\'s own method, then the search-word method that matched). The matching words are highlighted below.', side: 'top', align: 'start' } },
+    { element: '#mgrFirstFam', popover: { title: 'Gematria methods', description: 'Each box here is a calculation method (regular, Atbash, Atbach, milui and more) for both sides at once — scroll down for more methods. Tapping a value turns that method on/off for the search.', side: 'top', align: 'center' } },
+    hitsTourStep(true),
+    ...matchTourSteps(true),
+    { element: '.resList', popover: { title: 'Search results', description: 'Matches found in the sources for the value you typed appear here, grouped by method. To copy a whole verse to the clipboard, click ⧉.', side: 'top', align: 'start' } },
+    ...resultTourSteps(true),
+    filterTourStep(true),
     { element: '#ftA', popover: { title: 'Choosing sources and range', description: 'Tapping here opens a panel to choose which books (and chapter/parsha ranges) to search, and which gematria methods are included.', side: 'bottom', align: 'end' } },
-    { element: '.ccHits', popover: { title: 'Info circle: matches in sources', description: 'This number shows how many matches were actually found in the sources for this method and side. Tapping it sorts results so matches for this method appear first.', side: 'top', align: 'center' } },
-    { element: '.ccBdg2', popover: { title: 'Automatic comparison between both sides', description: 'When both sides share an identical value in an active method, a small colored badge appears — like here: "ahava" (A) and "echad" (B) both equal 13. Tapping it focuses that match on both sides.', side: 'top', align: 'center' } },
-    { element: '.tfInp', popover: { title: 'Filtering results', description: 'When there are many results, filter the displayed list by free text.', side: 'bottom', align: 'start' } },
-    { element: '#mKebab', popover: { title: "That's it, you're ready!", description: 'This menu holds appearance (light/dark), language, "About", contact, and this tour again any time.', side: 'bottom', align: 'end' } },
+    settingsPanelStep(true),
+    { id: 'theme', demo: tourThemeDemo, element: '#mKebab', popover: { title: "That's it, you're ready!", description: 'This menu holds appearance (light/dark), language, "About", contact, and this tour again any time. We just switched the appearance for you, and in a few seconds it returns to your look.', side: 'bottom', align: 'end' } },
   ];
   return [
     { popover: { title: 'ברוכים הבאים לגימטריבון', description: 'סיור קצר (אפשר לדלג/לצאת בכל רגע) — שני "צדדים" (א׳/ב׳) שאפשר להשוות ביניהם. נתחיל מצד א׳.' } },
     { element: '#tA', popover: { title: 'הקלדת ביטוי', description: 'מקלידים כאן מילה או ביטוי — החישוב הגימטרי וחיפוש ההתאמות מתעדכנים מיד, תוך כדי ההקלדה.', side: 'bottom', align: 'start' } },
     { element: '.mSumSeg', popover: { title: 'מעבר בין הצדדים', description: 'שני הכפתורים האלה מחליפים איזה צד מוצג למטה — לצד א׳ ולצד ב׳ יש קלט ותוצאות עצמאיים משלהם.', side: 'bottom', align: 'start' } },
     { element: '#mSheetHandle', popover: { title: 'פנל הקלט והחישוב', description: 'גוררים או לוחצים על הידית הזו כדי להציג או לכווץ את הפנל עם הקלט של שני הצדדים ולוח-החישוב המשולב, בלי לצאת מתצוגת התוצאות.', side: 'top', align: 'center' } },
-    { element: '#mgrFirstFam', popover: { title: 'שיטות גימטריה', description: 'כל תא כאן הוא שיטת-חישוב (רגילה, קטן, מילוי ועוד) לשני הצדדים יחד — גוללים למטה לעוד שיטות. לחיצה על ערך מדליקה/מכבה את השיטה הזו לחיפוש.', side: 'top', align: 'center' } },
-    { element: '.resList', popover: { title: 'תוצאות החיפוש', description: 'כאן מופיעות ההתאמות שנמצאו במקורות, מקובצות לפי שיטה. לחיצה על תוצאה מסמנת/מדגישה אותה. העתקת פסוק שלם: לחיצה על ⧉.', side: 'top', align: 'start' } },
-    { element: '.resList .rs', popover: { title: 'מה רואים בתוצאה בודדת', description: 'מעל כל פסוק: ייחוס מדויק, תגית קטגוריה, ושתי תגיות-גימטריה מחוברות בחץ ↔ (שיטת הפסוק עצמו, ואז שיטת מילת-החיפוש שבה נמצאה ההתאמה). המילים שתאמו מודגשות למטה.', side: 'top', align: 'start' } },
+    { element: '#mgrFirstFam', popover: { title: 'שיטות גימטריה', description: 'כל תא כאן הוא שיטת-חישוב (רגילה, אתב״ש, אטב״ח, מילוי ועוד) לשני הצדדים יחד — גוללים למטה לעוד שיטות. לחיצה על ערך מדליקה/מכבה את השיטה הזו לחיפוש.', side: 'top', align: 'center' } },
+    hitsTourStep(true),
+    ...matchTourSteps(true),
+    { element: '.resList', popover: { title: 'תוצאות החיפוש', description: 'כאן מופיעות ההתאמות שנמצאו במקורות לערך שהקלדתם, מקובצות לפי שיטה. העתקת פסוק שלם ללוח: לחיצה על ⧉.', side: 'top', align: 'start' } },
+    ...resultTourSteps(true),
+    filterTourStep(true),
     { element: '#ftA', popover: { title: 'בחירת מקורות וטווח', description: 'לחיצה כאן פותחת פנל שבו בוחרים באילו ספרים (ואילו טווחים) לחפש, ואילו שיטות-גימטריה ייכללו.', side: 'bottom', align: 'end' } },
-    { element: '.ccHits', popover: { title: 'עיגול-מידע: תוצאות במקורות', description: 'המספר הזה מציין כמה התאמות נמצאו בפועל במקורות לשיטה ולצד הזה. לחיצה עליו ממיינת את התוצאות כך שההתאמות של השיטה הזו יוצגו ראשונות.', side: 'top', align: 'center' } },
-    { element: '.ccBdg2', popover: { title: 'השוואה אוטומטית בין שני הצדדים', description: 'כש-לשני הצדדים יש ערך זהה בשיטה פעילה, מופיע תג-צבע קטן — בדיוק כמו כאן: "אהבה" (א׳) ו"אחד" (ב׳) שוות שתיהן 13. לחיצה עליו ממקדת את ההתאמה הזו בשני הצדדים.', side: 'top', align: 'center' } },
-    { element: '.tfInp', popover: { title: 'סינון תוצאות', description: 'כש-יש הרבה תוצאות, אפשר לסנן את הרשימה המוצגת לפי טקסט חופשי.', side: 'bottom', align: 'start' } },
-    { element: '#mKebab', popover: { title: 'זהו, אפשר להתחיל!', description: 'בתפריט הזה נמצאים גם מראה (בהיר/כהה), שפה, "אודות", יצירת-קשר, ואפשר להפעיל את הסיור הזה שוב בכל רגע.', side: 'bottom', align: 'end' } },
+    settingsPanelStep(true),
+    { id: 'theme', demo: tourThemeDemo, element: '#mKebab', popover: { title: 'זהו, אפשר להתחיל!', description: 'בתפריט הזה נמצאים גם מראה (בהיר/כהה), שפה, "אודות", יצירת-קשר, ואפשר להפעיל את הסיור הזה שוב בכל רגע. הרגע העברנו את המראה למראה השני, ובעוד כמה שניות הוא חוזר למראה שהיה לכם.', side: 'bottom', align: 'end' } },
   ];
 }
 function buildTourSteps() {
   if (LANG === 'en') return [
     { popover: { title: 'Welcome to Gimatrivon', description: 'A short tour (skip/exit any time) — two identical "columns" (A/B) that let you compare two expressions/searches side by side. Let\'s start with Side A.' } },
     { element: '#tA', popover: { title: 'Typing an expression', description: 'Type a word or expression here — the gematria calculation and the search for matches in the corpus (Tanakh, Mishnah, Rashi and more) update instantly as you type. Side B (the second column) has an identical box.', side: 'bottom', align: 'start' } },
-    { element: '#grA', popover: { title: 'Gematria methods', description: 'Each row here is a calculation method (regular, kollel, milui and more). You can turn specific methods on/off — the value and the search update according to the active methods only.', side: 'left', align: 'start' } },
-    { element: '.resList', popover: { title: 'Search results', description: 'Matches found in the sources for the value you typed appear here, grouped by method. Clicking a result marks/highlights it (handy for keeping your place while scrolling, or comparing several results) — it does not open another screen. To copy a whole verse to the clipboard, click ⧉.', side: 'right', align: 'start' } },
-    { element: '.resList .rs', popover: { title: 'What a single result shows', description: 'Above each verse: an exact reference (book, chapter:verse), a category tag (Tanakh/Mishnah/Rashi/Targum) and sometimes a parsha/order too. Two gematria tags joined by an arrow ↔: the first is the method by which the verse\'s own value was computed, the second is the search-word method in which the match was found. "X words" is the length of the matching span, and the words that actually matched are highlighted in the text below.', side: 'top', align: 'start' } },
+    { element: '#grA', popover: { title: 'Gematria methods', description: 'Each row here is a calculation method (regular, Atbash, Atbach, milui and more). You can turn specific methods on/off — the value and the search update according to the active methods only.', side: 'left', align: 'start' } },
+    hitsTourStep(false),
+    ...matchTourSteps(false),
+    { element: '.resList', popover: { title: 'Search results', description: 'Matches found in the sources for the value you typed appear here, grouped by method. To copy a whole verse to the clipboard, click ⧉.', side: 'right', align: 'start' } },
+    ...resultTourSteps(false),
+    filterTourStep(false),
     { element: '#ftA', popover: { title: 'Choosing sources and range', description: 'Clicking here opens a panel where you choose which books (and which chapter/parsha ranges) to search, and which gematria methods are included in the search itself and in notarikon matching.', side: 'bottom', align: 'end' } },
-    { element: '#grA .bdgH', popover: { title: 'Info circle: matches in sources', description: 'The number in this circle shows how many matches were actually found in the sources for this method. Clicking it sorts the results so matches for this method are shown first.', side: 'top', align: 'center' } },
-    { element: '.bdg', popover: { title: 'Automatic comparison between both sides', description: 'When both sides have an identical value in one of the active gematria methods, a small colored circle with a Hebrew letter appears next to the two matching methods — just like here: "ahava" (Side A) and "echad" (Side B) both equal 13 in regular gematria. Clicking the circle visually focuses that match on both sides together — useful when there are several matches at once.', side: 'top', align: 'center' } },
-    { element: '.tfInp', popover: { title: 'Filtering results', description: 'When there are many results, you can filter the displayed list by free text — useful for finding a specific result among many.', side: 'bottom', align: 'start' } },
-    { element: '.themeSw', popover: { title: 'App appearance', description: 'This toggle switches between a light "parchment" look and a dark "night" look, whichever you prefer.', side: 'bottom', align: 'end' } },
+    settingsPanelStep(true),
+    { id: 'theme', demo: tourThemeDemo, element: '.themeSw', popover: { title: 'App appearance', description: 'This toggle switches between a light "parchment" look and a dark "night" look, whichever you prefer. We just switched it for you, and in a few seconds it returns to your look.', side: 'bottom', align: 'end' } },
     { element: '#startTour', popover: { title: "That's it, you're ready!", description: 'You can start this tour again any time from here.', side: 'bottom', align: 'end' } },
   ];
   return [
     { popover: { title: 'ברוכים הבאים לגימטריבון', description: 'סיור קצר (אפשר לדלג/לצאת בכל רגע) — שתי "עמודות" זהות (א׳/ב׳) שמאפשרות להשוות בין שני ביטויים/חיפושים זה לצד זה. נתחיל מצד א׳.' } },
     { element: '#tA', popover: { title: 'הקלדת ביטוי', description: 'מקלידים כאן מילה או ביטוי — החישוב הגימטרי וחיפוש ההתאמות בקורפוס (תנ״ך, משנה, רש״י ועוד) מתעדכנים מיד, תוך כדי ההקלדה. בצד ב׳ (העמודה השנייה) יש תיבה זהה.', side: 'bottom', align: 'start' } },
-    { element: '#grA', popover: { title: 'שיטות גימטריה', description: 'כל שורה כאן היא שיטת-חישוב (רגילה, קטן, מילוי ועוד). אפשר להדליק/לכבות שיטות ספציפיות — הערך והחיפוש מתעדכנים לפי השיטות הפעילות בלבד.', side: 'left', align: 'start' } },
-    { element: '.resList', popover: { title: 'תוצאות החיפוש', description: 'כאן מופיעות ההתאמות שנמצאו במקורות לערך שהקלדתם, מקובצות לפי שיטה. לחיצה על תוצאה מסמנת/מדגישה אותה (נוח לשמור מקום תוך-כדי גלילה או השוואה בין כמה תוצאות) — לא פותחת מסך נוסף. העתקת פסוק שלם ללוח: לחיצה על ⧉.', side: 'right', align: 'start' } },
-    { element: '.resList .rs', popover: { title: 'מה רואים בתוצאה בודדת', description: 'מעל כל פסוק: ייחוס מדויק (ספר, פרק:פסוק), תגית קטגוריה (תנ״ך/משנה/רש״י/תרגום) ולעיתים גם פרשה/סדר. שתי תגיות-גימטריה מחוברות בחץ ↔: הראשונה היא השיטה שלפיה חושב ערך הפסוק עצמו, השנייה היא שיטת מילת-החיפוש שבה נמצאה ההתאמה. "X תיבות" הוא אורך הקטע התואם, והמילים שתאמו בפועל מודגשות בתוך הטקסט למטה.', side: 'top', align: 'start' } },
+    { element: '#grA', popover: { title: 'שיטות גימטריה', description: 'כל שורה כאן היא שיטת-חישוב (רגילה, אתב״ש, אטב״ח, מילוי ועוד). אפשר להדליק/לכבות שיטות ספציפיות — הערך והחיפוש מתעדכנים לפי השיטות הפעילות בלבד.', side: 'left', align: 'start' } },
+    hitsTourStep(false),
+    ...matchTourSteps(false),
+    { element: '.resList', popover: { title: 'תוצאות החיפוש', description: 'כאן מופיעות ההתאמות שנמצאו במקורות לערך שהקלדתם, מקובצות לפי שיטה. העתקת פסוק שלם ללוח: לחיצה על ⧉.', side: 'right', align: 'start' } },
+    ...resultTourSteps(false),
+    filterTourStep(false),
     { element: '#ftA', popover: { title: 'בחירת מקורות וטווח', description: 'לחיצה כאן פותחת פנל שבו בוחרים באילו ספרים (ואילו טווחי פרקים/פרשות) לחפש, ואילו שיטות-גימטריה ייכללו בחיפוש עצמו ובהתאמת-נוטריקון.', side: 'bottom', align: 'end' } },
-    { element: '#grA .bdgH', popover: { title: 'עיגול-מידע: תוצאות במקורות', description: 'המספר בעיגול הזה מציין כמה התאמות נמצאו בפועל במקורות לשיטה הזו. לחיצה עליו ממיינת את התוצאות כך שההתאמות של השיטה הזו יוצגו ראשונות.', side: 'top', align: 'center' } },
-    { element: '.bdg', popover: { title: 'השוואה אוטומטית בין שני הצדדים', description: 'כש-לשני הצדדים יש ערך זהה באחת משיטות הגימטריה הפעילות, מופיע עיגול-צבע קטן עם אות עברית ליד שתי השיטות שתואמות — בדיוק כמו כאן: "אהבה" (צד א׳) ו"אחד" (צד ב׳) שוות שתיהן 13 בגימטריה רגילה. לחיצה על העיגול ממקדת חזותית את ההתאמה הזו בשני הצדדים יחד — שימושי כש-יש כמה התאמות בו-זמנית.', side: 'top', align: 'center' } },
-    { element: '.tfInp', popover: { title: 'סינון תוצאות', description: 'כש-יש הרבה תוצאות, אפשר לסנן את הרשימה המוצגת לפי טקסט חופשי — שימושי למציאת תוצאה ספציפית מתוך הרבה.', side: 'bottom', align: 'start' } },
-    { element: '.themeSw', popover: { title: 'מראה האפליקציה', description: 'מתג זה מחליף בין מראה "גוויל" בהיר למראה "לילה" כהה, לפי הנוחות שלכם.', side: 'bottom', align: 'end' } },
+    settingsPanelStep(false),
+    { id: 'theme', demo: tourThemeDemo, element: '.themeSw', popover: { title: 'מראה האפליקציה', description: 'מתג זה מחליף בין מראה "גוויל" בהיר למראה "לילה" כהה, לפי הנוחות שלכם. הרגע העברנו אותו למראה השני, ובעוד כמה שניות הוא חוזר למראה שהיה לכם.', side: 'bottom', align: 'end' } },
     { element: '#startTour', popover: { title: 'זהו, אפשר להתחיל!', description: 'אפשר להפעיל את הסיור הזה שוב בכל רגע מכאן.', side: 'bottom', align: 'end' } },
   ];
 }
@@ -1680,9 +1888,17 @@ function startTour() {
     const sheet = $('#mSheet');
     if (sheet && sheet.classList.contains('collapsed')) $('#mSheetHandle').click();
   }
+  FOCUS = null; BLINK_AT = 0;
   const demoSnap = seedDemoQuery();
   let restored = false;
-  const restoreOnce = () => { if (restored) return; restored = true; restoreDemoQuery(demoSnap); };
+  const restoreOnce = () => { if (restored) return; restored = true; document.documentElement.classList.remove('gtNoAnim'); runUndo(); tourExtraClear(); tourUnionRemove(); clearTimeout(blinkTimer); FOCUS = null; BLINK_AT = 0; restoreDemoQuery(demoSnap); };
+  // צעדים עם demo (לחיצה אמיתית על עיגול): ה-demo מצייר מחדש את הלוח ולכן מחליף את ה-DOM שעליו driver.js כבר סימן — אחרי
+  // ה-demo קוראים ל-moveTo לאותו צעד כדי ש-driver יפתור את היעד מחדש; demoRanFor מונע לולאה (ה-demo רץ פעם אחת לכל כניסה לצעד).
+  let demoRanFor = null, activeUndo = null;
+  const runUndo = () => { const u = activeUndo; activeUndo = null; if (u) u(); };
+  const wrapSteps = steps => steps.map(st => !st.demo ? st : { ...st, popover: { ...st.popover,
+    onNextClick: (el, step, o) => { runUndo(); o.driver.moveNext(); },
+    onPrevClick: (el, step, o) => { runUndo(); o.driver.movePrevious(); } } });
   const tour = window.driverjs.driver({
     showProgress: true,
     progressText: LANG === 'en' ? '{{current}} of {{total}}' : '{{current}} מתוך {{total}}',
@@ -1698,7 +1914,7 @@ function startTour() {
     smoothScroll: true,
     popoverClass: 'gtTourPopover',
     skipMissingElement: true, // אם היעד של צעד מסוים לא קיים (למשל: למשתמש יש חיפוש-משלו בלי התאמה בין הצדדים) — מדלגים עליו בשקט, בלי פופ-אובר "תועה" במרכז המסך
-    steps: mobileActive ? buildMobileTourSteps() : buildTourSteps(), // v3.4.0: סט-צעדים נפרד לנייד (ראו buildMobileTourSteps)
+    steps: wrapSteps(mobileActive ? buildMobileTourSteps() : buildTourSteps()), // v3.4.0: סט-צעדים נפרד לנייד (ראו buildMobileTourSteps)
     // v3.4.1: בנייד, יעדי-הצעדים מתחלקים בין תוכן *בתוך* הגיליון-התחתון (#tA/#mgrFirstFam/.ccHits/.ccBdg2
     // — כולם חיים בתוך #mSheet) לבין תוכן *מאחורי* הגיליון (.resList/#ftA/.tfInp — חיים ב-.mResPane, שה-
     // גיליון-הפתוח מכסה אותו לגמרי). בלי הלוגיקה הזו, אחרי הצעד "שיטות גימטריה" (שפותח את הגיליון) הסיור
@@ -1706,11 +1922,21 @@ function startTour() {
     // מתחת לגיליון הפתוח (באג שדווח: "כשהסיור מסביר על פנל התוצאות הוא שוכח להנמיך את פנל השיטות"). הגיליון
     // גם נפתח-מחדש כש-חוזרים לצעדי ה-#mgr (.ccHits/.ccBdg2 מגיעים *אחרי* צעדי-התוצאות ברשימה) וגם כש-לוחצים
     // "הקודם" (onHighlightStarted נקרא תמיד, בשני הכיוונים — לא רק ב"הבא").
-    onHighlightStarted: !mobileActive ? undefined : (el, step) => {
+    onHighlighted: (el, step) => {
+      if (step && step.demo && demoRanFor !== step.id) { demoRanFor = step.id; activeUndo = step.demo() || null; const ix = tour.getActiveIndex(); setTimeout(() => { document.documentElement.classList.add('gtNoAnim'); tour.setConfig({ ...tour.getConfig(), animate: false }); tour.moveTo(ix); }, 60); return; } // setTimeout: driver.js עוד מעדכן את מצבו הפנימי מיד אחרי החזרה מה-hook הזה
+      if (!step || !step.demo) demoRanFor = null;
+      if (step && step.unionDim) tourUnionDim();
+      if (step && step.win2) tourExtraShow(step.win2);
+    },
+    onHighlightStarted: (el, step) => {
+      // רק בכניסה-מחדש אחרי demo נשארים בלי אנימציה (הסרת המחלקה באמצע הצעד מפעילה אותה מחדש = הבהוב)
+      if (!(step && step.demo && demoRanFor === step.id) && document.documentElement.classList.contains('gtNoAnim')) { tour.setConfig({ ...tour.getConfig(), animate: true }); document.documentElement.classList.remove('gtNoAnim'); }
+      tourExtraClear();
+      if (!mobileActive) return;
       const sheet = $('#mSheet'), scrim = $('#mScrim'); if (!sheet || !scrim) return;
       const sel = step && step.element;
-      const needsOpen = ['#tA', '#mgrFirstFam', '.ccHits', '.ccBdg2'].includes(sel);
-      const needsClosed = ['.resList', '.resList .rs', '#ftA', '.tfInp'].includes(sel);
+      const needsOpen = ['#tA', '#mgrFirstFam'].includes(sel) || (typeof sel === 'string' && /^\.(ccChip|ccHits|ccBdg2)/.test(sel));
+      const needsClosed = ['#ftA', '#fpA', '.tfInp'].includes(sel) || typeof sel === 'function' && !needsOpen || (typeof sel === 'string' && sel.startsWith('.resList'));
       if (needsOpen) { sheet.classList.remove('collapsed'); scrim.classList.add('show'); }
       else if (needsClosed) { sheet.classList.add('collapsed'); scrim.classList.remove('show'); }
     },
