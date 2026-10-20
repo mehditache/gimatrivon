@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.6.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.7.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -12,6 +12,24 @@ const RESULTS_LIMIT_PER_METHOD = 500;
 function getLimit() { return RESULTS_LIMIT_PER_METHOD; }
 const verEl = document.getElementById('ver'); if (verEl) verEl.textContent = 'v' + VERSION;
 document.title = `גימטריבון - ${VERSION}`; // כותרת טאב הדפדפן — לא "סביבת עבודה"
+// --- ANALYTICS:START ---
+// Google Analytics 4 (gtag.js) — חריג-רשת מבודד שני (כמו בלוק EmailJS), נבדק ב-tests/run-tests.js.
+// להפעלה: להציב כאן את מזהה-המדידה של ה-property (Admin → Data streams, בפורמט G-XXXXXXXXXX).
+// בלי מזהה תקין, או בהרצה מקומית (file://, localhost), שום script לא נטען ושום נתון לא נשלח.
+const GA_MEASUREMENT_ID = 'G-Q77MDW4KVT';
+(function initAnalytics() {
+  if (!/^G-[A-Z0-9]+$/.test(GA_MEASUREMENT_ID)) return;
+  if (location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', GA_MEASUREMENT_ID, { app_version: VERSION });
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(GA_MEASUREMENT_ID);
+  document.head.appendChild(s);
+})();
+// --- ANALYTICS:END ---
 const COLORS = ['#2563a8', '#2f8f5b', '#7a4bb5', '#c47a1a', '#c2415a', '#1a8f92', '#8a8a10', '#c2571f', '#9d2f8f', '#4b5563', '#6d8f1a', '#a0522d'];
 
 /* ---------- שפה (עברית/אנגלית): L(he) מחזיר תרגום-אנגלי כש-LANG==='en' (אם קיים ב-EN), אחרת את העברית
