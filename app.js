@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.7.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.7.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -29,6 +29,8 @@ const GA_MEASUREMENT_ID = 'G-Q77MDW4KVT';
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(GA_MEASUREMENT_ID);
   document.head.appendChild(s);
 })();
+// אירוע מותאם ל-GA4; no-op כשהמעקב לא נטען (בלי מזהה / הרצה מקומית).
+function trackEvent(name, params) { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); }
 // --- ANALYTICS:END ---
 const COLORS = ['#2563a8', '#2f8f5b', '#7a4bb5', '#c47a1a', '#c2415a', '#1a8f92', '#8a8a10', '#c2571f', '#9d2f8f', '#4b5563', '#6d8f1a', '#a0522d'];
 
@@ -1466,7 +1468,7 @@ function renderAbout() {
     <div class="row"><span class="k">${en ? 'License' : 'רישיון'}</span><span class="v">${esc(en ? ABOUT_INFO.licenseEn : ABOUT_INFO.license)}</span></div>
   </div>`;
 }
-$('#openAbout').onclick = () => { renderAbout(); $('#dlgAbout').showModal(); };
+$('#openAbout').onclick = () => { renderAbout(); $('#dlgAbout').showModal(); trackEvent('about_open'); };
 /* ---------- "צור קשר" (EmailJS) ----------
    היחיד בכל האפליקציה שדורש רשת בפועל: שאר גימטריבון עובד לגמרי אופליין (ראו tests/run-tests.js, בדיקת
    "offline", שמחריגה בפירוש את הבלוק הזה — ראו שם לפרטים). ה-SDK של EmailJS נטען מ-CDN רק כשנלחץ בפועל
@@ -1492,6 +1494,7 @@ $('#openContact').onclick = () => {
   const st = $('#contactStatus'); if (st) st.textContent = '';
   const f = $('#contactForm'); if (f) f.reset();
   $('#dlgContact').showModal();
+  trackEvent('contact_open');
 };
 $('#contactForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -1501,6 +1504,7 @@ $('#contactForm').addEventListener('submit', async e => {
     const em = await loadEmailJs();
     await em.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, form);
     st.textContent = L('ההודעה נשלחה בהצלחה!');
+    trackEvent('contact_sent');
     form.reset();
   } catch (err) {
     st.textContent = L('שליחה נכשלה — ודאו חיבור לאינטרנט ונסו שוב.');
@@ -1962,7 +1966,7 @@ function startTour() {
   });
   tour.drive();
 }
-$('#startTour').onclick = () => startTour();
+$('#startTour').onclick = () => { trackEvent('tour_start', { layout: mobileActive ? 'mobile' : 'desktop' }); startTour(); };
 // משיכת-תשומת-לב עדינה לכפתור "סיור מודרך" ב-5 השניות הראשונות בלבד (לא חוזר, לא לולאה אינסופית) —
 // מניחה class שמפעיל אנימציה (ראו styles.css: .tourBtn.attract) ומסירה אותה אחרי 5 שניות; לחיצה על
 // הכפתור (או על כל מקום אחר) באמצע מפסיקה אותה מיידית (prefers-reduced-motion מכבד — ראו ה-CSS).
