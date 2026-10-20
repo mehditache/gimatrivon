@@ -179,11 +179,27 @@ t('notarikon', 'חלון לא חוצה יחידה (כמו ב-search הרגילה
   return E.searchNotarikon(mi, 7, ['notRt'], {}, 100, {}).total === 0;
 });
 
+// ---- reader (מסך "קריאה ומפרשים", reader.js) ----
+const RC = require('../reader.js'), RIX = RC.buildIndex(B);
+const bkIdx = (cat, he) => B.books.findIndex(b => b.cat === cat && b.heTitle === he);
+t('reader', 'אינדקס: בראשית א א מהקורפוס, עם רש״י ואונקלוס ויונתן', () => { const g = bkIdx(0, 'בראשית'), L = RIX.links[g]; return RC.noMarks(RIX.data[g][1][1]).startsWith('בראשית ברא') && L.cm != null && L.onkelos != null && L.yonatan != null && Array.isArray(RIX.data[L.cm][1][1]) && /בקדמין/.test(RC.noMarks(RIX.data[L.onkelos][1][1])); });
+t('reader', 'כל ספרי התנ״ך והמשנה מקושרים למפרש (רש״י / ברטנורא)', () => RIX.base.length === 102 && RIX.base.every(i => RIX.links[i].cm != null));
+t('reader', 'תרגום: אונקלוס בתורה בלבד (5), יונתן בתורה ובנביאים', () => eq([RIX.base.filter(i => RIX.links[i].onkelos != null).length, RIX.links[bkIdx(0, 'ישעיהו')].yonatan != null, RIX.links[bkIdx(0, 'תהילים')].yonatan == null], [5, true, true]));
+t('reader', 'parseRef: עברית, אנגלית, משנה, כתיב חסר ומספרים', () => { const ex = bkIdx(0, 'שמות'), br = bkIdx(1, 'משנה ברכות'), ps = bkIdx(0, 'תהילים');
+  const r = q => { const x = RC.parseRef(RIX, q, 0); return x && [x.b, x.ch, x.v]; };
+  eq([r('שמות יב ב'), r('Exodus 12 2'), r('שמות 12 2'), r('ברכות ב ג'), r('משנה ברכות א'), r('תהלים קיט'), r('ו ג')], [[ex, 12, 2], [ex, 12, 2], [ex, 12, 2], [br, 2, 3], [br, 1, 0], [ps, 119, 0], [0, 6, 3]]); });
+t('reader', 'parseRef: מקום שלא קיים / טקסט חופשי → null', () => eq([RC.parseRef(RIX, 'בראשית נא', 0), RC.parseRef(RIX, 'בראשית א לב', 0), RC.parseRef(RIX, 'ויהי אור', 0), RC.parseRef(RIX, 'שלום', null)], [null, null, null, null]));
+t('reader', 'toHeb/parseNum: טו, טז, קיט', () => eq([RC.toHeb(15), RC.toHeb(16), RC.toHeb(119), RC.parseNum('קיט'), RC.parseNum('טז'), RC.parseNum('12')], ['טו', 'טז', 'קיט', 119, 16, 12]));
+t('reader', 'חיפוש: בלי ניקוד, בתחום פרק / ספר', () => { const g = bkIdx(0, 'בראשית'); const a = RC.search(RIX, 'יְהִי אוֹר', [g], {}), c = RC.search(RIX, 'אור', [g], { ch: 1 }); return a.total >= 1 && a.hits[0].ch === 1 && a.hits[0].v === 3 && c.hits.every(h => h.ch === 1) && c.total >= 1; });
+t('reader', 'markWords מסמן את המילה המנוקדת', () => { const m = RC.markWords('וַיֹּאמֶר אֱלֹהִים יְהִי אוֹר', 'אור'); return m.marks.size === 1 && m.parts[[...m.marks][0]] === 'אוֹר'; });
+t('reader', 'splitComm: ברטנורא לדיבורים, דיבור המתחיל עד הנקודה', () => { const s = RC.splitComm('מאימתי. פירוש א: ועד. פירוש ב:'); return s.length === 2 && s[0].dh === 'מאימתי.' && s[1].dh === 'ועד.'; });
+t('reader', 'גופנים מקומיים קיימים (vendor/fonts) ומוצהרים ב-styles.css', () => ['FrankRuhlLibre-hebrew.woff2', 'NotoRashiHebrew-hebrew.woff2'].every(f => fs.existsSync(path.join(__dirname, '..', 'vendor/fonts', f)) && fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8').includes('url(vendor/fonts/' + f + ')')));
+
 // ---- offline static audit ----
 // חריג מכוון יחיד: בלוק "צור קשר" (EmailJS) ב-app.js, בין EMAILJS:START/EMAILJS:END — הדבר היחיד באפליקציה
 // שדורש רשת בפועל (וגם זה רק כש-המשתמש בעצמו לוחץ "שליחה" בטופס, ראו הערה שם). נבדק בנפרד למטה שהבלוק
 // אכן מבודד (לא "דולף" רשת לשאר הקוד) ושה-script הדינמי היחיד נטען רק דרך ה-CDN המוגדר, לא ממקור אחר.
-const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js'];
+const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js', 'reader.js'];
 const EMAILJS_RE = /\/\/ --- EMAILJS:START ---[\s\S]*?\/\/ --- EMAILJS:END ---/;
 const ANALYTICS_RE = /\/\/ --- ANALYTICS:START ---[\s\S]*?\/\/ --- ANALYTICS:END ---/; // חריג שני: Google Analytics, רק כשמוגדר מזהה-מדידה
 const stripEmailJs = s => s.replace(EMAILJS_RE, '').replace(ANALYTICS_RE, '');

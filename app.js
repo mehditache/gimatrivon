@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.7.2'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.8.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -205,6 +205,8 @@ const GROUP_EN = {
   'מילון עברי': 'Hebrew Dictionary',
 };
 const groupName = he => LANG === 'en' ? (GROUP_EN[he] || he) : he;
+// ממשק קטן למסך "קריאה ומפרשים" (reader.js), שרץ מחוץ ל-IIFE הזה ולכן לא רואה את LANG/bookName/groupName/trackEvent ישירות
+window.GimApp = { isEn: () => LANG === 'en', bookName: he => bookName(he), groupName: he => groupName(he), trackEvent: (n, p) => trackEvent(n, p) };
 const PARSHA_EN = {
   'בראשית': 'Bereshit', 'נח': 'Noach', 'לך לך': 'Lech Lecha', 'וירא': 'Vayera', 'חיי שרה': 'Chayei Sarah', 'תולדות': 'Toldot',
   'ויצא': 'Vayetzei', 'וישלח': 'Vayishlach', 'וישב': 'Vayeshev', 'מקץ': 'Miketz', 'ויגש': 'Vayigash', 'ויחי': 'Vayechi',

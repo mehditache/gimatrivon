@@ -12,6 +12,7 @@
 <div id="stage">
 <header class="top">
   <div class="brand"><h1>גימטריבון</h1><span class="ver" id="ver" title="מספר גרסה"></span><span class="tagline">תנ״ך · משנה · רש״י · תרגומים</span></div>
+  <div class="seg modeSw" id="modeSw" role="group" aria-label="מצב עבודה"><button type="button" data-mode="gem" class="on" aria-pressed="true">גימטריה</button><button type="button" data-mode="read" aria-pressed="false">קריאה ומפרשים</button></div>
   <div class="seg sideSw" id="sideSw" role="group" aria-label="בחירת צד"><button data-v="A" class="on">צד א׳</button><button data-v="B">צד ב׳</button></div>
   <div class="tools">
     <label class="themeSw" title="מעבר בין מראה גוויל למראה לילה">
@@ -77,6 +78,8 @@
     </div>
   </div>
 </div>
+<!-- מסך "קריאה ומפרשים" (reader.js): נבנה בפעם הראשונה שעוברים אליו; מוצג במקום #ws/#mShell כש-body[data-mode=read] -->
+<section class="reader" id="reader" aria-label="קריאה ומפרשים"></section>
 </div>
 <dialog id="dlgMethods" class="dlg"><div class="dh"><h2>שיטות הגימטריה</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="methodsDoc"></div></dialog>
 <dialog id="dlgAbout" class="dlg about"><div class="dh"><h2>אודות גימטריבון</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="aboutDoc"></div></dialog>
@@ -113,5 +116,6 @@
 <script src="engine.js"></script>
 <script src="vendor/driver.js"></script>
 <script src="app.js"></script>
+<script src="reader.js"></script>
 </body>
 </html>

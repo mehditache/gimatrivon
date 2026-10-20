@@ -593,3 +593,205 @@ html.forcePhone #mSummaryBar{display:flex}
 /* מעבר-מחדש אחרי demo (ללא היעלמות/הופעה מחדש של הבועה) */
 html.gtNoAnim .driver-popover{animation:none!important;transition:none!important}
 html.gtNoAnim .driver-overlay *{transition:none!important}
+
+/* ============ v3.8.0 · מסך "קריאה ומפרשים" (reader.js) ============
+   ספר פתוח על שולחן כהה: שני עמודים במחשב רחב, עמוד אחד בצר/בטלפון. בכל עמוד: הפסוקים, טור תרגום צר משמאל
+   (תצוגת "ספר") או שורה לכל פסוק מול התרגום ("פסוק מול תרגום"), ורש״י/ברטנורא בתחתית הדף. העימוד נמדד ב-JS
+   (#rdProbe) לפי --rdPw/--rdPh/--rdFs/--rdTrW שהוא קובע. הגופנים מקומיים (vendor/fonts, OFL) — האפליקציה offline. */
+@font-face{font-family:"GimFrank";src:url(vendor/fonts/FrankRuhlLibre-hebrew.woff2) format("woff2");font-weight:300 900;font-display:swap;unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:"GimRashi";src:url(vendor/fonts/NotoRashiHebrew-hebrew.woff2) format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+:root{--rdDesk:#2e2416;--rdBar:#382c1b;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdPaper:#fbf7ec;--rdEdge:#efe5cd;--rdInk:#2a2117;--rdMu:#8a7754;--rdGold:#98722c;--rdLine:#e4d7b9;
+  --rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:#f6e39a;--rdOn:#e7c77e;--rdFlash:#f3dfa6}
+:root[data-theme=dark]{--rdDesk:#120d07;--rdBar:#1c150d;--rdPaper:#241b11;--rdEdge:#1b140c;--rdInk:#efe3c9;--rdMu:#b19d73;--rdGold:#d7a847;--rdLine:#3e3120;
+  --rdChip:#3a2c18;--rdChipTx:#e7c77e;--rdTrChip:#3d2226;--rdTrTx:#e08a96;--rdRow:#2e2416;--rdHl:#6b5520;--rdFlash:#5a4618}
+.rdF,.reader .fN{font-family:"GimFrank","Frank Ruhl Libre","David","Times New Roman",serif}
+.reader .fR{font-family:"GimRashi","Noto Rashi Hebrew","GimFrank",serif}
+/* מתג המצב בכותרת */
+.modeSw{flex:none}.modeSw .ls{display:none}
+.reader{display:none}
+body[data-mode=read] .ws,body[data-mode=read] #mShell,body[data-mode=read] #mSummaryBar,body[data-mode=read] .sideSw,body[data-mode=read] #status{display:none!important}
+body[data-mode=read] .reader{display:flex}
+.reader{flex:1;min-height:0;flex-direction:column;position:relative;container-type:inline-size;background:var(--rdDesk);color:var(--rdBarTx);font-family:var(--ui)}
+.reader button{color:inherit}
+/* סרגל עליון */
+.rdBar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--rdBar);border-bottom:1px solid rgba(0,0,0,.35);position:relative;z-index:20}
+.rdNav{display:flex;align-items:center;gap:4px;flex:none}
+.reader .rdIco{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,.14)}
+.reader .rdIco:hover:not(:disabled){background:rgba(255,255,255,.08);border-color:var(--rdOn)}
+.reader .rdIco:disabled{opacity:.35;cursor:default}
+.reader .rdIco.sm{width:24px;height:24px;border:0}
+.reader .rdWhere{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);font:600 15px "GimFrank",var(--tf);white-space:nowrap}
+.reader .rdWhere:hover,.reader .rdWhere[aria-expanded=true]{border-color:var(--rdOn);background:rgba(255,255,255,.1)}
+.rdSearch{flex:1;min-width:0;max-width:520px;position:relative;display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:var(--rdBarMu)}
+.rdSearch:focus-within{border-color:var(--rdOn);background:rgba(255,255,255,.1)}
+.rdSearch input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--rdBarTx);font:15px "GimFrank",var(--ui);padding:0}
+.rdSearch input::placeholder{color:var(--rdBarMu)}
+.rdSearch input::-webkit-search-cancel-button{display:none}
+.rdSearch kbd{flex:none;font:600 10.5px var(--ui);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:1px 5px;color:var(--rdBarMu);direction:ltr}
+.reader .rdSeg{display:inline-flex;flex:none;border:1px solid rgba(255,255,255,.16);border-radius:9px;overflow:hidden}
+.reader .rdSeg button{display:inline-flex;align-items:center;gap:6px;height:32px;border:0;border-radius:0;background:none;padding:0 12px;font-size:13px;white-space:nowrap}
+.reader .rdSeg button:hover{background:rgba(255,255,255,.08)}
+.reader .rdSeg button.on{background:var(--rdOn);color:#2e2416;font-weight:600}
+.reader .rdSetBtn{flex:none;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;background:transparent;border:1px solid rgba(255,255,255,.16);font-size:13px}
+.reader .rdSetBtn .aa{font:700 17px "GimFrank",var(--tf);line-height:1}
+.reader .rdSetBtn:hover,.reader .rdSetBtn[aria-expanded=true]{border-color:var(--rdOn);background:rgba(255,255,255,.08)}
+/* רשימת חיפוש */
+.rdDrop{position:absolute;top:calc(100% + 6px);inset-inline-start:-1px;width:max(100%,440px);max-height:min(62vh,520px);overflow:auto;background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.45);padding:6px;z-index:30}
+.rdDH{font:700 11px var(--ui);color:var(--rdMu);padding:6px 8px 3px}
+.reader .rdDI{display:flex;align-items:center;gap:8px;width:100%;text-align:start;background:none;border:0;border-radius:8px;padding:7px 8px;color:var(--rdInk)}
+.reader .rdDI.hit{flex-direction:column;align-items:stretch;gap:2px}
+.reader .rdDI:hover,.reader .rdDI.act{background:var(--rdRow)}
+.rdDI.ref span{font:600 15px "GimFrank",var(--tf)}
+.rdDI .rf{font:700 11.5px var(--ui);color:var(--rdGold)}
+.rdDI .sn{font:14.5px/1.7 "GimFrank",var(--tf);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rdDScope{display:flex;align-items:center;gap:4px;padding:8px 6px 6px;margin-top:4px;border-top:1px solid var(--rdLine)}
+.reader .rdDScope button{font-size:12px;padding:2px 10px;border-radius:99px;background:none;border:1px solid var(--rdLine);color:var(--rdInk)}
+.reader .rdDScope button.on{background:var(--rdGold);border-color:var(--rdGold);color:#fff}
+.rdDScope .cnt{margin-inline-start:auto;font-size:11.5px;color:var(--rdMu)}
+mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
+/* שולחן + ספר */
+.rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,rgba(255,235,190,.07),transparent 70%)}
+.rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px rgba(0,0,0,.45))}
+.rdBook.two::before,.rdBook.two::after{content:"";position:absolute;inset:4px -5px -5px -5px;border-radius:4px;background:#e3d8bf;z-index:-1}
+.rdBook.two::after{inset:2px -2.5px -2.5px -2.5px;background:#efe6d0}
+:root[data-theme=dark] .rdBook.two::before{background:#15100a}:root[data-theme=dark] .rdBook.two::after{background:#1e170e}
+.rdSpine{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:rgba(0,0,0,.18);pointer-events:none}
+.rdPage{position:relative;width:var(--rdPw);height:var(--rdPh);display:flex;flex-direction:column;overflow:hidden;padding:30px 40px 18px;background:var(--rdPaper);color:var(--rdInk);font-family:"GimFrank","Frank Ruhl Libre","David",serif;font-size:var(--rdFs);border-radius:3px}
+.rdPage.right{background:linear-gradient(to left,var(--rdPaper) 88%,var(--rdEdge));border-radius:3px 0 0 3px}
+.rdPage.left{background:linear-gradient(to right,var(--rdPaper) 88%,var(--rdEdge));border-radius:0 3px 3px 0}
+.rdPage.right::before{content:"";position:absolute;top:-2px;left:16px;width:14px;height:58px;background:#8a2f40;clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%)}
+.rdPage.narrow{padding:16px 16px 10px}
+.rdPage.tight{overflow:auto}
+.rdPage>*{flex:none}
+.rdHead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:12px var(--ui);color:var(--rdMu);border-bottom:1px solid var(--rdLine);padding-bottom:6px;margin-bottom:12px}
+.rdHead span:first-child{font:600 13px "GimFrank",var(--tf);color:var(--rdGold)}
+.rdChTitle{text-align:center;margin:2px 0 12px;line-height:1.2}
+.rdChTitle .bk{display:block;font-size:1.65em;font-weight:700;color:var(--rdGold);letter-spacing:.02em}
+.rdChTitle .ch{display:inline-flex;align-items:center;gap:10px;font-size:.72em;color:var(--rdMu);letter-spacing:.06em}
+.rdChTitle .ch::before,.rdChTitle .ch::after{content:"";width:34px;height:1px;background:var(--rdLine)}
+.rdBody.withTr{display:grid;grid-template-columns:minmax(0,1fr) var(--rdTrW);gap:22px}
+.rdTxt p{margin:0;text-align:justify;line-height:1.95}
+.vn{display:inline-flex;align-items:center;justify-content:center;min-width:1.05em;height:1.05em;padding:0 .18em;border-radius:99px;background:var(--rdChip);color:var(--rdChipTx);font:700 .55em/1 var(--ui);vertical-align:middle;margin-inline:.15em .35em;position:relative;top:-.05em}
+.rdV{border-radius:4px;transition:background .6s}
+.rdV.flash,.rdRow.flash,.rdCm p.flash{background:var(--rdFlash)}
+.rdTr{border-inline-start:1px solid var(--rdLine);padding-inline-start:16px;color:var(--rdInk)}
+.rdTr.fR{font-size:.63em;line-height:1.85}.rdTr.fN{font-size:.7em;line-height:1.8}
+.rdTr p{margin:0;text-align:justify}
+.rdTrHd,.rdRowHd{font:700 11px var(--ui);color:var(--rdTrTx);letter-spacing:.02em}
+.rdTrHd{text-align:center;margin-bottom:8px}
+.rdTr .vn{background:var(--rdTrChip);color:var(--rdTrTx);font-size:.68em}
+/* פסוק מול תרגום */
+.rdRowHd{display:grid;grid-template-columns:2em minmax(0,1fr) var(--rdTrW);gap:16px;padding:0 8px 6px;border-bottom:1px solid var(--rdLine)}
+.rdRowHd span:nth-child(2){color:var(--rdMu)}
+.rdRow{display:grid;grid-template-columns:2em minmax(0,1fr) var(--rdTrW);gap:16px;align-items:start;padding:7px 8px;border-bottom:1px dashed var(--rdLine);border-radius:4px;transition:background .6s}
+.rdRows.noTr .rdRow,.rdRows.noTr .rdRowHd{grid-template-columns:2em minmax(0,1fr)}
+.rdRow .vnc{display:flex;align-items:center;justify-content:center;height:calc(1.8em)}
+.rdRow .vnc .vn{margin:0;font-size:.6em;min-width:1.7em;height:1.7em;top:0}
+.rdRow .he{line-height:1.8;text-align:justify}
+.rdRow .tr{color:var(--rdInk);text-align:justify;padding-inline-start:12px;border-inline-start:1px solid var(--rdLine)}
+.rdRow .tr.fR{font-size:.63em;line-height:2.1}.rdRow .tr.fN{font-size:.7em;line-height:1.95}
+.rdSp{flex:1 1 0;min-height:10px}
+/* מפרש בתחתית הדף */
+.rdCm{border-top:0}
+.rdCm.fR{font-size:.62em;line-height:1.7}.rdCm.fN{font-size:.68em;line-height:1.7}
+.rdCmHd{display:flex;align-items:center;gap:10px;margin-bottom:6px;font:700 11.5px var(--ui);color:var(--rdGold)}
+.rdCmHd .ln{flex:1;height:1px;background:linear-gradient(to left,var(--rdGold),var(--rdLine))}
+.rdCmHd span:last-child{order:-1}.rdCmHd i{font-style:normal;font-weight:500;color:var(--rdMu)}
+.rdCmBody{columns:2;column-gap:26px;column-rule:1px solid var(--rdLine);text-align:justify}
+.rdPage.narrow .rdCmBody{columns:1}
+.rdCm p{margin:0 0 .25em;border-radius:3px;transition:background .6s}
+.rdCm b{font-weight:700}
+.rdCm .cv{display:inline-block;font:700 .78em var(--ui);color:var(--rdChipTx);margin-inline-end:.35em}
+.rdNum{text-align:center;font:12px var(--ui);color:var(--rdMu);margin-top:8px}
+.rdMeasure{position:absolute;top:0;inset-inline-start:0;visibility:hidden;pointer-events:none;z-index:-1}
+/* כפתורי דפדוף */
+.reader .rdTurn{position:absolute;top:50%;margin-top:-22px;width:44px;height:44px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);z-index:2}
+.reader .rdTurn.prev{inset-inline-start:14px}.reader .rdTurn.next{inset-inline-end:14px}
+.reader .rdTurn:hover:not(:disabled){background:rgba(255,255,255,.14);border-color:var(--rdOn)}
+.reader .rdTurn:disabled{opacity:.25;cursor:default}
+/* שורה תחתונה */
+.rdFoot{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;padding:6px 14px 8px;font-size:12px;color:var(--rdBarMu)}
+.rdFoot .rdIco{display:none}
+.rdProg{width:180px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
+.rdProg span{display:block;height:100%;background:var(--rdOn);margin-inline-start:0}
+/* חלוניות: הגדרות תצוגה / מעבר לפרק ופסוק */
+.rdScrim{position:absolute;inset:0;z-index:35}
+.rdPop{position:absolute;top:56px;z-index:40;max-height:calc(100% - 70px);overflow:auto;background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.5);padding:14px 16px}
+.rdSet{inset-inline-end:14px;width:350px}
+.rdJump{inset-inline-start:14px;width:min(660px,calc(100% - 28px));display:flex;flex-direction:column}
+.rdPopHd{display:flex;align-items:center;gap:10px;font:700 14px var(--ui)}
+.rdPopHd>span:first-child,.rdJT{flex:1}
+.reader .rdX{width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:none;border:1px solid var(--rdLine);color:var(--rdMu)}
+.rdSec{margin-top:14px}
+.rdSecT{display:block;font:700 11.5px var(--ui);color:var(--rdMu);margin-bottom:7px}
+.rdCards,.rdFonts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.reader .rdCard,.reader .rdFont{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px 8px;border-radius:10px;background:none;border:1.5px solid var(--rdLine);color:var(--rdInk);font-size:12.5px}
+.reader .rdCard.on,.reader .rdFont.on,.reader .rdOpt.on{border-color:var(--rdGold);background:var(--rdRow)}
+.pv{display:block;width:96px;height:50px;border:1px solid var(--rdLine);border-radius:4px;background:var(--rdPaper);position:relative;padding:6px}
+.pv i{display:block;height:3px;border-radius:2px;background:var(--rdMu);opacity:.45;margin-bottom:5px}
+.pvBook i{width:62%}.pvBook i.s{width:40%}
+.pvBook b{position:absolute;left:6px;top:6px;width:22%;height:24px;background:repeating-linear-gradient(var(--rdTrTx) 0 2px,transparent 2px 6px);opacity:.5}
+.pvRows i{width:100%;background:linear-gradient(to left,var(--rdMu) 0 66%,transparent 66% 72%,var(--rdTrTx) 72%)}
+.reader .rdOpt{display:flex;align-items:center;gap:10px;width:100%;text-align:start;background:none;border:1.5px solid transparent;border-radius:9px;padding:7px 9px;color:var(--rdInk);font-size:13.5px}
+.reader .rdOpt:hover,.reader .rdCard:hover,.reader .rdFont:hover{background:var(--rdRow);border-color:var(--rdLine)}
+.rdOpt .dot{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--rdMu);flex:none}
+.rdOpt.on .dot{border:4.5px solid var(--rdGold)}
+.rdOpt .nt{margin-inline-start:auto;font-size:11.5px;color:var(--rdMu)}
+.rdFont .smp{font-size:19px;line-height:1.3}
+.rdSizes{display:flex;gap:6px}
+.reader .rdSizes button{width:40px;height:34px;padding:0;background:none;border:1.5px solid var(--rdLine);border-radius:8px;color:var(--rdInk);font-family:"GimFrank",var(--tf)}
+.reader .rdSizes button.on{border-color:var(--rdGold);background:var(--rdRow)}
+.rdNote{margin:14px 0 0;font-size:11.5px;color:var(--rdMu)}
+.reader .rdJTabs{display:inline-flex;border:1px solid var(--rdLine);border-radius:8px;overflow:hidden;flex:none}
+.reader .rdJTabs button{border:0;border-radius:0;background:none;padding:3px 14px;font-size:13px;color:var(--rdInk)}
+.reader .rdJTabs button.on{background:var(--rdGold);color:#fff;font-weight:600}
+.rdJT{font-size:12px;color:var(--rdMu);font-weight:600}
+.rdJGrid{display:grid;grid-template-columns:170px minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:12px;height:min(360px,calc(100vh - 260px));min-height:180px}
+.rdJCol{overflow:auto;min-height:0;border:1px solid var(--rdLine);border-radius:10px;padding:6px}
+.rdJGrp{font:700 10.5px var(--ui);color:var(--rdMu);padding:8px 8px 3px;position:sticky;top:-6px;background:var(--rdPaper)}
+.reader .rdJB{display:block;width:100%;text-align:start;background:none;border:0;border-radius:7px;padding:4px 9px;font:15px "GimFrank",var(--tf);color:var(--rdInk)}
+.reader .rdJB:hover{background:var(--rdRow)}
+.reader .rdJB.on{background:var(--rdGold);color:#fff}
+.rdJH{font:700 11px var(--ui);color:var(--rdMu);padding:2px 4px 6px}
+.rdCells{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:4px}
+.reader .rdCell{height:32px;padding:0;background:none;border:1px solid var(--rdLine);border-radius:7px;font:14px "GimFrank",var(--tf);color:var(--rdInk)}
+.reader .rdCell:hover{background:var(--rdRow);border-color:var(--rdGold)}
+.reader .rdCell.cur{box-shadow:inset 0 0 0 1.5px var(--rdGold)}
+.reader .rdCell.on{background:var(--rdGold);border-color:var(--rdGold);color:#fff}
+.rdJFoot{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:11.5px;color:var(--rdMu)}
+.rdJFoot>span{flex:1}.rdJFoot b{font-weight:700;color:var(--rdInk)}
+.reader .rdGo{background:var(--rdGold);border-color:var(--rdGold);color:#fff;font-weight:600;padding:6px 14px;border-radius:9px;white-space:nowrap}
+.reader .rdGo:hover{background:var(--rdChipTx);border-color:var(--rdChipTx)}
+/* מסך צר (טלפון, חלון צר, forcePhone): סרגל בשתי שורות, דפדוף בשורה התחתונה, חלוניות כגיליון תחתון */
+@container (max-width:860px){
+  .reader .rdSeg .t,.reader .rdSetBtn .t{display:none}
+  .rdSearch kbd{display:none}
+}
+@container (max-width:640px){
+  .rdBar{flex-wrap:wrap;padding:6px 8px;gap:6px}
+  .rdNav{flex:1;justify-content:space-between}
+  .reader .rdWhere{flex:1;justify-content:center}
+  .rdSearch{order:3;flex-basis:100%;max-width:none}
+  .reader .rdSeg{display:none}
+  .reader .rdTurn{display:none}
+  .rdFoot .rdIco{display:inline-flex}
+  .rdProg{width:auto;flex:1;max-width:140px}
+  .rdFoot{padding:4px 8px 6px;gap:8px}
+  .rdDrop{width:100%;max-height:55vh}
+  .rdScrim{background:rgba(0,0,0,.45)}
+  .rdPop{top:auto;bottom:0;inset-inline:0;width:auto;max-height:82%;border-radius:16px 16px 0 0;padding:12px 12px 16px}
+  .rdJGrid{grid-template-columns:104px minmax(0,1fr) minmax(0,1fr);gap:6px;height:46vh}
+  .rdCells{grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:3px}
+  .reader .rdCell{height:30px;font-size:13px}
+  .reader .rdJB{font-size:14px;padding:4px 6px}
+  .rdJFoot>span{display:none}.reader .rdGo{flex:1}
+  .rdRowHd,.rdRow{gap:8px;padding-inline:2px}
+  .rdRow .tr{padding-inline-start:8px}
+  .rdBody.withTr{gap:12px}.rdTr{padding-inline-start:10px}
+}
+@media (pointer:coarse) and (max-width:500px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
+  .modeSw .lf{display:none}.modeSw .ls{display:inline}.modeSw button{padding:.2rem .6rem;font-size:.85rem}
+}
+html.forcePhone .modeSw .lf{display:none}
+html.forcePhone .modeSw .ls{display:inline}
+html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
