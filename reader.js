@@ -125,7 +125,7 @@
     'רש״י': 'Rashi', 'ברטנורא': 'Bartenura', 'פרק': 'Chapter', 'פסוק': 'Verse', 'משנה': 'Mishnah', 'תנ״ך': 'Tanakh', 'מקרא': 'Text',
     'פרק קודם': 'Previous chapter', 'פרק הבא': 'Next chapter', 'עמוד קודם': 'Previous page', 'עמוד הבא': 'Next page',
     'חיפוש, או קפיצה: ״שמות יב ב״': 'Search, or jump: "Exodus 12 2"', 'חיפוש מהיר או קפיצה למקום': 'Quick search or jump to a place',
-    'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'חיפוש ב': 'Search in', 'פסוקים': 'Verses', 'משניות': 'Mishnayot', 'שניהם': 'Both', 'מציג': 'showing', 'אין תוצאות': 'No results',
+    'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'חיפוש ב': 'Search in', 'פסוקים': 'Verses', 'משניות': 'Mishnayot', 'תרגום': 'Targum', 'הכל': 'All', 'מציג': 'showing', 'אין תוצאות': 'No results',
     'מעבר אל': 'Go to', 'פתיחת': 'Open', 'מעבר לפרק ופסוק': 'Go to chapter and verse', 'סגירה': 'Close',
     'אפשר גם להקליד מקום בתיבת החיפוש': 'You can also type a place in the search box', 'דפדוף': 'turn pages',
     'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ממשיך ל': 'continues to ', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
@@ -231,11 +231,11 @@
       html += '<div class="rdBody"><div class="rdTxt">' + title + segs.map(s => '<div class="rdMsh rdV" data-v="' + s.v + '"><div class="rdMshH"><span>' + T('משנה') + ' ' + num(s.v) + (s.from > 0 ? ' <i>(' + T('המשך') + ')</i>' : '') + '</span></div><p>' + (s.from > 0 ? '<span class="rdCont">…</span> ' : '') + main(s) + '</p></div>').join('') + '</div></div>';
     } else if (S.view === 'book') {
       html += '<div class="rdBody' + (tb ? ' withTr' : '') + '"><div class="rdTxt">' + title + '<p>' + segs.map(s => '<span class="rdV" data-v="' + s.v + '">' + vn(s) + main(s) + '</span>').join(' ') + '</p></div>';
-      if (tb) html += '<aside class="rdTr ' + trCls + '" aria-label="' + h(trLabel(tb.k)) + '"><div class="rdTrHd">' + h(trLabel(tb.k)) + '</div><p>' + segs.map(s => { const t = trTxt(s); return t ? '<span class="rdV" data-v="' + s.v + '">' + vn(s) + h(t) + '</span>' : ''; }).join(' ') + '</p></aside>';
+      if (tb) html += '<aside class="rdTr ' + trCls + '" aria-label="' + h(trLabel(tb.k)) + '"><div class="rdTrHd">' + h(trLabel(tb.k)) + '</div><p>' + segs.map(s => { const t = trTxt(s); return t ? '<span class="rdV" data-v="' + s.v + '">' + vn(s) + hlHtml(t, q) + '</span>' : ''; }).join(' ') + '</p></aside>';
       html += '</div>';
     } else {
       html += '<div class="rdBody rdRows' + (tb ? '' : ' noTr') + '">' + title + '<div class="rdRowHd"><span></span><span>' + T(isMishnah(b) ? 'משנה' : 'מקרא') + '</span>' + (tb ? '<span class="trh">' + h(trLabel(tb.k)) + '</span>' : '') + '</div>' +
-        segs.map(s => '<div class="rdRow" data-v="' + s.v + '"><span class="vnc">' + (s.from === 0 ? vn(s) : '') + '</span><span class="he">' + (s.from > 0 ? '<span class="rdCont">…</span> ' : '') + main(s) + '</span>' + (tb ? '<span class="tr ' + trCls + '">' + h(trTxt(s)) + '</span>' : '') + '</div>').join('') + '</div>';
+        segs.map(s => '<div class="rdRow" data-v="' + s.v + '"><span class="vnc">' + (s.from === 0 ? vn(s) : '') + '</span><span class="he">' + (s.from > 0 ? '<span class="rdCont">…</span> ' : '') + main(s) + '</span>' + (tb ? '<span class="tr ' + trCls + '">' + hlHtml(trTxt(s), q) + '</span>' : '') + '</div>').join('') + '</div>';
     }
     html += '<div class="rdSp"></div>';
     if (pg.cm.length) {
@@ -475,14 +475,17 @@
     return '… ' + parts.slice(first - 8).join('');
   }
   function searchSrc(q, books, onlyCh) {
-    const nq = norm(q), hits = [], txt = S.src !== 'cm', cm = S.src !== 'txt';
+    if (S.src === 'both' || (S.src === 'tr' && isMishnah(S.b))) S.src = 'all'; // ערך ישן / אין תרגום במשנה
+    const nq = norm(q), hits = [], all = S.src === 'all', txt = all || S.src === 'txt', cm = all || S.src === 'cm', tr = all || S.src === 'tr';
     if (nq.length < 2) return { hits, total: 0, q: nq };
     for (const b of books) {
-      const T1 = txt ? normBook(IX, b) : null, C1 = cm ? cmNorm(b) : null;
+      const T1 = txt ? normBook(IX, b) : null, C1 = cm ? cmNorm(b) : null, L = IX.links[b] || {};
+      const TR = tr ? ['onkelos', 'yonatan'].filter(k => L[k] != null).map(k => ({ k, n: normBook(IX, L[k]) })) : [];
       chaptersOf(IX, b).forEach(ch => {
         if (onlyCh && ch !== onlyCh) return;
         versesOf(IX, b, ch).forEach(v => {
           if (T1 && ((T1[ch] || [])[v] || '').includes(nq)) hits.push({ b, ch, v });
+          TR.forEach(t => { if (((t.n[ch] || [])[v] || '').includes(nq)) hits.push({ b, ch, v, tr: t.k }); });
           if (C1) ((C1[ch] || [])[v] || []).forEach((t, k) => { if (t.includes(nq)) hits.push({ b, ch, v, cm: k }); });
         });
       });
@@ -501,7 +504,7 @@
     if (dropItems.length) html += '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refLabel(it.r)) + '</span></button>').join('') + '</div>';
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
     const res = searchSrc(q, scopeBooks(), S.scope === 'ch' ? S.ch : 0);
-    const srcs = [['txt', isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isMishnah(S.b) ? 'ברטנורא' : 'רש״י'], ['both', 'שניהם']];
+    const srcs = [['txt', isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
     html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '</div><div class="rdDScope src" role="group"><span class="lb">' + T('חיפוש ב') + '</span>' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '<span class="cnt">' + (res.q.length < 2 ? '' : res.total ? cnt(res.total) + ' ' + T('תוצאות') : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
@@ -544,8 +547,9 @@
       box.firstChild.innerHTML = RS.items.slice(from, to).map((it, k) => {
         const y = RS.off[from + k], x = it.x;
         if (it.gh) return '<div class="rdGh" style="top:' + y + 'px"><span>' + h(ghLabel(x)) + '</span><span class="n">' + cnt(it.n) + ' ' + T('תוצאות') + '</span></div>';
-        const cm = x.cm != null, t = cm ? cmText(x) : noTeamim(chText(x.b, x.ch, x.v));
-        return '<button type="button" class="rdDI hit' + (cm ? ' cm' : '') + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + (cm ? '<i>' + h(cmLabel(x.b)) + '</i> ' : '') + h(refLabel(x)) + '</span><span class="sn' + (cm ? ' ' + (S.cmFont === 'rashi' ? 'fR' : 'fN') : '') + '">' + hlHtml(cm ? excerpt(t, RS.q) : t, RS.q) + '</span></button>';
+        const cm = x.cm != null, tr = !!x.tr, t = cm ? cmText(x) : tr ? noMarks(chText(IX.links[x.b][x.tr], x.ch, x.v)) : noTeamim(chText(x.b, x.ch, x.v));
+        const tag = cm ? cmLabel(x.b) : tr ? trLabel(x.tr) : '', fc = cm ? S.cmFont : tr ? S.trFont : '';
+        return '<button type="button" class="rdDI hit' + (tag ? ' cm' : '') + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + (tag ? '<i>' + h(tag) + '</i> ' : '') + h(refLabel(x)) + '</span><span class="sn' + (fc ? ' ' + (fc === 'rashi' ? 'fR' : 'fN') : '') + '">' + hlHtml(tag ? excerpt(t, RS.q) : t, RS.q) + '</span></button>';
       }).join('');
     }
     // כותרת דבוקה: הקבוצה של הפריט שבראש החלון (מוסתרת כשכותרת אמיתית בדיוק בראש)
@@ -595,7 +599,7 @@
   function pickDrop(i) {
     const it = dropItems[i]; if (!it) return;
     const q = $r('#rdQ').value;
-    if (it.kind === 'hit') S.hl = q; else { S.hl = ''; $r('#rdQ').value = ''; }
+    if (it.kind === 'hit') { S.hl = q; if (it.r.tr && S.tr !== it.r.tr) S.tr = it.r.tr; } else { S.hl = ''; $r('#rdQ').value = ''; }
     $r('#rdQ').blur(); // כדי שהחצים ידפדפו מיד
     updClear(); closeDrop(); goTo(it.r.b, it.r.ch, it.r.v);
   }
