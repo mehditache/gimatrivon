@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.7.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.7.2'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -645,6 +645,15 @@ function bind(k) {
   };
   q('.filtPane .rowb').onclick = e => { const t = e.target.dataset.t; if (!t) return; st.sel = t === 'all' ? new Set(ALL) : new Set(); drawTree(k); run(k); };
   $('#t' + k).oninput = e => { st.text = e.target.value; renderCenter(); debRun(); };
+  // TAB בתיבת-הטקסט קופץ ישירות לתיבת-הטקסט של הצד השני, וחוזר חלילה; Shift+TAB קופץ לתיבת החיפוש-בתוך-התוצאות
+  // (#tf) של אותו צד, ו-Shift+TAB שם מחזיר לכאן (בנייד — מחליף קודם את פנל-התוצאות המוצג לצד הזה). נתפס רק כשהפוקוס בתיבה עצמה — בכל
+  // מקום אחר TAB ממשיך לנווט כרגיל (נגישות-מקלדת).
+  $('#t' + k).addEventListener('keydown', e => {
+    if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
+    const o = $('#' + (e.shiftKey ? 'tf' + k : 't' + (k === 'A' ? 'B' : 'A'))); if (!o) return;
+    if (e.shiftKey && !o.getClientRects().length) { const sg = document.querySelector(`.mSumSeg[data-side="${k}"]`); if (sg) sg.click(); }
+    e.preventDefault(); o.focus(); const n = o.value.length; o.setSelectionRange(n, n);
+  });
   $('#nm' + k).oninput = e => { st.num = e.target.value; debRun(); };
   // v3.4.1: אם המשתמש הקליד ערך לא-שלם ("13.5"), רק ב-blur (לא תוך-כדי הקלדה, כדי לא "לבלוע" את הנקודה
   // שהמשתמש אולי עדיין ממשיך אחריה) משקפים חזרה את הערך-השלם-בפועל שבו משתמש החיפוש (numVal, למעלה) —
@@ -659,6 +668,11 @@ function bind(k) {
   // סינון טקסטואלי חופשי בתוך התוצאות המוצגות (לא קשור לחישוב הגימטרי) — מהיר, פועל על מה שכבר נמצא בזיכרון
   const tfDeb = () => { clearTimeout(st.tfTimer); st.tfTimer = setTimeout(() => tfRebuild(k), 80); };
   $('#tf' + k).oninput = e => { st.tf = e.target.value; tfDeb(); };
+  // Shift+TAB בתיבת החיפוש-בתוך-התוצאות מחזיר לתיבת-הטקסט של אותו צד (המשלים של Shift+TAB שם, למעלה).
+  $('#tf' + k).addEventListener('keydown', e => {
+    if (e.key !== 'Tab' || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
+    const o = $('#t' + k); e.preventDefault(); o.focus(); const n = o.value.length; o.setSelectionRange(n, n);
+  });
   $('#tfz' + k).onchange = e => { st.fuzzy = e.target.checked; tfRebuild(k); };
   $('#fu' + k).onchange = e => { st.fullUnit = e.target.checked; run(k); };
   $('#sw' + k).onchange = e => { st.singleWord = e.target.checked; run(k); };
