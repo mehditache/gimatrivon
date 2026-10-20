@@ -128,7 +128,7 @@
     'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'מציג': 'showing', 'אין תוצאות': 'No results',
     'מעבר אל': 'Go to', 'פתיחת': 'Open', 'מעבר לפרק ופסוק': 'Go to chapter and verse', 'סגירה': 'Close',
     'אפשר גם להקליד מקום בתיבת החיפוש': 'You can also type a place in the search box', 'דפדוף': 'turn pages',
-    'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
+    'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ממשיך ל': 'continues to ', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
     'פירוש': 'Commentary', 'הדפסה / PDF': 'Print / PDF', 'מה להדפיס': 'What to print', 'שני העמודים הפתוחים': 'The two open pages', 'הפרק כולו': 'The whole chapter', 'צבע': 'Color', 'צבעוני': 'Color', 'שחור-לבן': 'Black & white', 'רקע נייר וצבעים': 'Paper tone and colors', 'רקע לבן, לחיסכון בדיו': 'White background, saves ink', 'הדפסה': 'Print', 'שני עמודים בכל דף A4 לרוחב.': 'Two pages on each landscape A4 sheet.', 'ליצוא PDF בחרו בחלון ההדפסה ״שמירה כ-PDF״.': 'For a PDF, choose "Save as PDF" in the print dialog.', 'דפים': 'sheets', 'דף': 'sheet', 'דף אחד': '1 sheet', 'המשך': 'cont.', 'כתב הפירוש': 'Commentary script', 'ניקוי חיפוש': 'Clear search'
   };
   const T = he => isEn() ? (EN[he] || he) : he;
@@ -298,20 +298,28 @@
     R.style.setProperty('--rdPw', geo.pw + 'px'); R.style.setProperty('--rdPh', geo.ph + 'px');
     R.style.setProperty('--rdFs', geo.fs + 'px'); R.style.setProperty('--rdTrW', geo.trW + 'px');
     const pages = pagesFor(S.b, S.ch);
-    let idx = S.lock != null ? S.lock : pages.findIndex(p => p.vs.includes(S.anchor));
+    // בשני עמודים הפריסה רציפה בין פרקים: אם בפרק מספר עמודים אי-זוגי, העמוד הראשון של הפרק הבא ממלא את הצד השמאלי
+    // (במקום עמוד ריק). לכן S.p יכול להיות אי-זוגי; בקפיצה לפסוק שומרים על הזוגיות של הפריסה הנוכחית באותו פרק.
+    const locked = S.lock != null;
+    let idx = locked ? S.lock : pages.findIndex(p => p.vs.includes(S.anchor));
     S.lock = null; if (idx < 0 || idx >= pages.length) idx = 0;
-    S.p = Math.floor(idx / geo.per) * geo.per;
+    if (locked || geo.per === 1) S.p = idx;
+    else { const par = S.at === S.b + ':' + S.ch ? S.p % 2 : 0; S.p = idx < par ? 0 : idx - ((idx - par) % 2); }
+    S.at = S.b + ':' + S.ch;
     const shown = pages.slice(S.p, S.p + geo.per);
     S.anchor = shown[0].segs[0].v;
+    const nx = geo.two && shown.length < 2 ? nextCh(S.b, S.ch, 1) : null, nxPg = nx && pagesFor(nx.b, nx.ch)[0];
     const book = $r('#rdBook');
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
     const side = i => geo.two ? (i ? 'left' : 'right') : 'single', nar = geo.cls;
     book.innerHTML = shown.map((pg, i) => '<article class="rdPage ' + side(i) + nar + '" aria-label="' + T('עמוד') + ' ' + num(S.p + i + 1) + '">' + pageInner(S.b, S.ch, pg, S.p + i + 1, S.hl) + '</article>').join('') +
-      (geo.two && shown.length < 2 ? '<article class="rdPage left blank' + nar + '" aria-hidden="true"></article>' : '') + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
+      (nxPg ? '<article class="rdPage left next' + nar + '" aria-label="' + T('עמוד') + ' ' + num(1) + '">' + pageInner(nx.b, nx.ch, nxPg, 1, '') + '</article>' :
+        geo.two && shown.length < 2 ? '<article class="rdPage left blank' + nar + '" aria-hidden="true"></article>' : '') + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
     const bk = IX.books[S.b], chs = chaptersOf(IX, S.b);
     $r('#rdWhereTxt').textContent = bkName(bk.heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
-    $r('#rdPos').textContent = (shown.length > 1 ? T('עמודים') + ' ' + num(S.p + 1) + '–' + num(S.p + 2) : T('עמוד') + ' ' + num(S.p + 1)) + ' ' + T('מתוך') + ' ' + num(pages.length);
+    $r('#rdPos').textContent = (shown.length > 1 ? T('עמודים') + ' ' + num(S.p + 1) + '–' + num(S.p + 2) : T('עמוד') + ' ' + num(S.p + 1)) + ' ' + T('מתוך') + ' ' + num(pages.length) +
+      (nxPg ? ' · ' + T('ממשיך ל') + (nx.b !== S.b ? bkName(IX.books[nx.b].heTitle) + ' ' : '') + T('פרק') + ' ' + num(nx.ch) : '');
     $r('#rdChPos').textContent = T('פרק') + ' ' + num(S.ch) + ' ' + T('מתוך') + ' ' + num(chs.length);
     $r('#rdProgBar').style.width = Math.max(2, Math.round(100 * (chs.indexOf(S.ch) + (S.p + shown.length) / pages.length) / chs.length)) + '%';
     const atStart = S.p === 0 && !nextCh(S.b, S.ch, -1), atEnd = S.p + geo.per >= pages.length && !nextCh(S.b, S.ch, 1);
@@ -325,7 +333,7 @@
 
   function flash(v) {
     clearTimeout(hlTimer);
-    const els = R.querySelectorAll('.rdBook [data-v="' + v + '"]');
+    const els = R.querySelectorAll('.rdBook .rdPage:not(.next) [data-v="' + v + '"]');
     els.forEach(e => { e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); });
     hlTimer = setTimeout(() => els.forEach(e => e.classList.remove('flash')), 2600);
   }
@@ -334,11 +342,17 @@
     render(); if (v) flash(v);
   }
   function turn(dir) {
+    // np מעבר לסוף הפרק = כמה עמודים של הפרק הבא כבר הוצגו (0 או 1); מתחת לאפס = כמה עמודים לקחת מסוף הפרק הקודם
     const pages = pagesFor(S.b, S.ch), np = S.p + dir * geo.per;
     if (np >= 0 && np < pages.length) { S.lock = np; render(); return; }
-    const n = nextCh(S.b, S.ch, dir); if (!n) return;
-    S.b = n.b; S.ch = n.ch;
-    S.lock = dir > 0 ? 0 : Math.floor((pagesFor(n.b, n.ch).length - 1) / geo.per) * geo.per;
+    let b = S.b, ch = S.ch, k = dir > 0 ? np - pages.length : np, len;
+    for (;;) {
+      const n = nextCh(b, ch, dir); if (!n) return;
+      b = n.b; ch = n.ch; len = pagesFor(b, ch).length;
+      if (dir > 0 ? k < len : len + k >= 0) break;
+      k += dir > 0 ? -len : len; // פרק קצר שכולו כבר הוצג בפריסה הקודמת — ממשיכים לפרק שאחריו
+    }
+    S.b = b; S.ch = ch; S.lock = dir > 0 ? k : len + k;
     render();
   }
   function stepChapter(dir) { const n = nextCh(S.b, S.ch, dir); if (n) goTo(n.b, n.ch, 0); }
