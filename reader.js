@@ -125,7 +125,7 @@
     'רש״י': 'Rashi', 'ברטנורא': 'Bartenura', 'פרק': 'Chapter', 'פסוק': 'Verse', 'משנה': 'Mishnah', 'תנ״ך': 'Tanakh', 'מקרא': 'Text',
     'פרק קודם': 'Previous chapter', 'פרק הבא': 'Next chapter', 'עמוד קודם': 'Previous page', 'עמוד הבא': 'Next page',
     'חיפוש, או קפיצה: ״שמות יב ב״': 'Search, or jump: "Exodus 12 2"', 'חיפוש מהיר או קפיצה למקום': 'Quick search or jump to a place',
-    'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'מציג': 'showing', 'אין תוצאות': 'No results',
+    'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'חיפוש ב': 'Search in', 'פסוקים': 'Verses', 'משניות': 'Mishnayot', 'שניהם': 'Both', 'מציג': 'showing', 'אין תוצאות': 'No results',
     'מעבר אל': 'Go to', 'פתיחת': 'Open', 'מעבר לפרק ופסוק': 'Go to chapter and verse', 'סגירה': 'Close',
     'אפשר גם להקליד מקום בתיבת החיפוש': 'You can also type a place in the search box', 'דפדוף': 'turn pages',
     'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ממשיך ל': 'continues to ', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
@@ -150,10 +150,10 @@
 
   let IX = null, built = false, R = null, geo = null, hlTimer = 0;
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', prScope: 'spread', prColor: 'color' };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null;
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, prScope: S.prScope, prColor: S.prColor })); } catch (e) {} };
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor })); } catch (e) {} };
 
   const ensureIndex = () => {
     if (IX) return;
@@ -460,6 +460,35 @@
      פריט מחושב מראש (RS.off) והגובה הכולל של התוכן מדויק — פס הגלילה מתנהג כאילו הכל מרונדר.
      קבוצות: לפי ספר (בכל התנ״ך / המשנה) או לפי פרק (בספר). פס גלילה מותאם (.rdFs) עם ידית לגרירה, בועה
      ("בראשית · פרק ג" + "תוצאה X מתוך Y"), וסימונים על הפס בתחילת כל חלק (תורה/נביאים/כתובים, סדרי המשנה). */
+  /* חיפוש במפרשים (רש״י בתנ״ך, ברטנורא במשנה): כל פסקת פירוש היא תוצאה בפני עצמה {b, ch, v, cm: מספר הפסקה}.
+     הטקסט המנורמל של המפרש נשמר במטמון לכל ספר, כמו normBook של הכתוב. "שניהם" = לכל פסוק קודם הכתוב ואחריו הפירוש. */
+  const CMN = new Map();
+  function cmNorm(b) {
+    const cb = (IX.links[b] || {}).cm; if (cb == null) return null;
+    if (!CMN.has(cb)) CMN.set(cb, (IX.data[cb] || []).map(c => c ? c.map(a => (a || []).map(t => ' ' + norm(t) + ' ')) : null));
+    return CMN.get(cb);
+  }
+  const cmText = x => noMarks(((chText((IX.links[x.b] || {}).cm, x.ch, x.v) || [])[x.cm]) || '');
+  function excerpt(t, q) { // הקטע שסביב ההתאמה הראשונה, כדי שתיראה גם בפסקת פירוש ארוכה
+    const { parts, marks } = markWords(t, q), first = Math.min(...marks);
+    if (!isFinite(first) || first < 14) return t;
+    return '… ' + parts.slice(first - 8).join('');
+  }
+  function searchSrc(q, books, onlyCh) {
+    const nq = norm(q), hits = [], txt = S.src !== 'cm', cm = S.src !== 'txt';
+    if (nq.length < 2) return { hits, total: 0, q: nq };
+    for (const b of books) {
+      const T1 = txt ? normBook(IX, b) : null, C1 = cm ? cmNorm(b) : null;
+      chaptersOf(IX, b).forEach(ch => {
+        if (onlyCh && ch !== onlyCh) return;
+        versesOf(IX, b, ch).forEach(v => {
+          if (T1 && ((T1[ch] || [])[v] || '').includes(nq)) hits.push({ b, ch, v });
+          if (C1) ((C1[ch] || [])[v] || []).forEach((t, k) => { if (t.includes(nq)) hits.push({ b, ch, v, cm: k }); });
+        });
+      });
+    }
+    return { hits, total: hits.length, q: nq };
+  }
   const RH = 58, GH = 28, OVER = 12, cnt = n => n.toLocaleString('en-US'); // מספרי תוצאות בספרות, כמו במסך הגימטריה
   let RS = null;
   function renderDrop() {
@@ -471,8 +500,9 @@
     else suggestBooks(IX, q, 4).forEach(b => dropItems.push({ kind: 'ref', r: { b, ch: chaptersOf(IX, b)[0], v: 0 } }));
     if (dropItems.length) html += '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refLabel(it.r)) + '</span></button>').join('') + '</div>';
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
-    const res = search(IX, q, scopeBooks(), { limit: Infinity, ch: S.scope === 'ch' ? S.ch : 0 });
-    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="cnt">' + (res.q.length < 2 ? '' : res.total ? cnt(res.total) + ' ' + T('תוצאות') : T('אין תוצאות')) + '</span></div>';
+    const res = searchSrc(q, scopeBooks(), S.scope === 'ch' ? S.ch : 0);
+    const srcs = [['txt', isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isMishnah(S.b) ? 'ברטנורא' : 'רש״י'], ['both', 'שניהם']];
+    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '</div><div class="rdDScope src" role="group"><span class="lb">' + T('חיפוש ב') + '</span>' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '<span class="cnt">' + (res.q.length < 2 ? '' : res.total ? cnt(res.total) + ' ' + T('תוצאות') : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
     if (res.hits.length) {
@@ -514,7 +544,8 @@
       box.firstChild.innerHTML = RS.items.slice(from, to).map((it, k) => {
         const y = RS.off[from + k], x = it.x;
         if (it.gh) return '<div class="rdGh" style="top:' + y + 'px"><span>' + h(ghLabel(x)) + '</span><span class="n">' + cnt(it.n) + ' ' + T('תוצאות') + '</span></div>';
-        return '<button type="button" class="rdDI hit' + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + h(refLabel(x)) + '</span><span class="sn">' + hlHtml(noTeamim(chText(x.b, x.ch, x.v)), RS.q) + '</span></button>';
+        const cm = x.cm != null, t = cm ? cmText(x) : noTeamim(chText(x.b, x.ch, x.v));
+        return '<button type="button" class="rdDI hit' + (cm ? ' cm' : '') + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + (cm ? '<i>' + h(cmLabel(x.b)) + '</i> ' : '') + h(refLabel(x)) + '</span><span class="sn' + (cm ? ' ' + (S.cmFont === 'rashi' ? 'fR' : 'fN') : '') + '">' + hlHtml(cm ? excerpt(t, RS.q) : t, RS.q) + '</span></button>';
       }).join('');
     }
     // כותרת דבוקה: הקבוצה של הפריט שבראש החלון (מוסתרת כשכותרת אמיתית בדיוק בראש)
@@ -635,6 +666,7 @@
     fsBind();
     $r('#rdDrop').onclick = e => {
       const sc = e.target.closest('[data-scope]'); if (sc) { S.scope = sc.dataset.scope; save(); return renderDrop(); }
+      const sr = e.target.closest('[data-src]'); if (sr) { S.src = sr.dataset.src; save(); return renderDrop(); }
       const it = e.target.closest('.rdDI'); if (it) pickDrop(Number(it.dataset.i));
     };
     document.addEventListener('mousedown', e => { if (!e.target.closest('#rdSearch')) closeDrop(); });
