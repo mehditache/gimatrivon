@@ -129,7 +129,7 @@
     'מעבר אל': 'Go to', 'פתיחת': 'Open', 'מעבר לפרק ופסוק': 'Go to chapter and verse', 'סגירה': 'Close',
     'אפשר גם להקליד מקום בתיבת החיפוש': 'You can also type a place in the search box', 'דפדוף': 'turn pages',
     'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
-    'פירוש': 'Commentary', 'המשך': 'cont.', 'כתב הפירוש': 'Commentary script', 'ניקוי חיפוש': 'Clear search'
+    'פירוש': 'Commentary', 'הדפסה / PDF': 'Print / PDF', 'מה להדפיס': 'What to print', 'שני העמודים הפתוחים': 'The two open pages', 'הפרק כולו': 'The whole chapter', 'צבע': 'Color', 'צבעוני': 'Color', 'שחור-לבן': 'Black & white', 'רקע נייר וצבעים': 'Paper tone and colors', 'רקע לבן, לחיסכון בדיו': 'White background, saves ink', 'הדפסה': 'Print', 'שני עמודים בכל דף A4 לרוחב.': 'Two pages on each landscape A4 sheet.', 'ליצוא PDF בחרו בחלון ההדפסה ״שמירה כ-PDF״.': 'For a PDF, choose "Save as PDF" in the print dialog.', 'דפים': 'sheets', 'דף': 'sheet', 'דף אחד': '1 sheet', 'המשך': 'cont.', 'כתב הפירוש': 'Commentary script', 'ניקוי חיפוש': 'Clear search'
   };
   const T = he => isEn() ? (EN[he] || he) : he;
   const num = n => isEn() ? String(n) : toHeb(n);
@@ -144,15 +144,16 @@
     search: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
     x: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     vBook: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5h7v14H3zM14 5h7v14h-7zM16 9h3M16 12h3M5 9h3M5 12h3"/></svg>',
+    print: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>',
     vRows: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 6h12M3 12h12M3 18h12M18 6h3M18 12h3M18 18h3"/></svg>'
   };
 
   let IX = null, built = false, R = null, geo = null, hlTimer = 0;
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book' };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', prScope: 'spread', prColor: 'color' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null;
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope })); } catch (e) {} };
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, prScope: S.prScope, prColor: S.prColor })); } catch (e) {} };
 
   const ensureIndex = () => {
     if (IX) return;
@@ -184,7 +185,7 @@
     const ph = Math.max(300, H - (narrow ? 8 : 30));
     const fs = Math.round(((narrow ? 18 : 20.5) + S.size * 1.5) * 10) / 10;
     const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
-    return { W, H, narrow, two, pw, ph, fs, trW, per: two ? 2 : 1, key: [two, pw, ph, fs, S.view, S.tr, S.trFont, S.cmFont, isEn()].join('|') };
+    return { W, H, narrow, two, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.tr, S.trFont, S.cmFont, isEn()].join('|') };
   }
 
   // דיבורי המפרש של פרק: [{v, dh, body}] לפי סדר הפסוקים
@@ -230,7 +231,7 @@
   function pagesFor(b, ch) {
     const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
     const probe = $r('#rdProbe'), vs = versesOf(IX, b, ch), ents = cmEntries(b, ch), pages = [];
-    probe.className = 'rdPage' + (geo.pw < 540 ? ' narrow' : '');
+    probe.className = 'rdPage' + geo.cls;
     const fits = pg => { probe.innerHTML = pageInner(b, ch, pg, pages.length + 1, ''); return !over(probe); };
     const entsOfVs = list => ents.filter(e => list.includes(e.v));
     const mainFrac = list => { probe.innerHTML = pageInner(b, ch, { vs: list, cm: [] }, 1, ''); return probe.querySelector('.rdSp').offsetTop / probe.clientHeight; };
@@ -285,7 +286,7 @@
     S.anchor = (shown[0].vs[0] || shown[0].cm[0].v);
     const book = $r('#rdBook');
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
-    const side = i => geo.two ? (i ? 'left' : 'right') : 'single', nar = geo.pw < 540 ? ' narrow' : '';
+    const side = i => geo.two ? (i ? 'left' : 'right') : 'single', nar = geo.cls;
     book.innerHTML = shown.map((pg, i) => '<article class="rdPage ' + side(i) + nar + '" aria-label="' + T('עמוד') + ' ' + num(S.p + i + 1) + '">' + pageInner(S.b, S.ch, pg, S.p + i + 1, S.hl) + '</article>').join('') +
       (geo.two && shown.length < 2 ? '<article class="rdPage left blank' + nar + '" aria-hidden="true"></article>' : '') + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
@@ -323,17 +324,69 @@
   }
   function stepChapter(dir) { const n = nextCh(S.b, S.ch, dir); if (n) goTo(n.b, n.ch, 0); }
 
+  /* ---------- הדפסה / PDF ----------
+     שני עמודים בכל דף A4 לרוחב. העימוד נמדד מחדש בגודל של חצי דף (אותו pagesFor, עם גאומטריה של הדפסה), נבנה
+     ב-#rdPrint (ילד ישיר של body, מוצג רק ב-@media print כש-body.rdPrinting), ואז window.print(). PDF = "שמירה כ-PDF"
+     בחלון ההדפסה של הדפדפן — בלי ספריות ובלי רשת. "שחור-לבן" = רקע לבן ודיו שחורה בלבד. */
+  const MM = 96 / 25.4;
+  function printGeo() {
+    const pw = Math.round(139 * MM), ph = Math.round(190 * MM), fs = Math.round((14.5 + S.size) * 10) / 10;
+    const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
+    return { pw, ph, fs, trW, two: true, per: 2, cls: ' prt', key: ['print', pw, ph, fs, S.view, S.tr, S.trFont, S.cmFont, isEn()].join('|') };
+  }
+  const setVars = g => { R.style.setProperty('--rdPw', g.pw + 'px'); R.style.setProperty('--rdPh', g.ph + 'px'); R.style.setProperty('--rdFs', g.fs + 'px'); R.style.setProperty('--rdTrW', g.trW + 'px'); };
+  function printSheets() {
+    const saved = geo; geo = printGeo(); setVars(geo);
+    const pages = pagesFor(S.b, S.ch);
+    let from = 0, to = pages.length;
+    if (S.prScope === 'spread') { let i = pages.findIndex(p => p.vs.includes(S.anchor)); if (i < 0) i = 0; from = i - i % 2; to = Math.min(from + 2, pages.length); }
+    const vars = R.getAttribute('style');
+    geo = saved; if (geo) setVars(geo);
+    let html = '';
+    for (let i = from; i < to; i += 2) {
+      html += '<div class="rdSheet">' + [i, i + 1].map((k, j) => k < to
+        ? '<article class="rdPage prt ' + (j ? 'left' : 'right') + '">' + pageInner(S.b, S.ch, pages[k], k + 1, '') + '</article>'
+        : '<article class="rdPage prt left blank"></article>').join('') + '</div>';
+    }
+    return { html, vars, sheets: Math.ceil((to - from) / 2) };
+  }
+  function renderPrintPop() {
+    const n = (() => { const saved = geo; geo = printGeo(); setVars(geo); const len = pagesFor(S.b, S.ch).length; geo = saved; if (geo) setVars(geo); return Math.ceil(len / 2); })();
+    const opt = (key, val, label, note) => '<button type="button" class="rdOpt' + (S[key] === val ? ' on' : '') + '" data-pset="' + key + '" data-val="' + val + '" aria-pressed="' + (S[key] === val) + '"><span class="dot"></span><span class="lb">' + T(label) + '</span><span class="nt">' + note + '</span></button>';
+    const bk = bkName(IX.books[S.b].heTitle) + ' ' + num(S.ch);
+    $r('#rdPrintPop').innerHTML = '<div class="rdPopHd"><span>' + T('הדפסה / PDF') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
+      '<div class="rdSec"><span class="rdSecT">' + T('מה להדפיס') + '</span>' + opt('prScope', 'spread', 'שני העמודים הפתוחים', T('דף אחד')) + opt('prScope', 'chapter', 'הפרק כולו', h(bk) + ' · ' + num(n) + ' ' + T(n === 1 ? 'דף' : 'דפים')) + '</div>' +
+      '<div class="rdSec"><span class="rdSecT">' + T('צבע') + '</span>' + opt('prColor', 'color', 'צבעוני', T('רקע נייר וצבעים')) + opt('prColor', 'bw', 'שחור-לבן', T('רקע לבן, לחיסכון בדיו')) + '</div>' +
+      '<p class="rdNote">' + T('שני עמודים בכל דף A4 לרוחב.') + ' ' + T('ליצוא PDF בחרו בחלון ההדפסה ״שמירה כ-PDF״.') + '</p>' +
+      '<button type="button" class="rdGo rdPrintGo" data-print>' + ICON.print + ' ' + T('הדפסה') + '</button>';
+  }
+  function printNow() {
+    let box = document.getElementById('rdPrint');
+    if (!box) { box = document.createElement('div'); box.id = 'rdPrint'; box.setAttribute('aria-hidden', 'true'); document.body.appendChild(box); }
+    const out = printSheets();
+    box.className = 'rdPrint' + (S.prColor === 'bw' ? ' bw' : '');
+    box.setAttribute('style', out.vars || '');
+    box.innerHTML = out.html;
+    document.body.classList.add('rdPrinting');
+    const done = () => { document.body.classList.remove('rdPrinting'); box.innerHTML = ''; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    if (APP.trackEvent) APP.trackEvent('reader_print', { scope: S.prScope, color: S.prColor });
+    const go = () => { window.print(); };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go();
+  }
+
   /* ---------- חלוניות ---------- */
   let openPop = null;
   function closePops() {
-    ['#rdSet', '#rdJump'].forEach(s => { $r(s).hidden = true; });
+    ['#rdSet', '#rdJump', '#rdPrintPop'].forEach(s => { $r(s).hidden = true; });
     $r('#rdScrim').hidden = true; openPop = null;
-    $r('#rdSetBtn').setAttribute('aria-expanded', 'false'); $r('#rdWhere').setAttribute('aria-expanded', 'false');
+    $r('#rdSetBtn').setAttribute('aria-expanded', 'false'); $r('#rdPrintBtn').setAttribute('aria-expanded', 'false'); $r('#rdWhere').setAttribute('aria-expanded', 'false');
   }
   function openPopover(id) {
     const was = openPop; closePops(); closeDrop(); if (was === id) return;
     openPop = id; $r('#rdScrim').hidden = false;
-    if (id === 'set') { renderSet(); $r('#rdSet').hidden = false; $r('#rdSetBtn').setAttribute('aria-expanded', 'true'); }
+    if (id === 'print') { renderPrintPop(); $r('#rdPrintPop').hidden = false; $r('#rdPrintBtn').setAttribute('aria-expanded', 'true'); }
+    else if (id === 'set') { renderSet(); $r('#rdSet').hidden = false; $r('#rdSetBtn').setAttribute('aria-expanded', 'true'); }
     else { J.b = S.b; J.ch = S.ch; J.v = 0; J.cat = IX.books[S.b].cat; renderJump(); $r('#rdJump').hidden = false; $r('#rdWhere').setAttribute('aria-expanded', 'true'); const a = $r('#rdJump .rdJB.on'); if (a) a.scrollIntoView({ block: 'center' }); }
   }
 
@@ -414,17 +467,25 @@
         '<button type="button" class="rdIco sm" id="rdQClr" aria-label="' + T('ניקוי חיפוש') + '" hidden>' + ICON.x + '</button><kbd>Ctrl K</kbd><div class="rdDrop" id="rdDrop" role="listbox" hidden></div></div>' +
         '<div class="rdSeg" id="rdViewSeg" role="group" aria-label="' + T('סוג תצוגה') + '"><button type="button" data-view="book">' + ICON.vBook + '<span class="t">' + T('ספר') + '</span></button><button type="button" data-view="aligned">' + ICON.vRows + '<span class="t"></span></button></div>' +
         '<button type="button" class="rdSetBtn" id="rdSetBtn" aria-haspopup="dialog" aria-expanded="false"><span class="aa">אָ</span><span class="t">' + T('תצוגה') + '</span></button>' +
+        '<button type="button" class="rdIco rdPrintBtn" id="rdPrintBtn" aria-haspopup="dialog" aria-expanded="false" aria-label="' + T('הדפסה / PDF') + '" title="' + T('הדפסה / PDF') + ' (Ctrl P)">' + ICON.print + '</button>' +
       '</div>' +
       '<div class="rdDesk" id="rdDesk"><button type="button" class="rdTurn prev" id="rdPrev" aria-label="' + T('עמוד קודם') + '">' + ICON.chevR + '</button><div class="rdBook" id="rdBook"></div>' +
         '<button type="button" class="rdTurn next" id="rdNext" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button><div class="rdMeasure" aria-hidden="true"><article class="rdPage" id="rdProbe"></article></div></div>' +
       '<div class="rdFoot"><button type="button" class="rdIco" id="rdPrev2" aria-label="' + T('עמוד קודם') + '">' + ICON.chevR + '</button><span id="rdPos"></span><span class="rdProg"><span id="rdProgBar"></span></span><span id="rdChPos"></span><button type="button" class="rdIco" id="rdNext2" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button></div>' +
-      '<div class="rdScrim" id="rdScrim" hidden></div><div class="rdPop rdSet" id="rdSet" role="dialog" aria-label="' + T('הגדרות תצוגה') + '" hidden></div><div class="rdPop rdJump" id="rdJump" role="dialog" aria-label="' + T('מעבר לפרק ופסוק') + '" hidden></div>';
+      '<div class="rdScrim" id="rdScrim" hidden></div><div class="rdPop rdSet" id="rdSet" role="dialog" aria-label="' + T('הגדרות תצוגה') + '" hidden></div><div class="rdPop rdJump" id="rdJump" role="dialog" aria-label="' + T('מעבר לפרק ופסוק') + '" hidden></div><div class="rdPop rdPrintPop" id="rdPrintPop" role="dialog" aria-label="' + T('הדפסה / PDF') + '" hidden></div>';
     built = true;
     $r('#rdPrevCh').onclick = () => stepChapter(-1); $r('#rdNextCh').onclick = () => stepChapter(1);
     $r('#rdPrev').onclick = $r('#rdPrev2').onclick = () => turn(-1);
     $r('#rdNext').onclick = $r('#rdNext2').onclick = () => turn(1);
     $r('#rdWhere').onclick = () => openPopover('jump');
     $r('#rdSetBtn').onclick = () => openPopover('set');
+    $r('#rdPrintBtn').onclick = () => openPopover('print');
+    $r('#rdPrintPop').onclick = e => {
+      if (e.target.closest('[data-close]')) return closePops();
+      if (e.target.closest('[data-print]')) { closePops(); return printNow(); }
+      const t = e.target.closest('[data-pset]'); if (!t) return;
+      S[t.dataset.pset] = t.dataset.val; save(); renderPrintPop();
+    };
     $r('#rdScrim').onclick = closePops;
     R.querySelectorAll('#rdViewSeg button').forEach(x => { x.onclick = () => { S.view = x.dataset.view; render(); }; });
     $r('#rdSet').onclick = e => {
@@ -504,6 +565,7 @@
       const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName), mod = e.ctrlKey || e.metaKey;
       if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); closePops(); $r('#rdQ').focus(); $r('#rdQ').select(); return; }
       if (mod && (e.key === 'g' || e.key === 'G')) { e.preventDefault(); openPopover('jump'); return; }
+      if (mod && (e.key === 'p' || e.key === 'P')) { e.preventDefault(); if (openPop !== 'print') openPopover('print'); return; }
       if (e.key === 'Escape' && openPop) { closePops(); return; }
       if (inField || mod || e.altKey) return;
       if (e.key === '/') { e.preventDefault(); $r('#rdQ').focus(); }
