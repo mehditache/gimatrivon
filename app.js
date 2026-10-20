@@ -646,7 +646,7 @@ function bind(k) {
   q('.filtPane .rowb').onclick = e => { const t = e.target.dataset.t; if (!t) return; st.sel = t === 'all' ? new Set(ALL) : new Set(); drawTree(k); run(k); };
   $('#t' + k).oninput = e => { st.text = e.target.value; renderCenter(); debRun(); };
   // TAB בתיבת-הטקסט קופץ ישירות לתיבת-הטקסט של הצד השני, וחוזר חלילה; Shift+TAB קופץ לתיבת החיפוש-בתוך-התוצאות
-  // (#tf) של אותו צד (בנייד — מחליף קודם את פנל-התוצאות המוצג לצד הזה). נתפס רק כשהפוקוס בתיבה עצמה — בכל
+  // (#tf) של אותו צד, ו-Shift+TAB שם מחזיר לכאן (בנייד — מחליף קודם את פנל-התוצאות המוצג לצד הזה). נתפס רק כשהפוקוס בתיבה עצמה — בכל
   // מקום אחר TAB ממשיך לנווט כרגיל (נגישות-מקלדת).
   $('#t' + k).addEventListener('keydown', e => {
     if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
@@ -668,6 +668,11 @@ function bind(k) {
   // סינון טקסטואלי חופשי בתוך התוצאות המוצגות (לא קשור לחישוב הגימטרי) — מהיר, פועל על מה שכבר נמצא בזיכרון
   const tfDeb = () => { clearTimeout(st.tfTimer); st.tfTimer = setTimeout(() => tfRebuild(k), 80); };
   $('#tf' + k).oninput = e => { st.tf = e.target.value; tfDeb(); };
+  // Shift+TAB בתיבת החיפוש-בתוך-התוצאות מחזיר לתיבת-הטקסט של אותו צד (המשלים של Shift+TAB שם, למעלה).
+  $('#tf' + k).addEventListener('keydown', e => {
+    if (e.key !== 'Tab' || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
+    const o = $('#t' + k); e.preventDefault(); o.focus(); const n = o.value.length; o.setSelectionRange(n, n);
+  });
   $('#tfz' + k).onchange = e => { st.fuzzy = e.target.checked; tfRebuild(k); };
   $('#fu' + k).onchange = e => { st.fullUnit = e.target.checked; run(k); };
   $('#sw' + k).onchange = e => { st.singleWord = e.target.checked; run(k); };
