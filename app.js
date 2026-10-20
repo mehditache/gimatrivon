@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.7.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.7.2'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -645,6 +645,13 @@ function bind(k) {
   };
   q('.filtPane .rowb').onclick = e => { const t = e.target.dataset.t; if (!t) return; st.sel = t === 'all' ? new Set(ALL) : new Set(); drawTree(k); run(k); };
   $('#t' + k).oninput = e => { st.text = e.target.value; renderCenter(); debRun(); };
+  // TAB (או Shift+TAB) בתיבת-הטקסט קופץ ישירות לתיבת-הטקסט של הצד השני, וחוזר חלילה. נתפס רק כשהפוקוס
+  // בתיבה עצמה — בכל מקום אחר TAB ממשיך לנווט כרגיל (נגישות-מקלדת).
+  $('#t' + k).addEventListener('keydown', e => {
+    if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
+    const o = $('#t' + (k === 'A' ? 'B' : 'A')); if (!o) return;
+    e.preventDefault(); o.focus(); const n = o.value.length; o.setSelectionRange(n, n);
+  });
   $('#nm' + k).oninput = e => { st.num = e.target.value; debRun(); };
   // v3.4.1: אם המשתמש הקליד ערך לא-שלם ("13.5"), רק ב-blur (לא תוך-כדי הקלדה, כדי לא "לבלוע" את הנקודה
   // שהמשתמש אולי עדיין ממשיך אחריה) משקפים חזרה את הערך-השלם-בפועל שבו משתמש החיפוש (numVal, למעלה) —
