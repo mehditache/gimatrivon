@@ -604,8 +604,8 @@ html.gtNoAnim .driver-overlay *{transition:none!important}
   --rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:#f6e39a;--rdOn:#e7c77e;--rdFlash:#f3dfa6}
 :root[data-theme=dark]{--rdDesk:#120d07;--rdBar:#1c150d;--rdPaper:#241b11;--rdEdge:#1b140c;--rdInk:#efe3c9;--rdMu:#b19d73;--rdGold:#d7a847;--rdLine:#3e3120;
   --rdChip:#3a2c18;--rdChipTx:#e7c77e;--rdTrChip:#3d2226;--rdTrTx:#e08a96;--rdRow:#2e2416;--rdHl:#6b5520;--rdFlash:#5a4618}
-.rdF,.reader .fN{font-family:"GimFrank","Frank Ruhl Libre","David","Times New Roman",serif}
-.reader .fR{font-family:"GimRashi","Noto Rashi Hebrew","GimFrank",serif}
+.rdF,.reader .fN,.rdPrint .fN{font-family:"GimFrank","Frank Ruhl Libre","David","Times New Roman",serif}
+.reader .fR,.rdPrint .fR{font-family:"GimRashi","Noto Rashi Hebrew","GimFrank",serif}
 /* מתג המצב בכותרת */
 .modeSw{flex:none}.modeSw .ls{display:none}
 .reader{display:none}
@@ -795,3 +795,28 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 html.forcePhone .modeSw .lf{display:none}
 html.forcePhone .modeSw .ls{display:inline}
 html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
+/* ---- v3.9.0 · הדפסה / PDF ממסך הקריאה (reader.js: printNow) ----
+   #rdPrint הוא ילד ישיר של body, ריק ומוסתר במסך. בהדפסה (body.rdPrinting) רק הוא מודפס: דף A4 לרוחב לכל שני עמודים.
+   .bw = שחור-לבן: רקע לבן, דיו שחורה ואפורה בלבד. ערכי הצבע קבועים כאן (בהיר), גם כשהאפליקציה במראה לילה. */
+.reader .rdPrintBtn{width:34px;height:34px;flex:none}
+.rdPrintPop{inset-inline-end:14px;width:340px}
+.reader .rdPrintGo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:9px 14px}
+#rdPrint{display:none}
+.rdPrint{--rdPaper:#fbf7ec;--rdEdge:#efe5cd;--rdInk:#2a2117;--rdMu:#8a7754;--rdGold:#98722c;--rdLine:#e4d7b9;--rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:transparent;--rdFlash:transparent;direction:rtl}
+.rdPrint.bw{--rdPaper:#fff;--rdEdge:#fff;--rdInk:#000;--rdMu:#4a4a4a;--rdGold:#000;--rdLine:#9a9a9a;--rdChip:#fff;--rdChipTx:#000;--rdTrChip:#fff;--rdTrTx:#000;--rdRow:#fff}
+.rdPrint .rdSheet{page:rdA4;display:flex;gap:3mm;justify-content:center;width:281mm;height:192mm;overflow:hidden;break-after:page;page-break-after:always}
+.rdPrint .rdSheet:last-child{break-after:auto;page-break-after:auto}
+.rdPage.prt{padding:14px 20px 8px;border-radius:0;flex:none}
+.rdPrint .rdPage.prt{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:0 0 0 .3mm var(--rdLine)}
+.rdPrint .rdPage.right::before{display:none}
+.rdPrint.bw .rdPage.right,.rdPrint.bw .rdPage.left{background:#fff}
+.rdPrint.bw .vn{box-shadow:inset 0 0 0 .6px #000}
+.rdPrint.bw .rdChTitle .bk{color:#000}
+.rdPrint .rdPage.blank{box-shadow:none;background:none}
+.rdPrint .rdTxt p,.rdPrint .rdRow .he{color:var(--rdInk)}
+@page rdA4{size:A4 landscape;margin:8mm} /* דף בעל שם — הדפסה רגילה של מסך הגימטריה לא מושפעת */
+@media print{
+  html:has(body.rdPrinting),body.rdPrinting{height:auto!important;overflow:visible!important;background:#fff!important;display:block!important}
+  body.rdPrinting>*:not(#rdPrint){display:none!important}
+  body.rdPrinting #rdPrint{display:block}
+}
