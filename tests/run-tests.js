@@ -72,6 +72,7 @@ t('multi', 'חוק אי-ההתאמה חוצה-משפחות: אתב״ש-כולל 
 // ---- corpus (from bundle) ----
 t('corpus', '39 תנ״ך + 63 משנה = 102', () => eq([B.books.filter(b => b.category === 'תנ״ך').length, B.books.filter(b => b.category === 'משנה').length, B.books.filter(b => b.cat < 2).length], [39, 63, 102]));
 t('corpus', 'יחידות: 23,204 פסוקים + 4,106 משניות', () => eq([B.stats.tanakh, B.stats.mishnah], [23204, 4106]));
+t('corpus', 'רמב״ם: 84 ספרי הלכות, 72 כסף משנה, 80 ראב״ד, 82 משנה למלך, כולם עם רישיון מתועד', () => eq([7, 8, 9, 10].map(c => B.books.filter(b => b.cat === c).length), [84, 72, 80, 82]) && B.books.filter(b => b.cat >= 7).every(b => b.src && b.lic) && B.stats.rambam === 15087);
 t('corpus', 'אין אותיות לטיניות בטקסט המנוקה', () => B.units.filter(u => u[0] < 3).every(u => !/[A-Za-z<>{}&]/.test(u[4])));
 t('corpus', 'אין {פ}/{ס}/הערות שוליים בטקסט', () => B.units.every(u => !/[{}׆*]/.test(u[4])));
 
@@ -183,7 +184,12 @@ t('notarikon', 'חלון לא חוצה יחידה (כמו ב-search הרגילה
 const RC = require('../reader.js'), RIX = RC.buildIndex(B);
 const bkIdx = (cat, he) => B.books.findIndex(b => b.cat === cat && b.heTitle === he);
 t('reader', 'אינדקס: בראשית א א מהקורפוס, עם רש״י ואונקלוס ויונתן', () => { const g = bkIdx(0, 'בראשית'), L = RIX.links[g]; return RC.noMarks(RIX.data[g][1][1]).startsWith('בראשית ברא') && L.cm != null && L.onkelos != null && L.yonatan != null && Array.isArray(RIX.data[L.cm][1][1]) && /בקדמין/.test(RC.noMarks(RIX.data[L.onkelos][1][1])); });
-t('reader', 'כל ספרי התנ״ך והמשנה מקושרים למפרש (רש״י / ברטנורא)', () => RIX.base.length === 102 && RIX.base.every(i => RIX.links[i].cm != null));
+t('reader', 'כל ספרי התנ״ך, המשנה והרמב״ם מקושרים למפרש (רש״י / ברטנורא / מפרשי הרמב״ם)', () => RIX.base.length === 102 + 84 && RIX.base.filter(i => RIX.links[i].cm == null).map(i => B.books[i].heTitle).join() === 'סדר התפילה'); // לסדר התפילה אין מפרשים בספריא
+t('reader', 'רמב״ם: הלכות יסודי התורה עם כסף משנה, הראב״ד ומשנה למלך, מיושרים לפרק והלכה', () => { const y = bkIdx(7, 'הלכות יסודי התורה'), L = RIX.links[y]; return eq(L.cms.map(m => m.c), [8, 9, 10]) && RC.noMarks(RIX.data[y][1][1]).startsWith('יסוד היסודות') && /^יסוד היסודות/.test(RIX.data[L.cms[0].b][1][1][0]); });
+t('reader', 'parseRef: הלכות ברמב״ם; "שבת" לבד נשאר משנה', () => { const sh = bkIdx(7, 'הלכות שבת'), yt = bkIdx(7, 'הלכות יסודי התורה'), ms = bkIdx(1, 'משנה שבת'), bk = bkIdx(7, 'הלכות ביכורים ושאר מתנות כהונה שבגבולין');
+  const r = q => { const x = RC.parseRef(RIX, q, 0); return x && [x.b, x.ch, x.v]; };
+  eq([r('הלכות שבת ג ה'), r('רמבם יסודי התורה א'), r('Sabbath 3 5'), r('שבת ב'), r('הלכות ביכורים ושאר מתנות כהונה שבגבולין א ב')], [[sh, 3, 5], [yt, 1, 0], [sh, 3, 5], [ms, 2, 0], [bk, 1, 2]]); });
+t('reader', 'splitCm: הערה במפרשי הרמב״ם לא מתפצלת בנקודתיים', () => { const s = RC.splitCm(8, 'יסוד היסודות. פירוש: עוד פירוש:'); return s.length === 1 && s[0].dh === 'יסוד היסודות.' && RC.splitCm(5, 'א. ב: ג. ד:').length === 2; });
 t('reader', 'תרגום: אונקלוס בתורה בלבד (5), יונתן בתורה ובנביאים', () => eq([RIX.base.filter(i => RIX.links[i].onkelos != null).length, RIX.links[bkIdx(0, 'ישעיהו')].yonatan != null, RIX.links[bkIdx(0, 'תהילים')].yonatan == null], [5, true, true]));
 t('reader', 'parseRef: עברית, אנגלית, משנה, כתיב חסר ומספרים', () => { const ex = bkIdx(0, 'שמות'), br = bkIdx(1, 'משנה ברכות'), ps = bkIdx(0, 'תהילים');
   const r = q => { const x = RC.parseRef(RIX, q, 0); return x && [x.b, x.ch, x.v]; };
