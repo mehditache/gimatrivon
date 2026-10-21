@@ -411,6 +411,57 @@
     };
     // תור הקטעים: בהתחלה כל פסוק שלם; קטע שלא נכנס לבד בעמוד ריק מתפצל במילים
     const queue = versesOf(IX, b, ch).map(v => ({ v, from: 0, to: wordsOf(b, ch, v).length }));
+    // רמב״ם: בכל עמוד לפחות Q מילים של הלכה (כ-4 שורות), כמו בדפוס — הטקסט זורם מעמוד לעמוד והפירוש ממשיך אחריו.
+    // הלכה שהפירוש שלה ארוך לא "נדחית" לעמוד הבא ומשאירה עמוד של שורה אחת: מתחילים אותה כאן, והפירוש שלא נכנס עובר (carry).
+    const ram = isRambam(b), wpl = Math.max(4, Math.round((geo.pw - (geo.narrow ? 32 : 80)) / (geo.fs * 3))), Q = 4 * wpl;
+    const nW = list => list.reduce((m, x) => m + x.to - x.from, 0);
+    // כמה מילות פירוש נכנסות בעמוד אחד (עם מילה אחת של טקסט) — כדי לפזר את הטקסט על כל העמודים שהפירוש צריך,
+    // ולא לגמור את ההלכות לפני הפירוש (בפרקים שהפירוש בהם פי עשרים מהטקסט, כמו יסודי התורה ה)
+    let cap = 0;
+    const capOf = () => cap || (cap = Math.max(1, maxOk(0, ents.reduce((m, e) => m + cmLen(e), 0), c => {
+      const s = queue[0]; probe.innerHTML = pageInner(b, ch, { segs: [{ v: s.v, from: s.from, to: s.from + 1 }], vs: [s.v], cm: cutCm(ents, c)[0] }, 1, ''); return !over(probe);
+    })));
+    // x המילים הראשונות של התור (הלכות שלמות, ואחריהן חלק מהלכה)
+    const take = x => { const out = []; for (let i = 0; x > 0 && i < queue.length; i++) { const s = queue[i], t = Math.min(s.to - s.from, x); out.push({ v: s.v, from: s.from, to: s.from + t }); x -= t; } return out; };
+    // חלק הדף שנשאר ריק (הרווח בין הטקסט לפירוש)
+    const blank = segs => { probe.innerHTML = pageInner(b, ch, mk(segs), pages.length + 1, ''); const sp = probe.querySelector('.rdSp'); return sp ? sp.offsetHeight / probe.clientHeight : 0; };
+    while (ram && queue.length) {
+      const k = fits([queue[0]]) ? maxOk(1, queue.length, k => fits(queue.slice(0, k))) : 0;
+      const T0 = nW(queue.slice(0, k)), remT = nW(queue), remC = cmWords(queue);
+      // היעד לעמוד הזה: 4 שורות, או פחות כשהפירוש שנשאר צריך יותר עמודים ממה שהטקסט מספיק להם
+      const Qd = remC ? Math.max(1, Math.min(Q, Math.floor(remT / (Math.ceil(remC / capOf()) + 1)))) : Q;
+      let X = T0, cut = null;
+      if (k < queue.length) {
+        const s = queue[k], n = s.to - s.from;
+        // קודם: חלק מההלכה הבאה עם כל הפירוש שלו (רק אם נכנסת לפחות שורה)
+        let w = fits(take(T0 + 1)) ? maxOk(1, n - 1, x => fits(take(T0 + x))) : 0;
+        if (w < wpl && k) w = 0;
+        X = T0 + w;
+        // מעט מדי טקסט, או רווח ריק גדול באמצע הדף (הפירוש של ההלכה הבאה ארוך ולכן היא לא נכנסה):
+        // ממשיכים את הטקסט בעמוד הזה, והפירוש ממלא את מה שנשאר ונחתך — ההמשך שלו בא בראש הפירוש בעמוד הבא
+        const few = X < Qd, gap = !few && blank(take(X)) > 0.2;
+        if (few || gap) {
+          let want = Math.max(Qd, X + (gap ? wpl : 0));
+          // משאירים לעמוד הבא לפחות Qd מילים (אם יש), כדי שהמשך הפירוש לא יבוא עם שורה בודדת
+          if (remT - want < Qd) want = Math.max(Math.min(want, remT - Qd), Math.ceil(remT / 2));
+          want = Math.min(want, remT - 1);
+          if (want > X && !fits(take(want), 0)) want = fits(take(X + 1), 0) ? maxOk(X + 1, want - 1, x => fits(take(x), 0)) : X;
+          if (want > X) { X = want; cut = maxOk(0, cmWords(take(X)), c => fits(take(X), c)); }
+        }
+      }
+      if (!X) { X = 1; cut = maxOk(0, cmWords(take(1)), c => fits(take(1), c)); } // מילה אחת שאפילו בלי פירוש לא נכנסת — לא אמור לקרות
+      const segs = take(X), pg = mk(segs, cut);
+      carry = cut == null ? [] : cutCm(carry.concat(...segs.map(entsOf)), cut)[1];
+      segs.forEach(g => { const s = queue[0]; if (g.to < s.to) queue[0] = { v: s.v, from: g.to, to: s.to }; else queue.shift(); });
+      pages.push(pg);
+      if (pages.length > 600) break;
+    }
+    // נדיר: נשאר פירוש אחרי המילה האחרונה של הפרק — ממשיכים אותו עם המילים האחרונות שוב, כדי שלא יאבד ולא יהיה עמוד בלי טקסט
+    while (ram && carry.length && pages.length < 600) {
+      const last = pages[pages.length - 1].segs.slice(-1), pg = c => ({ segs: last, vs: [last[0].v], cm: cutCm(carry, c)[0] });
+      const c = Math.max(1, maxOk(0, cmWords([]), c => { probe.innerHTML = pageInner(b, ch, pg(c), pages.length + 1, ''); return !over(probe); }));
+      pages.push(pg(c)); carry = cutCm(carry, c)[1];
+    }
     while (queue.length) {
       const segs = [];
       // פסוקים שלמים עם כל הפירוש שלהם, כל עוד הם נכנסים
