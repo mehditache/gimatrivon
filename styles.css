@@ -723,7 +723,8 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 /* שולחן + ספר */
 .rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--rdDeskGlow)}
-.rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px var(--rdShadow))}
+/* v3.12.0: צל כ-box-shadow ולא filter:drop-shadow — filter מצייר מחדש את הצל של כל הספר בכל פריים של אפקט הדפדוף. isolation שומר את קצוות הדפים (::before/::after, z-index:-1) מאחורי הדפים כמו קודם */
+.rdBook{position:relative;display:flex;isolation:isolate;box-shadow:0 18px 60px -6px var(--rdShadow)}
 .rdBook.two::before,.rdBook.two::after{content:"";position:absolute;inset:4px -5px -5px -5px;border-radius:4px;background:#e3d8bf;z-index:-1}
 .rdBook.two::after{inset:2px -2.5px -2.5px -2.5px;background:#efe6d0}
 /* v3.9.7 · הופעה הדרגתית בדפדוף (reader.js: reveal). ההשהיה והמשך לכל גוש ב---fxD/--fxT; fill backwards = אחרי הסיום לא נשאר שום סגנון */

@@ -100,25 +100,10 @@
     </form>
   </div>
 </dialog>
-<!-- הקורפוס מפוצל ל-16 חלקים קטנים יותר (ולא קובץ JS ענק אחד) כי GitHub Pages
-     נתגלה כקוטע (ללא שגיאת HTTP!) קבצים סטטיים גדולים מדי. ראו scripts/split-corpus.js. -->
-<script src="generated/corpus.part0.js"></script>
-<script src="generated/corpus.part1.js"></script>
-<script src="generated/corpus.part2.js"></script>
-<script src="generated/corpus.part3.js"></script>
-<script src="generated/corpus.part4.js"></script>
-<script src="generated/corpus.part5.js"></script>
-<script src="generated/corpus.part6.js"></script>
-<script src="generated/corpus.part7.js"></script>
-<script src="generated/corpus.part8.js"></script>
-<script src="generated/corpus.part9.js"></script>
-<script src="generated/corpus.part10.js"></script>
-<script src="generated/corpus.part11.js"></script>
-<script src="generated/corpus.part12.js"></script>
-<script src="generated/corpus.part13.js"></script>
-<script src="generated/corpus.part14.js"></script>
-<script src="generated/corpus.part15.js"></script>
-<script src="generated/corpus.loader.js"></script>
+<!-- הקורפוס מפוצל לקובץ לכל ספר (scripts/split-corpus.js). index.js = רשימת הספרים בלבד; corpus-loader.js טוען
+     את הספרים עצמם לפי דרישה: הגימטריה קודם תנ״ך ומשנה ואחר כך השאר, מסך הקריאה רק את הספר הפתוח ומפרשיו. -->
+<script src="generated/corpus/index.js"></script>
+<script src="corpus-loader.js"></script>
 <script src="engine.js"></script>
 <script src="vendor/driver.js"></script>
 <script src="app.js"></script>

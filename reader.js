@@ -2,7 +2,8 @@
    שני חלקים:
    (1) ליבה טהורה (אינדקס פרק/פסוק, ניתוח מראה-מקום, חיפוש) — נחשפת כ-window.GimReaderCore ונבדקת ב-tests/run-tests.js.
    (2) ממשק — רץ רק בדפדפן, אחרי app.js, ומשתמש ב-window.GimApp שהוא חושף (שפה, שמות ספרים, trackEvent).
-   הטקסטים כולם מתוך window.CORPUS_BUNDLE הקיים: unit = [cat, book, chapter, verse, text, …], cat: 0 תנ״ך, 1 משנה,
+   הטקסטים נטענים לפי ספר (corpus-loader.js, v3.12.0): רק הספר הפתוח, המפרשים והתרגום שמוצגים בו והספרים הסמוכים לו.
+   unit = [cat, book, chapter, verse, text, …], cat: 0 תנ״ך, 1 משנה,
    2 רש״י, 3 אונקלוס, 4 תרגום יונתן, 5 ברטנורא, 6 מילון (לא בשימוש כאן), 7 רמב״ם (משנה תורה), 8 כסף משנה, 9 השגות הראב״ד,
    10 משנה למלך. ספר בסיס (תנ״ך, משנה, רמב״ם) מקושר לרשימת מפרשים (links.cms): רש״י / ברטנורא, או שלושת מפרשי הרמב״ם. */
 (function () {
@@ -29,15 +30,17 @@
     return [...t].reduce((s, c) => s + HV[c], 0);
   }
 
+  // יחידה אחת אל data[ספר][פרק][פסוק]: מפרשים = מערך פסקאות, כתוב = מחרוזת (יחידות כפולות מתחברות ברווח)
+  function addUnit(data, cat, b, ch, v, t) {
+    const d = data[b] || (data[b] = []), c = d[ch] || (d[ch] = []);
+    if (cat === 2 || cat === 5 || cat >= 8) (c[v] || (c[v] = [])).push(t);
+    else c[v] = c[v] ? c[v] + ' ' + t : t;
+  }
+  // BN.units (אם יש — בבדיקות, מהקורפוס המלא) נכנסות מיד; אחרת data[b] מתמלא כשהספר נטען (addBook)
   function buildIndex(BN) {
     const books = BN.books, data = books.map(() => null), byKey = {};
     books.forEach((b, i) => { byKey[b.cat + '|' + b.heTitle] = i; });
-    for (const u of BN.units) {
-      const cat = u[0]; if (cat === 6) continue;
-      const d = data[u[1]] || (data[u[1]] = []), c = d[u[2]] || (d[u[2]] = []);
-      if (cat === 2 || cat === 5 || cat >= 8) (c[u[3]] || (c[u[3]] = [])).push(u[4]);
-      else c[u[3]] = c[u[3]] ? c[u[3]] + ' ' + u[4] : u[4];
-    }
+    for (const u of BN.units || []) if (u[0] !== 6) addUnit(data, u[0], u[1], u[2], u[3], u[4]);
     const base = [], links = {};
     books.forEach((b, i) => { if (b.cat === 0 || b.cat === 1 || b.cat === 7) base.push(i); });
     base.forEach(i => {
@@ -61,8 +64,17 @@
     });
     return { books, data, base, links, names, clean, loose, ncache: new Map() };
   }
-  const chaptersOf = (IX, b) => { const d = IX.data[b] || []; const r = []; d.forEach((c, i) => { if (c && i > 0) r.push(i); }); return r; };
-  const versesOf = (IX, b, ch) => { const c = (IX.data[b] || [])[ch] || []; const r = []; c.forEach((t, i) => { if (t && i > 0) r.push(i); }); return r; };
+  // ספר שנטען: each(fn) עובר על היחידות שלו (GimCorpus.each)
+  function addBook(IX, b, each) { if (IX.data[b]) return; IX.data[b] = []; each(b, (cat, bb, ch, v, t) => addUnit(IX.data, cat, bb, ch, v, t)); }
+  // פרקים ופסוקים: מהטקסט אם הספר נטען, אחרת מהרשימה (books[b].cv = הפסוק הגבוה בכל פרק) — לניווט בלי לטעון
+  const chaptersOf = (IX, b) => { const r = [], d = IX.data[b]; if (d) d.forEach((c, i) => { if (c && i > 0) r.push(i); }); else (IX.books[b].cv || []).forEach((n, i) => { if (n && i > 0) r.push(i); }); return r; };
+  const versesOf = (IX, b, ch) => {
+    const r = [], d = IX.data[b];
+    if (d) (d[ch] || []).forEach((t, i) => { if (t && i > 0) r.push(i); });
+    else for (let i = 1; i <= ((IX.books[b].cv || [])[ch] || 0); i++) r.push(i);
+    return r;
+  };
+  const hasRef = (IX, b, ch, v) => { const d = IX.data[b]; if (d) return !!d[ch] && (!v || !!d[ch][v]); const n = (IX.books[b].cv || [])[ch]; return !!n && (!v || v <= n); };
 
   // "בראשית א ו", "שמות יב", "ברכות ב ג", "Exodus 12 2", "ו ג" (פרק ופסוק בספר הנוכחי — רק בשני מספרים)
   function parseRef(IX, q, cur) {
@@ -73,8 +85,7 @@
     if (b < 0) { if (cur == null || toks.length !== 2) return null; b = cur; }
     if (rest.length > 2) return null;
     const ch = rest.length ? parseNum(rest[0]) : 1, v = rest.length > 1 ? parseNum(rest[1]) : 0;
-    const d = IX.data[b];
-    if (!d || !(ch >= 1) || !d[ch] || Number.isNaN(v) || (v && !d[ch][v])) return null;
+    if (!(ch >= 1) || Number.isNaN(v) || !hasRef(IX, b, ch, v)) return null;
     return { b, ch, v, book: k > 0 };
   }
   function suggestBooks(IX, q, max) {
@@ -180,10 +191,10 @@
   const turToks = t => String(t).replace(/\u0010[yc]\d+\u0011/g, ' $& ').replace(/\n/g, ' \n ').split(/ +/).filter(Boolean);
   const ANC = /^\u0010([yc])(\d+)\u0011$/;
 
-  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, chaptersOf, versesOf, parseRef, suggestBooks, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks };
+  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks };
   G.GimReaderCore = CORE;
   if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
-  if (typeof document === 'undefined' || !G.CORPUS_BUNDLE) return;
+  if (typeof document === 'undefined' || !G.GimCorpus) return;
 
   /* ================= (2) ממשק ================= */
   const $r = s => document.querySelector(s);
@@ -208,7 +219,7 @@
     'ניקוד': 'Vowel points', 'בלי ניקוד': 'Without', 'עם ניקוד': 'With', 'כמו במהדורת פרנקל': 'as in the Frankel edition', 'השגת הראב״ד': "Ra'avad's gloss",
     'ש״ס': 'Talmud', 'צורת הדף': 'Vilna page', 'גמרא ומפרשים': 'Gemara & commentary', 'תוספות': 'Tosafot', 'רשב״ם': 'Rashbam', 'גמרא': 'Gemara', 'מסכת': 'Tractate',
     'דף': 'Daf', 'דף קודם': 'Previous daf', 'דף הבא': 'Next daf', 'עמוד א': 'Side a', 'עמוד ב': 'Side b', 'מעבר לדף': 'Go to daf', 'קטע': 'Passage', 'טוען': 'Loading',
-    'לא ניתן לטעון את המסכת.': 'Could not load the tractate.', 'בדף': 'Daf', 'במסכת': 'Tractate', 'אין פירוש על קטע זה': 'No commentary on this passage', 'הדף הנוכחי (שני העמודים)': 'The current daf (both sides)',
+    'לא ניתן לטעון את המסכת.': 'Could not load the tractate.', 'לא ניתן לטעון את הספר.': 'Could not load the book.', 'טוען…': 'Loading…', 'בדף': 'Daf', 'במסכת': 'Tractate', 'אין פירוש על קטע זה': 'No commentary on this passage', 'הדף הנוכחי (שני העמודים)': 'The current daf (both sides)',
     'לחצו על קטע בגמרא כדי לראות את הפירוש שלו.': 'Click a passage of the Gemara to see its commentary.', 'הקטע שנבחר': 'Selected passage', 'הקטע הקודם': 'Previous passage', 'הקטע הבא': 'Next passage',
     'טור': 'Tur', 'בית יוסף': 'Beit Yosef', 'ב״ח': 'Bach', 'בית חדש': 'Bayit Chadash', 'סימן': 'Siman', 'סימן קודם': 'Previous siman', 'סימן הבא': 'Next siman', 'הקדמה': 'Introduction', 'הקדמת הטור': 'Introduction to the Tur',
     'טוען את הטור…': 'Loading the Tur…', 'לא ניתן לטעון את הטור.': 'Could not load the Tur.', 'מעבר לסימן': 'Go to siman', 'ארבעה טורים': 'Arba\'ah Turim', 'הדיבור הקודם': 'Previous comment', 'הדיבור הבא': 'Next comment', 'הסימן כולו': 'The whole siman',
@@ -232,7 +243,7 @@
     vRows: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 6h12M3 12h12M3 18h12M18 6h3M18 12h3M18 18h3"/></svg>'
   };
 
-  let IX = null, built = false, R = null, geo = null, hlTimer = 0, fxDir = 0, fxLast = 0, fxTimer = 0;
+  let IX = null, built = false, R = null, geo = null, hlTimer = 0, fxDir = 0, fxLast = 0, fxTimer = 0, deskRO = null, roT = 0;
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
   const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', cmOff: [], ramNik: true, rk: '', rs: 1 };
@@ -248,9 +259,29 @@
     RX = turIndex(G.GIM_TUR_INDEX);
     if (S.rk && RX.byK[S.rk] == null) S.rk = '';
     if (S.rk) S.tk = '';
-    IX = buildIndex(G.CORPUS_BUNDLE);
-    if (!IX.base.includes(S.b) || !(IX.data[S.b] || [])[S.ch]) { S.b = 0; S.ch = 1; S.anchor = 1; }
+    IX = buildIndex({ books: G.GimCorpus.books });
+    if (!IX.base.includes(S.b) || !hasRef(IX, S.b, S.ch, 0)) { S.b = 0; S.ch = 1; S.anchor = 1; }
   };
+  /* טעינה לפי דרישה: need(b) = הספר, התרגום והמפרשים שמוצגים בו. ensure(ids, again) מחזיר true אם הכל כבר נטען;
+     אחרת מתחיל לטעון, ו-again() נקרא כשהטעינה הסתיימה (כמו loadTract בגמרא). */
+  const need = b => { const t = trBook(b); return [b].concat(t ? [t.b] : [], cmsOn(b).map(x => x.b)); };
+  const loaded = ids => ids.every(b => IX.data[b]);
+  const LOADING = new Set();
+  function ensure(ids, again, prog) {
+    ids = [...new Set(ids.filter(b => b != null && !IX.data[b]))];
+    if (!ids.length) return true;
+    const key = ids.join(','); if (LOADING.has(key)) return false;
+    LOADING.add(key);
+    // התקדמות לפי גודל הקבצים (books[b].fb), כמו במסכת: כל ספר זוחל לעבר 90% וקופץ למלא כשנטען
+    const pe = prog ? progEase(prog, ids.map(b => (IX.books[b].fb || [1]).reduce((a, x) => a + x, 0))) : null;
+    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); again(true); },
+      () => { LOADING.delete(key); if (pe) pe.end(); again(false); });
+    return false;
+  }
+  // הספרים הסמוכים (לדפדוף רציף בין ספרים) — נטענים יחד עם הספר הפתוח
+  const nearBooks = b => { const i = IX.base.indexOf(b); return [IX.base[i - 1], b, IX.base[i + 1]].filter(x => x != null); };
+  // מטמונים מוגבלים: Map שומר סדר הכנסה, אז מוחקים את הישנים ביותר
+  const trimMap = (m, n) => { while (m.size > n) m.delete(m.keys().next().value); };
   // משנה ורמב״ם: כותרת לכל יחידה ("משנה ה" / "הלכה ה") ואין תרגום. uName = שם היחידה בספר
   const isMishnah = b => IX.books[b].cat === 1 || IX.books[b].cat === 7;
   const isRambam = b => IX.books[b].cat === 7;
@@ -288,7 +319,7 @@
 
   // מילים של פסוק/משנה (בלי טעמים) — לפיצול משנה ארוכה בין עמודים
   const WC = new Map();
-  const wordsOf = (b, ch, v) => { const k = b + ':' + ch + ':' + v; if (!WC.has(k)) WC.set(k, noTeamim(chText(b, ch, v) || '').split(/\s+/).filter(Boolean)); return WC.get(k); };
+  const wordsOf = (b, ch, v) => { const k = b + ':' + ch + ':' + v; if (!WC.has(k)) { WC.set(k, noTeamim(chText(b, ch, v) || '').split(/\s+/).filter(Boolean)); trimMap(WC, 6000); } return WC.get(k); };
   // דיבורי המפרש של פרק: [{v, dh, body, pos}] לפי הסדר. pos = מספר המילה בפסוק שבה מופיע הדיבור המתחיל
   // (חיפוש קדימה מהדיבור הקודם; אם לא נמצא — אותו מקום כמו הקודם), כדי שכל דיבור יודפס באותו עמוד עם המילים שלו.
   const CMC = new Map();
@@ -308,7 +339,7 @@
           out.push({ v, dh: e.dh, body: e.body, pos, c });
         })); });
       });
-      CMC.set(key, out);
+      CMC.set(key, out); trimMap(CMC, 40);
     }
     return CMC.get(key);
   }
@@ -490,7 +521,7 @@
       if (pages.length > 600) break;
     }
     probe.innerHTML = '';
-    PC.set(key, pages); return pages;
+    PC.set(key, pages); trimMap(PC, 60); return pages;
   }
   const baseIdx = b => IX.base.indexOf(b);
   function nextCh(b, ch, dir) {
@@ -510,6 +541,11 @@
     if (isTal()) return renderTal();
     $r('#rdPrevCh').setAttribute('aria-label', T('פרק קודם')); $r('#rdNextCh').setAttribute('aria-label', T('פרק הבא')); $r('#rdPrevCh').title = T('פרק קודם'); $r('#rdNextCh').title = T('פרק הבא');
     document.querySelectorAll('#rdViewSeg button[data-view=book] .t').forEach(x => { x.textContent = T('ספר'); });
+    if (!ensure([].concat(...nearBooks(S.b).map(need)), ok => { if (!ok) { geo = geometry(); $r('#rdBook').innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את הספר.') + '</p></article>'; } else render(); }, f => loadProg('b' + S.b, f))) {
+      $r('#rdBook').innerHTML = loadingHtml('b' + S.b, bkName(IX.books[S.b].heTitle), geo);
+      $r('#rdWhereTxt').textContent = bkName(IX.books[S.b].heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
+      return;
+    }
     const pages = pagesFor(S.b, S.ch);
     // בשני עמודים הפריסה רציפה בין פרקים: אם בפרק מספר עמודים אי-זוגי, העמוד הראשון של הפרק הבא ממלא את הצד השמאלי
     // (במקום עמוד ריק). לכן S.p יכול להיות אי-זוגי; בקפיצה לפסוק שומרים על הזוגיות של הפריסה הנוכחית באותו פרק.
@@ -543,6 +579,15 @@
     $r('#rdViewSeg [data-view=aligned] .t').textContent = T(uName(S.b) + ' מול תרגום');
     if (fxDir) { reveal(book, fxDir); fxDir = 0; }
     save();
+    prePaginate();
+  }
+  // עימוד הפרק הבא מראש, בזמן מנוחה — כך שהדפדוף אליו מיידי
+  function prePaginate() {
+    const ric = G.requestIdleCallback || (f => setTimeout(f, 200)), key = geo.key;
+    ric(() => {
+      if (!built || isTal() || !geo || geo.key !== key) return;
+      const n = nextCh(S.b, S.ch, 1); if (n && loaded(need(n.b))) pagesFor(n.b, n.ch);
+    });
   }
 
   /* הופעה הדרגתית של הטקסט בדפדוף ובמעבר פרק (לא בפתיחה, בשינוי גודל או בהגדרות): כל גוש (כותרת, פסקת מקרא/משנה, התרגום,
@@ -619,6 +664,15 @@
   const plainT = s => String(s).replace(/[\u0001-\u0004]/g, '');
   const talTxt = (s, q) => q ? hlHtml(plainT(s), q) : fmtT(s);
   const innerLabel = (k, j) => T(amudRow(k, j)[3] ? 'רשב״ם' : 'רש״י');
+  // בזיכרון נשארות רק המסכתות האחרונות שנפתחו (מסכת גדולה = כמה MB); אחרת נטענת שוב מהמטמון של הדפדפן
+  const TKEEP = [], TMAX = 3;
+  function keepTract(k) {
+    const i = TKEEP.indexOf(k); if (i >= 0) TKEEP.splice(i, 1); TKEEP.push(k);
+    while (TKEEP.length > TMAX) {
+      const old = TKEEP.shift(), TP = G.GIM_TP || {}; if (old === S.tk) { TKEEP.push(old); continue; }
+      delete TD[old]; TX.list[TX.byK[old]].parts.forEach((p, i) => { delete TP[old + '.' + i]; });
+    }
+  }
   /* מסך טעינה: שלד של הדף שהשורות שלו "נכתבות", ושם הספר בכתב חלול שמתמלא בזהב (מימין לשמאל) לפי אחוזי הטעינה.
      loadingHtml בונה את הדפים; loadProg(k, 0..1) מעדכן את המילוי אם המסך של k עדיין מוצג. */
   const skLines = (n, c, from) => { let s = ''; for (let i = 0; i < n; i++) s += '<i class="rdSkLn' + c + '" style="--i:' + (from + i) + ';width:' + (i % 6 === 5 ? 58 : 100 - (i * 7 % 13)) + '%"></i>'; return s; };
@@ -627,6 +681,14 @@
       (first ? '<div class="rdLoadT" data-k="' + h(k) + '" style="--p:0" role="progressbar" aria-label="' + h(T('טוען') + ' ' + title) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="o">' + h(title) + '</span><span class="f" aria-hidden="true">' + h(title) + '</span></div><div class="rdLoadPct" aria-hidden="true">0%</div>' : '') +
       '<div class="rdSkTx">' + skLines(30, '', 0) + '</div><div class="rdSkCm">' + skLines(30, ' c', first ? 8 : 12) + '</div></article>';
     return geo.two ? pg('right', true) + pg('left', false) : pg('single', true);
+  }
+  /* התקדמות משוערת לפי גודל (תגית script לא מדווחת על בייטים): כל פריט זוחל לעבר 90% בקצב של בערך 2MB לשנייה,
+     got(i) = הפריט נטען (מלא), end() = הכל נטען. set(0..1) מקבל את השבר הכולל. */
+  function progEase(set, sizes) {
+    const tot = sizes.reduce((a, b) => a + b, 0) || 1, got = sizes.map(() => 0), t0 = Date.now();
+    const report = () => set(got.reduce((a, b) => a + b, 0) / tot);
+    const tick = setInterval(() => { const sec = (Date.now() - t0) / 1000; sizes.forEach((n, i) => { if (got[i] < n) got[i] = Math.max(got[i], n * 0.9 * (1 - Math.exp(-sec / Math.max(0.6, n / 2e6)))); }); report(); }, 100);
+    return { got: i => { if (i >= 0) { got[i] = sizes[i]; report(); } }, end: () => { clearInterval(tick); set(1); } };
   }
   function loadProg(k, f) {
     const el = R.querySelector('.rdLoadT[data-k="' + k + '"]'); if (!el) return;
@@ -637,7 +699,7 @@
   /* התקדמות הטעינה: תגית script לא מדווחת על בייטים (ו-fetch/XHR אסורים, כדי שזה יעבוד offline וב-file://), אז כל חלק
      "זוחל" לעבר 90% בקצב שמותאם לגודל שלו (p.b, מ-build-talmud.py; בערך 2MB לשנייה), וקופץ ל-100% כשהוא נטען בפועל. */
   function loadTract(k, done) {
-    if (TD[k]) return done(true);
+    if (TD[k]) { keepTract(k); return done(true); }
     if (TLOAD[k]) { TLOAD[k].push(done); return; }
     TLOAD[k] = [done];
     const t = TX.list[TX.byK[k]], TP = G.GIM_TP || (G.GIM_TP = {});
@@ -647,7 +709,7 @@
     let left = t.parts.length, failed = false;
     const finish = () => {
       clearInterval(tick); loadProg(k, 1);
-      if (!failed) { const all = []; t.parts.forEach((p, i) => { const d = TP[k + '.' + i]; d.a.forEach((row, r) => { all[d.from + r] = row; }); }); TD[k] = all; }
+      if (!failed) { const all = []; t.parts.forEach((p, i) => { const d = TP[k + '.' + i]; d.a.forEach((row, r) => { all[d.from + r] = row; }); }); TD[k] = all; keepTract(k); }
       const cbs = TLOAD[k]; delete TLOAD[k];
       const go = () => cbs.forEach(cb => cb(!failed));
       if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('16px GimFrank', 'אב'), document.fonts.load('16px GimRashi', 'אב')]).then(go, go); else go();
@@ -688,7 +750,7 @@
     const main = a[0].map((s, i) => sp('tg', i, talTxt(s, q))).join(' ');
     const cm = (list, c) => list.map(e => sp('tc ' + c, e[0], (e[1] ? '<b>' + talTxt(e[1], q) + '</b> ' : '') + talTxt(e[2], q))).join(' ');
     const host = $r('#rdDafHost'); host.style.width = W + 'px';
-    const cap = 1 + S.size * 0.12;
+    const maxScale = 1 + S.size * 0.12;
     const run = s => {
       host.innerHTML = '<div style="position:relative"></div>'; const el = host.firstChild, fm = 16 * s, fs = 11.2 * s;
       const r = G.dafRenderer(el, { contentWidth: W + 'px', mainWidth: '50%', padding: { vertical: Math.round(9 * s) + 'px', horizontal: Math.round(16 * s) + 'px' }, innerPadding: '4px', outerPadding: '4px',
@@ -696,11 +758,11 @@
       r.render(main || ' ', cm(a[1], 'cR') || ' ', cm(a[2], 'cT') || ' ', j & 1 ? 'b' : 'a');
       return el.offsetHeight;
     };
-    let lo = 0.45, hi = cap, out;
+    let lo = 0.45, hi = maxScale, out;
     if (run(hi) <= H) lo = hi;
     else for (let i = 0; i < 7; i++) { const m = (lo + hi) / 2; if (run(m) <= H) lo = m; else hi = m; }
     run(lo); out = freezeDaf(host.firstChild); host.innerHTML = '';
-    DC.set(key, out); return out;
+    DC.set(key, out); trimMap(DC, 40); return out;
   }
   const talHead = (t, j) => '<header class="rdHead"><span>' + h(T('מסכת') + ' ' + talName(t)) + '</span><span class="mid">' + h(grpName(t.g)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(dafTxt(j)) + '</span></header>';
   // מידות שטח הטקסט בעמוד (בלי כותרת ומספר), לפי עמוד-בדיקה עם אותן מחלקות
@@ -757,7 +819,7 @@
       if (pages.length > 200) break;
     }
     probe.innerHTML = '';
-    PC.set(key, pages); return pages;
+    PC.set(key, pages); trimMap(PC, 60); return pages;
   }
   const stNext = (k, j, p, dir, g) => {
     const t = TX.list[TX.byK[k]];
@@ -893,8 +955,10 @@
     const fin = ok => { if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('16px GimFrank', 'אב'), document.fonts.load('16px GimRashi', 'אב')]).then(() => done(ok), () => done(ok)); else done(ok); };
     if (!need.length) return done(true);
     let left = need.length, ok = true;
-    need.forEach(p => {
-      const id = k + '.' + p, cb = r => { ok = ok && r; if (--left === 0) fin(ok); };
+    // מסך הטעינה (אם מוצג): חלק של הטור הוא בערך 2MB
+    const pe = progEase(f => loadProg('r' + k, f), need.map(p => t.parts[p].b || 2e6));
+    need.forEach((p, n) => {
+      const id = k + '.' + p, cb = r => { ok = ok && r; pe.got(n); if (--left === 0) { pe.end(); fin(ok); } };
       if (RLOAD[id]) { RLOAD[id].push(cb); return; }
       RLOAD[id] = [cb];
       const sc = document.createElement('script'); sc.src = 'generated/tur/' + t.parts[p].f;
@@ -1118,7 +1182,7 @@
     const need = [S.rs - 1, S.rs, S.rs + 1, S.rs + 2];
     if (!rowsReady(k, need)) {
       $r('#rdPos').textContent = '';
-      book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('טוען את הטור…') + '</p></article>';
+      book.innerHTML = loadingHtml('r' + k, T('טור') + ' ' + turPartName(t), geo);
       loadTur(k, need, ok => { if (!ok) book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את הטור.') + '</p></article>'; else if (S.rk === k) { if (S.rsel) openTurCm(S.rsel.s, S.rsel.x, S.rsel.i); render(); } });
       return;
     }
@@ -1394,6 +1458,17 @@
     if (!isFinite(first) || first < 14) return t;
     return '… ' + parts.slice(first - 8).join('');
   }
+  function searchNeed(books) {
+    if (S.src === 'both' || (S.src === 'tr' && isMishnah(S.b))) S.src = 'all';
+    const all = S.src === 'all', out = [];
+    books.forEach(b => {
+      const L = IX.links[b] || {};
+      if (all || S.src === 'txt') out.push(b);
+      if (all || S.src === 'cm') (L.cms || []).forEach(m => out.push(m.b));
+      if (all || S.src === 'tr') ['onkelos', 'yonatan'].forEach(k => { if (L[k] != null) out.push(L[k]); });
+    });
+    return out;
+  }
   function searchSrc(q, books, onlyCh) {
     if (S.src === 'both' || (S.src === 'tr' && isMishnah(S.b))) S.src = 'all'; // ערך ישן / אין תרגום במשנה וברמב״ם
     const nq = norm(q), hits = [], all = S.src === 'all', txt = all || S.src === 'txt', cm = all || S.src === 'cm', tr = all || S.src === 'tr';
@@ -1464,9 +1539,11 @@
     if (!dropItems.length) suggestBooks(IX, q, 4).forEach(b => dropItems.push({ kind: 'ref', r: { b, ch: chaptersOf(IX, b)[0], v: 0 } }));
     if (dropItems.length) html += '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>';
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isRambam(S.b) ? 'בכל הרמב״ם' : isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
-    const res = searchSrc(q, scopeBooks(), S.scope === 'ch' ? S.ch : 0);
+    // החיפוש צריך את הספרים שבתחום (והמפרשים/התרגומים שלהם, לפי "חיפוש ב"); עד שהם נטענים — "טוען…" במקום מספר התוצאות
+    const sBooks = scopeBooks(), wait = !ensure(searchNeed(sBooks), () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
+    const res = wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
     const srcs = [['txt', isRambam(S.b) ? 'הלכות' : isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isRambam(S.b) ? 'מפרשים' : isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
-    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
+    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait ? T('טוען…') : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
     if (res.hits.length) {
@@ -1675,6 +1752,12 @@
     // החלקה בנייד: ימינה = העמוד הבא (בספר עברי העמוד הבא נמצא משמאל)
     let tx = null, ty = 0;
     const desk = $r('#rdDesk');
+    // גודל השולחן יכול להשתנות גם בלי resize של החלון (שורת הכותרת אחרי טעינת גופנים או הודעת סטטוס) — אז מעמדים מחדש
+    if (G.ResizeObserver) {
+      if (deskRO) deskRO.disconnect();
+      deskRO = new ResizeObserver(() => { if (geo && !$r('#rdBook .rdLoading,#rdBook .rdSkel') && (desk.clientWidth !== geo.W || desk.clientHeight !== geo.H)) { clearTimeout(roT); roT = setTimeout(render, 120); } });
+      deskRO.observe(desk);
+    }
     desk.addEventListener('touchstart', e => { if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, { passive: true });
     desk.addEventListener('touchend', e => {
       if (tx == null) return; const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty; tx = null;

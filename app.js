@@ -1,12 +1,13 @@
 (function () {
 'use strict';
-const VERSION = '3.13.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.14.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
 // (חיבור/החסרה על פני כל התיבות) ולא ה-overhead של בדיקות הסינון. לכן נשמר המסלול הפשוט והמהיר,
 // עם API שתומך בכמה יעדים בבת אחת (לשימוש עתידי), ללא פגיעה בביצועים.
-const E = window.GematriaEngine, B = window.CORPUS_BUNDLE, $ = s => document.querySelector(s), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const E = window.GematriaEngine, B = window.GIM_CORPUS_INDEX, // רשימת הספרים בלבד; הטקסטים נטענים לפי ספר (corpus-loader.js)
+   $ = s => document.querySelector(s), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // "תוצאות מקס' לשיטה": בעבר בקרה נבחרת-ע״י-משתמש (.limitSel) בשני פנלי-הסינון; הוסרה — ערך-קבוע יחיד בלבד.
 const RESULTS_LIMIT_PER_METHOD = 500;
 function getLimit() { return RESULTS_LIMIT_PER_METHOD; }
@@ -49,7 +50,7 @@ const EN = {
   'שם': 'Name', 'אימייל': 'Email', 'הודעה': 'Message', 'שליחה': 'Send',
   'שולח…': 'Sending…', 'ההודעה נשלחה בהצלחה!': 'Message sent successfully!',
   'שליחה נכשלה — ודאו חיבור לאינטרנט ונסו שוב.': 'Failed to send — check your internet connection and try again.',
-  'טוען קורפוס…': 'Loading corpus…', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
+  'טוען קורפוס…': 'Loading corpus…', 'טוען מקורות נוספים…': 'Loading more sources…', 'שגיאה בטעינת הקורפוס — נסו לרענן את הדף': 'Could not load the corpus — try reloading the page', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
   'שיטות הגימטריה': 'Gematria Methods', 'אודות גימטריבון': 'About Gimatrivon',
   'סינון': 'Filter', 'תוצאות החיפוש במקורות': 'Search Results in Sacred Texts', 'צד א׳': 'Side A', 'צד ב׳': 'Side B', 'קלט': 'Input',
   'סינון טקסטואלי בתוך התוצאות…': 'Text filter within results…',
@@ -280,7 +281,7 @@ const numVal = s => { const n = Math.trunc(Number(s)); return Number.isFinite(n)
 function copyText(txt) { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { const x = document.createElement('textarea'); x.value = txt; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); } catch (er) {} x.remove(); }); }
 const PFX = ['', '', 'רש״י על ', 'אונקלוס ', 'תרגום יונתן על ', 'ברטנורא על ', '', 'רמב״ם ', 'כסף משנה על ', 'השגות הראב״ד על ', 'משנה למלך על '];
 const PFX_EN = ['', '', 'Rashi on ', 'Onkelos ', 'Targum Yonatan on ', 'Bartenura on ', '', 'Mishneh Torah, ', 'Kessef Mishneh on ', "Ra'avad on ", 'Mishneh LaMelech on '];
-const RAWTXT = B.units.map(u => u[4]); // טקסט גולמי (לפני טוקניזציה, עדיין עם נקודות) לכל יחידה — לפי אותו סדר כמו IDX.units — משמש לחילוץ ד״ה
+// הטקסט הגולמי של יחידה (לפני טוקניזציה, עדיין עם נקודות) — IDX.units[ri].t, לפי אותו סדר כמו IDX.units
 
 /* ---------- עץ המקורות: קטגוריה ← קבוצה ← ספר ---------- */
 const TREE = []; B.books.forEach((b, i) => { let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
@@ -317,8 +318,8 @@ function parashaOf(u) {
   return p ? p.name : '';
 }
 // ד״ה (דיבור המתחיל) לפירוש רש״י: כל פירוש בקורפוס פותח במילות הפסוק המפורשות ואז נקודה (למשל "בראשית ברא. אמר רבי יצחק…") —
-// נבדק על מדגם רחב ועובד באופן עקבי. ri = אינדקס היחידה (כמו ב-IDX.units/RAWTXT, אותו סדר).
-function dibburFor(ri) { const raw = RAWTXT[ri] || ''; const idx = raw.indexOf('.'); return idx > 0 ? raw.slice(0, idx).trim() : ''; }
+// נבדק על מדגם רחב ועובד באופן עקבי. ri = אינדקס היחידה (כמו ב-IDX.units, אותו סדר).
+function dibburFor(ri) { const raw = (IDX && IDX.units[ri] && IDX.units[ri].t) || ''; const idx = raw.indexOf('.'); return idx > 0 ? raw.slice(0, idx).trim() : ''; }
 // קיצור טקסט ארוך עם "…" (לד״ה / להערות שיטת מילוי-אתב״ש-אטב״ח) — הערך המלא תמיד זמין ב-title (mouse hover)
 const trunc = (s, n) => s.length > (n || 26) ? s.slice(0, n || 26).trim() + '…' : s;
 // [טיוטה — לא סופי, ממתין לאישור] הוספת מקף תצוגתי-בלבד בתוך השם המפורש (יהוה ← יה-וה) בטקסט-הפסוק
@@ -1479,7 +1480,7 @@ $('#openMethods').onclick = () => $('#dlgMethods').showModal();
 // כרגע למידע אמיתי — אפשר להחליף בעתיד בלי לשנות את שאר הקוד, רק את האובייקט ABOUT_INFO כאן.
 const ABOUT_INFO = { dev: 'Gad Zvi Mehditache', license: 'קנייני — כל הזכויות שמורות', licenseEn: 'Proprietary — All Rights Reserved', site: '—' };
 function renderAbout() {
-  const unitsCount = IDX ? IDX.units.length : (B && B.units ? B.units.length : 0);
+  const unitsCount = B.books.reduce((n, b) => n + (b.n || 0), 0);
   const en = LANG === 'en';
   $('#aboutDoc').innerHTML = `<div class="aboutBox">
     <div class="row"><span class="k">${en ? 'App name' : 'שם האפליקציה'}</span><span class="v"><b>גימטריבון</b> (Gimatrivon)</span></div>
@@ -1600,7 +1601,7 @@ function applyLangStatic() {
   const cMsgLbl = document.querySelector('label[for="cMsg"]'); if (cMsgLbl) cMsgLbl.textContent = L('הודעה');
   const contactSend = $('#contactSend'); if (contactSend) contactSend.textContent = L('שליחה');
   document.querySelectorAll('[data-close]').forEach(x => x.setAttribute('aria-label', L('סגור')));
-  if (!IDX) { const st = $('#status'); if (st) st.textContent = L('טוען קורפוס…'); }
+  if (!IDX && document.body.dataset.mode !== 'read') { const st = $('#status'); if (st) st.textContent = L('טוען קורפוס…'); }
   const langBtn = $('#langSw'); if (langBtn) langBtn.textContent = en ? 'עב' : 'EN';
 }
 function applyLang() {
@@ -2002,9 +2003,34 @@ $('#startTour').onclick = () => { trackEvent('tour_start', { layout: mobileActiv
 
 KS.forEach(bind); renderDocs(); renderCenter();
 setupMobileUX();
-setTimeout(() => {
-  IDX = E.buildIndex(B.units.map(u => ({ c: CK[u[0]], b: u[1], ch: u[2], n: u[3], t: u[4], k: u[5], s: u[6] })));
+// v3.12.0: הקורפוס נטען לפי ספר (corpus-loader.js). קודם תנ״ך ומשנה, כדי שהתוצאות הראשונות יופיעו מהר, ואחר כך
+// שאר המקורות ברקע; אז האינדקס נבנה מחדש על הכל והחיפושים רצים שוב (כמו בטעינה הראשונה — run מאפס את התוצאות).
+const buildIdx = () => {
+  const units = [];
+  B.books.forEach((_, b) => GimCorpus.each(b, (c, bb, ch, n, t, k, s) => { units.push({ c: CK[c], b: bb, ch, n, t, k, s }); }));
+  IDX = E.buildIndex(units);
+};
+// מי שפותח ישר במסך הקריאה (reader.js זוכר את המסך האחרון) לא טוען את הקורפוס לגימטריה עד שעובר אליה —
+// מסך הקריאה טוען לבד רק את הספר הפתוח.
+const whenGem = go => {
+  if (document.body.dataset.mode !== 'read') return go();
   $('#status').textContent = '';
-  KS.forEach(run);
-}, 40);
+  const mo = new MutationObserver(() => { if (document.body.dataset.mode !== 'read') { mo.disconnect(); $('#status').textContent = L('טוען קורפוס…'); go(); } });
+  mo.observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
+};
+setTimeout(() => whenGem(() => {
+  const first = [...ALL].filter(i => B.books[i].cat <= 1);
+  GimCorpus.load(first).then(() => {
+    buildIdx(); KS.forEach(run);
+    $('#status').textContent = L('טוען מקורות נוספים…');
+    return GimCorpus.load([...ALL]);
+  }).then(() => {
+    buildIdx(); $('#status').textContent = ''; KS.forEach(run);
+  }, () => { $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); });
+}), 40);
+// Service Worker (sw.js): שומר את קובצי הספרים בדפדפן — ביקור חוזר לא מוריד אותם שוב, והאתר עובד גם בלי רשת.
+// רק באתר עצמו (http/https), לא ב-file:// וגם לא בהרצה מקומית, כדי לא להגיש גרסה ישנה בזמן פיתוח.
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/^(localhost|127\.|\[::1\])/.test(location.hostname)) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
 })();
