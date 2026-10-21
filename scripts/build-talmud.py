@@ -79,7 +79,7 @@ for seder, names in ORDER:
             fn = re.sub(r'\W', '', k) + '.' + str(pi) + '.js'
             open(os.path.join(OUT, fn), 'w', encoding='utf-8').write('(window.GIM_TP=window.GIM_TP||{})[' + json.dumps(k + '.' + str(pi)) + ']=' + body + ';\n')
             total += len(body.encode('utf-8'))
-        index.append({'k': k, 'he': HE.get(k, k), 'g': seder, 'n': len(amudim), 'parts': [{'f': re.sub(r'\W', '', k) + '.' + str(pi) + '.js', 'from': st} for pi, (st, _) in enumerate(parts)],
+        index.append({'k': k, 'he': HE.get(k, k), 'g': seder, 'n': len(amudim), 'parts': [{'f': fn, 'from': st, 'b': os.path.getsize(os.path.join(OUT, fn))} for st, fn in ((st, re.sub(r'\W', '', k) + '.' + str(pi) + '.js') for pi, (st, _) in enumerate(parts))],
                       'rashi': bool(r), 'tosafot': bool(t)})
 open(os.path.join(OUT, 'index.js'), 'w', encoding='utf-8').write('window.GIM_TALMUD_INDEX=' + json.dumps(index, ensure_ascii=False, separators=(',', ':')) + ';\n')
 print(len(index), 'tractates', sum(len(x['parts']) for x in index), 'parts', round(total / 1e6, 1), 'MB')
