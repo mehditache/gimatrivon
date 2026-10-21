@@ -421,43 +421,36 @@
     return [keep, rest];
   }
 
-  function pagesFor(b, ch) {
-    const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
-    const probe = $r('#rdProbe'), ents = cmEntries(b, ch), pages = [];
-    probe.className = 'rdPage' + geo.cls;
-    // דיבורים של קטע: לפי מיקום הדיבור המתחיל במילים [from, to); הקטע האחרון של פסוק לוקח גם את מה שאחרי
-    const entsOf = s => { const n = wordsOf(b, ch, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
-    // carry = המשך של דיבורים ארוכים מהעמוד הקודם (פירוש שלא נכנס כולו בעמוד אחד עם הטקסט שלו, כמו רש״י על "בראשית").
-    // הוא בא בראש הפירוש בעמוד הבא, ותמיד עם טקסט חדש באותו עמוד. cut = כמה מילים של הפירוש להשאיר בעמוד (השאר עובר ל-carry).
+  // הכמות הגדולה ביותר k (בין lo ל-max) שעבורה ok(k) — ok מונוטוני יורד; חיפוש דוהר+בינארי כדי למדוד מעט פעמים גם בפרקים ארוכים (תהלים קיט)
+  const maxOkF = (lo, max, ok) => {
+    let good = lo, step = 1;
+    while (good + step <= max && ok(good + step)) { good += step; step *= 2; }
+    let bad = Math.min(good + step, max + 1);
+    while (bad - good > 1) { const mid = (good + bad) >> 1; if (ok(mid)) good = mid; else bad = mid; }
+    return good;
+  };
+  /* עימוד זורם (רמב״ם): בכל עמוד לפחות Q מילים של טקסט (כ-4 שורות), כמו בדפוס — הטקסט זורם מעמוד לעמוד
+     והפירוש ממשיך אחריו. קטע שהפירוש שלו ארוך לא "נדחה" לעמוד הבא ומשאיר עמוד של שורה אחת: מתחילים אותו כאן, והפירוש
+     שלא נכנס עובר (carry) לראש הפירוש בעמוד הבא. queue = [{v, from, to}] (קטעים, במילים), entsOf(קטע) = הדיבורים שלו,
+     ents = כל הדיבורים, page(segs, cm, n) = עמוד n, html(pg, n) = התוכן שלו למדידה ב-probe, wpl = מילים בשורה (הערכה). */
+  function flowPages(probe, queue, entsOf, ents, page, html, wpl) {
+    const pages = [], Q = 4 * wpl, maxOk = maxOkF;
     let carry = [];
-    const mk = (segs, cut) => { const all = carry.concat(...segs.map(entsOf)); return { segs, vs: [...new Set(segs.map(s => s.v))], cm: cut == null ? all : cutCm(all, cut)[0] }; };
-    const fits = (segs, cut) => { probe.innerHTML = pageInner(b, ch, mk(segs, cut), pages.length + 1, ''); return !over(probe); };
+    const mk = (segs, cut) => { const all = carry.concat(...segs.map(entsOf)); return page(segs, cut == null ? all : cutCm(all, cut)[0], pages.length); };
+    const fits = (segs, cut) => { probe.innerHTML = html(mk(segs, cut), pages.length); return !over(probe); };
     const cmWords = segs => carry.concat(...segs.map(entsOf)).reduce((n, e) => n + cmLen(e), 0);
-    // הכמות הגדולה ביותר k (בין lo ל-max) שעבורה ok(k) — ok מונוטוני יורד; חיפוש דוהר+בינארי כדי למדוד מעט פעמים גם בפרקים ארוכים (תהלים קיט)
-    const maxOk = (lo, max, ok) => {
-      let good = lo, step = 1;
-      while (good + step <= max && ok(good + step)) { good += step; step *= 2; }
-      let bad = Math.min(good + step, max + 1);
-      while (bad - good > 1) { const mid = (good + bad) >> 1; if (ok(mid)) good = mid; else bad = mid; }
-      return good;
-    };
-    // תור הקטעים: בהתחלה כל פסוק שלם; קטע שלא נכנס לבד בעמוד ריק מתפצל במילים
-    const queue = versesOf(IX, b, ch).map(v => ({ v, from: 0, to: wordsOf(b, ch, v).length }));
-    // רמב״ם: בכל עמוד לפחות Q מילים של הלכה (כ-4 שורות), כמו בדפוס — הטקסט זורם מעמוד לעמוד והפירוש ממשיך אחריו.
-    // הלכה שהפירוש שלה ארוך לא "נדחית" לעמוד הבא ומשאירה עמוד של שורה אחת: מתחילים אותה כאן, והפירוש שלא נכנס עובר (carry).
-    const ram = isRambam(b), wpl = Math.max(4, Math.round((geo.pw - (geo.narrow ? 32 : 80)) / (geo.fs * 3))), Q = 4 * wpl;
     const nW = list => list.reduce((m, x) => m + x.to - x.from, 0);
     // כמה מילות פירוש נכנסות בעמוד אחד (עם מילה אחת של טקסט) — כדי לפזר את הטקסט על כל העמודים שהפירוש צריך,
-    // ולא לגמור את ההלכות לפני הפירוש (בפרקים שהפירוש בהם פי עשרים מהטקסט, כמו יסודי התורה ה)
+    // ולא לגמור את הטקסט לפני הפירוש (בפרקים שהפירוש בהם פי עשרים מהטקסט, כמו יסודי התורה ה)
     let cap = 0;
     const capOf = () => cap || (cap = Math.max(1, maxOk(0, ents.reduce((m, e) => m + cmLen(e), 0), c => {
-      const s = queue[0]; probe.innerHTML = pageInner(b, ch, { segs: [{ v: s.v, from: s.from, to: s.from + 1 }], vs: [s.v], cm: cutCm(ents, c)[0] }, 1, ''); return !over(probe);
+      const s = queue[0], pg = page([{ v: s.v, from: s.from, to: s.from + 1 }], cutCm(ents, c)[0], 1); probe.innerHTML = html(pg, 1); return !over(probe);
     })));
-    // x המילים הראשונות של התור (הלכות שלמות, ואחריהן חלק מהלכה)
+    // x המילים הראשונות של התור (קטעים שלמים, ואחריהם חלק מקטע)
     const take = x => { const out = []; for (let i = 0; x > 0 && i < queue.length; i++) { const s = queue[i], t = Math.min(s.to - s.from, x); out.push({ v: s.v, from: s.from, to: s.from + t }); x -= t; } return out; };
     // חלק הדף שנשאר ריק (הרווח בין הטקסט לפירוש)
-    const blank = segs => { probe.innerHTML = pageInner(b, ch, mk(segs), pages.length + 1, ''); const sp = probe.querySelector('.rdSp'); return sp ? sp.offsetHeight / probe.clientHeight : 0; };
-    while (ram && queue.length) {
+    const blank = segs => { probe.innerHTML = html(mk(segs), pages.length); const sp = probe.querySelector('.rdSp'); return sp ? sp.offsetHeight / probe.clientHeight : 0; };
+    while (queue.length) {
       const k = fits([queue[0]]) ? maxOk(1, queue.length, k => fits(queue.slice(0, k))) : 0;
       const T0 = nW(queue.slice(0, k)), remT = nW(queue), remC = cmWords(queue);
       // היעד לעמוד הזה: 4 שורות, או פחות כשהפירוש שנשאר צריך יותר עמודים ממה שהטקסט מספיק להם
@@ -465,11 +458,11 @@
       let X = T0, cut = null;
       if (k < queue.length) {
         const s = queue[k], n = s.to - s.from;
-        // קודם: חלק מההלכה הבאה עם כל הפירוש שלו (רק אם נכנסת לפחות שורה)
+        // קודם: חלק מהקטע הבא עם כל הפירוש שלו (רק אם נכנסת לפחות שורה)
         let w = fits(take(T0 + 1)) ? maxOk(1, n - 1, x => fits(take(T0 + x))) : 0;
         if (w < wpl && k) w = 0;
         X = T0 + w;
-        // מעט מדי טקסט, או רווח ריק גדול באמצע הדף (הפירוש של ההלכה הבאה ארוך ולכן היא לא נכנסה):
+        // מעט מדי טקסט, או רווח ריק גדול באמצע הדף (הפירוש של הקטע הבא ארוך ולכן הוא לא נכנס):
         // ממשיכים את הטקסט בעמוד הזה, והפירוש ממלא את מה שנשאר ונחתך — ההמשך שלו בא בראש הפירוש בעמוד הבא
         const few = X < Qd, gap = !few && blank(take(X)) > 0.2;
         if (few || gap) {
@@ -488,12 +481,27 @@
       pages.push(pg);
       if (pages.length > 600) break;
     }
-    // נדיר: נשאר פירוש אחרי המילה האחרונה של הפרק — ממשיכים אותו עם המילים האחרונות שוב, כדי שלא יאבד ולא יהיה עמוד בלי טקסט
-    while (ram && carry.length && pages.length < 600) {
-      const last = pages[pages.length - 1].segs.slice(-1), pg = c => ({ segs: last, vs: [last[0].v], cm: cutCm(carry, c)[0] });
-      const c = Math.max(1, maxOk(0, cmWords([]), c => { probe.innerHTML = pageInner(b, ch, pg(c), pages.length + 1, ''); return !over(probe); }));
+    // נדיר: נשאר פירוש אחרי המילה האחרונה — ממשיכים אותו עם המילים האחרונות שוב, כדי שלא יאבד ולא יהיה עמוד בלי טקסט
+    while (carry.length && pages.length && pages.length < 600) {
+      const last = pages[pages.length - 1].segs.slice(-1), pg = c => page(last, cutCm(carry, c)[0], pages.length);
+      const c = Math.max(1, maxOk(0, cmWords([]), c => { probe.innerHTML = html(pg(c), pages.length); return !over(probe); }));
       pages.push(pg(c)); carry = cutCm(carry, c)[1];
     }
+    return pages;
+  }
+
+  /* עימוד צמוד (תנ״ך, משנה, גמרא ומפרשים): כל דיבור באותו עמוד עם הטקסט שהוא מפרש. קטעים שלמים עם כל הפירוש שלהם,
+     כל עוד הם נכנסים; קטע ארוך מעמוד מתפצל במילים, וכל דיבור עובר עם החלק שבו מופיע הדיבור המתחיל שלו. רק פירוש ארוך
+     מעמוד שלם (גם עם מילה אחת של טקסט) נחתך וממשיך בראש הפירוש בעמוד הבא. הפרמטרים כמו ב-flowPages. */
+  function strictPages(probe, queue, entsOf, ents, page, html) {
+    const pages = [];
+    // carry = המשך של דיבורים ארוכים מהעמוד הקודם (פירוש שלא נכנס כולו בעמוד אחד עם הטקסט שלו, כמו רש״י על "בראשית").
+    // הוא בא בראש הפירוש בעמוד הבא, ותמיד עם טקסט חדש באותו עמוד. cut = כמה מילים של הפירוש להשאיר בעמוד (השאר עובר ל-carry).
+    let carry = [];
+    const mk = (segs, cut) => { const all = carry.concat(...segs.map(entsOf)); return page(segs, cut == null ? all : cutCm(all, cut)[0], pages.length); };
+    const fits = (segs, cut) => { probe.innerHTML = html(mk(segs, cut), pages.length); return !over(probe); };
+    const cmWords = segs => carry.concat(...segs.map(entsOf)).reduce((n, e) => n + cmLen(e), 0);
+    const maxOk = maxOkF;
     while (queue.length) {
       const segs = [];
       // פסוקים שלמים עם כל הפירוש שלהם, כל עוד הם נכנסים
@@ -521,6 +529,22 @@
       pages.push(pg);
       if (pages.length > 600) break;
     }
+    return pages;
+  }
+
+  function pagesFor(b, ch) {
+    const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
+    const probe = $r('#rdProbe'), ents = cmEntries(b, ch), pages = [];
+    probe.className = 'rdPage' + geo.cls;
+    // דיבורים של קטע: לפי מיקום הדיבור המתחיל במילים [from, to); הקטע האחרון של פסוק לוקח גם את מה שאחרי
+    const entsOf = s => { const n = wordsOf(b, ch, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
+    // תור הקטעים: בהתחלה כל פסוק שלם; קטע שלא נכנס לבד בעמוד ריק מתפצל במילים
+    const queue = versesOf(IX, b, ch).map(v => ({ v, from: 0, to: wordsOf(b, ch, v).length }));
+    // רמב״ם: עימוד זורם (flowPages) — בכל עמוד כמה שורות של הלכה, והפירוש ממשיך אחריה
+    if (isRambam(b)) {
+      const wpl = Math.max(4, Math.round((geo.pw - (geo.narrow ? 32 : 80)) / (geo.fs * 3)));
+      pages.push(...flowPages(probe, queue, entsOf, ents, (segs, cm) => ({ segs, vs: [...new Set(segs.map(s => s.v))], cm }), (pg, n) => pageInner(b, ch, pg, n + 1, ''), wpl));
+    } else pages.push(...strictPages(probe, queue, entsOf, ents, (segs, cm) => ({ segs, vs: [...new Set(segs.map(s => s.v))], cm }), (pg, n) => pageInner(b, ch, pg, n + 1, '')));
     probe.innerHTML = '';
     PC.set(key, pages); trimMap(PC, 60); return pages;
   }
@@ -725,6 +749,31 @@
   }
   // פירושי עמוד: [{v: קטע, dh, body, src: 'r'|'t'}]
   const talCm = (k, j) => { const a = amudRow(k, j); return a[1].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 'r' })).concat(a[2].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 't' }))); };
+  // מילים של קטע גמרא (עם סימני ההדגשה \u0001-\u0004), לפיצול קטע ארוך בין עמודים
+  const talWords = (k, j, v) => { const key = 'T' + k + ':' + j + ':' + v; if (!WC.has(key)) { WC.set(key, String(amudRow(k, j)[0][v] || '').split(/\s+/).filter(Boolean)); trimMap(WC, 6000); } return WC.get(key); };
+  // מילים [from, to) של קטע, עם סימני הדגשה מאוזנים: מה שנפתח לפני from נפתח שוב, ומה שנשאר פתוח בסוף נסגר
+  function talSlice(ws, from, to) {
+    let big = false, bold = false;
+    const scan = w => { for (const c of w) { if (c === '\u0001') big = true; else if (c === '\u0002') big = false; else if (c === '\u0003') bold = true; else if (c === '\u0004') bold = false; } };
+    ws.slice(0, from).forEach(scan);
+    const pre = (big ? '\u0001' : '') + (bold ? '\u0003' : ''), t = ws.slice(from, to).join(' ');
+    scan(t);
+    return pre + t + (bold ? '\u0004' : '') + (big ? '\u0002' : '');
+  }
+  // פירושי עמוד עם pos = מספר המילה בקטע שבה מופיע הדיבור המתחיל (כמו cmEntries): רש״י ותוספות מחפשים כל אחד מתחילת הקטע
+  const talEnts = (k, j) => {
+    const all = talCm(k, j), nws = {}, last = {};
+    const first = w => norm(plainT(w)).split(' ')[0];
+    return all.map(e => {
+      const nw = nws[e.v] || (nws[e.v] = talWords(k, j, e.v).map(first)), lk = e.src + e.v, from = last[lk] || 0;
+      const dt = norm(plainT(e.dh || '').replace(/וכו['׳]?|וגו['׳]?|כו['׳]/g, '')).split(' ').filter(Boolean);
+      let pos = -1;
+      if (dt.length) for (let i = from; i < nw.length && pos < 0; i++) if (nw[i] === dt[0] && (dt.length < 2 || i + 1 >= nw.length || nw[i + 1] === dt[1])) pos = i;
+      if (pos < 0 && dt.length) for (let i = from; i < nw.length && pos < 0; i++) if (nw[i] === dt[0]) pos = i;
+      if (pos >= 0) last[lk] = pos; else pos = from;
+      return Object.assign({}, e, { pos });
+    });
+  };
 
   /* צורת הדף: daf-renderer מחשב את פריסת וילנא לפי שטח הטקסטים. ההגדרות שלו הן משתנים גלובליים אחד לכל הדף,
      ולכן כל עמוד נבנה בנפרד במקום נסתר ו"מוקפא" ל-HTML עם סגנונות קבועים (freezeDaf) — כך שני עמודים
@@ -781,19 +830,16 @@
   }
 
   /* גמרא ומפרשים: עמודים לכל עמוד-גמרא (pg = {segs: [קטעים], cm: [פירושים]}), כמו pagesFor של תנ״ך/משנה */
-  const maxOkF = (lo, max, ok) => {
-    let good = lo, step = 1;
-    while (good + step <= max && ok(good + step)) { good += step; step *= 2; }
-    let bad = Math.min(good + step, max + 1);
-    while (bad - good > 1) { const mid = (good + bad) >> 1; if (ok(mid)) good = mid; else bad = mid; }
-    return good;
-  };
   function studyInner(k, j, pg, q) {
     const t = TX.list[TX.byK[k]], a = amudRow(k, j), cmCls = S.cmFont === 'rashi' ? 'fR' : 'fN';
     const chip = s => '<span class="vn">' + num(s + 1) + '</span>';
     let html = talHead(t, j);
     if (pg.first) html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(T('מסכת') + ' ' + talName(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j)) + '</span></div>';
-    html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + pg.segs.map(s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>').join(' ') + '</p></div></div><div class="rdSp"></div>';
+    // קטע = {v, from, to} במילים; קטע שנחתך מסומן ב-"…" בסופו, וההמשך שלו בעמוד הבא מתחיל ב-"…"
+    if (pg.segs.length) html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + pg.segs.map(s => {
+      const ws = talWords(k, j, s.v), n = ws.length, t = s.from === 0 && s.to >= n ? a[0][s.v] : talSlice(ws, s.from, s.to);
+      return '<span class="rdV tg" data-j="' + j + '" data-s="' + s.v + '">' + (s.from === 0 ? chip(s.v) : '<span class="rdCont">…</span> ') + talTxt(t, q) + (s.to < n ? ' <span class="rdCont">…</span>' : '') + '</span>';
+    }).join(' ') + '</p></div></div><div class="rdSp"></div>';
     [['r', innerLabel(k, j)], ['t', T('תוספות')]].forEach(([src, label]) => {
       const list = pg.cm.filter(e => e.src === src); if (!list.length) return;
       html += '<section class="rdCm ' + cmCls + '" aria-label="' + h(label) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(label) + '</span></div><div class="rdCmBody">' +
@@ -801,24 +847,16 @@
     });
     return html + '<div class="rdNum">' + h(dafTxt(j)) + '</div>';
   }
+  /* עימוד צמוד כמו בתנ״ך ובמשנה (strictPages): רש״י ותוספות באותו עמוד עם קטע הגמרא שלהם. קטע ארוך מתפצל במילים,
+     וכל דיבור נשאר עם החלק שבו מופיע הדיבור המתחיל שלו (pos); רק פירוש ארוך מעמוד ממשיך בעמוד הבא. */
   function studyPages(k, j, g) {
     const key = 'T' + k + ':' + j + '|' + g.key; if (PC.has(key)) return PC.get(key);
-    const probe = $r('#rdProbe'), a = amudRow(k, j), ents = talCm(k, j), pages = [];
+    const probe = $r('#rdProbe'), a = amudRow(k, j), ents = talEnts(k, j);
     probe.className = 'rdPage tal' + g.cls;
-    let carry = [];
-    const mk = (segs, cut) => { const all = carry.concat(...segs.map(s => ents.filter(e => e.v === s))); return { segs, first: !pages.length, cm: cut == null ? all : cutCm(all, cut)[0] }; };
-    const fits = (segs, cut) => { probe.innerHTML = studyInner(k, j, mk(segs, cut), ''); return !over(probe); };
-    const queue = a[0].map((_, i) => i);
-    if (!queue.length) queue.push(0);
-    while (queue.length) {
-      let n = fits([queue[0]]) ? maxOkF(1, queue.length, n => fits(queue.slice(0, n))) : 0, cut = null;
-      if (!n) { n = 1; const seg = [queue[0]]; cut = maxOkF(0, carry.concat(...seg.map(s => ents.filter(e => e.v === s))).reduce((x, e) => x + cmLen(e), 0), c => fits(seg, c)); }
-      const segs = queue.splice(0, n), pg = mk(segs, cut);
-      carry = cut == null ? [] : cutCm(carry.concat(...segs.map(s => ents.filter(e => e.v === s))), cut)[1];
-      pages.push(pg);
-      if (!queue.length && carry.length) { pages.push({ segs: [], first: false, cm: carry }); carry = []; }
-      if (pages.length > 200) break;
-    }
+    const queue = a[0].map((_, v) => ({ v, from: 0, to: talWords(k, j, v).length }));
+    const entsOf = s => { const n = talWords(k, j, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
+    let pages = queue.length ? strictPages(probe, queue, entsOf, ents, (segs, cm, n) => ({ segs, first: !n, cm }), pg => studyInner(k, j, pg, '')) : [];
+    if (!pages.length) pages = [{ segs: [], first: true, cm: ents }];
     probe.innerHTML = '';
     PC.set(key, pages); trimMap(PC, 60); return pages;
   }
@@ -885,7 +923,7 @@
     if (s != null) S.sel = { j: S.tj, s }; // אם המסכת עוד לא נטענה — החלון ייפתח אחרי הטעינה
     render();
     if (s == null || !TD[k]) return;
-    if (S.tview === 'study') { const p = studyPages(k, S.tj, geo).findIndex(pg => pg.segs.includes(s)); if (p > 0) { S.tp = p; render(); } }
+    if (S.tview === 'study') { const p = studyPages(k, S.tj, geo).findIndex(pg => pg.segs.some(x => x.v === s)); if (p > 0) { S.tp = p; render(); } }
     openSeg(S.tj, s);
   }
 
@@ -917,7 +955,7 @@
     if (s < 0) { if (j === 0) return; j--; s = amudRow(t.k, j)[0].length - 1; }
     else if (s >= amudRow(t.k, j)[0].length) { if (j + 1 >= t.n) return; j++; s = 0; }
     const vis = R.querySelector('.rdBook [data-j="' + j + '"][data-s="' + s + '"]');
-    if (!vis) { S.tj = j; S.tp = 0; if (S.tview === 'study') { const p = studyPages(t.k, j, geo).findIndex(pg => pg.segs.includes(s)); if (p > 0) S.tp = p; } render(); }
+    if (!vis) { S.tj = j; S.tp = 0; if (S.tview === 'study') { const p = studyPages(t.k, j, geo).findIndex(pg => pg.segs.some(x => x.v === s)); if (p > 0) S.tp = p; } render(); }
     openSeg(j, s);
   }
 
