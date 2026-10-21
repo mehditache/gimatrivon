@@ -429,7 +429,7 @@
     while (bad - good > 1) { const mid = (good + bad) >> 1; if (ok(mid)) good = mid; else bad = mid; }
     return good;
   };
-  /* עימוד זורם (רמב״ם, גמרא ומפרשים): בכל עמוד לפחות Q מילים של טקסט (כ-4 שורות), כמו בדפוס — הטקסט זורם מעמוד לעמוד
+  /* עימוד זורם (רמב״ם): בכל עמוד לפחות Q מילים של טקסט (כ-4 שורות), כמו בדפוס — הטקסט זורם מעמוד לעמוד
      והפירוש ממשיך אחריו. קטע שהפירוש שלו ארוך לא "נדחה" לעמוד הבא ומשאיר עמוד של שורה אחת: מתחילים אותו כאן, והפירוש
      שלא נכנס עובר (carry) לראש הפירוש בעמוד הבא. queue = [{v, from, to}] (קטעים, במילים), entsOf(קטע) = הדיבורים שלו,
      ents = כל הדיבורים, page(segs, cm, n) = עמוד n, html(pg, n) = התוכן שלו למדידה ב-probe, wpl = מילים בשורה (הערכה). */
@@ -490,27 +490,18 @@
     return pages;
   }
 
-  function pagesFor(b, ch) {
-    const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
-    const probe = $r('#rdProbe'), ents = cmEntries(b, ch), pages = [];
-    probe.className = 'rdPage' + geo.cls;
-    // דיבורים של קטע: לפי מיקום הדיבור המתחיל במילים [from, to); הקטע האחרון של פסוק לוקח גם את מה שאחרי
-    const entsOf = s => { const n = wordsOf(b, ch, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
+  /* עימוד צמוד (תנ״ך, משנה, גמרא ומפרשים): כל דיבור באותו עמוד עם הטקסט שהוא מפרש. קטעים שלמים עם כל הפירוש שלהם,
+     כל עוד הם נכנסים; קטע ארוך מעמוד מתפצל במילים, וכל דיבור עובר עם החלק שבו מופיע הדיבור המתחיל שלו. רק פירוש ארוך
+     מעמוד שלם (גם עם מילה אחת של טקסט) נחתך וממשיך בראש הפירוש בעמוד הבא. הפרמטרים כמו ב-flowPages. */
+  function strictPages(probe, queue, entsOf, ents, page, html) {
+    const pages = [];
     // carry = המשך של דיבורים ארוכים מהעמוד הקודם (פירוש שלא נכנס כולו בעמוד אחד עם הטקסט שלו, כמו רש״י על "בראשית").
     // הוא בא בראש הפירוש בעמוד הבא, ותמיד עם טקסט חדש באותו עמוד. cut = כמה מילים של הפירוש להשאיר בעמוד (השאר עובר ל-carry).
     let carry = [];
-    const mk = (segs, cut) => { const all = carry.concat(...segs.map(entsOf)); return { segs, vs: [...new Set(segs.map(s => s.v))], cm: cut == null ? all : cutCm(all, cut)[0] }; };
-    const fits = (segs, cut) => { probe.innerHTML = pageInner(b, ch, mk(segs, cut), pages.length + 1, ''); return !over(probe); };
+    const mk = (segs, cut) => { const all = carry.concat(...segs.map(entsOf)); return page(segs, cut == null ? all : cutCm(all, cut)[0], pages.length); };
+    const fits = (segs, cut) => { probe.innerHTML = html(mk(segs, cut), pages.length); return !over(probe); };
     const cmWords = segs => carry.concat(...segs.map(entsOf)).reduce((n, e) => n + cmLen(e), 0);
     const maxOk = maxOkF;
-    // תור הקטעים: בהתחלה כל פסוק שלם; קטע שלא נכנס לבד בעמוד ריק מתפצל במילים
-    const queue = versesOf(IX, b, ch).map(v => ({ v, from: 0, to: wordsOf(b, ch, v).length }));
-    // רמב״ם: עימוד זורם (flowPages) — בכל עמוד כמה שורות של הלכה, והפירוש ממשיך אחריה
-    if (isRambam(b)) {
-      const wpl = Math.max(4, Math.round((geo.pw - (geo.narrow ? 32 : 80)) / (geo.fs * 3)));
-      pages.push(...flowPages(probe, queue, entsOf, ents, (segs, cm) => ({ segs, vs: [...new Set(segs.map(s => s.v))], cm }), (pg, n) => pageInner(b, ch, pg, n + 1, ''), wpl));
-      queue.length = 0;
-    }
     while (queue.length) {
       const segs = [];
       // פסוקים שלמים עם כל הפירוש שלהם, כל עוד הם נכנסים
@@ -538,6 +529,22 @@
       pages.push(pg);
       if (pages.length > 600) break;
     }
+    return pages;
+  }
+
+  function pagesFor(b, ch) {
+    const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
+    const probe = $r('#rdProbe'), ents = cmEntries(b, ch), pages = [];
+    probe.className = 'rdPage' + geo.cls;
+    // דיבורים של קטע: לפי מיקום הדיבור המתחיל במילים [from, to); הקטע האחרון של פסוק לוקח גם את מה שאחרי
+    const entsOf = s => { const n = wordsOf(b, ch, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
+    // תור הקטעים: בהתחלה כל פסוק שלם; קטע שלא נכנס לבד בעמוד ריק מתפצל במילים
+    const queue = versesOf(IX, b, ch).map(v => ({ v, from: 0, to: wordsOf(b, ch, v).length }));
+    // רמב״ם: עימוד זורם (flowPages) — בכל עמוד כמה שורות של הלכה, והפירוש ממשיך אחריה
+    if (isRambam(b)) {
+      const wpl = Math.max(4, Math.round((geo.pw - (geo.narrow ? 32 : 80)) / (geo.fs * 3)));
+      pages.push(...flowPages(probe, queue, entsOf, ents, (segs, cm) => ({ segs, vs: [...new Set(segs.map(s => s.v))], cm }), (pg, n) => pageInner(b, ch, pg, n + 1, ''), wpl));
+    } else pages.push(...strictPages(probe, queue, entsOf, ents, (segs, cm) => ({ segs, vs: [...new Set(segs.map(s => s.v))], cm }), (pg, n) => pageInner(b, ch, pg, n + 1, '')));
     probe.innerHTML = '';
     PC.set(key, pages); trimMap(PC, 60); return pages;
   }
@@ -829,7 +836,7 @@
     let html = talHead(t, j);
     if (pg.first) html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(T('מסכת') + ' ' + talName(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j)) + '</span></div>';
     // קטע = {v, from, to} במילים; קטע שנחתך מסומן ב-"…" בסופו, וההמשך שלו בעמוד הבא מתחיל ב-"…"
-    html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + pg.segs.map(s => {
+    if (pg.segs.length) html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + pg.segs.map(s => {
       const ws = talWords(k, j, s.v), n = ws.length, t = s.from === 0 && s.to >= n ? a[0][s.v] : talSlice(ws, s.from, s.to);
       return '<span class="rdV tg" data-j="' + j + '" data-s="' + s.v + '">' + (s.from === 0 ? chip(s.v) : '<span class="rdCont">…</span> ') + talTxt(t, q) + (s.to < n ? ' <span class="rdCont">…</span>' : '') + '</span>';
     }).join(' ') + '</p></div></div><div class="rdSp"></div>';
@@ -840,16 +847,15 @@
     });
     return html + '<div class="rdNum">' + h(dafTxt(j)) + '</div>';
   }
-  /* עימוד זורם כמו ברמב״ם (flowPages): בכל עמוד כמה שורות גמרא, והפירוש שלא נכנס ממשיך בראש הפירוש בעמוד הבא.
-     קטע ארוך מתפצל במילים, וכל דיבור נשאר עם החלק שבו מופיע הדיבור המתחיל שלו (כמו בתנ״ך, pos). */
+  /* עימוד צמוד כמו בתנ״ך ובמשנה (strictPages): רש״י ותוספות באותו עמוד עם קטע הגמרא שלהם. קטע ארוך מתפצל במילים,
+     וכל דיבור נשאר עם החלק שבו מופיע הדיבור המתחיל שלו (pos); רק פירוש ארוך מעמוד ממשיך בעמוד הבא. */
   function studyPages(k, j, g) {
     const key = 'T' + k + ':' + j + '|' + g.key; if (PC.has(key)) return PC.get(key);
     const probe = $r('#rdProbe'), a = amudRow(k, j), ents = talEnts(k, j);
     probe.className = 'rdPage tal' + g.cls;
     const queue = a[0].map((_, v) => ({ v, from: 0, to: talWords(k, j, v).length }));
     const entsOf = s => { const n = talWords(k, j, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
-    const wpl = Math.max(4, Math.round((g.pw - (g.narrow ? 32 : 80)) / (g.fs * 3)));
-    let pages = queue.length ? flowPages(probe, queue, entsOf, ents, (segs, cm, n) => ({ segs, first: !n, cm }), pg => studyInner(k, j, pg, ''), wpl) : [];
+    let pages = queue.length ? strictPages(probe, queue, entsOf, ents, (segs, cm, n) => ({ segs, first: !n, cm }), pg => studyInner(k, j, pg, '')) : [];
     if (!pages.length) pages = [{ segs: [], first: true, cm: ents }];
     probe.innerHTML = '';
     PC.set(key, pages); trimMap(PC, 60); return pages;
@@ -1080,8 +1086,7 @@
     host.innerHTML = '<div class="trDaf" style="' + Q.vars + ';height:auto"><div class="trMain"></div><div class="trSide trC"><div class="sp"></div><div class="tx"></div></div><div class="trWide"></div></div>';
     return { main: host.querySelector('.trMain'), sp: host.querySelector('.sp'), tx: host.querySelector('.tx'), wide: host.querySelector('.trWide') };
   }
-  // עימוד סימן: [{t: [a, b) בטור, y/c: [a, b) בזרמים, hT: גובה הטור בעמוד, first, wide: 'y'|'c' (מפרש אחד בשני טורים,
-  // מתחת לטור ברוחב מלא כשנשאר טור; hT = גובה הטור הזה)}]. בכל עמוד יש טור: הטור מתחלק על כל העמודים שהפירושים צריכים (budget)
+  // עימוד סימן: [{t: [a, b) בטור, y/c: [a, b) בזרמים, hT: גובה הטור בעמוד, first, wide: 'y'|'c' (עמוד של מפרש אחד בשני טורים)}]
   function turPages(k, s, Q) {
     const key = k + ':' + s + '|' + Q.key; if (TPC.has(key)) return TPC.get(key);
     const m = turModel(k, s), P = trProbe(Q), H = Q.H, tt = m.tt, TT = tt.length, Y = m.st.y, C = m.st.c;
@@ -1118,31 +1123,15 @@
       while (n > 0 && ANC.test(z.toks[pos + n - 1])) n--;
       return pos + n;
     };
-    // כמה אסימוני טור בשורה אחת של הטור (נמדד פעם אחת), לחישוב היעד של כל עמוד
-    const lineTok = (() => { const n = Math.min(TT, 80); if (n < 2) return 8; const hh = mainH(0, n, false); return Math.max(3, n / Math.max(1, Math.round(hh / Q.lm))); })();
-    /* בכל עמוד יש טור (כמו בתנ״ך, במשנה וברמב״ם — אין עמוד של פירוש בלבד): הטור מתחלק על כל העמודים שהפירושים צריכים.
-       Pn = הערכה של מספר העמודים שנשארו (לפי האותיות שנשארו בשני המפרשים; כשאחד נגמר, השני תופס שני טורים).
-       min = כמה טור לפחות בעמוד הזה (חלק שווה, עד 4 שורות). lim(te) = עד איפה מותר להגיע כשהעמוד צריך עד te כדי להתמלא:
-       לכל עמוד שאחריו נשארת שורה של טור, או חלק שווה ממה שנשאר אם אין מספיק (קודם ממלאים את העמוד, אחר כך שומרים) */
-    const budget = () => {
-      const remT = TT - tp; if (remT <= 0) return { min: tp, lim: () => tp };
-      const ry = chars('y', yp, Y.toks.length), rc = chars('c', cp, C.toks.length), cap = Math.max(1, capChars(Q.lm * 2));
-      const est = (Math.min(ry, rc) + Math.abs(ry - rc) / 2) / cap, Pn = Math.max(1, Math.ceil(est * 1.08 + 0.15));
-      const share = Math.max(1, Math.min(Math.round(lineTok * 4), Math.floor(remT / Pn)));
-      const lim = te => { if (Pn < 2) return TT; const keep = Math.max(1, Math.min(Math.round(lineTok), Math.floor((TT - Math.min(te, TT)) / (Pn - 1)))); return Math.max(tp + 1, TT - (Pn - 1) * keep); };
-      return { min: tp + Math.min(share, remT), lim };
-    };
     let tp = 0, yp = 0, cp = 0, first = true; const pages = [];
     while (pages.length < 400) {
       if (!first && tp >= TT && yp >= Y.toks.length && cp >= C.toks.length) break;
       let te = tp, hT = 0;
-      const bud = budget();
       if (tp < TT) {
         const overE = (x, end, hh) => chars(x, x === 'y' ? yp : cp, end) > capChars(hh);
-        // הפירושים מפגרים אחרי הטור: מה שכבר מותר ממלא את שני הטורים גם בלי טור חדש — מוסיפים רק את חלקו של העמוד בטור
+        // הפירושים מפגרים אחרי הטור: מה שכבר מותר ממלא את שני הטורים גם בלי טור חדש — עמוד של פירושים בלבד
         const lag = !first && overE('y', Y.allow(tp), 0) && overE('c', C.allow(tp), 0);
-        if (lag) te = bud.min;
-        else {
+        if (!lag) {
           const cand = m.cuts.filter(c => c > tp);
           const sat = i => {
             const e = cand[i], hh = mainH(tp, e, first);
@@ -1160,14 +1149,8 @@
           }
         }
       }
-      // לפחות חלקו של העמוד בטור, ולא יותר ממה שמשאיר טור לעמודים הבאים
-      if (tp < TT && (yp < Y.toks.length || cp < C.toks.length)) {
-        te = Math.max(te, bud.min); te = Math.min(te, bud.lim(te));
-        if (mainH(tp, te, first) > H) te = tp + maxOkF(1, te - tp - 1, w => mainH(tp, tp + w, first) <= H);
-      }
       if (te > tp || first) hT = mainH(tp, te, first);
       let pg;
-      const one = tp < TT && !first && (yp >= Y.toks.length) !== (cp >= C.toks.length);
       if (tp < TT && Y.allow(te) <= yp && C.allow(te) <= cp) {
         // אין פירוש בעמוד הזה: הטור לבדו ברוחב מלא, עד המקום שבו מתחיל הפירוש הבא
         const lim = m.cuts.find(c => c > tp && (Y.allow(c) > yp || C.allow(c) > cp)) || TT;
@@ -1177,34 +1160,6 @@
         P.main.style.width = '';
         pg = { t: [tp, te], y: [yp, yp], c: [cp, cp], hT: 0, first, full: true };
         tp = te;
-      } else if (one) {
-        // נשאר רק מפרש אחד, והטור עוד לא נגמר: הטור ברוחב מלא למעלה, והמפרש בשני טורים מתחתיו
-        const x = yp < Y.toks.length ? 'y' : 'c', z = m.st[x], pos = x === 'y' ? yp : cp;
-        P.main.style.width = Q.W + 'px';
-        const fullH = (a, b) => mainH(a, b, false);
-        // מספיק טור כדי שהמפרש ימלא את העמוד (עד max), אבל לא יותר ממה שנכנס עם שורות פירוש מתחתיו
-        const want = c => chars(x, pos, z.allow(c)) >= capChars(fullH(tp, c)) * 1.6;
-        if (!want(te)) { const c = m.cuts.find(c => c > te && want(c)) || TT; te = Math.max(te, Math.min(c, bud.lim(c))); }
-        while (te > tp + 1 && fullH(tp, te) > H * 0.6) te = tp + Math.max(1, Math.floor((te - tp) * 0.8));
-        // הטור נגמר כאן אבל המפרש לא ייגמר בעמוד הזה: משאירים את סוף הטור לעמוד הבא
-        if (te >= TT && te - tp > 1 && chars(x, pos, z.toks.length) > capChars(fullH(tp, te)) * 1.7) te -= Math.max(1, Math.min(Math.round(lineTok), Math.floor((te - tp) / 2)));
-        const hF = fullH(tp, te); P.main.style.width = '';
-        const Hw = H - hF - Q.vg, end = z.allow(te);
-        let n = 0;
-        if (end > pos && Hw > Q.ls * 2) {
-          let lim = pos; const wantC = capChars(0) * 2.6 * (Hw / H) + 80; while (lim < end && chars(x, pos, lim) < wantC) lim++;
-          n = lim - pos;
-          if (wideH(x, pos, lim) > Hw) {
-            MEAS = true; P.wide.style.height = Hw + 'px'; P.wide.style.columnFill = 'auto'; wideH(x, pos, lim); MEAS = false;
-            const left = P.wide.getBoundingClientRect().left - 1;
-            n = lastFit(P.wide, lim - pos, u => u.getBoundingClientRect().left >= left);
-            P.wide.style.height = ''; P.wide.style.columnFill = '';
-            while (n > 1 && wideH(x, pos, pos + n) > Hw) n--;
-          }
-          while (n > 1 && ANC.test(z.toks[pos + n - 1])) n--;
-        }
-        pg = { t: [tp, te], wide: x, w: [pos, pos + n], hT: hF, first: false };
-        tp = te; if (x === 'y') yp += n; else cp += n;
       } else if (te === tp && tp >= TT && !first && (yp >= Y.toks.length || cp >= C.toks.length)) {
         // הטור נגמר ונשאר רק מפרש אחד: הוא תופס את כל העמוד, בשני טורים
         const x = yp < Y.toks.length ? 'y' : 'c', z = m.st[x], pos = x === 'y' ? yp : cp;
@@ -1224,11 +1179,6 @@
         if (x === 'y') yp += n; else cp += n;
       } else {
         let ny = fill('y', yp, Y.allow(te), hT), nc = fill('c', cp, C.allow(te), hT);
-        // הטור נגמר בעמוד הזה אבל הפירושים ממשיכים (ההערכה של Pn הייתה קצרה): משאירים את סוף הטור לעמוד הבא
-        if (te >= TT && te - tp > 1 && (ny < Y.toks.length || nc < C.toks.length)) {
-          te -= Math.max(1, Math.min(Math.round(lineTok), Math.floor((te - tp) / 2))); hT = mainH(tp, te, first);
-          ny = fill('y', yp, Y.allow(te), hT); nc = fill('c', cp, C.allow(te), hT);
-        }
         if (te === tp && ny === yp && nc === cp && !first) { if (yp < Y.toks.length) ny = yp + 1; else if (cp < C.toks.length) nc = cp + 1; else te = Math.min(TT, tp + 1); } // תמיד מתקדמים
         pg = { t: [tp, te], y: [yp, ny], c: [cp, nc], hT, first };
         tp = te; yp = ny; cp = nc;
@@ -1245,8 +1195,7 @@
   function turPageHtml(k, s, p, Q, side, cls) {
     const t = turTOf(k), m = turModel(k, s), ps = turPages(k, s, Q), pg = ps[p];
     let inner; TURQ = true;
-    if (pg.wide) inner = (pg.t[1] > pg.t[0] ? '<div class="trMain trFull">' + turMainHtml(m, pg.t[0], pg.t[1], pg.first) + '</div>' : '') +
-      '<div class="trWide"' + (pg.hT ? ' style="margin-top:' + (pg.hT + Q.vg) + 'px"' : '') + '>' + streamHtml(m, pg.wide, pg.w[0], pg.w[1]) + '</div>';
+    if (pg.wide) inner = '<div class="trWide">' + streamHtml(m, pg.wide, pg.w[0], pg.w[1]) + '</div>';
     else {
       const sp = '<div class="sp" style="height:' + (pg.hT ? pg.hT + Q.vg : 0) + 'px"></div>';
       inner = (pg.t[1] > pg.t[0] || pg.first ? '<div class="trMain' + (pg.full ? ' trFull' : '') + '">' + turMainHtml(m, pg.t[0], pg.t[1], pg.first) + '</div>' : '') +
@@ -1394,7 +1343,7 @@
       const p = x.i - (m.hd ? 1 : 0); if (p < 0) return 0; // הכותרת ("הלכות …") מוצגת בראש העמוד הראשון
       let a = 0, n = 0; while (n < p && a < m.tt.length) { if (m.tt[a] === '\n') n++; a++; }
       let w = a; for (let i = a; i < m.tt.length && m.tt[i] !== '\n'; i++) if (mk && mk.t.has(i)) { w = i; break; }
-      return Math.max(0, ps.findIndex(pg => pg.t[1] > w));
+      return Math.max(0, ps.findIndex(pg => !pg.wide && pg.t[1] > w));
     }
     const z = m.st[x.x]; let st = z.cs[x.i] || 0;
     for (let i = z.cs[x.i]; i < z.ce[x.i]; i++) if (mk && mk[x.x].has(i)) { st = i; break; }

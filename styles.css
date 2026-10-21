@@ -1093,7 +1093,7 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 /* ---- v3.12.0 · טור, בית יוסף וב״ח (reader.js: renderTur) — בסגנון מהדורת "שירת דבורה" ----
    .trDaf = שטח הטקסט בעמוד (משתנים --tr* מ-trGeo). הטור (.trMain) באמצע למעלה בכתב מרובע; ב״ח (.trC) בטור הימני
    ובית יוסף (.trY) בשמאלי, בכתב רש״י. בכל טור צד יש מרווח צף (.sp) בגובה הטור, כך שהפירוש מקיף את הטור וממשיך
-   מתחתיו ברוחב מלא. .trWide = מפרש אחד בשני טורים (v3.17.0: מתחת לטור ברוחב מלא, .trMain.trFull, כשהטור עוד לא נגמר). גם #rdPrint משתמש בכללים האלה, ולכן הם לא תחת .reader. */
+   מתחתיו ברוחב מלא. .trWide = עמוד של מפרש אחד בשני טורים. גם #rdPrint משתמש בכללים האלה, ולכן הם לא תחת .reader. */
 .reader.isTur #rdViewSeg{display:none}
 .rdPage.tur .trHead .mid{flex:1;min-width:0;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12.5px "GimFrank",var(--tf);color:var(--rdInk)}
 .rdPage.tur .trHead span:first-child,.rdPage.tur .trHead .l{font:700 13px "GimFrank",var(--tf);color:var(--rdGold);flex:none}
