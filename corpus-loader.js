@@ -53,6 +53,16 @@
   // לבדיקות ולכלים: היחידות המקוריות [cat, book, chapter, verse, text, …] של ספר
   function units(b) { const out = []; each(b, (...u) => out.push(u)); return out; }
   const drop = b => { parts[b] = null; };
+  /* v3.16.0: הנתונים כאן הם רק שלב ביניים — הגימטריה (app.js) והקריאה (reader.js) בונות מהם מבנים משלהן.
+     use(ids) מסמן שצריך את הספרים, ומחזיר release(); ספר שאף אחד כבר לא צריך נמחק מהזיכרון (אם יידרש שוב,
+     הקובץ נטען שוב — מהמטמון של הדפדפן או של ה-Service Worker). */
+  const refs = BOOKS.map(() => 0);
+  function use(ids) {
+    ids = [...new Set(ids)].filter(b => BOOKS[b]); ids.forEach(b => { refs[b]++; });
+    let done = false;
+    return () => { if (done) return; done = true; ids.forEach(b => { if (--refs[b] === 0) drop(b); }); };
+  }
+  const held = () => parts.reduce((n, p) => n + (p ? 1 : 0), 0);
 
-  G.GimCorpus = { index: IDX, books: BOOKS, put, load, ready, each, units, drop };
+  G.GimCorpus = { index: IDX, books: BOOKS, put, load, ready, each, units, drop, use, held };
 })();

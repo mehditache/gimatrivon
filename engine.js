@@ -114,35 +114,76 @@ function compareAll(textA, textB, methodsA, methodsB) { // כל שיטה בצד 
 // units: [{c: קטגוריה, b: אינדקס ספר, ch, n, t: טקסט מנוקה}] — כל יחידה = פסוק / משנה. חלונות אינם חוצים יחידות.
 // opts.keepText (ברירת מחדל true): כשכבוי (לשימוש ב-worker שרק סורק ולא מציג טקסט), לא נשמרים מערך התיבות
 // (toks) ולא שדה הטקסט (t) של כל יחידה — חוסך זיכרון משמעותי (המילים המקוריות של כל הקורפוס) כשלא נדרש.
-function buildIndex(units, opts) {
+// v3.16.0: הבנייה מחולקת לצעדים (indexBuilder), כדי שהדפדפן יוכל לבנות את האינדקס בפרוסות קטנות (buildIndexAsync)
+// בלי לחסום את המסך — למשל מעבר למסך הקריאה באמצע הבנייה. buildIndex בונה הכל בבת אחת, והתוצאה זהה.
+function indexBuilder(units, opts) {
   const keepText = !opts || opts.keepText !== false;
   // טבלאות לפי קוד תו (אותיות סופיות ממופות לבסיס) — מהיר פי כמה מבניית מערכים לכל תיבה
   const reg = new Int32Array(1500), mil = new Int32Array(1500), atb = new Int32Array(1500), ath = new Int32Array(1500), OFF = 0x5D0;
   for (const c of Object.keys(VALUES)) { const i = c.charCodeAt(0) - OFF; reg[i] = VALUES[c]; mil[i] = MILUI[c]; atb[i] = VALUES[ATBASH[c]]; ath[i] = ATBACH_TABLE ? VALUES[ATBACH_TABLE[c] || c] : 0; }
   for (const f of Object.keys(FINALS)) { const i = f.charCodeAt(0) - OFF, j = FINALS[f].charCodeAt(0) - OFF; reg[i] = reg[j]; mil[i] = mil[j]; atb[i] = atb[j]; ath[i] = ath[j]; }
-  const toks = [], R = [], L = [], M = [], A = [], H = [], MQ = [], start = new Int32Array(units.length + 1);
-  let n = 0;
-  units.forEach((u, i) => {
-    start[i] = n;
-    for (const t of tokens(u.t)) {
-      const s = t.norm; let r = 0, m = 0, a = 0, h = 0;
-      for (let k = 0; k < s.length; k++) { const c = s.charCodeAt(k) - OFF; r += reg[c]; m += mil[c]; a += atb[c]; h += ath[c]; }
-      if (keepText) toks.push(t.orig);
-      R.push(r); L.push(s.length); M.push(m); A.push(a); H.push(h); MQ.push(t.maqafBefore ? 1 : 0); n++;
+  // הערכים לכל תיבה נאספים ישר למערכים טיפוסיים שגדלים בהכפלה (לא מערכי JS: פי כמה זיכרון, והגדלה שלהם תוקעת)
+  // קיבולת התחלתית לפי אורך הטקסט (בכל הקורפוס יש בממוצע תיבה לכל 6.5 תווים), כדי שלא נצטרך להגדיל באמצע — הגדלה של מערכים בני מיליוני
+  // תאים היא עצירה ארוכה אחת
+  let cap = 1024; for (let u = 0; u < units.length; u++) cap += (units[u].t ? units[u].t.length : 0) / 6.3;
+  cap = Math.ceil(cap);
+  let R = new Uint32Array(cap), WD = new Uint32Array(cap), LT = new Uint32Array(cap), L = new Uint8Array(cap), M = new Uint32Array(cap), A = new Uint32Array(cap), H = new Uint32Array(cap), MQ = new Uint8Array(cap);
+  const grow = () => { cap = Math.ceil(cap * 1.25); const g = (x, T) => { const y = new T(cap); y.set(x); return y; }; R = g(R, Uint32Array); WD = g(WD, Uint32Array); LT = g(LT, Uint32Array); L = g(L, Uint8Array); M = g(M, Uint32Array); A = g(A, Uint32Array); H = g(H, Uint32Array); MQ = g(MQ, Uint8Array); };
+  const toks = [], start = new Int32Array(units.length + 1);
+  let n = 0, i = 0;
+  // step(ms): ממשיך בבנייה עד שעובר הזמן (בודק כל 16 יחידות); מחזיר true כשכל היחידות עובדו.
+  // המערכים הסופיים הם תצוגות (subarray) על המערכים שנאספו — בלי העתקה בסוף, שהייתה עצירה ארוכה אחת
+  // urgent() (לא חובה) = לעצור מיד גם לפני שעבר הזמן — למשל כשיש לחיצה שמחכה (navigator.scheduling.isInputPending)
+  const step = (ms, urgent) => {
+    const t0 = Date.now();
+    for (; i < units.length; i++) {
+      if ((i & 15) === 0 && i && (Date.now() - t0 > ms || (urgent && urgent()))) return false;
+      start[i] = n;
+      for (const t of tokens(units[i].t)) {
+        const s = t.norm; let r = 0, m = 0, a = 0, h = 0;
+        for (let k = 0; k < s.length; k++) { const c = s.charCodeAt(k) - OFF; r += reg[c]; m += mil[c]; a += atb[c]; h += ath[c]; }
+        if (keepText) toks.push(t.orig);
+        if (n === cap) grow();
+        R[n] = r; WD[n] = r + 1; LT[n] = r + s.length; L[n] = s.length; M[n] = m; A[n] = a; H[n] = h; MQ[n] = t.maqafBefore ? 1 : 0; n++;
+      }
     }
+    return true;
+  };
+  const finish = () => {
+    step(Infinity);
+    start[units.length] = n;
+    const v = x => x.subarray(0, n);
+    const W = { regular: v(R), words: v(WD), letters: v(LT), milui: v(M), atbash: v(A), atbach: v(H) };
+    W.kollel = W.regular; // כולל: סכום החלון + 1
+    // אתב״ש/אטב״ח + כולל/תיבות/אותיות: ממומשות ללא מערכים חדשים (אופטימיזציית זיכרון, ~2MB במקום ~33MB) —
+    // אליאס-כולל חינמי בדיוק כמו W.kollel; תיבות/אותיות מחושבות ב-search() ישירות מהמערך הבסיסי + idx.L המשותף.
+    W.atbashKollel = W.atbash; W.atbachKollel = W.atbach;
+    const outUnits = keepText ? units : units.map(u => ({ c: u.c, b: u.b, ch: u.ch }));
+    // MAQAF[i]=1 אם התיבה i חוברה במקף-עליון לתיבה i-1 (ראו tokens() למעלה) — משמש ב-search()'s
+    // filter.singleWord כדי להבחין בין זוג-תיבות-שחוברו-במקף (למשל "אֶת־הָאָרֶץ", נחשב "מילה אחת" לצורך
+    // הסינון הזה) לבין שתי תיבות רגילות המופרדות ברווח.
+    return { units: outUnits, toks: keepText ? toks : null, start, W, L: v(L), MAQAF: v(MQ) };
+  };
+  const progress = () => units.length ? i / units.length : 1;
+  return { step, finish, progress };
+}
+function buildIndex(units, opts) { return indexBuilder(units, opts).finish(); }
+// בנייה בפרוסות: wait(next) קובע מתי להמשיך (ברירת מחדל setTimeout), ms = אורך כל פרוסה, urgent() = לעצור מיד, onProgress(0..1),
+// cancelled() = להפסיק (למשל כשהתחילה בנייה חדשה). מחזיר Promise לאינדקס, או null אם בוטל.
+function buildIndexAsync(units, opts, ctl) {
+  ctl = ctl || {};
+  const b = indexBuilder(units, opts), wait = ctl.wait || (f => setTimeout(f, 0));
+  return new Promise((ok, fail) => {
+    const go = () => {
+      try {
+        if (ctl.cancelled && ctl.cancelled()) return ok(null);
+        const done = b.step(ctl.ms || 12, ctl.urgent);
+        if (ctl.onProgress) ctl.onProgress(b.progress());
+        if (done) ok(b.finish()); else wait(go);
+      } catch (e) { fail(e); }
+    };
+    wait(go);
   });
-  start[units.length] = n;
-  const N = n, W = {regular:new Uint32Array(N), words:new Uint32Array(N), letters:new Uint32Array(N), milui:new Uint32Array(N), atbash:new Uint32Array(N), atbach:new Uint32Array(N)};
-  for (let i = 0; i < N; i++) { W.regular[i] = R[i]; W.words[i] = R[i] + 1; W.letters[i] = R[i] + L[i]; W.milui[i] = M[i]; W.atbash[i] = A[i]; W.atbach[i] = H[i]; }
-  W.kollel = W.regular; // כולל: סכום החלון + 1
-  // אתב״ש/אטב״ח + כולל/תיבות/אותיות: ממומשות ללא מערכים חדשים (אופטימיזציית זיכרון, ~2MB במקום ~33MB) —
-  // אליאס-כולל חינמי בדיוק כמו W.kollel; תיבות/אותיות מחושבות ב-search() ישירות מהמערך הבסיסי + idx.L המשותף.
-  W.atbashKollel = W.atbash; W.atbachKollel = W.atbach;
-  const outUnits = keepText ? units : units.map(u => ({ c: u.c, b: u.b, ch: u.ch }));
-  // MAQAF[i]=1 אם התיבה i חוברה במקף-עליון לתיבה i-1 (ראו tokens() למעלה) — משמש ב-search()'s
-  // filter.singleWord כדי להבחין בין זוג-תיבות-שחוברו-במקף (למשל "אֶת־הָאָרֶץ", נחשב "מילה אחת" לצורך
-  // הסינון הזה) לבין שתי תיבות רגילות המופרדות ברווח.
-  return { units: outUnits, toks: keepText ? toks : null, start, W, L: Uint8Array.from(L), MAQAF: Uint8Array.from(MQ) };
 }
 // targets: מספר יחיד (לתאימות לאחור) או מערך [{value, tag}] — כמה ערכי-יעד לאותה שיטה/שיטות בבת אחת.
 // כשיש כמה יעדים לאותה שיטה, מתבצע מעבר יחיד על הקורפוס (לא מעבר נפרד לכל יעד): עבור יעד בודד נשמר המסלול
@@ -294,23 +335,28 @@ function ensureNotarikonSync(idx) {
 // גרסה מדורגת (chunked, setTimeout בין פרוסה לפרוסה) — כדי לא "להקפיא" את הדפדפן בפעם הראשונה שהנוטריקון
 // נדרש (בנייה מלאה על כל הקורפוס יכולה לקחת כשנייה-וחצי אם הייתה נעשית בבת-אחת). קריאות חוזרות/מקבילות
 // (שני הצדדים ביקשו בו-זמנית) מצטרפות לאותה בנייה-בתהליך במקום לכפול אותה.
-function ensureNotarikonAsync(idx, cb) {
+// v3.16.0: הפרוסות לפי זמן (~12 מ״ש, 200 יחידות בכל בדיקה) ולא 20,000 יחידות קבועות — פרוסה כזו לקחה עד שנייה
+// ביחידות הארוכות (מפרשי הרמב״ם). wait(next) = מתי להמשיך (ברירת מחדל setTimeout; app.js ממתין לזמן פנוי במסך הקריאה).
+function ensureNotarikonAsync(idx, cb, wait) {
   if (idx.W.notRt) { cb(); return; }
   if (idx.__notBuilding) { idx.__notBuilding.push(cb); return; }
   idx.__notBuilding = [cb];
   if (!idx.toks) { const cbs = idx.__notBuilding; idx.__notBuilding = null; const err = new Error('נוטריקון דורש idx שנבנה עם keepText'); cbs.forEach(f => f(err)); return; }
   const N = idx.toks.length, buf = { notRt: new Uint32Array(N), notB: new Uint32Array(N), notC: new Uint32Array(N), notSt: new Uint32Array(N) };
-  const UNITS_PER_CHUNK = 20000;
+  const UNITS_PER_CHECK = 200, next = wait || (f => setTimeout(f, 0));
   let u = 0;
   const step = () => {
-    const uEnd = Math.min(idx.units.length, u + UNITS_PER_CHUNK);
-    notarikonBuildRange(idx, buf, u, uEnd);
-    u = uEnd;
-    if (u < idx.units.length) { setTimeout(step, 0); return; }
+    const t0 = Date.now();
+    while (u < idx.units.length && Date.now() - t0 < 12) {
+      const uEnd = Math.min(idx.units.length, u + UNITS_PER_CHECK);
+      notarikonBuildRange(idx, buf, u, uEnd);
+      u = uEnd;
+    }
+    if (u < idx.units.length) { next(step); return; }
     Object.assign(idx.W, buf);
     const cbs = idx.__notBuilding; idx.__notBuilding = null; cbs.forEach(f => f());
   };
-  setTimeout(step, 0);
+  next(step);
 }
 // חיפוש נוטריקון: target הוא מספר יחיד (ערך ה'רגילה' של ביטוי-החיפוש) — לא מערך-יעדים כמו search() הרגילה,
 // כי כאן תמיד יש יעד בודד. filter.books/filter.ranges כמו ב-search(). opts.maxWindow (ברירת מחדל 12) — חלון
@@ -368,6 +414,6 @@ function searchNotarikon(idx, target, methods, filter, limit, opts) {
   }
   return { results: res, counts, total };
 }
-root.GematriaEngine = { METHODS, VALUES, FINALS, MILUI_NAMES, MILUI, ATBASH, normalizeText, tokens, calculateRegular, calculateKollel, calculateWords, calculateLetters, calculateMilui, calculateAtbash, calculateAtbach, calculateGematria, setAtbachTable, getAtbachTable, compareAll, buildIndex, search, pairAllowed, NOTARIKON_POS, ensureNotarikonSync, ensureNotarikonAsync, searchNotarikon };
+root.GematriaEngine = { METHODS, VALUES, FINALS, MILUI_NAMES, MILUI, ATBASH, normalizeText, tokens, calculateRegular, calculateKollel, calculateWords, calculateLetters, calculateMilui, calculateAtbash, calculateAtbach, calculateGematria, setAtbachTable, getAtbachTable, compareAll, buildIndex, buildIndexAsync, indexBuilder, search, pairAllowed, NOTARIKON_POS, ensureNotarikonSync, ensureNotarikonAsync, searchNotarikon };
 if (typeof module !== 'undefined') module.exports = root.GematriaEngine;
 })(typeof window !== 'undefined' ? window : globalThis);
