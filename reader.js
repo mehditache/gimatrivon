@@ -424,7 +424,7 @@
     R.classList.toggle('isTal', isTal());
     if (isTal()) return renderTal();
     $r('#rdPrevCh').setAttribute('aria-label', T('פרק קודם')); $r('#rdNextCh').setAttribute('aria-label', T('פרק הבא')); $r('#rdPrevCh').title = T('פרק קודם'); $r('#rdNextCh').title = T('פרק הבא');
-    R.querySelectorAll('#rdViewSeg button[data-view=book] .t').forEach(x => { x.textContent = T('ספר'); });
+    document.querySelectorAll('#rdViewSeg button[data-view=book] .t').forEach(x => { x.textContent = T('ספר'); });
     const pages = pagesFor(S.b, S.ch);
     // בשני עמודים הפריסה רציפה בין פרקים: אם בפרק מספר עמודים אי-זוגי, העמוד הראשון של הפרק הבא ממלא את הצד השמאלי
     // (במקום עמוד ריק). לכן S.p יכול להיות אי-זוגי; בקפיצה לפסוק שומרים על הזוגיות של הפריסה הנוכחית באותו פרק.
@@ -454,7 +454,7 @@
     ['#rdPrev', '#rdPrev2'].forEach(s => { $r(s).disabled = atStart; });
     ['#rdNext', '#rdNext2'].forEach(s => { $r(s).disabled = atEnd; });
     $r('#rdPrevCh').disabled = !nextCh(S.b, S.ch, -1); $r('#rdNextCh').disabled = !nextCh(S.b, S.ch, 1);
-    R.querySelectorAll('#rdViewSeg button').forEach(x => { const on = x.dataset.view === S.view; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+    document.querySelectorAll('#rdViewSeg button').forEach(x => { const on = x.dataset.view === S.view; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
     $r('#rdViewSeg [data-view=aligned] .t').textContent = T(uName(S.b) + ' מול תרגום');
     if (fxDir) { reveal(book, fxDir); fxDir = 0; }
     save();
@@ -666,7 +666,7 @@
       $r('#rdWhereTxt').textContent = talName(t) + ' · ' + T('דף') + ' ' + dafTxt(S.tj);
       $r('#rdPrevCh').setAttribute('aria-label', T('דף קודם')); $r('#rdNextCh').setAttribute('aria-label', T('דף הבא'));
       $r('#rdPrevCh').title = T('דף קודם'); $r('#rdNextCh').title = T('דף הבא');
-      R.querySelectorAll('#rdViewSeg button').forEach(x => { const v = x.dataset.view === 'book' ? 'daf' : 'study', on = v === S.tview; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); x.querySelector('.t').textContent = T(v === 'daf' ? 'צורת הדף' : 'גמרא ומפרשים'); });
+      document.querySelectorAll('#rdViewSeg button').forEach(x => { const v = x.dataset.view === 'book' ? 'daf' : 'study', on = v === S.tview; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); x.querySelector('.t').textContent = T(v === 'daf' ? 'צורת הדף' : 'גמרא ומפרשים'); });
       $r('#rdChPos').textContent = T('מסכת') + ' ' + talName(t);
       $r('#rdProgBar').style.width = Math.max(2, Math.round(100 * (S.tj + 1) / t.n)) + '%';
       $r('#rdPrevCh').disabled = S.tj < 2; $r('#rdNextCh').disabled = (S.tj | 1) + 1 >= t.n;
@@ -1090,17 +1090,29 @@
   function build() {
     ensureIndex();
     R = $r('#reader');
-    R.innerHTML =
-      '<div class="rdBar">' +
+    // סרגל הקריאה יושב בתוך הבאנר העליון (header.top), אחרי מתג המצב — אין פס נפרד מתחתיו.
+    // המחלקה reader על #rdTop נותנת לכפתורים ולרשימת החיפוש את אותם סגנונות (.reader …) ואותו container למסך צר,
+    // והיא גם מסתירה אותו כשלא במצב קריאה (.reader{display:none}).
+    const old = $r('#rdTop'); if (old) old.remove();
+    const head = document.createElement('div'); head.className = 'reader rdTop'; head.id = 'rdTop';
+    head.innerHTML =
+      '<div class="rdOmni">' +
         '<div class="rdNav"><button type="button" class="rdIco" id="rdPrevCh" aria-label="' + T('פרק קודם') + '" title="' + T('פרק קודם') + '">' + ICON.chevR + '</button>' +
         '<button type="button" class="rdWhere" id="rdWhere" aria-haspopup="dialog" aria-expanded="false" title="' + T('מעבר לפרק ופסוק') + ' (Ctrl G)">' + ICON.book + '<span id="rdWhereTxt"></span>' + ICON.caret + '</button>' +
         '<button type="button" class="rdIco" id="rdNextCh" aria-label="' + T('פרק הבא') + '" title="' + T('פרק הבא') + '">' + ICON.chevL + '</button></div>' +
+        '<span class="rdOmniSep" aria-hidden="true"></span>' +
         '<div class="rdSearch" id="rdSearch">' + ICON.search + '<input type="search" id="rdQ" dir="' + (isEn() ? 'auto' : 'rtl') + '" autocomplete="off" spellcheck="false" placeholder="' + T('חיפוש, או קפיצה: ״שמות יב ב״') + '" aria-label="' + T('חיפוש מהיר או קפיצה למקום') + '" role="combobox" aria-controls="rdDrop" aria-expanded="false">' +
         '<button type="button" class="rdIco sm" id="rdQClr" aria-label="' + T('ניקוי חיפוש') + '" hidden>' + ICON.x + '</button><kbd>Ctrl K</kbd><div class="rdDrop" id="rdDrop" role="listbox" hidden></div></div>' +
+      '</div>' +
+      '<div class="rdTools">' +
         '<div class="rdSeg" id="rdViewSeg" role="group" aria-label="' + T('סוג תצוגה') + '"><button type="button" data-view="book">' + ICON.vBook + '<span class="t">' + T('ספר') + '</span></button><button type="button" data-view="aligned">' + ICON.vRows + '<span class="t"></span></button></div>' +
+        '<span class="rdToolsSep" aria-hidden="true"></span>' +
         '<button type="button" class="rdSetBtn" id="rdSetBtn" aria-haspopup="dialog" aria-expanded="false"><span class="aa">אָ</span><span class="t">' + T('תצוגה') + '</span></button>' +
         '<button type="button" class="rdIco rdPrintBtn" id="rdPrintBtn" aria-haspopup="dialog" aria-expanded="false" aria-label="' + T('הדפסה / PDF') + '" title="' + T('הדפסה / PDF') + ' (Ctrl P)">' + ICON.print + '</button>' +
-      '</div>' +
+      '</div>';
+    const top = $r('header.top'), sideSw = $r('#sideSw');
+    if (sideSw) sideSw.after(head); else top.appendChild(head);
+    R.innerHTML =
       '<div class="rdDesk" id="rdDesk"><button type="button" class="rdTurn prev" id="rdPrev" aria-label="' + T('עמוד קודם') + '">' + ICON.chevR + '</button><div class="rdBook" id="rdBook"></div>' +
         '<button type="button" class="rdTurn next" id="rdNext" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button><div class="rdMeasure" aria-hidden="true"><article class="rdPage" id="rdProbe"></article><div id="rdDafHost"></div></div></div>' +
       '<div class="rdFoot"><button type="button" class="rdIco" id="rdPrev2" aria-label="' + T('עמוד קודם') + '">' + ICON.chevR + '</button><span id="rdPos"></span><span class="rdProg"><span id="rdProgBar"></span></span><span id="rdChPos"></span><button type="button" class="rdIco" id="rdNext2" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button></div>' +
@@ -1126,7 +1138,7 @@
       S[t.dataset.pset] = t.dataset.val; save(); renderPrintPop();
     };
     $r('#rdScrim').onclick = closePops;
-    R.querySelectorAll('#rdViewSeg button').forEach(x => { x.onclick = () => { if (isTal()) { S.tview = x.dataset.view === 'book' ? 'daf' : 'study'; S.tp = 0; } else S.view = x.dataset.view; render(); }; });
+    document.querySelectorAll('#rdViewSeg button').forEach(x => { x.onclick = () => { if (isTal()) { S.tview = x.dataset.view === 'book' ? 'daf' : 'study'; S.tp = 0; } else S.view = x.dataset.view; render(); }; });
     $r('#rdSet').onclick = e => {
       if (e.target.closest('[data-close]')) return closePops();
       const t = e.target.closest('[data-set]'); if (!t) return;
@@ -1194,7 +1206,7 @@
       if (!built) build();
       render();
       if (user && APP.trackEvent) APP.trackEvent('reader_open');
-    } else { closePops(); closeDrop(); }
+    } else if (built) { closePops(); closeDrop(); }
   }
   function labelModeSw() {
     // בטלפון אין מקום לתווית המלאה — .ls (קצרה) מוצגת במקום .lf
