@@ -644,8 +644,49 @@ body[data-mode=read] .ws,body[data-mode=read] #mShell,body[data-mode=read] #mSum
 body[data-mode=read] .reader{display:flex}
 .reader{flex:1;min-height:0;flex-direction:column;position:relative;container-type:inline-size;background:var(--rdDesk);color:var(--rdBarTx);font-family:var(--ui)}
 .reader button{color:inherit}
-/* סרגל עליון */
-.rdBar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--rdBar);border-bottom:1px solid var(--rdBarB);position:relative;z-index:20}
+/* באנר עליון במצב קריאה: אין סרגל נפרד — הכותרת עצמה (header.top) מקבלת את צבע הסרגל, ובתוכה #rdTop (reader.js: build):
+   קפסולה אחת של מיקום+חיפוש במרכז (.rdOmni) וקבוצת כלים (.rdTools). סיור/שיטות/אודות/צור קשר עוברים לתפריט ⋮ (#mKebab).
+   #rdTop נושא גם את המחלקה reader (לסגנונות הכפתורים ולרשימת החיפוש), ולכן מבטלים כאן את מה שאינו שייך לו. */
+body[data-mode=read] .top{background:var(--rdBar);border-bottom:1px solid var(--rdBarB);color:var(--rdBarTx);min-height:58px;gap:12px;padding:8px 14px;flex-wrap:wrap;row-gap:8px;position:relative;z-index:19;container:rdbar / inline-size}
+body[data-mode=read] #startTour,body[data-mode=read] #openMethods,body[data-mode=read] #openAbout,body[data-mode=read] #openContact{display:none}
+body[data-mode=read] #mKebab{display:inline-flex;margin-inline-start:0;background:transparent;border-color:var(--rdG3);color:var(--rdBarTx)}
+body[data-mode=read] .modeSw{border:0;background:var(--rdG2);padding:3px;border-radius:10px;gap:2px}
+body[data-mode=read] .modeSw button{border-radius:8px;color:var(--rdBarMu);font-weight:600}
+body[data-mode=read] .modeSw button.on{background:var(--gold);color:#fff;box-shadow:0 1px 3px rgba(60,40,10,.3)}
+body[data-mode=read] .mMenuPanel{top:3.6rem}
+.reader.rdTop{flex:1 1 0;min-width:0;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;background:none;color:inherit;position:relative;min-height:0}
+.rdOmni{flex:0 1 720px;min-width:0;margin-inline:auto;position:relative;display:flex;align-items:center;height:40px;padding:0 3px;border-radius:12px;background:var(--rdG1);border:1px solid var(--rdG3)}
+.rdOmni:focus-within{border-color:var(--rdOn);background:var(--rdG2)}
+.rdOmni .rdNav{gap:0}
+.reader .rdOmni .rdIco{border:0;width:30px}
+.reader .rdOmni .rdWhere{border:0;background:var(--rdG2);height:32px;padding:0 10px}
+.rdOmniSep,.rdToolsSep{flex:none;width:1px;height:20px;background:var(--rdG3)}
+.rdOmniSep{margin:0 6px}
+.rdOmni .rdSearch{max-width:none;height:38px;padding:0 6px;border:0;background:none}
+.rdOmni .rdSearch:focus-within{background:none}
+.rdTools{flex:none;display:inline-flex;align-items:center;gap:2px;padding:2px;border-radius:11px;border:1px solid var(--rdG3)}
+.reader .rdTools .rdSeg{border:0;border-radius:8px}
+.reader .rdTools .rdSeg button{height:30px;padding:0 9px;border-radius:8px}
+.reader .rdTools .rdSeg .t,.reader .rdTools .rdSetBtn .t{display:none}
+.reader .rdTools .rdSetBtn{border:0;height:30px;padding:0 9px}
+.reader .rdTools .rdPrintBtn{border:0;width:30px;height:30px}
+/* חלון בינוני: מקום לחיפוש על חשבון חצי הפרק (הפרק מוחלף גם מהמיקום) */
+@container (max-width:720px){.reader .rdOmni .rdNav .rdIco{display:none}}
+/* טלפון / חלון צר (לפי רוחב הבאנר כולו): שורה ראשונה = שם + מתג מצב + ⋮, שורה שנייה = הקפסולה (מיקום|חיפוש) + אָ.
+   החלפת פרק — מהמיקום או מהשורה התחתונה. */
+@container rdbar (max-width:640px){
+  .reader.rdTop{order:9;flex:1 1 100%;gap:8px}
+  .rdOmni{flex:1 1 0;height:42px;margin:0;position:relative}
+  .reader .rdOmni .rdNav .rdIco,.reader .rdTools .rdSeg,.reader .rdTools .rdPrintBtn,.rdToolsSep{display:none}
+  .reader .rdOmni .rdWhere{padding:0 8px;font-size:14px;gap:5px}
+  .reader .rdOmni .rdWhere>svg:first-child{display:none}
+  .rdOmniSep{margin:0 4px}
+  .rdOmni .rdSearch{position:static;padding:0 4px}
+  .rdOmni .rdSearch input{font-size:14px}
+  .rdOmni .rdDrop{inset-inline:-1px;width:auto}
+  .rdTools{height:42px;padding:4px}
+  .reader .rdTools .rdSetBtn{height:32px}
+}
 .rdNav{display:flex;align-items:center;gap:4px;flex:none}
 .reader .rdIco{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:transparent;border:1px solid var(--rdG3)}
 .reader .rdIco:hover:not(:disabled){background:var(--rdG1);border-color:var(--rdOn)}
@@ -711,7 +752,8 @@ body[data-mode=read] .reader{display:flex}
 mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 /* שולחן + ספר */
 .rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--rdDeskGlow)}
-.rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px var(--rdShadow))}
+/* v3.12.0: צל כ-box-shadow ולא filter:drop-shadow — filter מצייר מחדש את הצל של כל הספר בכל פריים של אפקט הדפדוף. isolation שומר את קצוות הדפים (::before/::after, z-index:-1) מאחורי הדפים כמו קודם */
+.rdBook{position:relative;display:flex;isolation:isolate;box-shadow:0 18px 60px -6px var(--rdShadow)}
 .rdBook.two::before,.rdBook.two::after{content:"";position:absolute;inset:4px -5px -5px -5px;border-radius:4px;background:#e3d8bf;z-index:-1}
 .rdBook.two::after{inset:2px -2.5px -2.5px -2.5px;background:#efe6d0}
 /* v3.9.7 · הופעה הדרגתית בדפדוף (reader.js: reveal). ההשהיה והמשך לכל גוש ב---fxD/--fxT; fill backwards = אחרי הסיום לא נשאר שום סגנון */
@@ -781,7 +823,7 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .rdProg span{display:block;height:100%;background:var(--rdOn);margin-inline-start:0}
 /* חלוניות: הגדרות תצוגה / מעבר לפרק ופסוק */
 .rdScrim{position:absolute;inset:0;z-index:35}
-.rdPop{position:absolute;top:56px;z-index:40;max-height:calc(100% - 70px);overflow:auto;background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.5);padding:14px 16px}
+.rdPop{position:absolute;top:10px;z-index:40;max-height:calc(100% - 70px);overflow:auto;background:var(--rdPaper);color:var(--rdInk);border:1px solid var(--rdLine);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.5);padding:14px 16px}
 .rdSet{inset-inline-end:14px;width:350px}
 .rdJump{inset-inline-start:14px;width:min(660px,calc(100% - 28px));display:flex;flex-direction:column}
 .rdPopHd{display:flex;align-items:center;gap:10px;font:700 14px var(--ui)}
@@ -833,16 +875,11 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
   .rdSearch kbd{display:none}
 }
 @container (max-width:640px){
-  .rdBar{flex-wrap:wrap;padding:6px 8px;gap:6px}
-  .rdNav{flex:1;justify-content:space-between}
-  .reader .rdWhere{flex:1;justify-content:center}
-  .rdSearch{order:3;flex-basis:100%;max-width:none}
-  .reader .rdSeg{display:none}
   .reader .rdTurn{display:none}
   .rdFoot .rdIco{display:inline-flex}
   .rdProg{width:auto;flex:1;max-width:140px}
   .rdFoot{padding:4px 8px 6px;gap:8px}
-  .rdDrop{width:100%;max-height:62vh}
+  .rdDrop{max-height:62vh}
   .rdScrim{background:rgba(0,0,0,.45)}
   .rdPop{top:auto;bottom:0;inset-inline:0;width:auto;max-height:82%;border-radius:16px 16px 0 0;padding:12px 12px 16px}
   .rdJGrid{grid-template-columns:104px minmax(0,1fr) minmax(0,1fr);gap:6px;height:46vh}
@@ -909,6 +946,24 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTal .rdV{padding:0 1px}
 .rdPage.tal .rdCm p.tc{padding:0 2px}
 .rdLoading{display:flex;align-items:center;justify-content:center;font:14px var(--ui);color:var(--rdMu)}
+/* מסך טעינה (loadingHtml ב-reader.js): שלד הדף + שם הספר חלול שמתמלא לפי --p (0..100), מימין לשמאל */
+.rdPage.rdSkel{gap:0}
+.rdSkHead{display:flex;justify-content:space-between;border-bottom:1px solid var(--rdLine);padding-bottom:7px;margin-bottom:16px}
+.rdSkHead i{width:14%;height:6px;border-radius:3px;background:var(--rdLine)}
+.rdPage.right .rdSkHead{padding-left:30px}
+.rdLoadT{position:relative;align-self:center;font:700 2.1em/1.2 "GimFrank",var(--tf);white-space:nowrap;margin-top:4px}
+.rdLoadT span{display:block}
+.rdLoadT .o{color:transparent;-webkit-text-stroke:1.2px var(--rdGold)}
+.rdLoadT .f{position:absolute;inset:0;color:var(--rdGold);clip-path:inset(0 0 0 calc(100% - var(--p) * 1%));transition:clip-path .3s ease-out}
+.rdLoadPct{align-self:center;font:600 11.5px var(--ui);color:var(--rdMu);margin:2px 0 14px;font-variant-numeric:tabular-nums;direction:ltr}
+.rdPage.rdSkel>.rdSkTx,.rdPage.rdSkel>.rdSkCm{flex:3 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--rdFs) * .78)}
+.rdPage.rdSkel>.rdSkCm{flex:2 1 0;gap:calc(var(--rdFs) * .5);border-top:1px solid var(--rdLine);padding-top:14px;margin-top:10px}
+.rdSkLn{flex:none;display:block;height:calc(var(--rdFs) * .3);border-radius:4px;background:rgba(42,33,23,.07);position:relative;overflow:hidden}
+.rdSkLn.c{height:calc(var(--rdFs) * .2)}
+.rdSkLn::after{content:"";position:absolute;inset:0;background:rgba(42,33,23,.26);transform-origin:right;transform:scaleX(0);animation:rdSkWrite 2.8s ease-in-out infinite;animation-delay:calc(var(--i) * .15s)}
+.rdSkLn.c::after{background:rgba(42,33,23,.17)}
+@keyframes rdSkWrite{0%{transform:scaleX(0)}35%,75%{transform:scaleX(1);opacity:1}100%{transform:scaleX(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rdSkLn::after{animation:none;transform:none;opacity:.5}.rdLoadT .f{transition:none}}
 .pvDaf{display:flex;gap:4px}
 .pvDaf i{flex:1;height:auto;margin:0;opacity:.2;background:repeating-linear-gradient(var(--rdMu) 0 2px,transparent 2px 5px)}
 .pvDaf i.m{flex:1.6;opacity:.45}
@@ -931,6 +986,44 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTRes .rdDI .sn{-webkit-line-clamp:1}
 @container (max-width:640px){.rdSegPop{width:auto;max-height:60%}.rdSegTxt{font-size:16px}}
 .rdPage.tal.right .rdHead{padding-left:24px}
+/* ---- v3.12.0 · טור, בית יוסף וב״ח (reader.js: renderTur) — בסגנון מהדורת "שירת דבורה" ----
+   .trDaf = שטח הטקסט בעמוד (משתנים --tr* מ-trGeo). הטור (.trMain) באמצע למעלה בכתב מרובע; ב״ח (.trC) בטור הימני
+   ובית יוסף (.trY) בשמאלי, בכתב רש״י. בכל טור צד יש מרווח צף (.sp) בגובה הטור, כך שהפירוש מקיף את הטור וממשיך
+   מתחתיו ברוחב מלא. .trWide = עמוד של מפרש אחד בשני טורים. גם #rdPrint משתמש בכללים האלה, ולכן הם לא תחת .reader. */
+.reader.isTur #rdViewSeg{display:none}
+.rdPage.tur .trHead .mid{flex:1;min-width:0;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12.5px "GimFrank",var(--tf);color:var(--rdInk)}
+.rdPage.tur .trHead span:first-child,.rdPage.tur .trHead .l{font:700 13px "GimFrank",var(--tf);color:var(--rdGold);flex:none}
+.trDaf{position:relative;width:var(--trW);height:var(--trH);direction:rtl;color:var(--rdInk);flex:none}
+.trMain{position:absolute;top:0;left:calc((var(--trW) - var(--trMw)) / 2);width:var(--trMw);font-family:"GimFrank","Frank Ruhl Libre",serif;font-size:var(--trFm);line-height:var(--trLm);font-weight:500;text-align:justify}
+.trMain b{font-weight:700}
+.trH{display:block;text-align:center;font-weight:700;font-size:1.12em;line-height:1.5;color:var(--rdGold);letter-spacing:.03em}
+.trH::before,.trH::after{content:"";display:inline-block;width:1.4em;height:1px;background:var(--rdLine);vertical-align:middle;margin:0 .45em}
+.trHil{display:block;text-align:center;font-weight:800;font-size:1.22em;line-height:1.45;letter-spacing:.02em}
+.trSide{position:absolute;top:0;width:var(--trSw)}
+.trSide.trC{right:0}
+.trSide.trY{left:0}
+.trSide .sp{width:var(--trSp)}
+.trSide.trC .sp{float:left}
+.trSide.trY .sp{float:right}
+.trSide .tx,.trWide{font-family:"GimRashi","GimFrank",serif;font-size:var(--trFs);line-height:var(--trLs);text-align:justify}
+.trWide{column-count:2;column-gap:var(--trG);column-rule:1px solid var(--rdLine)}
+.trSide b,.trWide b{font-family:"GimFrank",serif;font-weight:700;font-size:.98em}
+.rl{color:var(--rdGold);margin-inline-end:.2em}
+.rcm.rc .rl{color:var(--rdTrTx)}
+.ra{font-size:.6em;font-weight:700;color:var(--rdGold);padding:0 .12em;line-height:1;white-space:nowrap}
+.ra.rc{color:var(--rdTrTx)}
+.bh{font-size:.9em;color:var(--rdMu)}
+.reader .ra,.reader .rcm{cursor:pointer;border-radius:2px;transition:background .25s}
+.reader .rcm:hover,.reader .ra:hover{background:var(--rdRow)}
+.reader .rdPage.tur .sel{background:var(--rdHl)}
+.rdJGrid.tur{grid-template-columns:170px minmax(0,1fr)}
+.rdJSub{grid-column:1/-1;font:700 10.5px var(--ui);color:var(--rdMu);padding:6px 2px 1px}
+.reader .rdCell.wide{grid-column:span 3}
+.rdDNote{padding:4px 8px 6px;margin:0}
+@container (max-width:640px){.rdJGrid.tur{grid-template-columns:104px minmax(0,1fr)}}
+.rdPrint.bw .ra,.rdPrint.bw .rl,.rdPrint.bw .trH,.rdPrint.bw .bh{color:#000!important}
+.trDaf u{text-decoration:none}
+.trMain.trFull{left:0;width:var(--trW)}
 /* רמב״ם בעיצוב מהדורת פרנקל (reader.js, ramBody): כותרת בקו כפול, "פרק שמיני", אות הלכה מודגשת, ראב״ד בתוך הטקסט */
 .rdPage{--rdRam:#7a2e3b}
 .rdHead.ram{border-bottom:3px double var(--rdGold);padding-bottom:5px}

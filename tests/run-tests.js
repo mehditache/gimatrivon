@@ -210,11 +210,49 @@ t('reader', 'parseDafRef: ברכות ב. / ב: / שבת קכ ב / Berakhot 2b / 
   eq([r('ברכות ב.'), r('ברכות ב:'), r('שבת קכ ב'), r('Berakhot 2b'), r('בבא מציעא נט'), r('מסכת ברכות'), r('ברכות ב ע"ב')], [['Berakhot', 0, true], ['Berakhot', 1, true], ['Shabbat', RC.amudOf(120, 1), false], ['Berakhot', 1, true], ['Bava Metzia', RC.amudOf(59, 0), false], ['Berakhot', 0, true], ['Berakhot', 1, true]]); });
 t('reader', 'parseDafRef: דף שלא קיים / טקסט חופשי → null; dafLabel', () => eq([RC.parseDafRef(TX, 'ברכות קא'), RC.parseDafRef(TX, 'ויהי אור'), RC.dafLabel(0), RC.dafLabel(1), RC.dafLabel(237), RC.dafLabel(3, true)], [null, null, 'ב.', 'ב:', 'קכ:', '3b']));
 
+// ---- טור, בית יוסף וב״ח (generated/tur, נבנה ב-scripts/build-tur.py) ----
+const RIDX = (() => { const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'generated/tur/index.js'), 'utf8'))(w); return w.GIM_TUR_INDEX; })();
+const RX = RC.turIndex(RIDX);
+t('reader', 'טור: ארבעה טורים בסדר (697/403/178/426 סימנים + הקדמה), וכל קובצי החלקים קיימים ומתחת ל-2.5MB', () => eq(RIDX.map(t => [t.k, t.n]), [['OC', 698], ['YD', 404], ['EH', 179], ['CM', 427]]) || RIDX.every(t => t.parts.every(p => { const f = path.join(__dirname, '..', 'generated/tur', p.f); return fs.existsSync(f) && fs.statSync(f).size < 2.5e6; })));
+t('reader', 'טור: או״ח א מתחיל ב"יהודה בן תימא", ולכל דיבור של בית יוסף וב״ח סימן אחד בדיוק בטור', () => {
+  const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'generated/tur/OC.0.js'), 'utf8'))(w); const P = w.GIM_TUR_P['OC.0'];
+  if (!/^יהודה בן תימא/.test(P.s[1][0].replace(/\u0010[yc]\d+\u0011/g, ''))) return false;
+  return P.s.every(r => ['y', 'c'].every((x, n) => r[n + 1].every((_, i) => r[0].split('\u0010' + x + i + '\u0011').length === 2)));
+});
+t('reader', 'parseTurRef: או״ח ס / אורח חיים 60 / בית יוסף יו״ד קצג / חו״מ הקדמה / Orach Chayim 60', () => { const r = q => { const x = RC.parseTurRef(RX, q); return x && [x.k, x.s]; };
+  eq([r('טור או״ח ס'), r('או"ח סימן ס'), r('אורח חיים 60'), r('בית יוסף יו״ד קצג'), r('חו״מ הקדמה'), r('Orach Chayim 60'), r('טור אבן העזר')], [['OC', 60], ['OC', 60], ['OC', 60], ['YD', 193], ['CM', 0], ['OC', 60], ['EH', 1]]); });
+t('reader', 'parseTurRef: סימן שלא קיים / ספר אחר → null; turToks מפריד סימנים ושורות', () => eq([RC.parseTurRef(RX, 'או״ח תשא'), RC.parseTurRef(RX, 'שמות יב'), RC.parseTurRef(RX, 'ברכות ב.'), RC.turToks('\u0010c0\u0011\u0010y0\u0011אב גד\nהו')], [null, null, null, ['\u0010c0\u0011', '\u0010y0\u0011', 'אב', 'גד', '\n', 'הו']]));
+
+// ---- corpus split (v3.12.0): קובץ לכל ספר + corpus-loader.js ----
+{
+  const vm = require('vm'), cdir = path.join(__dirname, '..', 'generated', 'corpus');
+  const ctx = { window: {}, document: { head: { appendChild() {} }, createElement: () => ({ remove() {} }) } }; ctx.window.window = ctx.window;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(cdir, 'index.js'), 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'corpus-loader.js'), 'utf8'), ctx);
+  const GC = ctx.window.GimCorpus; ctx.GimCorpus = GC;
+  const CI = ctx.window.GIM_CORPUS_INDEX;
+  CI.books.forEach(b => b.f.forEach(f => vm.runInContext(fs.readFileSync(path.join(cdir, f), 'utf8'), ctx)));
+  t('split', 'כל ספר נטען, וכל היחידות זהות לקורפוס המלא (כולל המילון הקומפקטי)', () => {
+    let i = 0;
+    for (let b = 0; b < CI.books.length; b++) for (const u of GC.units(b)) { const o = B.units[i++]; for (let k = 0; k < 7; k++) if ((u[k] || 0) !== (o[k] || 0)) return false; }
+    return i === B.units.length;
+  });
+  t('split', 'רשימת הספרים זהה, עם מספר היחידות ופסוקים לכל פרק', () => CI.books.length === B.books.length && CI.books.every((b, i) => b.heTitle === B.books[i].heTitle && b.n === B.units.filter(u => u[1] === i).length) && CI.books[0].cv[1] === 31 && CI.books[0].cv.length === 51);
+  t('split', 'כל קובץ ספר קטן מ-3.2MB (GitHub Pages קוטע קבצים גדולים)', () => CI.books.every(b => b.f.every(f => fs.statSync(path.join(cdir, f)).size < 3.2e6)));
+  t('split', 'reader: ספר שנטען (addBook) זהה לאינדקס מהקורפוס המלא; לפני הטעינה פרקים ופסוקים מהרשימה', () => {
+    const IX = RC.buildIndex({ books: CI.books }), g = bkIdx(0, 'בראשית');
+    const before = RC.chaptersOf(IX, g).length === 50 && RC.versesOf(IX, g, 1).length === 31 && !!RC.parseRef(IX, 'בראשית ב ג', null);
+    RC.addBook(IX, g, GC.each);
+    return before && JSON.stringify(IX.data[g]) === JSON.stringify(RIX.data[g]) && RC.versesOf(IX, g, 1).length === 31;
+  });
+}
+
 // ---- offline static audit ----
 // חריג מכוון יחיד: בלוק "צור קשר" (EmailJS) ב-app.js, בין EMAILJS:START/EMAILJS:END — הדבר היחיד באפליקציה
 // שדורש רשת בפועל (וגם זה רק כש-המשתמש בעצמו לוחץ "שליחה" בטופס, ראו הערה שם). נבדק בנפרד למטה שהבלוק
 // אכן מבודד (לא "דולף" רשת לשאר הקוד) ושה-script הדינמי היחיד נטען רק דרך ה-CDN המוגדר, לא ממקור אחר.
-const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js', 'reader.js'];
+const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js', 'reader.js', 'corpus-loader.js'];
 const EMAILJS_RE = /\/\/ --- EMAILJS:START ---[\s\S]*?\/\/ --- EMAILJS:END ---/;
 const ANALYTICS_RE = /\/\/ --- ANALYTICS:START ---[\s\S]*?\/\/ --- ANALYTICS:END ---/; // חריג שני: Google Analytics, רק כשמוגדר מזהה-מדידה
 const stripEmailJs = s => s.replace(EMAILJS_RE, '').replace(ANALYTICS_RE, '');
