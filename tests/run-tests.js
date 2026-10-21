@@ -195,6 +195,15 @@ t('reader', 'markWords מסמן את המילה המנוקדת', () => { const m
 t('reader', 'splitComm: ברטנורא לדיבורים, דיבור המתחיל עד הנקודה', () => { const s = RC.splitComm('מאימתי. פירוש א: ועד. פירוש ב:'); return s.length === 2 && s[0].dh === 'מאימתי.' && s[1].dh === 'ועד.'; });
 t('reader', 'גופנים מקומיים קיימים (vendor/fonts) ומוצהרים ב-styles.css', () => ['FrankRuhlLibre-hebrew.woff2', 'NotoRashiHebrew-hebrew.woff2'].every(f => fs.existsSync(path.join(__dirname, '..', 'vendor/fonts', f)) && fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8').includes('url(vendor/fonts/' + f + ')')));
 
+// ---- ש״ס (generated/talmud, נבנה ב-scripts/build-talmud.py) ----
+const TIDX = (() => { const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'generated/talmud/index.js'), 'utf8'))(w); return w.GIM_TALMUD_INDEX; })();
+const TX = RC.talIndex(TIDX), tk = he => TIDX.findIndex(t => t.he === he);
+t('reader', 'ש״ס: 37 מסכתות בסדר, וכל קובצי החלקים קיימים ומתחת ל-2.5MB', () => TIDX.length === 37 && TIDX[0].k === 'Berakhot' && TIDX[36].k === 'Niddah' && TIDX.every(t => t.parts.length && t.parts.every(p => { const f = path.join(__dirname, '..', 'generated/talmud', p.f); return fs.existsSync(f) && fs.statSync(f).size < 2.5e6; })));
+t('reader', 'ש״ס: ברכות ב. מתחיל במשנה "מאימתי", עם רש״י ותוספות', () => { const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'generated/talmud/Berakhot.0.js'), 'utf8'))(w); const a = w.GIM_TP['Berakhot.0'].a[0]; return /^מתני[׳']\s*מאימתי/.test(RC.noMarks(a[0][0].replace(/[\u0001-\u0004]/g, ''))) && a[1].length > 5 && a[2].length > 1; });
+t('reader', 'parseDafRef: ברכות ב. / ב: / שבת קכ ב / Berakhot 2b / דף בלי עמוד', () => { const r = q => { const x = RC.parseDafRef(TX, q); return x && [x.k, x.j, x.explicit]; };
+  eq([r('ברכות ב.'), r('ברכות ב:'), r('שבת קכ ב'), r('Berakhot 2b'), r('בבא מציעא נט'), r('מסכת ברכות'), r('ברכות ב ע"ב')], [['Berakhot', 0, true], ['Berakhot', 1, true], ['Shabbat', RC.amudOf(120, 1), false], ['Berakhot', 1, true], ['Bava Metzia', RC.amudOf(59, 0), false], ['Berakhot', 0, true], ['Berakhot', 1, true]]); });
+t('reader', 'parseDafRef: דף שלא קיים / טקסט חופשי → null; dafLabel', () => eq([RC.parseDafRef(TX, 'ברכות קא'), RC.parseDafRef(TX, 'ויהי אור'), RC.dafLabel(0), RC.dafLabel(1), RC.dafLabel(237), RC.dafLabel(3, true)], [null, null, 'ב.', 'ב:', 'קכ:', '3b']));
+
 // ---- offline static audit ----
 // חריג מכוון יחיד: בלוק "צור קשר" (EmailJS) ב-app.js, בין EMAILJS:START/EMAILJS:END — הדבר היחיד באפליקציה
 // שדורש רשת בפועל (וגם זה רק כש-המשתמש בעצמו לוחץ "שליחה" בטופס, ראו הערה שם). נבדק בנפרד למטה שהבלוק
