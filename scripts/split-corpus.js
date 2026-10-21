@@ -52,20 +52,21 @@ const books = B.books.map((b, i) => {
     cur.push(u); size += s;
   });
   if (cur.length) parts.push(cur);
-  let from = 0;
+  let from = 0; const fb = [];
   const f = parts.map((p, k) => {
     const data = word ? { w: p.map(u => u[4]).join('\n'), from } : p.map(u => u.slice(2));
     from += p.length;
     const body = 'GimCorpus.put(' + i + ',' + k + ',' + JSON.stringify(data) + ');\n';
     const name = i + '.' + (parts.length > 1 ? k + '.' : '') + hash(body) + '.js';
     fs.writeFileSync(path.join(outDir, name), body, 'utf8');
-    files++; chars += body.length;
+    files++; chars += body.length; fb.push(Buffer.byteLength(body));
     return name;
   });
   // cv[פרק] = מספר הפסוק/המשנה הגבוה בפרק — כדי שמסך הקריאה יציג פרקים ופסוקים בלי לטעון את הספר
   const cv = [];
   if (!word) units.forEach(u => { if (u[2] > 0 && u[3] > 0) cv[u[2]] = Math.max(cv[u[2]] || 0, u[3]); });
-  return Object.assign({}, b, { f, n: units.length }, word ? {} : { cv: Array.from(cv, x => x || 0) });
+  // fb = גודל כל קובץ בבתים — למסך הטעינה (אחוזים לפי גודל, כמו במסכתות)
+  return Object.assign({}, b, { f, fb, n: units.length }, word ? {} : { cv: Array.from(cv, x => x || 0) });
 });
 
 const index = { books, stats: B.stats, report: B.report };

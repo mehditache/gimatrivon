@@ -272,9 +272,10 @@
     if (!ids.length) return true;
     const key = ids.join(','); if (LOADING.has(key)) return false;
     LOADING.add(key);
-    let done = 0;
-    G.GimCorpus.load(ids, () => { if (prog) prog(++done / ids.length); }).then(() => { LOADING.delete(key); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); again(true); },
-      () => { LOADING.delete(key); again(false); });
+    // התקדמות לפי גודל הקבצים (books[b].fb), כמו במסכת: כל ספר זוחל לעבר 90% וקופץ למלא כשנטען
+    const pe = prog ? progEase(prog, ids.map(b => (IX.books[b].fb || [1]).reduce((a, x) => a + x, 0))) : null;
+    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); again(true); },
+      () => { LOADING.delete(key); if (pe) pe.end(); again(false); });
     return false;
   }
   // הספרים הסמוכים (לדפדוף רציף בין ספרים) — נטענים יחד עם הספר הפתוח
@@ -542,6 +543,7 @@
     document.querySelectorAll('#rdViewSeg button[data-view=book] .t').forEach(x => { x.textContent = T('ספר'); });
     if (!ensure([].concat(...nearBooks(S.b).map(need)), ok => { if (!ok) { geo = geometry(); $r('#rdBook').innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את הספר.') + '</p></article>'; } else render(); }, f => loadProg('b' + S.b, f))) {
       $r('#rdBook').innerHTML = loadingHtml('b' + S.b, bkName(IX.books[S.b].heTitle), geo);
+      $r('#rdWhereTxt').textContent = bkName(IX.books[S.b].heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
       return;
     }
     const pages = pagesFor(S.b, S.ch);
@@ -679,6 +681,14 @@
       (first ? '<div class="rdLoadT" data-k="' + h(k) + '" style="--p:0" role="progressbar" aria-label="' + h(T('טוען') + ' ' + title) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="o">' + h(title) + '</span><span class="f" aria-hidden="true">' + h(title) + '</span></div><div class="rdLoadPct" aria-hidden="true">0%</div>' : '') +
       '<div class="rdSkTx">' + skLines(30, '', 0) + '</div><div class="rdSkCm">' + skLines(30, ' c', first ? 8 : 12) + '</div></article>';
     return geo.two ? pg('right', true) + pg('left', false) : pg('single', true);
+  }
+  /* התקדמות משוערת לפי גודל (תגית script לא מדווחת על בייטים): כל פריט זוחל לעבר 90% בקצב של בערך 2MB לשנייה,
+     got(i) = הפריט נטען (מלא), end() = הכל נטען. set(0..1) מקבל את השבר הכולל. */
+  function progEase(set, sizes) {
+    const tot = sizes.reduce((a, b) => a + b, 0) || 1, got = sizes.map(() => 0), t0 = Date.now();
+    const report = () => set(got.reduce((a, b) => a + b, 0) / tot);
+    const tick = setInterval(() => { const sec = (Date.now() - t0) / 1000; sizes.forEach((n, i) => { if (got[i] < n) got[i] = Math.max(got[i], n * 0.9 * (1 - Math.exp(-sec / Math.max(0.6, n / 2e6)))); }); report(); }, 100);
+    return { got: i => { if (i >= 0) { got[i] = sizes[i]; report(); } }, end: () => { clearInterval(tick); set(1); } };
   }
   function loadProg(k, f) {
     const el = R.querySelector('.rdLoadT[data-k="' + k + '"]'); if (!el) return;
@@ -945,8 +955,10 @@
     const fin = ok => { if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('16px GimFrank', 'אב'), document.fonts.load('16px GimRashi', 'אב')]).then(() => done(ok), () => done(ok)); else done(ok); };
     if (!need.length) return done(true);
     let left = need.length, ok = true;
-    need.forEach(p => {
-      const id = k + '.' + p, cb = r => { ok = ok && r; if (--left === 0) fin(ok); };
+    // מסך הטעינה (אם מוצג): חלק של הטור הוא בערך 2MB
+    const pe = progEase(f => loadProg('r' + k, f), need.map(p => t.parts[p].b || 2e6));
+    need.forEach((p, n) => {
+      const id = k + '.' + p, cb = r => { ok = ok && r; pe.got(n); if (--left === 0) { pe.end(); fin(ok); } };
       if (RLOAD[id]) { RLOAD[id].push(cb); return; }
       RLOAD[id] = [cb];
       const sc = document.createElement('script'); sc.src = 'generated/tur/' + t.parts[p].f;
@@ -1170,7 +1182,7 @@
     const need = [S.rs - 1, S.rs, S.rs + 1, S.rs + 2];
     if (!rowsReady(k, need)) {
       $r('#rdPos').textContent = '';
-      book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('טוען את הטור…') + '</p></article>';
+      book.innerHTML = loadingHtml('r' + k, T('טור') + ' ' + turPartName(t), geo);
       loadTur(k, need, ok => { if (!ok) book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את הטור.') + '</p></article>'; else if (S.rk === k) { if (S.rsel) openTurCm(S.rsel.s, S.rsel.x, S.rsel.i); render(); } });
       return;
     }
