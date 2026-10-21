@@ -79,6 +79,13 @@ t('corpus', 'אין {פ}/{ס}/הערות שוליים בטקסט', () => B.units
 // ---- search ----
 const ALL13 = E.METHODS.map(m => m.id);
 const IDX = E.buildIndex(B.units.map(u => ({ c: u[0] ? 'mishnah' : 'tanakh', b: u[1], ch: u[2], n: u[3], t: u[4] })));
+// v3.16.0: בנייה בפרוסות (indexBuilder) — אותו אינדקס בדיוק כמו בבת אחת
+t('search', 'indexBuilder בפרוסות קטנות בונה אינדקס זהה ל-buildIndex', () => {
+  const us = B.units.slice(0, 30000).map(u => ({ c: 'tanakh', b: u[1], ch: u[2], n: u[3], t: u[4] }));
+  const a = E.buildIndex(us), bd = E.indexBuilder(us); let n = 0; while (!bd.step(0)) n++; const x = bd.finish();
+  const same = (p, q) => p.length === q.length && p.every((v, i) => v === q[i]);
+  return n > 10 && ['regular', 'words', 'letters', 'milui', 'atbash', 'atbach'].every(m => same(x.W[m], a.W[m])) && same(x.L, a.L) && same(x.MAQAF, a.MAQAF) && same(x.start, a.start) && same(x.toks, a.toks) && x.W.kollel === x.W.regular;
+});
 t('search', 'buildIndex: idx.L (סכום-אותיות-לכל-תיבה) קיים, אורכו תואם מספר התיבות, וערכיו תואמים את calculateLetters', () => {
   return IDX.L && IDX.L.length === IDX.toks.length && [0, 1, 2, 100, IDX.L.length - 1].every(i => IDX.L[i] === E.normalizeText(IDX.toks[i]).normalizedText.replace(/ /g, '').length);
 });
@@ -222,8 +229,17 @@ t('reader', 'טור: או״ח א מתחיל ב"יהודה בן תימא", ולכ
 t('reader', 'parseTurRef: או״ח ס / אורח חיים 60 / בית יוסף יו״ד קצג / חו״מ הקדמה / Orach Chayim 60', () => { const r = q => { const x = RC.parseTurRef(RX, q); return x && [x.k, x.s]; };
   eq([r('טור או״ח ס'), r('או"ח סימן ס'), r('אורח חיים 60'), r('בית יוסף יו״ד קצג'), r('חו״מ הקדמה'), r('Orach Chayim 60'), r('טור אבן העזר')], [['OC', 60], ['OC', 60], ['OC', 60], ['YD', 193], ['CM', 0], ['OC', 60], ['EH', 1]]); });
 t('reader', 'parseTurRef: סימן שלא קיים / ספר אחר → null; turToks מפריד סימנים ושורות', () => eq([RC.parseTurRef(RX, 'או״ח תשא'), RC.parseTurRef(RX, 'שמות יב'), RC.parseTurRef(RX, 'ברכות ב.'), RC.turToks('\u0010c0\u0011\u0010y0\u0011אב גד\nהו')], [null, null, null, ['\u0010c0\u0011', '\u0010y0\u0011', 'אב', 'גד', '\n', 'הו']]));
+t('reader', 'קישור ישיר #read/…: כל ספר, מסכת וטור עוברים הלוך-חזור; עברית ואנגלית; נתיב לא מוכר → null', () => {
+  const back = x => { const hh = RC.hashOfRef(RIX, x), y = RC.parseHashRef(RIX, TX, RX, hh.slice(6)); return y && RC.hashOfRef(RIX, y) === hh; };
+  const all = RIX.base.every(b => { const c = RC.chaptersOf(RIX, b), l = c[c.length - 1]; return back({ kind: 'ref', b, ch: c[0], v: 0 }) && back({ kind: 'ref', b, ch: l, v: RC.versesOf(RIX, b, l).pop() }); }) &&
+    TX.list.every(t => back({ kind: 'tal', k: t.k, j: 0 }) && back({ kind: 'tal', k: t.k, j: t.n - 1 })) && RX.list.every(t => back({ kind: 'tur', k: t.k, s: t.n - 1 }) && (!t.intro || back({ kind: 'tur', k: t.k, s: 0 })));
+  const p = q => { const x = RC.parseHashRef(RIX, TX, RX, q); return x && Object.values(x).join(); };
+  return all && eq([RC.hashOfRef(RIX, { kind: 'ref', b: 0, ch: 1, v: 5 }), RC.hashOfRef(RIX, { kind: 'tal', k: 'Berakhot', j: 1 }), RC.hashOfRef(RIX, { kind: 'tur', k: 'OC', s: 0 }),
+    p('בראשית/א/ה'), p(encodeURIComponent('ברכות') + '/ב.'), p('Berakhot/2b'), p('OC/60'), p('Mishneh_Torah_Sabbath/1/2'), p('x/y')],
+    ['#read/Genesis/1/5', '#read/Berakhot/2b', '#read/OC/intro', 'ref,0,1,5', 'tal,Berakhot,0', 'tal,Berakhot,1', 'tur,OC,60', 'ref,' + bkIdx(7, 'הלכות שבת') + ',1,2', null]);
+});
 
-// ---- ראשי תיבות וקיצורים בקפיצה (v3.18.0) ----
+// ---- ראשי תיבות וקיצורים בקפיצה (v3.20.0) ----
 t('reader', 'ראשי תיבות: תנ״ך (ש״א, מ״ב, דה״י, שה״ש) וקיצור בגרש (בר׳, שמ׳, תהל׳)', () => { const r = q => { const x = RC.parseRef(RIX, q, null); return x && [B.books[x.b].heTitle, x.ch, x.v]; };
   eq([r('ש"א ג'), r('שמו״א ג ד'), r('מ"ב ד'), r('דה"י א ה'), r('שה"ש ב'), r("בר' א ג"), r('שמ׳ יב'), r("תהל' כג"), r('ספר בראשית'), r('בראשית פרק א פסוק ג')],
     [['שמואל א', 3, 0], ['שמואל א', 3, 4], ['מלכים ב', 4, 0], ['דברי הימים א', 5, 0], ['שיר השירים', 2, 0], ['בראשית', 1, 3], ['שמות', 12, 0], ['תהילים', 23, 0], ['בראשית', 1, 0], ['בראשית', 1, 3]]); });
@@ -261,6 +277,11 @@ t('reader', 'suggestPlaces: הצעות תוך כדי הקלדה מכל הספר�
     const before = RC.chaptersOf(IX, g).length === 50 && RC.versesOf(IX, g, 1).length === 31 && !!RC.parseRef(IX, 'בראשית ב ג', null);
     RC.addBook(IX, g, GC.each);
     return before && JSON.stringify(IX.data[g]) === JSON.stringify(RIX.data[g]) && RC.versesOf(IX, g, 1).length === 31;
+  });
+  t('split', 'use(): ספר שאף אחד כבר לא צריך משתחרר; ספר שעוד מוחזק נשאר', () => {
+    const r1 = GC.use([0, 1]), r2 = GC.use([1]);
+    r1(); const a = !GC.ready(0) && GC.ready(1);
+    r2(); r2(); return a && !GC.ready(1) && GC.ready(2);
   });
 }
 

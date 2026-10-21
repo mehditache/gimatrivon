@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.18.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.20.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -51,7 +51,7 @@ const EN = {
   'שם': 'Name', 'אימייל': 'Email', 'הודעה': 'Message', 'שליחה': 'Send',
   'שולח…': 'Sending…', 'ההודעה נשלחה בהצלחה!': 'Message sent successfully!',
   'שליחה נכשלה — ודאו חיבור לאינטרנט ונסו שוב.': 'Failed to send — check your internet connection and try again.',
-  'טוען קורפוס…': 'Loading corpus…', 'טוען מקורות נוספים…': 'Loading more sources…', 'שגיאה בטעינת הקורפוס — נסו לרענן את הדף': 'Could not load the corpus — try reloading the page', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
+  'טוען קורפוס…': 'Loading corpus…', 'טוען מקורות נוספים…': 'Loading more sources…', 'בונה את אינדקס הגימטריה': 'Building the gematria index', 'סופר את אותיות התנ״ך והמשנה…': 'Counting the letters of Tanakh and Mishnah…', 'סופר את אותיות כל המקורות…': 'Counting the letters of all sources…', 'שגיאה בטעינת הקורפוס — נסו לרענן את הדף': 'Could not load the corpus — try reloading the page', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
   'שיטות הגימטריה': 'Gematria Methods', 'אודות גימטריבון': 'About Gimatrivon',
   'סינון': 'Filter', 'תוצאות החיפוש במקורות': 'Search Results in Sacred Texts', 'צד א׳': 'Side A', 'צד ב׳': 'Side B', 'קלט': 'Input',
   'סינון טקסטואלי בתוך התוצאות…': 'Text filter within results…',
@@ -490,6 +490,9 @@ function hitsSortToggle(k, id) {
 // נכון מעצמם בכל renderWindow/computeGroups.
 const S = {}; KS.forEach(k => { S[k] = { text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: [], winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
 let IDX = null, CM = null, FOCUS = null;
+// מצב בניית אינדקס הגימטריה (ראו gemStart בסוף הקובץ): gen = מונה לביטול, stage = 0 (אין) / 1 (תנ״ך ומשנה) / 2 (הכל)
+const GEM = { gen: 0, busy: false, stage: 0, f: 0 };
+let GEM_WAIT = f => setTimeout(f, 0);
 // v3.6.0: לחיצה על עיגול-התאמה גורמת לפס-הצבע של התאים המותאמים ולשני העיגולים עצמם — בשני הצדדים — להבהב BLINK_MS. מסמנים *זמן*
 // (BLINK_AT) ולא class חד-פעמי, כי renderCenter מצייר את כל הלוח מחדש (גם בהקלדה/חיפוש חי) — כל ציור-מחדש בתוך
 // 7 השניות מחזיר את ה-class עם animation-delay שמשכיב את ההבהוב באותה פאזה, כך שאין "קפיצה". בסיום מסירים ידנית.
@@ -1062,9 +1065,9 @@ function topUpHitsSort(k, id) {
     const newRows = r.results.length ? r.results.map(x => Object.assign(x, { target: x.value, wms: x.tag })) : [];
     warmTfCache(st, newRows);
     if (newRows.length) st.all = st.all.concat(newRows);
-    setTimeout(step, 0);
+    GEM_WAIT(step);
   };
-  setTimeout(step, 0);
+  GEM_WAIT(step);
 }
 // חיפוש הנוטריקון (ר״ת/אות ב׳/אות ג׳/ס״ת) — עצמאי לגמרי מ-run() (לא חלק מ-sms/ms, אין עוד כפתור-הפעלה),
 // נקרא תמיד מתוך run() כדי שיתעדכן בכל טריגר (הקלדה/שינוי עץ-מקורות/מגבלת-תוצאות וכו') בלי לשכפל קריאות
@@ -1110,16 +1113,17 @@ function runNotarikon(k) {
   const compareLetters = num ? null : baseify(E.normalizeText(st.text).normalizedText.replace(/ /g, ''));
   const literalOnly = st.notMode === 'lit', permOnly = st.notMode === 'perm';
   const limit = getLimit();
-  E.ensureNotarikonAsync(IDX, err => {
-    if (err || myGen !== st.notGen) return;
+  const ix = IDX;
+  E.ensureNotarikonAsync(ix, err => {
+    if (err || myGen !== st.notGen || IDX !== ix) return;
     const counts = {}, rows = [];
     NOTARIKON_IDS.forEach(m => { const r = E.searchNotarikon(IDX, target, [m], filt, limit, { maxWindow: NOTARIKON_MAXWINDOW, compareLetters, literalOnly, permOnly }); counts[m] = r.counts[m] || 0; rows.push(...r.results); });
     finish(counts, rows, target);
-  });
+  }, GEM_WAIT);
 }
 function run(k) {
   const st = S[k]; st.gen = (st.gen || 0) + 1; const myGen = st.gen; // מבטל כל חיפוש מדורג קודם של הצד הזה
-  if (!IDX) { $('#rs' + k).textContent = L('הקורפוס עדיין נטען…'); return; }
+  if (!IDX) { if (GEM.busy) gemShowWait(); else $('#rs' + k).textContent = L('הקורפוס עדיין נטען…'); return; }
   const box = $('#rl' + k);
   st.all = []; st.cur = -1; st.winStart = 0; st.winCount = 0; st.info = []; box.innerHTML = ''; box.classList.add('searching'); updateTfBar(k);
   runNotarikon(k); // אחרי האיפוס (לא לפניו) — כדי שמסקנה-סינכרונית (אינדקס-נוטריקון כבר בנוי) לא תימחק ע״י האיפוס
@@ -1155,7 +1159,8 @@ function run(k) {
   // שיטות-חיפוש שלא קיבלו אף יעד (למשל קולל/תיבות/אותיות כש-*כל* שיטות-המילה הפעילות אסורות עליהן לפי חוק
   // אי-ההתאמה) לא יופיעו בתור כלל — נחשבות "גמורות" כבר מההתחלה, כדי שמונה ההתקדמות (X/Y שיטות) יהיה מדויק.
   const zeroTargetSms = sms.length - new Set(queue.map(x => x.sm)).size;
-  let total = 0, pos = 0, smsDone = 0, lastSm = null;
+  let total = 0, pos = 0, smsDone = 0, lastSm = null, uAt = 0, tgCount = 0;
+  const nUnits = IDX.units.length, SLICE_UNITS = 25000;
   // עדכון-חי של רשימת-התוצאות תוך-כדי הסריקה: renderWindow (כמו renderCenter) לא נקרא על כל "חתיכה"
   // בודדת (יכולות להיות מאות) — תמיד בונה-מחדש את כל חלון-התצוגה (עד N = getLimit() שורות, ראו renderWindow)
   // ולא רק מוסיף שורות, אז העלות-לקריאה דומה בכל המקרים (עם/בלי סינון-טקסטואלי/מיון) — ולכן, בניגוד לגרסה
@@ -1175,26 +1180,36 @@ function run(k) {
       renderCenter(); // מרענן את עיגולי-המידע (מספר ההתאמות במקורות) במלבנים עם התוצאה הסופית של החיפוש
       return;
     }
-    const { sm, tg } = queue[pos++];
-    if (sm !== lastSm) { smsDone++; lastSm = sm; }
-    const r = E.search(IDX, [tg], [sm], filt, Math.max(0, smLimitLeft[sm]));
-    total += r.total; smLimitLeft[sm] -= r.results.length;
-    const c = r.counts[sm] ? r.counts[sm].get(tg.value) : 0;
-    if (c) st.info.push({ method: sm, target: tg.value, wms: tg.tag, total: c });
-    if (r.total) {
-      st.all = st.all.concat(r.results.map(x => Object.assign(x, { target: x.value, wms: x.tag })));
-      const firstChunk = st.all.length === r.results.length;
-      const liveNow = performance.now();
-      if (firstChunk || liveNow - lastLiveRefresh > 150) { liveRefresh(k); lastLiveRefresh = liveNow; }
-    }
+    // v3.16.0: כל יעד נסרק בפרוסות של SLICE_UNITS יחידות (filter.uFrom/uTo — אותה תוצאה בדיוק), כי סריקה של כל הקורפוס
+    // בבת אחת לקחה 100–200 מ״ש במחשב (ופי כמה בטלפון) — זמן שבו לחיצה (למשל מעבר למסך הקריאה) מחכה
+    // כמה פרוסות ברצף עד ~14 מ״ש, ורק אז עדכון שורת המצב ונשימה לדפדפן
+    const tS = performance.now(); let c = 0, cAny = false;
+    do {
+      const { sm, tg } = queue[pos];
+      if (sm !== lastSm) { smsDone++; lastSm = sm; }
+      const uTo = Math.min(nUnits, uAt + SLICE_UNITS);
+      const r = E.search(IDX, [tg], [sm], Object.assign({}, filt, { uFrom: uAt, uTo }), Math.max(0, smLimitLeft[sm]));
+      total += r.total; smLimitLeft[sm] -= r.results.length;
+      tgCount += r.counts[sm] ? r.counts[sm].get(tg.value) || 0 : 0;
+      c = 0;
+      if (uTo >= nUnits) { c = tgCount; tgCount = 0; uAt = 0; pos++; } else uAt = uTo;
+      if (c) st.info.push({ method: sm, target: tg.value, wms: tg.tag, total: c });
+      if (r.total) {
+        for (const x of r.results) st.all.push(Object.assign(x, { target: x.value, wms: x.tag }));
+        const firstChunk = st.all.length === r.results.length;
+        const liveNow = performance.now();
+        if (firstChunk || liveNow - lastLiveRefresh > 150) { liveRefresh(k); lastLiveRefresh = liveNow; }
+      }
+      if (c) cAny = true;
+    } while (pos < queue.length && performance.now() - tS < 14);
     say(LANG === 'en'
       ? `<b>${fmt(total)}</b> matches · searching… (${smsDone + zeroTargetSms}/${sms.length} methods) · ${Math.round(performance.now() - t0)} ms`
       : `<b>${fmt(total)}</b> התאמות · מחפש… (${smsDone + zeroTargetSms}/${sms.length} שיטות) · ${Math.round(performance.now() - t0)} מ״ש`);
     const nowT = performance.now();
-    if (c && nowT - lastLiveRender > 150) { updateCenterCounts(k); lastLiveRender = nowT; } // עדכון-חי מוגבל-קצב של עיגולי-התוצאות (בלי הרס-ובנייה-מחדש — ראו הערה ליד updateCenterCounts)
-    setTimeout(step, 0);
+    if (cAny && nowT - lastLiveRender > 150) { updateCenterCounts(k); lastLiveRender = nowT; } // עדכון-חי מוגבל-קצב של עיגולי-התוצאות (בלי הרס-ובנייה-מחדש — ראו הערה ליד updateCenterCounts)
+    GEM_WAIT(step);
   };
-  setTimeout(step, 0);
+  GEM_WAIT(step);
 }
 // מציג את המנה הבאה של תוצאות (עד 100). אם st.tf מוגדר (שדה הסינון הטקסטואלי), מתבצע דיפדוף על רשימת
 // האינדיקסים המסוננת (idx) במקום על st.all ישירות — כך שה-"הצג עוד" וכותרות הקבוצה ממשיכים לעבוד נכון.
@@ -1256,8 +1271,8 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   // הקבוצה הראשונה-בפועל (computeGroups תמיד מוסיף גבול ב-pos=0), כך ש-groupPos.has(p) כבר מכסה את זה.
   if (p === forceHeaderAt || groupPos.has(p)) {
     const f = st.info.find(x => x.method === r.method && x.target === r.target);
-    const wmTag = f && f.wms && f.wms.length ? ` (= ${wmsLabel(f.wms)} ${L('של מילת החיפוש')})` : '';
-    h += `<div class="gh" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')} · ${L('ערך')} ${fmt(r.target)}${wmTag}${f ? ` · ${fmt(f.total)} ${L('התאמות')}` : ''}</div>`;
+    const wmTag = f && f.wms && f.wms.length ? `<span class="ghW">= ${esc(wmsLabel(f.wms))} ${L('של מילת החיפוש')}</span>` : '';
+    h += `<div class="gh" data-m="${r.method}"><span class="ghM" data-fam="${famKeyOf(r.method)}" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')}</span><span class="ghV">${L('ערך')} <b>${fmt(r.target)}</b></span>${wmTag}${f ? `<span class="ghN">${fmt(f.total)} ${L('התאמות')}</span>` : ''}</div>`;
   }
   const wmLbl = (r.wms && r.wms.length) ? wmsLabel(r.wms) : L('מספר');
   const copyTxt = `${ref(u)}\n${T.slice(s, e).join(' ')}`;
@@ -1272,7 +1287,7 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const isNot = NOTARIKON_IDS.includes(r.method);
   const notGlow = r.literal ? 'glowY' : (r.perm ? 'glowP' : 'glowG');
   const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
-  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag"${r.wms && r.wms.length ? ` data-fam="${famKeyOf(r.wms[0])}"` : ''} title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span></div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
+  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag"${r.wms && r.wms.length ? ` data-fam="${famKeyOf(r.wms[0])}" data-m="${r.wms[0]}"` : ''} title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span></div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
   return h;
 }
 // בונה-מחדש את כל תוכן #rl{k} כחלון של עד N שורות המתחיל ב-start (במרחב-ה-idx, לא בהכרח במרחב st.all) —
@@ -1615,7 +1630,7 @@ function applyLangStatic() {
   const cMsgLbl = document.querySelector('label[for="cMsg"]'); if (cMsgLbl) cMsgLbl.textContent = L('הודעה');
   const contactSend = $('#contactSend'); if (contactSend) contactSend.textContent = L('שליחה');
   document.querySelectorAll('[data-close]').forEach(x => x.setAttribute('aria-label', L('סגור')));
-  if (!IDX && document.body.dataset.mode !== 'read') { const st = $('#status'); if (st) st.textContent = L('טוען קורפוס…'); }
+  if (!IDX && GEM.busy && document.body.dataset.mode !== 'read') { const st = $('#status'); if (st) st.textContent = L('טוען קורפוס…'); }
   const langBtn = $('#langSw'); if (langBtn) langBtn.textContent = en ? 'עב' : 'EN';
 }
 function applyLang() {
@@ -2017,31 +2032,107 @@ $('#startTour').onclick = () => { trackEvent('tour_start', { layout: mobileActiv
 
 KS.forEach(bind); renderDocs(); renderCenter();
 setupMobileUX();
-// v3.12.0: הקורפוס נטען לפי ספר (corpus-loader.js). קודם תנ״ך ומשנה, כדי שהתוצאות הראשונות יופיעו מהר, ואחר כך
-// שאר המקורות ברקע; אז האינדקס נבנה מחדש על הכל והחיפושים רצים שוב (כמו בטעינה הראשונה — run מאפס את התוצאות).
-const buildIdx = () => {
-  const units = [];
-  B.books.forEach((_, b) => GimCorpus.each(b, (c, bb, ch, n, t, k, s) => { units.push({ c: CK[c], b: bb, ch, n, t, k, s }); }));
-  IDX = E.buildIndex(units);
-};
+/* v3.12.0: הקורפוס נטען לפי ספר (corpus-loader.js). קודם תנ״ך ומשנה, כדי שהתוצאות הראשונות יופיעו מהר, ואחר כך
+   שאר המקורות ברקע; אז האינדקס נבנה מחדש על הכל והחיפושים רצים שוב (כמו בטעינה הראשונה — run מאפס את התוצאות).
+   v3.16.0:
+   - האינדקס נבנה בפרוסות קצרות (E.buildIndexAsync), כך שהמסך לא נתקע אף פעם — גם לא כשעוברים למסך הקריאה באמצע.
+     במסך הקריאה הבנייה (והחיפושים) ממשיכים רק בזמן פנוי של הדפדפן (requestIdleCallback).
+   - אחרי שהאינדקס נבנה, קובצי הספרים עצמם כבר לא נחוצים לגימטריה (הטקסט נמצא ב-IDX.units) ומשתחררים.
+   - אחרי 5 דקות רצופות במסך הקריאה האינדקס (מאות MB) משתחרר; בחזרה לגימטריה הוא נבנה שוב (מהמטמון), והחיפושים רצים שוב.
+   - בזמן ההמתנה לאינדקס: האותיות ג־י־מ־ט־ר־י־ה מתמלאות לפי ההתקדמות, כל אות עם הערך שלה (gemLoadHtml). */
+const GEM_LETTERS = [['ג', 3], ['י', 10], ['מ', 40], ['ט', 9], ['ר', 200], ['י', 10], ['ה', 5]];
+const GEM_IDLE_MS = window.GIM_GEM_IDLE_MS || 5 * 60 * 1000; // GIM_GEM_IDLE_MS: לבדיקות בלבד
+const inRead = () => document.body.dataset.mode === 'read';
+// יש לחיצה/הקלדה שמחכה לטיפול (Chrome): עוצרים את הפרוסה מיד, כך שפרוסות ארוכות יותר (מהירות יותר) לא מעכבות תגובה
+const inputWaiting = () => !!(navigator.scheduling && navigator.scheduling.isInputPending && navigator.scheduling.isInputPending());
+const gemWait = f => inRead() && window.requestIdleCallback ? requestIdleCallback(f, { timeout: 3000 }) : setTimeout(f, 0);
+// שלב ב׳ (כל המקורות) רץ ברקע בזמן פנוי, כדי לא להאט את החיפוש בתוצאות הראשונות (תנ״ך ומשנה)
+const gemBgWait = f => window.requestIdleCallback ? requestIdleCallback(f, { timeout: inRead() ? 3000 : 400 }) : setTimeout(f, 0);
+GEM_WAIT = gemWait;
+function gemLoadHtml(label, mini) {
+  let cards = ''; if (!mini) for (let i = 0; i < 5; i++) cards += `<div class="gmSk" aria-hidden="true"><i class="gmLn h" style="--i:${i};width:${28 + i * 7 % 20}%"></i><i class="gmLn" style="--i:${i + 1};width:96%"></i><i class="gmLn" style="--i:${i + 2};width:${68 + i * 11 % 25}%"></i></div>`;
+  return `<div class="gmLoad${mini ? ' gmMini' : ''}" role="progressbar" aria-label="${L('בונה את אינדקס הגימטריה')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="gmLet">${GEM_LETTERS.map(([c, v]) => `<div style="--p:0"><b class="o">${c}</b><b class="f" aria-hidden="true">${c}</b><i>${v}</i></div>`).join('')}</div>
+    <div class="gmPct">0%</div><div class="gmTxt">${label}</div></div>${cards}`;
+}
+// f = 0..1: כל אות מתמלאת בשביעית משלה (מימין לשמאל), והערך שלה מופיע כשהיא מלאה
+// מתעדכן לכל היותר פעם ב-100 מ״ש (עדכון בכל פרוסה עלה בזמן ציור והאט את הבנייה בטלפון)
+function gemProg(f) {
+  const now = Date.now(); GEM.f = f; if (f < 1 && now - (GEM.drawn || 0) < 100) return; GEM.drawn = now;
+  const pct = Math.round(f * 100);
+  document.querySelectorAll('.gmLoad').forEach(el => {
+    el.setAttribute('aria-valuenow', pct);
+    el.querySelectorAll('.gmLet>div').forEach((d, i) => { const p = Math.max(0, Math.min(1, f * 7 - i)); d.style.setProperty('--p', Math.round(p * 100)); d.classList.toggle('on', p >= 1); });
+    const t = el.querySelector('.gmPct'); if (t) t.textContent = pct + '%';
+  });
+}
+const gemLabel = () => GEM.stage === 0 ? L('סופר את אותיות התנ״ך והמשנה…') : L('סופר את אותיות כל המקורות…');
+// מציג את מסך ההמתנה בצדדים שאין בהם עדיין תוצאות (כשאין אינדקס בכלל)
+// בטלפון חלונית הקלט מכסה את התוצאות, ולכן מוצגת גם גרסה קטנה בראש החלונית (בלי השלד)
+function gemShowWait() {
+  if (IDX) return;
+  KS.forEach(k => { $('#rs' + k).textContent = ''; $('#rl' + k).innerHTML = gemLoadHtml(gemLabel()); });
+  const sb = $('#mSheetBody');
+  if (sb && !sb.querySelector('.gmMini')) sb.insertAdjacentHTML('afterbegin', gemLoadHtml(gemLabel(), true));
+  GEM.drawn = 0; gemProg(GEM.f || 0);
+}
+const gemHideMini = () => document.querySelectorAll('.gmMini').forEach(e => e.remove());
+// התקדמות טעינת קבצים לפי גודל (books[b].fb): כל ספר זוחל לעבר 90% וקופץ למלא כשנטען (כמו במסך הקריאה)
+function gemFiles(ids, set) {
+  const sz = ids.map(b => (B.books[b].fb || [1]).reduce((a, x) => a + x, 0)), tot = sz.reduce((a, x) => a + x, 0) || 1, got = sz.map(() => 0), t0 = Date.now();
+  const rep = () => set(got.reduce((a, x) => a + x, 0) / tot);
+  const tick = setInterval(() => { const sec = (Date.now() - t0) / 1000; sz.forEach((n, i) => { if (got[i] < n) got[i] = Math.max(got[i], n * 0.9 * (1 - Math.exp(-sec / Math.max(0.6, n / 2e6)))); }); rep(); }, 120);
+  return GimCorpus.load(ids, b => { const i = ids.indexOf(b); got[i] = sz[i]; rep(); }).then(r => { clearInterval(tick); set(1); return r; }, e => { clearInterval(tick); throw e; });
+}
+// שלב בנייה אחד: טעינת הקבצים (40% מההתקדמות), איסוף היחידות ובנייה בפרוסות (60%). מחזיר את האינדקס, או null אם בוטל
+function gemStage(ids, gen, prog, wait) {
+  const live = () => gen === GEM.gen;
+  return gemFiles(ids, f => { if (live()) prog(0.4 * f); }).then(() => new Promise(ok => {
+    const units = [], books = B.books.map((_, b) => b).filter(b => GimCorpus.ready(b) && ids.includes(b)); let i = 0;
+    const more = () => {
+      if (!live()) return ok(null);
+      const t0 = Date.now();
+      while (i < books.length && Date.now() - t0 < 12) GimCorpus.each(books[i++], (c, bb, ch, n, t, k, s) => { units.push({ c: CK[c], b: bb, ch, n, t, k, s }); });
+      if (i < books.length) wait(more); else ok(units);
+    };
+    wait(more);
+  })).then(units => units && E.buildIndexAsync(units, null, { ms: 40, urgent: inputWaiting, wait, cancelled: () => !live(), onProgress: f => { if (live()) prog(0.4 + 0.6 * f); } }));
+}
+function gemStart() {
+  if (GEM.busy || (IDX && GEM.stage === 2)) return;
+  const gen = ++GEM.gen; GEM.busy = true; GEM.stage = 0; GEM.f = 0;
+  const first = [...ALL].filter(i => B.books[i].cat <= 1), all = [...ALL];
+  // הקבצים מוחזקים עד שהיחידות נאספו; את שלב א׳ משחררים רק אחרי ששלב ב׳ כבר מחזיק את כל הספרים (בלי לטעון פעמיים)
+  const rel1 = GimCorpus.use(first); let rel2 = null;
+  const end = () => { rel1(); if (rel2) rel2(); if (gen === GEM.gen) GEM.busy = false; };
+  $('#status').textContent = L('טוען קורפוס…'); gemShowWait();
+  gemStage(first, gen, gemProg, gemWait).then(ix => {
+    if (!ix) return null;
+    IDX = ix; GEM.stage = 1; gemHideMini(); KS.forEach(run);
+    rel2 = GimCorpus.use(all); rel1();
+    $('#status').textContent = L('טוען מקורות נוספים…');
+    return gemStage(all, gen, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
+  }).then(ix => {
+    if (!ix) return;
+    IDX = ix; GEM.stage = 2; $('#status').textContent = ''; KS.forEach(run);
+  }).catch(() => { if (gen === GEM.gen) $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); }).then(end);
+}
+// משחרר את האינדקס (וכל מה שנבנה ממנו); חיפוש שרץ עכשיו נעצר (st.gen), ובחזרה לגימטריה הכל נבנה ורץ שוב
+function gemRelease() {
+  if (!inRead() || (!IDX && !GEM.busy)) return;
+  GEM.gen++; GEM.busy = false; GEM.stage = 0; GEM.f = 0; IDX = null; gemHideMini();
+  KS.forEach(k => { const st = S[k]; st.gen = (st.gen || 0) + 1; st.notGen = (st.notGen || 0) + 1; st.all = []; st.info = []; st.cur = -1; st.winStart = 0; st.winCount = 0; $('#rl' + k).innerHTML = ''; $('#rs' + k).textContent = ''; });
+  $('#status').textContent = '';
+}
 // מי שפותח ישר במסך הקריאה (reader.js זוכר את המסך האחרון) לא טוען את הקורפוס לגימטריה עד שעובר אליה —
 // מסך הקריאה טוען לבד רק את הספר הפתוח.
-const whenGem = go => {
-  if (document.body.dataset.mode !== 'read') return go();
-  $('#status').textContent = '';
-  const mo = new MutationObserver(() => { if (document.body.dataset.mode !== 'read') { mo.disconnect(); $('#status').textContent = L('טוען קורפוס…'); go(); } });
-  mo.observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
-};
-setTimeout(() => whenGem(() => {
-  const first = [...ALL].filter(i => B.books[i].cat <= 1);
-  GimCorpus.load(first).then(() => {
-    buildIdx(); KS.forEach(run);
-    $('#status').textContent = L('טוען מקורות נוספים…');
-    return GimCorpus.load([...ALL]);
-  }).then(() => {
-    buildIdx(); $('#status').textContent = ''; KS.forEach(run);
-  }, () => { $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); });
-}), 40);
+let gemIdleT = 0;
+new MutationObserver(() => {
+  clearTimeout(gemIdleT);
+  if (inRead()) { gemIdleT = setTimeout(gemRelease, GEM_IDLE_MS); return; }
+  if (!GEM.busy && !(IDX && GEM.stage === 2)) setTimeout(gemStart, 0); // אחרי שהמסך התחלף ונצבע
+}).observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
+setTimeout(() => { if (inRead()) { $('#status').textContent = ''; gemIdleT = setTimeout(gemRelease, GEM_IDLE_MS); } else gemStart(); }, 40);
 // Service Worker (sw.js): שומר את קובצי הספרים בדפדפן — ביקור חוזר לא מוריד אותם שוב, והאתר עובד גם בלי רשת.
 // רק באתר עצמו (http/https), לא ב-file:// וגם לא בהרצה מקומית, כדי לא להגיש גרסה ישנה בזמן פיתוח.
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/^(localhost|127\.|\[::1\])/.test(location.hostname)) {

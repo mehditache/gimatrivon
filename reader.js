@@ -36,7 +36,7 @@
     if (cat === 2 || cat === 5 || cat >= 8) (c[v] || (c[v] = [])).push(t);
     else c[v] = c[v] ? c[v] + ' ' + t : t;
   }
-  /* ---- ראשי תיבות וקיצורים מקובלים לשמות הספרים (v3.18.0) ----
+  /* ---- ראשי תיבות וקיצורים מקובלים לשמות הספרים (v3.20.0) ----
      בצורה המנוקה, בלי גרשיים: ש״א = "שא", מו״ק = "מוק". נרשמים אחרי השמות המלאים, כך ששם מלא תמיד קודם.
      מסכתות: משותף למשנה ולבבלי. רמב״ם: נרשם רק אחרי "הלכות" / "רמבם" ("הל׳ ת״ת", "רמב״ם יסוה״ת"), כי לבד הם שייכים למשנה. */
   const TANAKH_ABBR = { 'שמואל א': ['שא', 'שמוא', 'שמא'], 'שמואל ב': ['שב', 'שמוב', 'שמב'], 'מלכים א': ['מא', 'מלא', 'מלכא'], 'מלכים ב': ['מב', 'מלב', 'מלכב'],
@@ -134,7 +134,7 @@
   // "בראשית א ו", "שמות יב", "ברכות ב ג", "Exodus 12 2", "ו ג" (פרק ופסוק בספר הנוכחי — רק בשני מספרים)
   function parseRef(IX, q, cur) {
     const { toks, ab, mk } = qToks(IX.clean, q); if (!toks.length) return null;
-    const f = findName(IX.names, IX.loose, toks, ab, 8);
+    const f = findName(IX.names, IX.loose, toks, ab, 12);
     let b = f ? f.i : -1; const k = f ? f.k : 0;
     if (b < 0) { if (cur == null || toks.length !== 2) return null; b = cur; }
     const keep = toks.map((t, j) => j >= k && !(k > 0 && FILL.test(t))), rest = toks.filter((_, j) => keep[j]), rmk = mk.filter((_, j) => keep[j]);
@@ -152,7 +152,7 @@
     const out = []; const lc = IX.loose(c); IX.names.forEach(x => { if ((x.n.startsWith(c) || x.l.startsWith(lc)) && !out.includes(x.i)) out.push(x.i); });
     return out.slice(0, max || 5);
   }
-  /* הצעות תוך כדי הקלדה (v3.18.0): ספרים (תנ״ך, משנה, רמב״ם), מסכתות בבלי (TX) וטורים (RX) שהשם, הכינוי או ראשי
+  /* הצעות תוך כדי הקלדה (v3.20.0): ספרים (תנ״ך, משנה, רמב״ם), מסכתות בבלי (TX) וטורים (RX) שהשם, הכינוי או ראשי
      התיבות שלהם מתחילים במה שהוקלד, מילה מול מילה ("בבא מ" → בבא מציעא, "הל׳ שב" → הלכות שבת). קודם התאמה מלאה.
      → [{kind: 'ref', b} | {kind: 'tal', i} | {kind: 'tur', i}] */
   function suggestPlaces(IX, TX, RX, q, max) {
@@ -272,7 +272,26 @@
   const turToks = t => String(t).replace(/\u0010[yc]\d+\u0011/g, ' $& ').replace(/\n/g, ' \n ').split(/ +/).filter(Boolean);
   const ANC = /^\u0010([yc])(\d+)\u0011$/;
 
-  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, suggestPlaces, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks };
+  /* קישור ישיר למסך הקריאה: #read/<ספר>/<פרק>/<פסוק>. הנתיב נקרא כמו שורת הקפיצה (עם / או _ במקום רווח), כך שעובד
+     גם בעברית (#read/בראשית/א/ה, #read/ברכות/ב.) וגם באנגלית; הכתובת שנכתבת היא תמיד הצורה האנגלית הקצרה:
+     #read/Genesis/1/5, #read/Mishnah_Berakhot/2/3, #read/Berakhot/2b (גמרא), #read/OC/60 (טור), #read/OC/intro. */
+  const bookSlug = t => String(t).replace(/,/g, '').trim().replace(/\s+/g, '_');
+  function parseHashRef(IX, TX, RX, path) {
+    let q = String(path || ''); try { q = decodeURIComponent(q); } catch (e) {}
+    q = q.replace(/[\/_+#]+/g, ' ').trim(); if (!q) return null;
+    const rr = parseTurRef(RX, q), tr = parseDafRef(TX, q), ref = parseRef(IX, q, null);
+    if (rr) return { kind: 'tur', k: rr.k, s: rr.s };
+    if (tr && (tr.explicit || !ref)) return { kind: 'tal', k: tr.k, j: tr.j };
+    if (ref) return { kind: 'ref', b: ref.b, ch: ref.ch, v: ref.v };
+    return null;
+  }
+  function hashOfRef(IX, x) {
+    if (x.kind === 'tur') return '#read/' + x.k + '/' + (x.s || 'intro');
+    if (x.kind === 'tal') return '#read/' + x.k + '/' + dafLabel(x.j, true);
+    return '#read/' + bookSlug(IX.books[x.b].title) + '/' + x.ch + (x.v && x.v !== versesOf(IX, x.b, x.ch)[0] ? '/' + x.v : '');
+  }
+
+  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, suggestPlaces, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks, parseHashRef, hashOfRef };
   G.GimReaderCore = CORE;
   if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
   if (typeof document === 'undefined' || !G.GimCorpus) return;
@@ -331,7 +350,13 @@
   const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc })); } catch (e) {} };
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc })); } catch (e) {} syncHash(); };
+  /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
+     נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
+  const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
+  const setHash = x => { if (location.hash === x || (location.hash && !MODE_HASH.test(location.hash))) return; try { history.replaceState(history.state, '', x); } catch (e) {} };
+  const curRef = () => isTur() ? { kind: 'tur', k: S.rk, s: S.rs } : isTal() ? { kind: 'tal', k: S.tk, j: S.tj } : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
+  function syncHash() { if (IX && document.body.dataset.mode === 'read') setHash(hashOfRef(IX, curRef())); }
 
   let TX = null;
   const ensureIndex = () => {
@@ -356,9 +381,21 @@
     LOADING.add(key);
     // התקדמות לפי גודל הקבצים (books[b].fb), כמו במסכת: כל ספר זוחל לעבר 90% וקופץ למלא כשנטען
     const pe = prog ? progEase(prog, ids.map(b => (IX.books[b].fb || [1]).reduce((a, x) => a + x, 0))) : null;
-    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); again(true); },
-      () => { LOADING.delete(key); if (pe) pe.end(); again(false); });
+    // הקבצים מוחזקים רק עד שהספר נכנס ל-IX.data (GimCorpus.use), ואז משתחררים — הטקסט כבר נמצא כאן
+    const rel = G.GimCorpus.use ? G.GimCorpus.use(ids) : () => {};
+    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); rel(); setTimeout(() => again(true), 0); }, // משימה נפרדת לעימוד, כדי שמסך הטעינה יתעדכן ביניהן
+      () => { LOADING.delete(key); rel(); if (pe) pe.end(); again(false); });
     return false;
+  }
+  /* v3.16.0: ספרים שלא בשימוש משתחררים מהזיכרון. נשארים: הספרים של המסך הנוכחי (הספר, הסמוכים, התרגום והמפרשים),
+     הספרים של החיפוש הפתוח (PIN), ועוד BKEEP הספרים האחרונים שנפתחו — כדי שחזרה לספר קודם תהיה מיידית.
+     ספר שמשתחרר נטען שוב בפעם הבאה (מהמטמון, עם מסך הטעינה) — פרקים ופסוקים מוצגים בינתיים מ-books[b].cv. */
+  const BKEEP = 16, RECENT = []; let PIN = [];
+  function keepBooks(ids) {
+    ids.forEach(b => { const i = RECENT.indexOf(b); if (i >= 0) RECENT.splice(i, 1); RECENT.push(b); });
+    while (RECENT.length > BKEEP) RECENT.shift();
+    const keep = new Set(ids.concat(PIN, RECENT));
+    IX.data.forEach((d, b) => { if (d && !keep.has(b)) { IX.data[b] = null; IX.ncache.delete(b); CMN.delete(b); } });
   }
   // הספרים הסמוכים (לדפדוף רציף בין ספרים) — נטענים יחד עם הספר הפתוח
   const nearBooks = b => { const i = IX.base.indexOf(b); return [IX.base[i - 1], b, IX.base[i + 1]].filter(x => x != null); };
@@ -628,6 +665,7 @@
       $r('#rdWhereTxt').textContent = bkName(IX.books[S.b].heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
       return;
     }
+    keepBooks([].concat(...nearBooks(S.b).map(need)));
     const pages = pagesFor(S.b, S.ch);
     // בשני עמודים הפריסה רציפה בין פרקים: אם בפרק מספר עמודים אי-זוגי, העמוד הראשון של הפרק הבא ממלא את הצד השמאלי
     // (במקום עמוד ריק). לכן S.p יכול להיות אי-זוגי; בקפיצה לפסוק שומרים על הזוגיות של הפריסה הנוכחית באותו פרק.
@@ -1032,10 +1070,17 @@
   const hilOf = (t, s) => { let n = ''; (t.hil || []).forEach(x => { if (x[0] <= s) n = x[1]; }); return s ? n : ''; };
   const RL = (x, i) => x === 'y' ? '(' + toHeb(i + 1) + ')' : '[' + toHeb(i + 1) + ']';
   const turCmName = x => T(x === 'y' ? 'בית יוסף' : 'ב״ח');
+  // חלקי הטור בזיכרון: אלה שהמסך צריך עכשיו, ועוד TUR_KEEP האחרונים (חלק = בערך 2MB); השאר נטענים שוב כשצריך
+  const TUR_KEEP = 4, TUR_RECENT = [];
+  function keepTur(ids) {
+    ids.forEach(id => { const i = TUR_RECENT.indexOf(id); if (i >= 0) TUR_RECENT.splice(i, 1); TUR_RECENT.push(id); });
+    while (TUR_RECENT.length > Math.max(TUR_KEEP, new Set(ids).size)) { const id = TUR_RECENT.shift(); if (!ids.includes(id) && G.GIM_TUR_P) delete G.GIM_TUR_P[id]; }
+  }
   function loadTur(k, ss, done) {
     const t = turTOf(k), TP = G.GIM_TUR_P || (G.GIM_TUR_P = {});
     const need = [...new Set(ss.filter(s => s >= minS(t) && s < t.n).map(s => turPart(t, s)))].filter(p => !TP[k + '.' + p]);
     const fin = ok => { if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('16px GimFrank', 'אב'), document.fonts.load('16px GimRashi', 'אב')]).then(() => done(ok), () => done(ok)); else done(ok); };
+    keepTur(ss.filter(s => s >= minS(t) && s < t.n).map(s => k + '.' + turPart(t, s)));
     if (!need.length) return done(true);
     let left = need.length, ok = true;
     // מסך הטעינה (אם מוצג): חלק של הטור הוא בערך 2MB
@@ -1072,7 +1117,7 @@
     // נקודות חיתוך בטור: תחילת כל רצף של סימנים (לא חותכים בין שני סימנים צמודים), וסוף הסימן
     const cuts = []; tt.forEach((w, i) => { if (i > 0 && ANC.test(w) && !ANC.test(tt[i - 1])) cuts.push(i); }); cuts.push(tt.length);
     const m = { k, s, tt, st, cuts, hd, empty: (x, i) => !(row[x === 'y' ? 1 : 2] || [])[i] };
-    TMC.set(key, m); return m;
+    TMC.set(key, m); trimMap(TMC, 40); return m;
   }
   // HTML לאסימונים [a, b) של זרם; from = תחילת הדיבור (או הטור), שממנה מחושב מצב ההדגשה בנקודה a
   function tokHtml(m, toks, a, b, from, inTur) {
@@ -1229,7 +1274,7 @@
       pages.push(pg); first = false;
     }
     $r('#rdDafHost').innerHTML = '';
-    TPC.set(key, pages); return pages;
+    TPC.set(key, pages); trimMap(TPC, 60); return pages;
   }
   function turHeader(t, s) {
     const hil = hilOf(t, s);
@@ -1577,7 +1622,7 @@
 
   /* ---------- חיפוש מהיר ---------- */
   let dropItems = [], dropAct = -1, qTimer = 0, dropQ = null;
-  function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; }
+  function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; PIN = []; }
   function scopeBooks() { if (S.scope === 'all') return IX.base.filter(i => IX.books[i].cat === IX.books[S.b].cat); return [S.b]; }
   function refLabel(r) { return bkName(IX.books[r.b].heTitle) + ' ' + num(r.ch) + (r.v ? ', ' + num(r.v) : ''); }
   /* תוצאות החיפוש: כל ההתאמות (בלי תקרה) ברשימה וירטואלית, בדומה לרשימת התוצאות במסך הגימטריה.
@@ -1633,7 +1678,7 @@
   const talRefLabel = (k, j) => { const t = TX.list[TX.byK[k]]; return T('מסכת') + ' ' + talName(t) + ' ' + T('דף') + ' ' + dafTxt(j); };
   const turRefLabel = (k, s) => T('טור') + ' ' + turPartName(turTOf(k)) + ' ' + (s ? T('סימן') + ' ' + num(s) : T('הקדמה'));
   const refItemLabel = it => it.kind === 'tur' ? turRefLabel(it.k, it.s) : it.kind === 'tal' ? talRefLabel(it.k, it.j) : (isRambam(it.r.b) ? T('רמב״ם') + ', ' : '') + refLabel(it.r);
-  /* הצעות ספרים תוך כדי הקלדה (v3.18.0): כל ספר — תנ״ך, משנה, רמב״ם, מסכת בבלי או טור — ששמו או ראשי התיבות שלו מתחילים
+  /* הצעות ספרים תוך כדי הקלדה (v3.20.0): כל ספר — תנ״ך, משנה, רמב״ם, מסכת בבלי או טור — ששמו או ראשי התיבות שלו מתחילים
      במה שהוקלד, אם עוד אינו ב"מעבר אל". sg = הצעה (ולא מקום שזוהה), ולכן Enter עדיין הולך לתוצאת החיפוש הראשונה. */
   const itKey = it => it.kind === 'ref' || it.kind === 'hit' ? 'b' + it.r.b : it.kind === 'tal' ? 't' + it.k : 'r' + it.k;
   function addSugg(q, max) {
@@ -1715,7 +1760,8 @@
     html += refsHtml();
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isRambam(S.b) ? 'בכל הרמב״ם' : isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
     // החיפוש צריך את הספרים שבתחום (והמפרשים/התרגומים שלהם, לפי "חיפוש ב"); עד שהם נטענים — "טוען…" במקום מספר התוצאות
-    const sBooks = scopeBooks(), wait = !ensure(searchNeed(sBooks), () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
+    const sBooks = scopeBooks(); PIN = searchNeed(sBooks);
+    const wait = !ensure(PIN, () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
     const res = wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
     const srcs = [['txt', isRambam(S.b) ? 'הלכות' : isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isRambam(S.b) ? 'מפרשים' : isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
     html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait ? T('טוען…') : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
@@ -1982,9 +2028,28 @@
     try { localStorage.setItem('gimatrivonMode', m); } catch (e) {}
     if (m === 'read') {
       if (!built) build();
-      render();
+      render(); syncHash();
       if (user && APP.trackEvent) APP.trackEvent('reader_open');
     } else if (built) { closePops(); closeDrop(); }
+    if (m === 'gem' && (user || /^#read/i.test(location.hash))) setHash('#gim');
+  }
+  // #read/<מקום> → המקום נקבע ב-S לפני הציור (ספר / מסכת ודף / טור וסימן); מחזיר אם הכתובת היא של מסך הקריאה
+  function hashTarget() {
+    const m = location.hash.match(/^#read(?:[\/#]+(.*))?$/i); if (!m) return false;
+    ensureIndex();
+    const x = m[1] ? parseHashRef(IX, TX, RX, m[1]) : null;
+    if (x) {
+      closeSeg(); S.lock = null;
+      if (x.kind === 'tur') { S.tk = ''; S.rk = x.k; S.rs = x.s; S.rp = 0; }
+      else if (x.kind === 'tal') { S.rk = ''; S.tk = x.k; S.tj = x.j; S.tp = 0; }
+      else { S.tk = ''; S.rk = ''; S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; }
+    }
+    return true;
+  }
+  function fromHash() {
+    if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
+    if (!hashTarget()) return;
+    if (document.body.dataset.mode === 'read') { render(); syncHash(); } else setMode('read', false, 'link');
   }
   function labelModeSw() {
     // בטלפון אין מקום לתווית המלאה — .ls (קצרה) מוצגת במקום .lf
@@ -2017,8 +2082,9 @@
     labelModeSw();
     let start = 'gem';
     try { start = localStorage.getItem('gimatrivonMode') === 'read' ? 'read' : 'gem'; } catch (e) {}
-    if (/^#read\b/.test(location.hash)) start = 'read';
-    setMode(start);
+    if (hashTarget()) setMode('read', false, 'link');
+    else setMode(/^#gim$/i.test(location.hash) ? 'gem' : start, false, /^#gim$/i.test(location.hash) ? 'link' : undefined);
+    window.addEventListener('hashchange', fromHash);
   }
   init();
 })();
