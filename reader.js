@@ -148,7 +148,7 @@
     vRows: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 6h12M3 12h12M3 18h12M18 6h3M18 12h3M18 18h3"/></svg>'
   };
 
-  let IX = null, built = false, R = null, geo = null, hlTimer = 0;
+  let IX = null, built = false, R = null, geo = null, hlTimer = 0, fxDir = 0, fxLast = 0, fxTimer = 0;
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
@@ -359,7 +359,37 @@
     $r('#rdPrevCh').disabled = !nextCh(S.b, S.ch, -1); $r('#rdNextCh').disabled = !nextCh(S.b, S.ch, 1);
     R.querySelectorAll('#rdViewSeg button').forEach(x => { const on = x.dataset.view === S.view; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
     $r('#rdViewSeg [data-view=aligned] .t').textContent = T(isMishnah(S.b) ? 'משנה מול תרגום' : 'פסוק מול תרגום');
+    if (fxDir) { reveal(book, fxDir); fxDir = 0; }
     save();
+  }
+
+  /* הופעה הדרגתית של הטקסט בדפדוף ובמעבר פרק (לא בפתיחה, בשינוי גודל או בהגדרות): כל גוש (כותרת, פסקת מקרא/משנה, התרגום,
+     כל דיבור בפירוש) נכנס בדהייה עם הזזה קטנה מכיוון הדפדוף — קדימה מגיע משמאל. סדר קבוע בכל עמוד: מקרא, תרגום, פירוש.
+     רק opacity ו-transform. הפחתת תנועה = דהייה קצרה של העמוד כולו בלי הזזה; דפדוף מהיר ברצף מדלג על האפקט. */
+  const FX_START = [0, 220, 400], FX_STEP = 90, FX_DUR = 880;
+  const FX_BLOCKS = '.rdChTitle,.rdTxt>p,.rdMsh,.rdTr,.rdRowHd,.rdRow,.rdCmHd,.rdCmBody>p';
+  function reveal(book, dir) {
+    clearTimeout(fxTimer);
+    const now = performance.now(), quick = now - fxLast < 280; fxLast = now;
+    if (quick) return;
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let end = 0;
+    const set = (el, d, t) => { end = Math.max(end, d + t); el.style.setProperty('--fxD', d + 'ms'); el.style.setProperty('--fxT', t + 'ms'); el.classList.add('fxA'); };
+    book.style.setProperty('--fxDx', (dir > 0 ? -10 : 10) + 'px');
+    book.querySelectorAll('.rdPage:not(.blank)').forEach(pg => {
+      if (calm) { pg.querySelectorAll('.rdBody,.rdCm').forEach(el => set(el, 0, 160)); return; }
+      const n = [0, 0, 0];
+      pg.querySelectorAll(FX_BLOCKS).forEach(el => {
+        const z = el.closest('.rdCm') ? 2 : el.closest('.rdTr') ? 1 : 0;
+        set(el, FX_START[z] + Math.min(n[z]++, 8) * FX_STEP, FX_DUR);
+      });
+    });
+    book.classList.add('fxRun', calm ? 'fxCalm' : 'fxRise');
+    // אחרי הסיום מסירים הכל, כך שבחירת טקסט והדגשה פועלות על DOM רגיל
+    fxTimer = setTimeout(() => {
+      book.classList.remove('fxRun', 'fxCalm', 'fxRise');
+      book.querySelectorAll('.fxA').forEach(e => { e.classList.remove('fxA'); e.style.removeProperty('--fxD'); e.style.removeProperty('--fxT'); });
+    }, end + 60);
   }
 
   function flash(v) {
@@ -375,7 +405,7 @@
   function turn(dir) {
     // np מעבר לסוף הפרק = כמה עמודים של הפרק הבא כבר הוצגו (0 או 1); מתחת לאפס = כמה עמודים לקחת מסוף הפרק הקודם
     const pages = pagesFor(S.b, S.ch), np = S.p + dir * geo.per;
-    if (np >= 0 && np < pages.length) { S.lock = np; render(); return; }
+    if (np >= 0 && np < pages.length) { S.lock = np; fxDir = dir; render(); return; }
     let b = S.b, ch = S.ch, k = dir > 0 ? np - pages.length : np, len;
     for (;;) {
       const n = nextCh(b, ch, dir); if (!n) return;
@@ -384,9 +414,9 @@
       k += dir > 0 ? -len : len; // פרק קצר שכולו כבר הוצג בפריסה הקודמת — ממשיכים לפרק שאחריו
     }
     S.b = b; S.ch = ch; S.lock = dir > 0 ? k : len + k;
-    render();
+    fxDir = dir; render();
   }
-  function stepChapter(dir) { const n = nextCh(S.b, S.ch, dir); if (n) goTo(n.b, n.ch, 0); }
+  function stepChapter(dir) { const n = nextCh(S.b, S.ch, dir); if (n) { fxDir = dir; goTo(n.b, n.ch, 0); } }
 
   /* ---------- הדפסה / PDF ----------
      שני עמודים בכל דף A4 לרוחב. העימוד נמדד מחדש בגודל של חצי דף (אותו pagesFor, עם גאומטריה של הדפסה), נבנה
