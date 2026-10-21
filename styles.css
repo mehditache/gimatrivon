@@ -710,7 +710,7 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 [data-m=atbash]{--h:22}[data-m=atbashKollel]{--h:40}[data-m=atbashWords]{--h:0}[data-m=atbashLetters]{--h:345}
 [data-m=atbach]{--h:195}[data-m=atbachKollel]{--h:178}[data-m=atbachWords]{--h:210}[data-m=atbachLetters]{--h:165}
 [data-m=milui]{--h:305}[data-m=notRt]{--h:60}[data-m=notB]{--h:32}[data-m=notC]{--h:330}[data-m=notSt]{--h:280}
-/* v3.21.0: סוג התאמת-הנוטריקון (מילים/אותיות/גימ׳) — בגוון של ההדגשה בפסוק: צהוב, סגול, ירוק */
+/* v3.22.0: סוג התאמת-הנוטריקון (מילים/אותיות/גימ׳) — בגוון של ההדגשה בפסוק: צהוב, סגול, ירוק */
 [data-m=notLit]{--h:88}[data-m=notPerm]{--h:295}[data-m=notGim]{--h:135}
 #stage .rs .tag[data-m]{background:oklch(.92 .045 var(--h));color:oklch(.42 .12 var(--h))}
 :root[data-theme=dark] #stage .rs .tag[data-m]{background:oklch(.33 .06 var(--h));color:oklch(.86 .1 var(--h))}
