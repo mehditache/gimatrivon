@@ -222,6 +222,15 @@ t('reader', 'טור: או״ח א מתחיל ב"יהודה בן תימא", ולכ
 t('reader', 'parseTurRef: או״ח ס / אורח חיים 60 / בית יוסף יו״ד קצג / חו״מ הקדמה / Orach Chayim 60', () => { const r = q => { const x = RC.parseTurRef(RX, q); return x && [x.k, x.s]; };
   eq([r('טור או״ח ס'), r('או"ח סימן ס'), r('אורח חיים 60'), r('בית יוסף יו״ד קצג'), r('חו״מ הקדמה'), r('Orach Chayim 60'), r('טור אבן העזר')], [['OC', 60], ['OC', 60], ['OC', 60], ['YD', 193], ['CM', 0], ['OC', 60], ['EH', 1]]); });
 t('reader', 'parseTurRef: סימן שלא קיים / ספר אחר → null; turToks מפריד סימנים ושורות', () => eq([RC.parseTurRef(RX, 'או״ח תשא'), RC.parseTurRef(RX, 'שמות יב'), RC.parseTurRef(RX, 'ברכות ב.'), RC.turToks('\u0010c0\u0011\u0010y0\u0011אב גד\nהו')], [null, null, null, ['\u0010c0\u0011', '\u0010y0\u0011', 'אב', 'גד', '\n', 'הו']]));
+t('reader', 'קישור ישיר #read/…: כל ספר, מסכת וטור עוברים הלוך-חזור; עברית ואנגלית; נתיב לא מוכר → null', () => {
+  const back = x => { const hh = RC.hashOfRef(RIX, x), y = RC.parseHashRef(RIX, TX, RX, hh.slice(6)); return y && RC.hashOfRef(RIX, y) === hh; };
+  const all = RIX.base.every(b => { const c = RC.chaptersOf(RIX, b), l = c[c.length - 1]; return back({ kind: 'ref', b, ch: c[0], v: 0 }) && back({ kind: 'ref', b, ch: l, v: RC.versesOf(RIX, b, l).pop() }); }) &&
+    TX.list.every(t => back({ kind: 'tal', k: t.k, j: 0 }) && back({ kind: 'tal', k: t.k, j: t.n - 1 })) && RX.list.every(t => back({ kind: 'tur', k: t.k, s: t.n - 1 }) && (!t.intro || back({ kind: 'tur', k: t.k, s: 0 })));
+  const p = q => { const x = RC.parseHashRef(RIX, TX, RX, q); return x && Object.values(x).join(); };
+  return all && eq([RC.hashOfRef(RIX, { kind: 'ref', b: 0, ch: 1, v: 5 }), RC.hashOfRef(RIX, { kind: 'tal', k: 'Berakhot', j: 1 }), RC.hashOfRef(RIX, { kind: 'tur', k: 'OC', s: 0 }),
+    p('בראשית/א/ה'), p(encodeURIComponent('ברכות') + '/ב.'), p('Berakhot/2b'), p('OC/60'), p('Mishneh_Torah_Sabbath/1/2'), p('x/y')],
+    ['#read/Genesis/1/5', '#read/Berakhot/2b', '#read/OC/intro', 'ref,0,1,5', 'tal,Berakhot,0', 'tal,Berakhot,1', 'tur,OC,60', 'ref,' + bkIdx(7, 'הלכות שבת') + ',1,2', null]);
+});
 
 // ---- corpus split (v3.12.0): קובץ לכל ספר + corpus-loader.js ----
 {
