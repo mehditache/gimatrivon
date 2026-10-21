@@ -59,6 +59,21 @@
 גרסת הגמרא המנוקדת של ספריא (Davidson, CC-BY-NC) **לא** נכללה בכוונה. פריסת "צורת הדף" מחושבת בספריית
 daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICENSE.txt`).
 
+## טור, בית יוסף וב״ח (`generated/tur/`, נוסף ב-v3.11.0)
+
+מקור: יצוא הנתונים של ספריא (Sefaria-Export), מהדורת וילנא תרפ״ג (1923), סריקה בספרייה הלאומית
+(`versionSource`: NNL_ALEPH001935970). כל הקבצים נבדקו בשדה `license`:
+
+| טקסט | גרסה | רישיון |
+|---|---|---|
+| טור (ארבעת הטורים) | Orach Chaim / Yoreh Deah / Even HaEzer / Choshen Mishpat, Vilna, 1923 | **Public Domain** |
+| הקדמת הטור לאורח חיים | Tur Orach Chaim, Vilna, 1923 | שדה הרישיון `unknown` (אותה מהדורת וילנא; הטקסט עצמו מהמאה ה-14) |
+| בית יוסף | Tur … Vilna, 1923 | **Public Domain** |
+| ב״ח | Tur … Vilna, 1923 | **Public Domain** |
+
+שמות ההלכות וטווחי הסימנים מתוך `schemas/Tur.json` של אותו יצוא (מבנה "Topic"). בחושן משפט, מקום הדיבורים בטור
+נלקח מקובצי הקישורים של היצוא (`links/links*.csv`). הנתונים נבנים ב-`scripts/build-tur.py`.
+
 ## ברטנורא, מילון עברי — **לא נבדק כלל**
 
 שני אלה (63 ספרי ברטנורא על המשנה, ומילון עברי אחד) נוספו גם הם ל-corpus במהלך הפרויקט אך **לא תועדו
