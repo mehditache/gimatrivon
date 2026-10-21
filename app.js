@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.16.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.17.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -1256,8 +1256,8 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   // הקבוצה הראשונה-בפועל (computeGroups תמיד מוסיף גבול ב-pos=0), כך ש-groupPos.has(p) כבר מכסה את זה.
   if (p === forceHeaderAt || groupPos.has(p)) {
     const f = st.info.find(x => x.method === r.method && x.target === r.target);
-    const wmTag = f && f.wms && f.wms.length ? ` (= ${wmsLabel(f.wms)} ${L('של מילת החיפוש')})` : '';
-    h += `<div class="gh" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')} · ${L('ערך')} ${fmt(r.target)}${wmTag}${f ? ` · ${fmt(f.total)} ${L('התאמות')}` : ''}</div>`;
+    const wmTag = f && f.wms && f.wms.length ? `<span class="ghW">= ${esc(wmsLabel(f.wms))} ${L('של מילת החיפוש')}</span>` : '';
+    h += `<div class="gh" data-m="${r.method}"><span class="ghM" data-fam="${famKeyOf(r.method)}">${L(MN[r.method])} ${L('של הפסוק')}</span><span class="ghV">${L('ערך')} <b>${fmt(r.target)}</b></span>${wmTag}${f ? `<span class="ghN">${fmt(f.total)} ${L('התאמות')}</span>` : ''}</div>`;
   }
   const wmLbl = (r.wms && r.wms.length) ? wmsLabel(r.wms) : L('מספר');
   const copyTxt = `${ref(u)}\n${T.slice(s, e).join(' ')}`;
