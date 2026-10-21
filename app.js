@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.10.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.11.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -41,7 +41,7 @@ const COLORS = ['#2563a8', '#2f8f5b', '#7a4bb5', '#c47a1a', '#c2415a', '#1a8f92'
    מילות-המבנה סביבו (למשל "פרק"/"משנה"/"רש״י על") כן מתורגמות (ראו PFX_EN/heNum למטה). */
 let LANG = (() => { try { return localStorage.getItem('gimatrivonLang') === 'en' ? 'en' : 'he'; } catch (e) { return 'he'; } })();
 const EN = {
-  'תנ״ך · משנה · רש״י · תרגומים': 'Tanakh · Mishnah · Rashi · Targumim', 'בחירת צד': 'Side selection',
+  'תנ״ך · משנה · רש״י · תרגומים · רמב״ם': 'Tanakh · Mishnah · Rashi · Targumim · Rambam', 'בחירת צד': 'Side selection',
   'מעבר בין מראה גוויל למראה לילה': 'Switch between parchment and night themes', 'מראה כהה (לילה בגוויל)': 'Dark theme (night parchment)',
   'הפעלת סיור מודרך קצר באפליקציה': 'Start a short guided tour of the app', '? סיור מודרך': '? Guided Tour',
   'שיטות גימטריה': 'Gematria Methods', 'מידע על האפליקציה': 'About the app', 'ℹ אודות': 'ℹ About',
@@ -157,8 +157,8 @@ function wmsLabel(wms) {
   for (const id of singles) parts.push(L(MNS[id]) || id);
   return parts.join(' / ');
 }
-const CK = ['tanakh', 'mishnah', 'rashi', 'onkelos', 'yonatan', 'bartenura', 'dict'], CN = B.books.reduce((o, b) => (o[b.cat] = b.category, o), {});
-const CN_EN = { 0: 'Tanakh', 1: 'Mishnah', 2: 'Rashi', 3: 'Onkelos', 4: 'Targum Yonatan', 5: 'Bartenura', 6: 'Dictionary' };
+const CK = ['tanakh', 'mishnah', 'rashi', 'onkelos', 'yonatan', 'bartenura', 'dict', 'rambam', 'kesef', 'raavad', 'lamelech'], CN = B.books.reduce((o, b) => (o[b.cat] = b.category, o), {});
+const CN_EN = { 0: 'Tanakh', 1: 'Mishnah', 2: 'Rashi', 3: 'Onkelos', 4: 'Targum Yonatan', 5: 'Bartenura', 6: 'Dictionary', 7: 'Rambam', 8: 'Kessef Mishneh', 9: "Ra'avad", 10: 'Mishneh LaMelech' };
 const catName = cat => LANG === 'en' ? (CN_EN[cat] || CN[cat]) : CN[cat];
 // שמות-ספרים/פרקים-מסכת/קבוצות-עץ-המקורות/פרשות באנגלית (שמות-תקניים מקובלים) — לפי בקשת המשתמש "עץ
 // המקורות כולו צריך להיות באנגלית". לא נוגע בטקסט-הקורפוס עצמו (פסוקים/משניות) — רק בכותרות-הניווט.
@@ -197,12 +197,17 @@ const BOOK_EN = {
   'מעשר שני': 'Maaser Sheni', 'מעשרות': 'Maasrot', 'ערלה': 'Orlah', 'פאה': 'Peah', 'שביעית': 'Sheviit', 'תרומות': 'Terumot',
   'מילון עברי': 'Hebrew Dictionary',
 };
+// הלכות משנה תורה: השם האנגלי מספריא, בלי "Mishneh Torah, " (הקידומת באה מ-PFX_EN)
+B.books.forEach(b => { if (b.cat === 7) BOOK_EN[b.heTitle] = b.title.replace(/^Mishneh Torah, /, ''); });
 const bookName = he => LANG === 'en' ? (BOOK_EN[he] || he) : he;
 const GROUP_EN = {
   'תורה': 'Torah', 'נביאים': 'Prophets', 'כתובים': 'Writings',
   'סדר זרעים': 'Seder Zeraim', 'סדר מועד': 'Seder Moed', 'סדר נשים': 'Seder Nashim',
   'סדר נזיקין': 'Seder Nezikin', 'סדר קדשים': 'Seder Kodashim', 'סדר טהרות': 'Seder Tahorot',
   'מילון עברי': 'Hebrew Dictionary',
+  'ספר מדע': 'Sefer Madda', 'ספר אהבה': 'Sefer Ahavah', 'ספר זמנים': 'Sefer Zemanim', 'ספר נשים': 'Sefer Nashim', 'ספר קדושה': 'Sefer Kedushah',
+  'ספר הפלאה': 'Sefer Haflaah', 'ספר זרעים': 'Sefer Zeraim', 'ספר עבודה': 'Sefer Avodah', 'ספר קורבנות': 'Sefer Korbanot', 'ספר טהרה': 'Sefer Taharah',
+  'ספר נזיקין': 'Sefer Nezikim', 'ספר קניין': 'Sefer Kinyan', 'ספר משפטים': 'Sefer Mishpatim', 'ספר שופטים': 'Sefer Shoftim',
 };
 const groupName = he => LANG === 'en' ? (GROUP_EN[he] || he) : he;
 // ממשק קטן למסך "קריאה ומפרשים" (reader.js), שרץ מחוץ ל-IIFE הזה ולכן לא רואה את LANG/bookName/groupName/trackEvent ישירות
@@ -273,15 +278,15 @@ const fmt = n => n == null ? '—' : n.toLocaleString('he-IL');
 // כדי שהתיבה לא תציג "13.5" בזמן שבפועל מחפשים לפי 13.
 const numVal = s => { const n = Math.trunc(Number(s)); return Number.isFinite(n) ? n : NaN; };
 function copyText(txt) { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { const x = document.createElement('textarea'); x.value = txt; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); } catch (er) {} x.remove(); }); }
-const PFX = ['', '', 'רש״י על ', 'אונקלוס ', 'תרגום יונתן על ', 'ברטנורא על ', ''];
-const PFX_EN = ['', '', 'Rashi on ', 'Onkelos ', 'Targum Yonatan on ', 'Bartenura on ', ''];
+const PFX = ['', '', 'רש״י על ', 'אונקלוס ', 'תרגום יונתן על ', 'ברטנורא על ', '', 'רמב״ם ', 'כסף משנה על ', 'השגות הראב״ד על ', 'משנה למלך על '];
+const PFX_EN = ['', '', 'Rashi on ', 'Onkelos ', 'Targum Yonatan on ', 'Bartenura on ', '', 'Mishneh Torah, ', 'Kessef Mishneh on ', "Ra'avad on ", 'Mishneh LaMelech on '];
 const RAWTXT = B.units.map(u => u[4]); // טקסט גולמי (לפני טוקניזציה, עדיין עם נקודות) לכל יחידה — לפי אותו סדר כמו IDX.units — משמש לחילוץ ד״ה
 
 /* ---------- עץ המקורות: קטגוריה ← קבוצה ← ספר ---------- */
 const TREE = []; B.books.forEach((b, i) => { let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
 TREE.forEach(c => { c.ids = [].concat(...c.groups.map(g => g.ids)); });
 const ALL = new Set(B.books.map((_, i) => i));
-const CATCOLORS = { 0: '#23527f', 1: '#8a6d1f', 2: '#6d8f1a', 3: '#9d2f8f', 4: '#c2571f', 5: '#1a8f92', 6: '#6d4b1f' };
+const CATCOLORS = { 0: '#23527f', 1: '#8a6d1f', 2: '#6d8f1a', 3: '#9d2f8f', 4: '#c2571f', 5: '#1a8f92', 6: '#6d4b1f', 7: '#7a2e3b', 8: '#3f6f4a', 9: '#5b4a8a', 10: '#8a5a2b' };
 
 /* ---------- 54 פרשות השבוע (פרק:פסוק, חלוקה מסורתית) — רלוונטי רק לספרי החומש ולמקבילים (רש״י/אונקלוס) ---------- */
 const PARASHOT = [
@@ -986,6 +991,7 @@ const ref = u => {
   const b = B.books[u.b]; if (b.kind === 'word') return u.t;
   const p = (LANG === 'en' ? PFX_EN[b.cat] : PFX[b.cat]) + bookName(b.heTitle);
   if (b.kind === 'mishnah') return LANG === 'en' ? `${p} ch. ${heNum(u.ch)} mishnah ${heNum(u.n)}` : `${p} פרק ${heNum(u.ch)} משנה ${heNum(u.n)}`;
+  if (b.kind === 'halakha') return LANG === 'en' ? `${p} ch. ${heNum(u.ch)} halakhah ${heNum(u.n)}` : `${p} פרק ${heNum(u.ch)} הלכה ${heNum(u.n)}`;
   if (b.kind === 'talmud') return LANG === 'en' ? `${p} ${heNum(u.ch)} side ${u.s === 1 ? 'a' : 'b'}${u.k ? `, line ${u.n}` : ''}` : `${p} ${heNum(u.ch)} ע״${u.s === 1 ? 'א' : 'ב'}${u.k ? `, שורה ${u.n}` : ''}`;
   return `${p} ${heNum(u.ch)}:${heNum(u.n)}`;
 };
@@ -1240,10 +1246,10 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   }
   const wmLbl = (r.wms && r.wms.length) ? wmsLabel(r.wms) : L('מספר');
   const copyTxt = `${ref(u)}\n${T.slice(s, e).join(' ')}`;
-  const bk = B.books[u.b], prs = parashaOf(u), seder = bk.cat === 1 ? bk.g : '';
+  const bk = B.books[u.b], prs = parashaOf(u), seder = bk.cat === 1 || bk.cat >= 7 ? bk.g : '';
   const metaTag = prs ? `<span class="tag prs">${esc(parshaName(prs))}</span>` : seder ? `<span class="tag seder">${esc(groupName(seder))}</span>` : '';
   // ד״ה ברש״י: לא מוצג כתגית נפרדת ליד הייחוס — מודגש (bold) בתוך גוף הפירוש עצמו (.cx), ע״י ספירת התיבות של הד״ה
-  const dhLen = (bk.cat === 2 || bk.cat === 5) ? E.tokens(dibburFor(r.u)).length : 0, boldEnd = dhLen ? s + dhLen : s;
+  const dhLen = (bk.cat === 2 || bk.cat === 5 || bk.cat >= 8) ? E.tokens(dibburFor(r.u)).length : 0, boldEnd = dhLen ? s + dhLen : s;
   const tfRanges = (st.tf && st.tf.trim()) ? tfWordRanges(T, s, e, st.tf, st.fuzzy) : null;
   // שורת-נוטריקון (method ∈ notRt/notB/notC/notSt): צביעת האות הבודדת שחולצה (צהוב-זוהר = גם מילולי,
   // ירוק-זוהר = ערכי-בלבד) במקום הדגשת-כל-החלון הרגילה של cxHtml (אין תמיכה ב-tfRanges כאן — זניח,
@@ -1478,7 +1484,7 @@ function renderAbout() {
   $('#aboutDoc').innerHTML = `<div class="aboutBox">
     <div class="row"><span class="k">${en ? 'App name' : 'שם האפליקציה'}</span><span class="v"><b>גימטריבון</b> (Gimatrivon)</span></div>
     <div class="row"><span class="k">${en ? 'Version' : 'גרסה'}</span><span class="v">${esc(VERSION)}</span></div>
-    <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi and Targumim.' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י ותרגומים.'}</span></div>
+    <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi, Targumim and the Rambam\'s Mishneh Torah.' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י, תרגומים ומשנה תורה לרמב״ם.'}</span></div>
     <div class="row"><span class="k">${en ? 'Corpus' : 'קורפוס'}</span><span class="v">${unitsCount ? fmt(unitsCount) + (en ? ' units (verses/mishnahs)' : ' יחידות (פסוקים/משניות)') : (en ? 'Loading…' : 'נטען…')}</span></div>
     <div class="row"><span class="k">${en ? 'Developer' : 'מפתח'}</span><span class="v">${esc(ABOUT_INFO.dev)}</span></div>
     <div class="row"><span class="k">${en ? 'License' : 'רישיון'}</span><span class="v">${esc(en ? ABOUT_INFO.licenseEn : ABOUT_INFO.license)}</span></div>
@@ -1583,7 +1589,7 @@ function applyLangStatic() {
   const aboutBtn = $('#openAbout'); if (aboutBtn) { aboutBtn.title = L('מידע על האפליקציה'); aboutBtn.textContent = L('ℹ אודות'); }
   const contactBtn = $('#openContact'); if (contactBtn) { contactBtn.title = L('יצירת קשר עם המפתח'); contactBtn.textContent = L('✉ צור קשר'); }
   const ws = $('#ws'); if (ws) ws.setAttribute('aria-label', L('סביבת עבודה'));
-  const tagline = document.querySelector('.brand .tagline'); if (tagline) tagline.textContent = L('תנ״ך · משנה · רש״י · תרגומים');
+  const tagline = document.querySelector('.brand .tagline'); if (tagline) tagline.textContent = L('תנ״ך · משנה · רש״י · תרגומים · רמב״ם');
   const h1 = document.querySelector('.brand h1'); if (h1) h1.textContent = en ? 'Gimatrivon' : 'גימטריבון';
   document.title = en ? `Gimatrivon - ${VERSION}` : `גימטריבון - ${VERSION}`;
   const verEl = $('#ver'); if (verEl) verEl.title = L('מספר גרסה');
