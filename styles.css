@@ -916,6 +916,24 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTal .rdV{padding:0 1px}
 .rdPage.tal .rdCm p.tc{padding:0 2px}
 .rdLoading{display:flex;align-items:center;justify-content:center;font:14px var(--ui);color:var(--rdMu)}
+/* מסך טעינה (loadingHtml ב-reader.js): שלד הדף + שם הספר חלול שמתמלא לפי --p (0..100), מימין לשמאל */
+.rdPage.rdSkel{gap:0}
+.rdSkHead{display:flex;justify-content:space-between;border-bottom:1px solid var(--rdLine);padding-bottom:7px;margin-bottom:16px}
+.rdSkHead i{width:14%;height:6px;border-radius:3px;background:var(--rdLine)}
+.rdPage.right .rdSkHead{padding-left:30px}
+.rdLoadT{position:relative;align-self:center;font:700 2.1em/1.2 "GimFrank",var(--tf);white-space:nowrap;margin-top:4px}
+.rdLoadT span{display:block}
+.rdLoadT .o{color:transparent;-webkit-text-stroke:1.2px var(--rdGold)}
+.rdLoadT .f{position:absolute;inset:0;color:var(--rdGold);clip-path:inset(0 0 0 calc(100% - var(--p) * 1%));transition:clip-path .3s ease-out}
+.rdLoadPct{align-self:center;font:600 11.5px var(--ui);color:var(--rdMu);margin:2px 0 14px;font-variant-numeric:tabular-nums;direction:ltr}
+.rdPage.rdSkel>.rdSkTx,.rdPage.rdSkel>.rdSkCm{flex:3 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--rdFs) * .78)}
+.rdPage.rdSkel>.rdSkCm{flex:2 1 0;gap:calc(var(--rdFs) * .5);border-top:1px solid var(--rdLine);padding-top:14px;margin-top:10px}
+.rdSkLn{flex:none;display:block;height:calc(var(--rdFs) * .3);border-radius:4px;background:rgba(42,33,23,.07);position:relative;overflow:hidden}
+.rdSkLn.c{height:calc(var(--rdFs) * .2)}
+.rdSkLn::after{content:"";position:absolute;inset:0;background:rgba(42,33,23,.26);transform-origin:right;transform:scaleX(0);animation:rdSkWrite 2.8s ease-in-out infinite;animation-delay:calc(var(--i) * .15s)}
+.rdSkLn.c::after{background:rgba(42,33,23,.17)}
+@keyframes rdSkWrite{0%{transform:scaleX(0)}35%,75%{transform:scaleX(1);opacity:1}100%{transform:scaleX(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rdSkLn::after{animation:none;transform:none;opacity:.5}.rdLoadT .f{transition:none}}
 .pvDaf{display:flex;gap:4px}
 .pvDaf i{flex:1;height:auto;margin:0;opacity:.2;background:repeating-linear-gradient(var(--rdMu) 0 2px,transparent 2px 5px)}
 .pvDaf i.m{flex:1.6;opacity:.45}
@@ -938,6 +956,44 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTRes .rdDI .sn{-webkit-line-clamp:1}
 @container (max-width:640px){.rdSegPop{width:auto;max-height:60%}.rdSegTxt{font-size:16px}}
 .rdPage.tal.right .rdHead{padding-left:24px}
+/* ---- v3.12.0 · טור, בית יוסף וב״ח (reader.js: renderTur) — בסגנון מהדורת "שירת דבורה" ----
+   .trDaf = שטח הטקסט בעמוד (משתנים --tr* מ-trGeo). הטור (.trMain) באמצע למעלה בכתב מרובע; ב״ח (.trC) בטור הימני
+   ובית יוסף (.trY) בשמאלי, בכתב רש״י. בכל טור צד יש מרווח צף (.sp) בגובה הטור, כך שהפירוש מקיף את הטור וממשיך
+   מתחתיו ברוחב מלא. .trWide = עמוד של מפרש אחד בשני טורים. גם #rdPrint משתמש בכללים האלה, ולכן הם לא תחת .reader. */
+.reader.isTur #rdViewSeg{display:none}
+.rdPage.tur .trHead .mid{flex:1;min-width:0;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12.5px "GimFrank",var(--tf);color:var(--rdInk)}
+.rdPage.tur .trHead span:first-child,.rdPage.tur .trHead .l{font:700 13px "GimFrank",var(--tf);color:var(--rdGold);flex:none}
+.trDaf{position:relative;width:var(--trW);height:var(--trH);direction:rtl;color:var(--rdInk);flex:none}
+.trMain{position:absolute;top:0;left:calc((var(--trW) - var(--trMw)) / 2);width:var(--trMw);font-family:"GimFrank","Frank Ruhl Libre",serif;font-size:var(--trFm);line-height:var(--trLm);font-weight:500;text-align:justify}
+.trMain b{font-weight:700}
+.trH{display:block;text-align:center;font-weight:700;font-size:1.12em;line-height:1.5;color:var(--rdGold);letter-spacing:.03em}
+.trH::before,.trH::after{content:"";display:inline-block;width:1.4em;height:1px;background:var(--rdLine);vertical-align:middle;margin:0 .45em}
+.trHil{display:block;text-align:center;font-weight:800;font-size:1.22em;line-height:1.45;letter-spacing:.02em}
+.trSide{position:absolute;top:0;width:var(--trSw)}
+.trSide.trC{right:0}
+.trSide.trY{left:0}
+.trSide .sp{width:var(--trSp)}
+.trSide.trC .sp{float:left}
+.trSide.trY .sp{float:right}
+.trSide .tx,.trWide{font-family:"GimRashi","GimFrank",serif;font-size:var(--trFs);line-height:var(--trLs);text-align:justify}
+.trWide{column-count:2;column-gap:var(--trG);column-rule:1px solid var(--rdLine)}
+.trSide b,.trWide b{font-family:"GimFrank",serif;font-weight:700;font-size:.98em}
+.rl{color:var(--rdGold);margin-inline-end:.2em}
+.rcm.rc .rl{color:var(--rdTrTx)}
+.ra{font-size:.6em;font-weight:700;color:var(--rdGold);padding:0 .12em;line-height:1;white-space:nowrap}
+.ra.rc{color:var(--rdTrTx)}
+.bh{font-size:.9em;color:var(--rdMu)}
+.reader .ra,.reader .rcm{cursor:pointer;border-radius:2px;transition:background .25s}
+.reader .rcm:hover,.reader .ra:hover{background:var(--rdRow)}
+.reader .rdPage.tur .sel{background:var(--rdHl)}
+.rdJGrid.tur{grid-template-columns:170px minmax(0,1fr)}
+.rdJSub{grid-column:1/-1;font:700 10.5px var(--ui);color:var(--rdMu);padding:6px 2px 1px}
+.reader .rdCell.wide{grid-column:span 3}
+.rdDNote{padding:4px 8px 6px;margin:0}
+@container (max-width:640px){.rdJGrid.tur{grid-template-columns:104px minmax(0,1fr)}}
+.rdPrint.bw .ra,.rdPrint.bw .rl,.rdPrint.bw .trH,.rdPrint.bw .bh{color:#000!important}
+.trDaf u{text-decoration:none}
+.trMain.trFull{left:0;width:var(--trW)}
 /* רמב״ם בעיצוב מהדורת פרנקל (reader.js, ramBody): כותרת בקו כפול, "פרק שמיני", אות הלכה מודגשת, ראב״ד בתוך הטקסט */
 .rdPage{--rdRam:#7a2e3b}
 .rdHead.ram{border-bottom:3px double var(--rdGold);padding-bottom:5px}
