@@ -590,6 +590,141 @@ html.forcePhone .sideSw,html.forcePhone .tools>*:not(#status),html.forcePhone #s
 html.forcePhone #mKebab{display:inline-flex}
 html.forcePhone #mSummaryBar{display:flex}
 
+/* ============ v3.16.0 · מסך הגימטריה בעיצוב של מסך הקריאה ============
+   הבנר: אותו באנר כמו במסך הקריאה (צבע --rdBar, מתג המצב בקפסולה, ⋮ לאודות/צור קשר); במצב גימטריה מתחלפים רק הפקדים:
+   "שיטות גימטריה" ו"סיור מודרך" כשני כפתורים קטנים. בטלפון: שורה שנייה = קפסולת שני הצדדים (#mSummaryBar .mSumCap).
+   הפנלים: רקע "השולחן" של מסך הקריאה (--rdDesk + --rdDeskGlow), ובתוכם "דף" בצבע הבנר (--rdBar) במקום הלבן — רשימת
+   התוצאות, לוח החישוב והגיליון בטלפון. בלילה --rdBar = #2f2518 (בבלוק של reader), והטקסט על הדף בהיר כמו הטקסט שמקלידים.
+   המשתנים מוגדרים-מחדש בהיקף .pn/.mSheet בלבד. #stage בסלקטורים: גובר על דריסות-הלילה הכלליות (:root[data-theme=dark] .rs וכו׳).
+   ערכים קבועים בלבד, בלי color-mix ברשימת התוצאות — ראו ההערה על --markbg בראש הקובץ. */
+/* --- באנר --- */
+body[data-mode=gem] .top{background:var(--rdBar);border-bottom:1px solid var(--rdBarB);color:var(--rdBarTx);min-height:58px;gap:12px;padding:8px 14px;position:relative;z-index:19}
+body[data-mode=gem] #openAbout,body[data-mode=gem] #openContact,body[data-mode=gem] #status{display:none}
+body[data-mode=gem] #mKebab{display:inline-flex;margin-inline-start:0;background:transparent;border-color:var(--rdG3);color:var(--rdBarTx)}
+body[data-mode=gem] .modeSw{border:0;background:var(--rdG2);padding:3px;border-radius:10px;gap:2px}
+body[data-mode=gem] .modeSw button{border-radius:8px;color:var(--rdBarMu);font-weight:600}
+body[data-mode=gem] .modeSw button.on{background:var(--gold);color:#fff;box-shadow:0 1px 3px rgba(60,40,10,.3)}
+body[data-mode=gem] #openMethods,body[data-mode=gem] #startTour{height:34px;padding:0 12px;border-radius:9px;background:transparent;border:1px solid var(--rdG3);color:var(--rdBarTx);font-size:13px}
+body[data-mode=gem] #openMethods:hover,body[data-mode=gem] #startTour:hover{background:var(--rdG1);border-color:var(--rdOn)}
+body[data-mode=gem] .ws{padding-top:var(--g)}
+/* קפסולת הצדדים (טלפון בלבד — #mSummaryBar מוצג רק שם) */
+#mSummaryBar{background:var(--rdBar);border-bottom:1px solid var(--rdBarB);padding:0 14px 8px}
+.mSumCap{flex:1;min-width:0;display:flex;align-items:center;height:42px;padding:0 3px;border-radius:12px;background:var(--rdG1);border:1px solid var(--rdG3)}
+.mSumCap .mSumSeg{height:34px;gap:8px;border:0;border-radius:9px;background:none;box-shadow:none;padding:0 10px;color:var(--rdBarTx)}
+.mSumCap .mSumSeg+.mSumSeg{margin-inline-start:7px;position:relative}
+.mSumCap .mSumSeg+.mSumSeg::before{content:"";position:absolute;inset-inline-start:-4px;top:7px;bottom:7px;width:1px;background:var(--rdG3)}
+.mSumCap .mSumSeg:hover{background:var(--rdG1)}
+.mSumCap .mSumSeg.active{background:var(--rdG2);box-shadow:none}
+.mSumCap .mSumSeg .sTag{font-size:12px;border-radius:6px;padding:1px 7px}
+.mSumCap .mSumSeg .sTxt{font:600 15px "GimFrank",var(--tf);color:var(--rdBarTx)}
+.mSumCap .mSumSeg .sNum{font:700 15px "GimFrank",var(--tf);color:var(--rdGold,#98722c)}
+:root[data-theme=dark] .mSumCap .mSumSeg .sNum{color:#e7c77e}
+@media (pointer:coarse) and (max-width:500px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
+  body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bottom:8px}
+}
+html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bottom:8px}
+
+/* --- פנלים: שולחן, ובתוכו דף בצבע הבנר --- */
+.pn,.mSheet{--pn:var(--rdBar);--pn2:#e5d6b4;--ln:#cdb787;--ln2:#dcc9a2;--mu:#6b5a3c;--tx:#2a2117;--sb:#b39c6c;--chip:#e2d1aa;--chipTx:#6b4f1c;--hov:#e8dabb;--deskLn:rgba(70,50,15,.16);
+  --famReg:#2563a8;--famAtbash:#c2415a;--famAtbach:#1a8f92;--famMilui:#6a4f99;color:var(--tx)}
+:root[data-theme=dark] .pn,:root[data-theme=dark] .mSheet{--pn2:#382c1d;--ln:#4d3d27;--ln2:#433522;--mu:#b9a67e;--tx:#ecdfc2;--sb:#5f5236;--chip:#3d3020;--chipTx:#e3cf9f;--hov:#362a1c;--deskLn:rgba(255,235,190,.08);
+  --famReg:#6fa6e0;--famAtbash:#ec8c9c;--famAtbach:#5cc6c4;--famMilui:#b49be0}
+.pn,.mSheet{background-color:var(--rdDesk);background-image:var(--rdDeskGlow);background-attachment:local}
+.pn{border-color:var(--rdBarB);box-shadow:0 1px 2px rgba(80,55,20,.12),0 10px 26px -16px var(--rdShadow)}
+.mSheet{border-color:var(--rdBarB)}
+:root[data-theme=dark] .pn,:root[data-theme=dark] .mSheet{border-color:#2e2315}
+:root[data-theme=dark] .pn{box-shadow:0 0 0 1px rgba(255,235,190,.03) inset,0 16px 34px -18px rgba(0,0,0,.8)}
+.pn .hd{background:var(--rdBar);border-bottom-color:var(--rdBarB)}
+.pn .tsBar,.pn .sum{background:transparent;border-bottom-color:var(--deskLn)}
+.pn .filtPane{background-color:var(--rdDesk);background-image:var(--rdDeskGlow)}
+.ctr .inp{border-bottom-color:var(--deskLn)}
+#stage .pn .chip:not(.on),#stage .pn .srcCard,#stage .pn .cb:not(:checked):not(:indeterminate),#stage .pn .mcard{background:var(--pn)}
+.pn .fsThumb{box-shadow:0 0 0 2px var(--rdDesk)}
+.pn .fsTrack{left:1px}
+/* הדף */
+#stage .resList>.sc{inset:6px 10px 10px 10px}
+#stage .ctr>.sc{margin:4px 10px 10px;padding:.5rem .7rem}
+#stage .mSheetBody{margin:0 8px 8px}
+#stage .resList>.sc,#stage .ctr>.sc,#stage .mSheetBody{background:var(--rdBar);border-radius:4px;box-shadow:0 0 0 1px rgba(90,65,20,.12),0 10px 22px -12px var(--rdShadow)}
+:root[data-theme=dark] #stage .resList>.sc,:root[data-theme=dark] #stage .ctr>.sc,:root[data-theme=dark] #stage .mSheetBody{box-shadow:0 0 0 1px rgba(255,235,190,.06),0 12px 26px -12px rgba(0,0,0,.8)}
+.side[data-k=A] .res,.mResPane[data-side=A]{--acs:#dde3e6}.side[data-k=B] .res,.mResPane[data-side=B]{--acs:#ecd9d5}
+:root[data-theme=dark] .side[data-k=A] .res,:root[data-theme=dark] .mResPane[data-side=A]{--acs:#2e3540}
+:root[data-theme=dark] .side[data-k=B] .res,:root[data-theme=dark] .mResPane[data-side=B]{--acs:#3f2b2c}
+
+/* --- תיבות טקסט: כמו תיבת החיפוש בבאנר --- */
+#stage .pn textarea,#stage .pn .tfInp,#stage .pn .inp input[type=number],#stage .mSheet .mInputRow{background:var(--rdG1);border:1px solid var(--rdG3);color:var(--rdBarTx);box-shadow:none}
+#stage .pn textarea{border-radius:12px;font:1.3rem/1.5 "GimFrank",var(--tf);padding:.5rem .8rem}
+#stage .pn .tfInp{height:34px;border-radius:9px;font:15px "GimFrank",var(--ui);padding:0 10px}
+#stage .pn .inp input[type=number]{border-radius:9px;height:30px}
+#stage .pn textarea::placeholder,#stage .pn .tfInp::placeholder,#stage .mSheet textarea::placeholder{color:var(--rdBarMu)}
+#stage .pn textarea:focus,#stage .pn .tfInp:focus,#stage .pn .inp input[type=number]:focus{border-color:var(--rdOn);background:var(--rdG2);box-shadow:none;outline:0}
+#stage .side .ctr textarea{border-inline-start:3px solid var(--ac)}
+#stage .mSheet .mInputRow{border-inline-start:3px solid var(--rowAc);border-radius:12px}
+#stage .mSheet .mInputRow textarea{background:none;border:0;box-shadow:none;color:var(--rdBarTx)}
+#stage .mSheet .mInputRow:focus-within{border-color:var(--rdOn);border-inline-start-color:var(--rowAc);background:var(--rdG2)}
+.pn .tsBar,.pn .sum{color:var(--rdBarMu)}
+
+/* --- רשימת התוצאות: שורת תגיות אחת, הפסוק מתחתיה, העתקה בסוף הפסוק --- */
+#stage .rs,#stage .rs:hover,#stage .searching .rs:not(.on):hover{background:transparent;border:0;border-bottom:1px solid var(--ln2);border-radius:0;box-shadow:none;margin:0;padding:.45rem .55rem .5rem}
+#stage .rs:hover{background:var(--hov)}
+#stage .rs.on{background:var(--acs);box-shadow:inset -3px 0 0 var(--ac)}
+#stage .rs .rf{flex-wrap:nowrap;overflow:hidden;white-space:nowrap;gap:.3rem}
+#stage .rs .rf b{flex:none;font:700 .9rem "GimFrank",var(--tf);color:var(--tx);margin-inline-end:.15rem}
+#stage .rs .tag{flex:none;border:0;border-radius:6px;padding:.05rem .4rem;font:600 .66rem/1.35 var(--ui);background:var(--chip);color:var(--chipTx)}
+#stage .rs .tag.meth{box-shadow:inset 0 0 0 1px currentColor}
+#stage .rs .tag.prs{background:#dfe2c4;color:#4f661a}
+#stage .rs .tag[data-fam=regular]{background:#d9e1ea;color:#1f4f86}
+#stage .rs .tag[data-fam=atbash]{background:#eed6da;color:#a3344b}
+#stage .rs .tag[data-fam=atbach]{background:#d3e6e3;color:#156f72}
+#stage .rs .tag[data-fam=milui]{background:#e2d9e9;color:#5a4387}
+#stage .rs .tag[data-fam=notarikon]{background:#d6e8db;color:#2b7a45}
+:root[data-theme=dark] #stage .rs .tag.prs{background:#36401f;color:#b9d27a}
+:root[data-theme=dark] #stage .rs .tag[data-fam=regular]{background:#25364a;color:#a9c9ec}
+:root[data-theme=dark] #stage .rs .tag[data-fam=atbash]{background:#4a2730;color:#f0a8b5}
+:root[data-theme=dark] #stage .rs .tag[data-fam=atbach]{background:#1f4040;color:#8fd6d3}
+:root[data-theme=dark] #stage .rs .tag[data-fam=milui]{background:#3a2e50;color:#c9b6ec}
+:root[data-theme=dark] #stage .rs .tag[data-fam=notarikon]{background:#223f2c;color:#91d6a7}
+#stage .rs .tagArrow{flex:none;color:var(--mu);font-size:.66rem}
+#stage .cx{font:1rem/1.75 "GimFrank",var(--tf);margin-top:.12rem;color:var(--tx)}
+#stage .cx b{color:#5e4518}
+:root[data-theme=dark] #stage .cx b{color:#e7c77e}
+#stage .cx .cxEnd{white-space:nowrap}
+#stage .cx .cpy{display:inline-grid;width:1.25rem;height:1.25rem;vertical-align:-.15rem;margin-inline-start:.35rem;border:0;background:transparent;color:var(--mu);font-size:.78rem;opacity:.75}
+#stage .cx .cpy:hover{opacity:1;background:var(--chip);color:var(--ac)}
+#stage .gh{background:var(--rdBar);border:0;border-bottom:1px solid var(--ln2);margin:0 -.8rem .1rem;padding:.4rem .8rem;font:700 .78rem var(--ui);color:var(--ac)}
+
+/* --- לוח החישוב (מחשב): כל ערך בתג, שם השיטה הבסיסית בצבע המשפחה; ערך עם התאמה = טבעת בצבע ההתאמה --- */
+#stage .gr4Wrap{background:transparent;border:0;border-radius:0;box-shadow:none;margin:0 0 .35rem;padding-bottom:.35rem;border-bottom:1px solid var(--ln2)}
+#stage .gr4,#stage .gr4Wrap .gr{background:transparent;border:0;border-radius:0;box-shadow:none}
+#stage .gr4cell{background:transparent;border-top:0;border-inline-start:1px dashed var(--ln2);padding:.45rem .25rem .3rem;align-items:center;gap:.2rem}
+#stage .gr4cell:first-child{border-inline-start:0}
+#stage .gr4cell:hover{background:var(--hov)}
+#stage .gr4cell.disabled:hover{background:transparent}
+#stage .gr4cell .mn{text-align:center;font:700 .72rem var(--ui);color:var(--mu)}
+.gr4cell[data-m=regular]{--fam:var(--famReg)}.gr4cell[data-m=atbash]{--fam:var(--famAtbash)}.gr4cell[data-m=atbach]{--fam:var(--famAtbach)}.gr[data-m=milui]{--fam:var(--famMilui)}
+#stage .gr4cell[data-m=regular] .mn,#stage .gr4cell[data-m=atbash] .mn,#stage .gr4cell[data-m=atbach] .mn,#stage .gr[data-m=milui] .mn{color:var(--fam);font-size:.78rem}
+#stage .gr4cell .num,#stage .gr4Wrap .gr .num{display:inline-block;margin:0 auto;min-width:3.2rem;text-align:center;padding:.05rem .55rem;border-radius:99px;background:var(--chip);font:700 1.22rem "GimFrank",var(--tf);color:var(--tx)}
+#stage .gr4cell:has(.bdg) .num,#stage .gr4Wrap .gr:has(.bdg) .num{background:var(--pn);box-shadow:inset 0 0 0 2px var(--c)}
+#stage .gr4cell .bdgRow{margin-top:.1rem}
+#stage .ctr .bdgH{background:transparent;border-color:var(--ln2);color:var(--mu)}
+#stage .ctr .bdgH.on{border-color:var(--ac);color:var(--ac)}
+#stage .ctr .bdg{min-width:1.2rem;height:1.2rem;line-height:1.2rem;font:700 .66rem var(--ui);box-shadow:0 0 0 2px var(--pn),0 1px 2px rgba(0,0,0,.25)}
+/* מילוי: אותו תא כמו שאר השיטות */
+#stage .gr4Wrap .gr{display:grid;grid-template-columns:1fr;justify-items:center;gap:.2rem;padding:.45rem .25rem .3rem;margin:0}
+#stage .gr4Wrap .gr .mn{flex:none;text-align:center}
+#stage .gr4Wrap .gr .num{order:1}#stage .gr4Wrap .gr .bdgH,#stage .gr4Wrap .gr .bdgCol{order:2}
+#stage .gr4Wrap .gr .bdgCol{align-items:center}
+#stage .gr4Note{background:transparent;border-top:1px dashed var(--ln2);font:.82rem "GimFrank",var(--tf);color:var(--mu);justify-content:center}
+#stage .ctr .notDivider{border-top:1px dashed var(--ln2)}
+/* --- לוח החישוב (טלפון) --- */
+#stage .ccell{background:transparent;box-shadow:none;border:0;border-bottom:1px solid var(--ln2);border-radius:0}
+#stage .ccMn{font:700 .8rem var(--ui);color:var(--mu)}
+#stage .ccChip{background:var(--chip);border-radius:99px}
+#stage .ccChip.matched{background:var(--pn);box-shadow:inset 0 0 0 2px var(--mc)}
+#stage .ccNum{font-family:"GimFrank",var(--tf);color:var(--tx)}
+#stage .mSheetBody .cMatchSum{background:var(--chip);color:var(--tx);border-color:var(--ln2)}
+#stage .mSheet .ccNote{background:var(--pn)}
+
 /* מעבר-מחדש אחרי demo (ללא היעלמות/הופעה מחדש של הבועה) */
 html.gtNoAnim .driver-popover{animation:none!important;transition:none!important}
 html.gtNoAnim .driver-overlay *{transition:none!important}
@@ -605,7 +740,7 @@ html.gtNoAnim .driver-overlay *{transition:none!important}
 /* הסביבה של הספר (שולחן, סרגל, כפתורים) לפי המראה: גוויל = בהיר, לילה = כהה. הספר עצמו תמיד בהיר (בקשת המשתמש).
    --rdG1..3 = שכבות שקופות לרקע ולמסגרות של כפתורים בסרגל (כהות על רקע בהיר, בהירות על רקע כהה) */
 :root{--rdDesk:#d8c49d;--rdDeskGlow:radial-gradient(ellipse at 50% 35%,#e6d5b2,#cfb88a 75%);--rdBar:#efe4cb;--rdBarTx:#3a2d1a;--rdBarMu:#7d6a48;--rdBarB:#cdb787;--rdG1:rgba(70,50,15,.05);--rdG2:rgba(70,50,15,.09);--rdG3:rgba(70,50,15,.18);--rdShadow:rgba(80,55,20,.28);--rdOn:#b8913f}
-:root[data-theme=dark]{--rdDesk:#120d07;--rdDeskGlow:radial-gradient(ellipse at 50% 40%,rgba(255,235,190,.07),transparent 70%);--rdBar:#1c150d;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdBarB:rgba(0,0,0,.35);--rdG1:rgba(255,255,255,.07);--rdG2:rgba(255,255,255,.11);--rdG3:rgba(255,255,255,.16);--rdShadow:rgba(0,0,0,.45);--rdOn:#e7c77e}
+:root[data-theme=dark]{--rdDesk:#120d07;--rdDeskGlow:radial-gradient(ellipse at 50% 40%,rgba(255,235,190,.07),transparent 70%);--rdBar:#2f2518;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdBarB:rgba(0,0,0,.35);--rdG1:rgba(255,255,255,.07);--rdG2:rgba(255,255,255,.11);--rdG3:rgba(255,255,255,.16);--rdShadow:rgba(0,0,0,.45);--rdOn:#e7c77e}
 .rdF,.reader .fN,.rdPrint .fN{font-family:"GimFrank","Frank Ruhl Libre","David","Times New Roman",serif}
 .reader .fR,.rdPrint .fR{font-family:"GimRashi","Noto Rashi Hebrew","GimFrank",serif}
 /* מתג המצב בכותרת */
