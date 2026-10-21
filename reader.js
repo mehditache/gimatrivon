@@ -224,7 +224,8 @@
     'טור': 'Tur', 'בית יוסף': 'Beit Yosef', 'ב״ח': 'Bach', 'בית חדש': 'Bayit Chadash', 'סימן': 'Siman', 'סימן קודם': 'Previous siman', 'סימן הבא': 'Next siman', 'הקדמה': 'Introduction', 'הקדמת הטור': 'Introduction to the Tur',
     'טוען את הטור…': 'Loading the Tur…', 'לא ניתן לטעון את הטור.': 'Could not load the Tur.', 'מעבר לסימן': 'Go to siman', 'ארבעה טורים': 'Arba\'ah Turim', 'הדיבור הקודם': 'Previous comment', 'הדיבור הבא': 'Next comment', 'הסימן כולו': 'The whole siman',
     'הטור באמצע, ב״ח מימין ובית יוסף משמאל.': 'The Tur in the middle, Bach on the right and Beit Yosef on the left.', 'לחצו על סימן בטור או על דיבור כדי לקרוא אותו באותיות גדולות.': 'Click a marker in the Tur or a comment to read it in large letters.',
-    'בטור מקלידים מקום: ״או״ח ס״, ״יו״ד קצג״, או מספר סימן.': 'In the Tur, type a place: "OC 60", "YD 193", or a siman number.'
+    'בטור מקלידים מקום: ״או״ח ס״, ״יו״ד קצג״, או מספר סימן.': 'In the Tur, type a place: "OC 60", "YD 193", or a siman number.',
+    'בסימן': 'Siman', 'בכל הטור': 'Whole Tur', 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.': 'You can also type a place: "OC 60", "YD 193".'
   };
   const T = he => isEn() ? (EN[he] || he) : he;
   const num = n => isEn() ? String(n) : toHeb(n);
@@ -246,10 +247,10 @@
   let IX = null, built = false, R = null, geo = null, hlTimer = 0, fxDir = 0, fxLast = 0, fxTimer = 0, deskRO = null, roT = 0;
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', cmOff: [], ramNik: true, rk: '', rs: 1 };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
-  S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null;
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs })); } catch (e) {} };
+  S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc })); } catch (e) {} };
 
   let TX = null;
   const ensureIndex = () => {
@@ -937,7 +938,8 @@
      מתחתיו ברוחב מלא של חצי עמוד. שלושה זרמים נפרדים — טור, ב״י, ב״ח — כמו בדפוס: בכל עמוד נכנס מהטור רק מה שצריך כדי
      שהפירושים ימלאו את העמוד, ופירוש לעולם לא מופיע לפני הקטע בטור שהוא מפרש. כל סימן מתחיל בעמוד חדש. */
   const RLOAD = {}, TMC = new Map(), TPC = new Map(), TGC = new Map();
-  let RX = null, MEAS = false; // MEAS: בעימוד כל אסימון של זרם עטוף ב-<u>, כדי למדוד את כולם בפריסה אחת
+  let RX = null, MEAS = false, TURQ = false; // MEAS: בעימוד כל אסימון של זרם עטוף ב-<u>, כדי למדוד את כולם בפריסה אחת
+  // TURQ: בזמן בניית עמוד להצגה (לא במדידה) — מסמנים את מילות החיפוש (S.hl) בטור ובמפרשים
   const isTur = () => !!S.rk && RX && RX.byK[S.rk] != null;
   const turT = () => RX.list[RX.byK[S.rk]];
   const turTOf = k => RX.list[RX.byK[k]];
@@ -996,6 +998,8 @@
     let bold = false, bh = false;
     for (let i = from; i < a; i++) { const w = toks[i]; if (/[\u0003-\u0006]/.test(w)) for (const c of w) { if (c === '\u0003') bold = true; else if (c === '\u0004') bold = false; else if (c === '\u0005') bh = true; else if (c === '\u0006') bh = false; } }
     const out = [(bh ? '<span class="bh">' : '') + (bold ? '<b>' : '')];
+    const mk = TURQ && !MEAS ? turHl(m) : null, ms = mk && (toks === m.tt ? mk.t : toks === m.st.y.toks ? mk.y : mk.c);
+    const conv = x => h(x).replace(/[\u0003-\u0006]/g, c => c === '\u0003' ? (bold = true, '<b>') : c === '\u0004' ? (bold = false, '</b>') : c === '\u0005' ? (bh = true, '<span class="bh">') : (bh = false, '</span>'));
     for (let i = a; i < b; i++) {
       const w = toks[i];
       if (w === '\n') { out.push(MEAS && !inTur ? '<u><br></u>' : '<br>'); continue; }
@@ -1006,7 +1010,8 @@
         continue;
       }
       if (MEAS && !inTur) { out.push('<u>' + h(w).replace(/[\u0003-\u0006]/g, c => c === '\u0003' ? (bold = true, '<b>') : c === '\u0004' ? (bold = false, '</b>') : c === '\u0005' ? (bh = true, '<span class="bh">') : (bh = false, '</span>')) + '</u>'); continue; }
-      out.push(h(w).replace(/[\u0003-\u0006]/g, c => c === '\u0003' ? (bold = true, '<b>') : c === '\u0004' ? (bold = false, '</b>') : c === '\u0005' ? (bh = true, '<span class="bh">') : (bh = false, '</span>')));
+      if (ms && ms.has(i)) { const r = /^([\u0003-\u0006]*)([^]*?)([\u0003-\u0006]*)$/.exec(w); out.push(conv(r[1]) + '<mark class="rdHl">' + conv(r[2]) + '</mark>' + conv(r[3])); continue; }
+      out.push(conv(w));
     }
     return out.join(' ').replace(/ ?<br> ?/g, '<br>') + (bold ? '</b>' : '') + (bh ? '</span>' : '');
   }
@@ -1151,7 +1156,7 @@
   }
   function turPageHtml(k, s, p, Q, side, cls) {
     const t = turTOf(k), m = turModel(k, s), ps = turPages(k, s, Q), pg = ps[p];
-    let inner;
+    let inner; TURQ = true;
     if (pg.wide) inner = '<div class="trWide">' + streamHtml(m, pg.wide, pg.w[0], pg.w[1]) + '</div>';
     else {
       const sp = '<div class="sp" style="height:' + (pg.hT ? pg.hT + Q.vg : 0) + 'px"></div>';
@@ -1159,6 +1164,7 @@
         '<div class="trSide trC">' + sp + '<div class="tx">' + streamHtml(m, 'c', pg.c[0], pg.c[1]) + '</div></div>' +
         '<div class="trSide trY">' + sp + '<div class="tx">' + streamHtml(m, 'y', pg.y[0], pg.y[1]) + '</div></div>';
     }
+    TURQ = false;
     const lbl = s ? num(s) + (ps.length > 1 ? ' · ' + num(p + 1) : '') : T('הקדמה') + (ps.length > 1 ? ' · ' + num(p + 1) : '');
     return '<article class="rdPage tal tur ' + side + (cls || '') + '" data-s="' + s + '" aria-label="' + h(T('סימן') + ' ' + num(s)) + '">' + turHeader(t, s) +
       '<div class="rdDaf"><div class="trDaf" style="' + Q.vars + '">' + inner + '</div></div><div class="rdNum">' + h(lbl) + '</div></article>';
@@ -1186,7 +1192,8 @@
       loadTur(k, need, ok => { if (!ok) book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את הטור.') + '</p></article>'; else if (S.rk === k) { if (S.rsel) openTurCm(S.rsel.s, S.rsel.x, S.rsel.i); render(); } });
       return;
     }
-    const Q = trGeo(geo), ps = turPages(k, S.rs, Q);
+    const Q = trGeo(geo), ps = turPages(k, S.rs, Q), go = S.rgo && S.rgo.k === k && S.rgo.s === S.rs ? S.rgo : null;
+    if (go) { S.rgo = null; S.rp = turHitPage(go, ps); }
     S.rp = Math.max(0, Math.min(S.rp, ps.length - 1));
     const shown = [{ s: S.rs, p: S.rp }]; if (geo.two) { const n = trNext(k, S.rs, S.rp, 1, Q); if (n) shown.push(n); }
     const side = i => geo.two ? (i ? 'left' : 'right') : 'single';
@@ -1200,6 +1207,7 @@
     ['#rdNext', '#rdNext2'].forEach(x => { $r(x).disabled = atEnd; });
     if (fxDir) { reveal(book, fxDir); fxDir = 0; }
     markTurSel();
+    if (go && go.x !== 't') openTurCm(go.s, go.x, go.i); // תוצאה בבית יוסף / ב״ח: גם פותחים את הדיבור, כמו קטע בגמרא
     save();
   }
   function turTurn(dir) {
@@ -1229,13 +1237,13 @@
     const other = x === 'y' ? 'c' : 'y', oz = m.st[other];
     const tab = (k, n) => '<button type="button" class="' + (x === k ? 'on' : '') + '" data-turtab="' + k + '" aria-pressed="' + (x === k) + '"' + (n ? '' : ' disabled') + '>' + h(turCmName(k)) + ' · ' + n + '</button>';
     const cnt = k => m.st[k].ce.filter((v, j) => v > m.st[k].cs[j]).length;
-    const p = $r('#rdSeg');
+    const p = $r('#rdSeg'); TURQ = true;
     p.innerHTML = '<div class="rdPopHd"><span>' + h(turPartName(t) + ' ' + (s ? num(s) : T('הקדמה')) + ' · ' + turCmName(x) + ' ' + RL(x, i)) + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<p class="rdSegTxt">' + tokHtml(m, m.tt, a, e, 0, true) + (e < m.tt.length && !ANC.test(m.tt[e]) ? ' …' : '') + '</p>' +
       '<div class="rdSegTabs" role="group">' + tab('y', cnt('y')) + tab('c', cnt('c')) + '</div>' +
       '<div class="rdSegList fR"><p>' + tokHtml(m, z.toks, z.cs[i], z.ce[i], z.cs[i], false) + '</p></div>' +
       '<div class="rdSegNav"><button type="button" data-turmove="-1">' + ICON.chevR + ' ' + T('הדיבור הקודם') + '</button><button type="button" data-turmove="1">' + T('הדיבור הבא') + ' ' + ICON.chevL + '</button></div>';
-    p.hidden = false;
+    TURQ = false; p.hidden = false;
     p.dataset.other = (() => { // הדיבור של המפרש השני הקרוב ביותר לאותו מקום בטור
       let best = -1; for (let j = 0; j < oz.n; j++) { if (m.empty(other, j)) continue; if ((oz.anc[j] || 0) <= a || best < 0) best = j; if ((oz.anc[j] || 0) > a) break; } return best;
     })();
@@ -1252,6 +1260,58 @@
     }
     openTurCm(z0.s, z0.x, i);
   }
+
+  /* חיפוש בטור: בסימן הפתוח או בכל הטור (או״ח, יו״ד… — כל אחד לחוד), בטור, בבית יוסף, בב״ח או בכולם.
+     תוצאה בטור = פסקה (עד שורה חדשה) שיש בה התאמה, ובמפרשים = דיבור; x = 't' / 'y' / 'c', i = מספר הפסקה / הדיבור.
+     הטקסט המנורמל נשמר במטמון לכל סימן (TSN). בבחירת תוצאה מדפדפים בדיוק לעמוד שבו נמצאת המילה הראשונה שהתאימה. */
+  const TSN = new Map();
+  const turPlain = x => String(x || '').replace(/\u0010[yc]\d+\u0011/g, ' ').replace(/[\u0003-\u0006]/g, '').replace(/\s+/g, ' ').trim();
+  function turNorm(k, s) {
+    const key = k + ':' + s; if (TSN.has(key)) return TSN.get(key);
+    const row = turRow(k, s), nz = x => x ? ' ' + norm(String(x).replace(/\u0010[yc]\d+\u0011/g, ' ')) + ' ' : '';
+    const r = { t: String(row[0] || '').split('\n').map(nz), y: (row[1] || []).map(nz), c: (row[2] || []).map(nz) };
+    TSN.set(key, r); trimMap(TSN, 3000); return r;
+  }
+  const turAll = t => t.parts.map(p => Math.max(p.from, minS(t)));
+  function searchTur(q) {
+    const nq = norm(q), hits = [], t = turT(), k = t.k, src = S.rsrc;
+    if (nq.length < 2) return { hits, q: nq };
+    const ss = []; if (S.rscope === 's') ss.push(S.rs); else for (let s = minS(t); s < t.n; s++) ss.push(s);
+    if (!rowsReady(k, ss)) return { hits, q: nq, wait: true };
+    ss.forEach(s => {
+      const n = turNorm(k, s);
+      if (src === 'all' || src === 't') n.t.forEach((p, i) => { if (p.includes(nq)) hits.push({ k, s, x: 't', i }); });
+      ['y', 'c'].forEach(x => { if (src === 'all' || src === x) n[x].forEach((p, i) => { if (p.includes(nq)) hits.push({ k, s, x, i }); }); });
+    });
+    return { hits, q: nq };
+  }
+  const turHitText = x => { const row = turRow(x.k, x.s); return turPlain(x.x === 't' ? String(row[0] || '').split('\n')[x.i] : (row[x.x === 'y' ? 1 : 2] || [])[x.i]); };
+  // המילים שתואמות את החיפוש (S.hl) באסימונים של הסימן: אינדקסים בטור (t) ובזרמי המפרשים (y, c)
+  function turMarks(toks, nq) {
+    const wi = [], wn = [], mk = new Set(), qn = nq.split(' ').length;
+    toks.forEach((w, i) => { if (w === '\n' || w[0] === '\u0010') return; const n = norm(w); if (n) { wi.push(i); wn.push(n); } });
+    for (let a = 0; a < wi.length; a++) { const z = qn === 1 ? wn[a] : wn.slice(a, a + qn).join(' '); if (z.includes(nq)) for (let j = 0; j < qn && a + j < wi.length; j++) mk.add(wi[a + j]); }
+    return mk;
+  }
+  function turHl(m) {
+    const nq = norm(S.hl || ''); if (nq.length < 2) return null;
+    if (!m.mk || m.mk.q !== nq) m.mk = { q: nq, t: turMarks(m.tt, nq), y: turMarks(m.st.y.toks, nq), c: turMarks(m.st.c.toks, nq) };
+    return m.mk;
+  }
+  // העמוד בסימן שבו נמצאת ההתאמה של התוצאה x
+  function turHitPage(x, ps) {
+    const m = turModel(x.k, x.s), mk = turHl(m);
+    if (x.x === 't') {
+      const p = x.i - (m.hd ? 1 : 0); if (p < 0) return 0; // הכותרת ("הלכות …") מוצגת בראש העמוד הראשון
+      let a = 0, n = 0; while (n < p && a < m.tt.length) { if (m.tt[a] === '\n') n++; a++; }
+      let w = a; for (let i = a; i < m.tt.length && m.tt[i] !== '\n'; i++) if (mk && mk.t.has(i)) { w = i; break; }
+      return Math.max(0, ps.findIndex(pg => !pg.wide && pg.t[1] > w));
+    }
+    const z = m.st[x.x]; let st = z.cs[x.i] || 0;
+    for (let i = z.cs[x.i]; i < z.ce[x.i]; i++) if (mk && mk[x.x].has(i)) { st = i; break; }
+    return Math.max(0, ps.findIndex(pg => pg.wide ? pg.wide === x.x && pg.w[1] > st : !pg.wide && pg[x.x][1] > st));
+  }
+  function goTurHit(x) { S.tk = ''; S.rk = x.k; S.rs = x.s; S.rp = 0; closeSeg(); S.rgo = x; render(); }
 
   /* ---------- הדפסה / PDF ----------
      שני עמודים בכל דף A4 לרוחב. העימוד נמדד מחדש בגודל של חצי דף (אותו pagesFor, עם גאומטריה של הדפסה), נבנה
@@ -1500,19 +1560,26 @@
     if (tr) dropItems.push({ kind: 'tal', k: tr.k, j: tr.j });
     if (ref && !(tr && tr.explicit)) dropItems.push({ kind: 'ref', r: ref });
     let html = dropItems.length ? '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>' : '';
-    const res = searchTal(q), n = res.hits.length, MAX = 400;
+    const res = searchTal(q), n = res.hits.length;
     const srcs = [['g', 'גמרא'], ['r', 'רש״י'], ['t', 'תוספות'], ['all', 'הכל']];
-    html += '<div class="rdDScope" role="group"><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-tsrc="' + k + '" class="' + (S.tsrc === k ? 'on' : '') + '" aria-pressed="' + (S.tsrc === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : n ? resN(n) + (n > MAX ? ' · ' + T('מציג') + ' ' + cnt(MAX) : '') : T('אין תוצאות')) + '</span></div>';
-    const start = dropItems.length;
-    res.hits.slice(0, MAX).forEach(x => dropItems.push({ kind: 'thit', x }));
-    if (n) html += '<div class="rdTRes">' + res.hits.slice(0, MAX).map((x, i) => {
-      const tag = x.src === 'g' ? '' : x.src === 'r' ? innerLabel(S.tk, x.j) : T('תוספות'), t = plainT(x.t);
-      return '<button type="button" class="rdDI hit' + (tag ? ' cm' : '') + '" data-i="' + (start + i) + '" role="option"><span class="rf">' + (tag ? '<i>' + h(tag) + '</i> ' : '') + h(dafTxt(x.j) + ' · ' + T('קטע') + ' ' + num(x.s + 1)) + '</span><span class="sn' + (tag ? ' ' + (S.cmFont === 'rashi' ? 'fR' : 'fN') : '') + '">' + hlHtml(tag ? excerpt(t, q) : t, q) + '</span></button>';
-    }).join('') + '</div>';
+    html += '<div class="rdDScope" role="group"><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-tsrc="' + k + '" class="' + (S.tsrc === k ? 'on' : '') + '" aria-pressed="' + (S.tsrc === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
+    // כל ההתאמות במסכת, ברשימה הווירטואלית עם פס הגלילה המהיר: קבוצה לכל דף (עמוד), וסימון על הפס בכל עשרה דפים
+    const start = dropItems.length, t0 = talT();
+    res.hits.forEach(x => dropItems.push({ kind: 'thit', x }));
+    if (n) html += resList(res.hits, start, q, {
+      key: x => x.j, gh: x => T('דף') + ' ' + dafTxt(x.j),
+      tick: x => Math.floor((dafOf(x.j).d) / 10), tickName: g => T('דף') + ' ' + (isEn() ? Math.max(2, g * 10) : toHeb(Math.max(2, g * 10))),
+      bub: x => talName(t0) + ' ' + dafTxt(x.j),
+      row: x => {
+        const tag = x.src === 'g' ? '' : x.src === 'r' ? innerLabel(S.tk, x.j) : T('תוספות');
+        return { tag, fc: tag ? S.cmFont : '', ref: dafTxt(x.j) + ' · ' + T('קטע') + ' ' + num(x.s + 1), t: plainT(x.t) };
+      }
+    });
     d.innerHTML = html; d.hidden = false;
-    if (dropItems.length) setAct(0);
+    bindRes();
+    if (dropItems.length) setAct(lastAct());
   }
-  function renderDropTur() { // בטור: רק מעבר למקום (סימן, דף, פסוק)
+  function renderDropTur() { // בטור: מעבר למקום (סימן, דף, פסוק) וחיפוש בטור ובמפרשיו
     const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
     if (!q.trim()) { d.hidden = true; return; }
     const rr = parseTurRef(RX, q), tr = parseDafRef(TX, q), ref = parseRef(IX, q, null);
@@ -1520,10 +1587,24 @@
     else { const n = parseNum(turClean(q)); if (n >= 1 && n < turT().n && /^[א-ת\d]{1,4}$/.test(turClean(q))) dropItems.push({ kind: 'tur', k: S.rk, s: n }); }
     if (tr && tr.explicit) dropItems.push({ kind: 'tal', k: tr.k, j: tr.j });
     if (ref && !rr) dropItems.push({ kind: 'ref', r: ref });
-    d.innerHTML = (dropItems.length ? '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>' : '') +
-      '<p class="rdNote rdDNote">' + T('בטור מקלידים מקום: ״או״ח ס״, ״יו״ד קצג״, או מספר סימן.') + '</p>';
-    d.hidden = false;
-    if (dropItems.length) setAct(0);
+    let html = dropItems.length ? '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>' : '';
+    const t = turT(), k = t.k, res = searchTur(q), n = res.hits.length;
+    // בכל הטור צריך את כל החלקים שלו (כ-2MB כל אחד); עד שהם נטענים — "טוען…" במקום מספר התוצאות
+    if (res.wait) loadTur(k, turAll(t), ok => { if (ok && S.rk === k && dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
+    const scopes = [['s', 'בסימן'], ['all', 'בכל הטור']], srcs = [['t', 'טור'], ['y', 'בית יוסף'], ['c', 'ב״ח'], ['all', 'הכל']];
+    html += '<div class="rdDScope" role="group">' + scopes.map(([x, l]) => '<button type="button" data-rscope="' + x + '" class="' + (S.rscope === x ? 'on' : '') + '" aria-pressed="' + (S.rscope === x) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([x, l]) => '<button type="button" data-rsrc="' + x + '" class="' + (S.rsrc === x ? 'on' : '') + '" aria-pressed="' + (S.rsrc === x) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? T('טוען…') : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
+    const start = dropItems.length, sLabel = s => s ? T('סימן') + ' ' + num(s) : T('הקדמה');
+    res.hits.forEach(x => dropItems.push({ kind: 'rhit', x }));
+    if (n) html += resList(res.hits, start, q, {
+      key: S.rscope === 's' ? null : x => x.s, gh: x => sLabel(x.s) + (hilOf(t, x.s) ? ' · ' + hilOf(t, x.s) : ''),
+      tick: S.rscope === 's' ? null : x => hilOf(t, x.s) || null, tickName: g => g,
+      bub: x => turPartName(t) + ' · ' + sLabel(x.s),
+      row: x => ({ tag: x.x === 't' ? '' : turCmName(x.x) + ' ' + RL(x.x, x.i), fc: x.x === 't' ? '' : 'rashi', ref: sLabel(x.s), t: turHitText(x) })
+    });
+    else if (!res.wait) html += '<p class="rdNote rdDNote">' + T(res.q.length < 2 ? 'בטור מקלידים מקום: ״או״ח ס״, ״יו״ד קצג״, או מספר סימן.' : 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.') + '</p>';
+    d.innerHTML = html; d.hidden = false;
+    bindRes();
+    if (dropItems.length) setAct(lastAct());
   }
   function renderDrop() {
     if (isTur()) return renderDropTur();
@@ -1547,29 +1628,44 @@
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
     if (res.hits.length) {
-      // רשימה שטוחה: כותרת קבוצה ואחריה התוצאות שלה; off = מיקום כל פריט בפיקסלים
-      const byBook = S.scope === 'all', key = x => byBook ? x.b : x.b + ':' + x.ch;
-      const items = [], off = [], ticks = []; let y = 0, prevK = null, prevG = null, gi = -1;
-      res.hits.forEach((x, j) => {
-        if (S.scope !== 'ch' && key(x) !== prevK) {
-          let n = 0; for (let t = j; t < res.hits.length && key(res.hits[t]) === key(x); t++) n++;
-          const g = IX.books[x.b].g; if (byBook && g !== prevG) { ticks.push({ y, g }); prevG = g; }
-          items.push({ gh: true, x, n }); off.push(y); y += GH; prevK = key(x); gi = items.length - 1;
+      const byBook = S.scope === 'all';
+      html += resList(res.hits, start, q, {
+        key: S.scope === 'ch' ? null : byBook ? x => x.b : x => x.b + ':' + x.ch,
+        gh: x => byBook ? bkName(IX.books[x.b].heTitle) : T('פרק') + ' ' + num(x.ch),
+        tick: byBook ? x => IX.books[x.b].g : null, tickName: grpName,
+        bub: x => refLabel({ b: x.b, ch: x.ch, v: 0 }),
+        row: x => {
+          const cm = x.cm != null, tr = !!x.tr, t = cm ? cmText(x) : tr ? noMarks(chText(IX.links[x.b][x.tr], x.ch, x.v)) : noTeamim(chText(x.b, x.ch, x.v));
+          return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', fc: cm ? S.cmFont : tr ? S.trFont : '', ref: refLabel(x), t };
         }
-        items.push({ i: start + j, x, gi }); off.push(y); y += RH;
       });
-      const pos = []; items.forEach((it, k) => { if (!it.gh) pos[it.i - start] = k; });
-      RS = { items, off, total: y, start, n: res.hits.length, pos, ticks, q, from: -1, to: -1 };
-      html += '<div class="rdRes"><div class="rdResBox" id="rdResBox"><div class="rdResIn" style="height:' + y + 'px"></div></div>' +
-        '<div class="rdResSticky" id="rdResSticky" aria-hidden="true"></div>' +
-        '<div class="rdFs" id="rdFs" aria-hidden="true">' + ticks.map(t => '<i class="rdFsTick" style="top:' + (100 * t.y / y).toFixed(2) + '%" title="' + h(grpName(t.g)) + '"></i>').join('') +
-        '<div class="rdFsThumb" id="rdFsThumb"><div class="rdFsBub" id="rdFsBub"></div></div></div></div>';
     }
     d.innerHTML = html; d.hidden = false;
-    if (RS) { const box = $r('#rdResBox'); box.onscroll = () => resWin(); resWin(); }
-    if (dropItems.length) setAct(0);
+    bindRes();
+    if (dropItems.length) setAct(lastAct());
   }
-  const ghLabel = x => S.scope === 'all' ? bkName(IX.books[x.b].heTitle) : T('פרק') + ' ' + num(x.ch);
+  /* רשימת תוצאות וירטואלית — משותפת לכל הספרים (תנ״ך, משנה, רמב״ם, גמרא, טור). o: key(x) = מפתח קבוצה (null = בלי
+     כותרות), gh(x) = שם הקבוצה, tick(x)/tickName = סימון על פס הגלילה בתחילת כל חלק, bub(x) = הכותרת בבועה,
+     row(x) = {tag, fc, ref, t} לשורה. */
+  function resList(hits, start, q, o) {
+    const items = [], off = [], ticks = []; let y = 0, prevK = null, prevT = null, gi = -1;
+    hits.forEach((x, j) => {
+      if (o.key && o.key(x) !== prevK) {
+        const kx = o.key(x); let n = 0; for (let t = j; t < hits.length && o.key(hits[t]) === kx; t++) n++;
+        if (o.tick) { const g = o.tick(x); if (g != null && g !== prevT) { ticks.push({ y, g }); prevT = g; } }
+        items.push({ gh: true, x, n }); off.push(y); y += GH; prevK = kx; gi = items.length - 1;
+      }
+      items.push({ i: start + j, x, gi }); off.push(y); y += RH;
+    });
+    const pos = []; items.forEach((it, k) => { if (!it.gh) pos[it.i - start] = k; });
+    RS = { items, off, total: y, start, n: hits.length, pos, ticks, q, from: -1, to: -1, o };
+    return '<div class="rdRes"><div class="rdResBox" id="rdResBox"><div class="rdResIn" style="height:' + y + 'px"></div></div>' +
+      '<div class="rdResSticky" id="rdResSticky" aria-hidden="true"></div>' +
+      '<div class="rdFs" id="rdFs" aria-hidden="true">' + ticks.map(t => '<i class="rdFsTick" style="top:' + (100 * t.y / y).toFixed(2) + '%" title="' + h(o.tickName ? o.tickName(t.g) : '') + '"></i>').join('') +
+      '<div class="rdFsThumb" id="rdFsThumb"><div class="rdFsBub" id="rdFsBub"></div></div></div></div>';
+  }
+  const ghLabel = x => RS.o.gh(x);
+  function bindRes() { if (!RS) return; const box = $r('#rdResBox'); box.onscroll = () => resWin(); resWin(); }
   function firstAt(y) { // הפריט הראשון שתחתיתו מתחת ל-y (חיפוש בינארי ב-off)
     let lo = 0, hi = RS.items.length - 1;
     while (lo < hi) { const m = (lo + hi + 1) >> 1; if (RS.off[m] <= y) lo = m; else hi = m - 1; }
@@ -1585,9 +1681,8 @@
       box.firstChild.innerHTML = RS.items.slice(from, to).map((it, k) => {
         const y = RS.off[from + k], x = it.x;
         if (it.gh) return '<div class="rdGh" style="top:' + y + 'px"><span>' + h(ghLabel(x)) + '</span><span class="n">' + resN(it.n) + '</span></div>';
-        const cm = x.cm != null, tr = !!x.tr, t = cm ? cmText(x) : tr ? noMarks(chText(IX.links[x.b][x.tr], x.ch, x.v)) : noTeamim(chText(x.b, x.ch, x.v));
-        const tag = cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', fc = cm ? S.cmFont : tr ? S.trFont : '';
-        return '<button type="button" class="rdDI hit' + (tag ? ' cm' : '') + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + (tag ? '<i>' + h(tag) + '</i> ' : '') + h(refLabel(x)) + '</span><span class="sn' + (fc ? ' ' + (fc === 'rashi' ? 'fR' : 'fN') : '') + '">' + hlHtml(tag ? excerpt(t, RS.q) : t, RS.q) + '</span></button>';
+        const { tag, fc, ref, t } = RS.o.row(x);
+        return '<button type="button" class="rdDI hit' + (tag ? ' cm' : '') + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + (tag ? '<i>' + h(tag) + '</i> ' : '') + h(ref) + '</span><span class="sn' + (fc ? ' ' + (fc === 'rashi' ? 'fR' : 'fN') : '') + '">' + hlHtml(tag ? excerpt(t, RS.q) : t, RS.q) + '</span></button>';
       }).join('');
     }
     // כותרת דבוקה: הקבוצה של הפריט שבראש החלון (מוסתרת כשכותרת אמיתית בדיוק בראש)
@@ -1605,7 +1700,7 @@
     th.style.height = t + 'px'; th.style.top = (box.scrollTop / max) * (H - t) + 'px';
     const k = Math.min(RS.items.length - 1, firstAt(box.scrollTop + box.clientHeight * (box.scrollTop / max)));
     const it = RS.items[k], hit = it.gh ? RS.items[k + 1] : it;
-    $r('#rdFsBub').innerHTML = '<b>' + h(refLabel({ b: hit.x.b, ch: hit.x.ch, v: 0 })) + '</b><span>' + T('תוצאה') + ' ' + cnt(hit.i - RS.start + 1) + ' ' + T('מתוך') + ' ' + cnt(RS.n) + '</span>';
+    $r('#rdFsBub').innerHTML = '<b>' + h(RS.o.bub(hit.x)) + '</b><span>' + T('תוצאה') + ' ' + cnt(hit.i - RS.start + 1) + ' ' + T('מתוך') + ' ' + cnt(RS.n) + '</span>';
   }
   function fsBind() { // פעם אחת: גרירת הידית ולחיצה על הפס (האירועים מואצלים מ-#rdDrop כי התוכן נבנה מחדש)
     let drag = null, raf = 0, py = 0;
@@ -1625,23 +1720,35 @@
   }
   function setAct(i) {
     const n = dropItems.length; if (!n) return;
+    const center = dropAct < 0 && i > 0; // פתיחה מחדש על התוצאה האחרונה: באמצע החלון
     dropAct = (i + n) % n;
     R.querySelectorAll('#rdDrop .rdDI').forEach(b => b.classList.toggle('act', Number(b.dataset.i) === dropAct));
     const it = dropItems[dropAct];
-    if (it.kind === 'hit' && RS) {
-      const box = $r('#rdResBox'), k = RS.pos[dropAct - RS.start], y = RS.off[k], hdr = S.scope === 'ch' ? 0 : GH;
-      if (y - hdr < box.scrollTop) box.scrollTop = y - hdr; else if (y + RH > box.scrollTop + box.clientHeight) box.scrollTop = y + RH - box.clientHeight;
+    if (RS && dropAct >= RS.start) {
+      const box = $r('#rdResBox'), k = RS.pos[dropAct - RS.start], y = RS.off[k], hdr = RS.o.key ? GH : 0;
+      if (center) box.scrollTop = Math.max(0, y - (box.clientHeight - RH) / 2);
+      else if (y - hdr < box.scrollTop) box.scrollTop = y - hdr; else if (y + RH > box.scrollTop + box.clientHeight) box.scrollTop = y + RH - box.clientHeight;
       resWin(true);
     } else { const b = R.querySelector('#rdDrop .rdDI[data-i="' + dropAct + '"]'); if (b) b.scrollIntoView({ block: 'nearest' }); if (RS && dropAct === 0) { $r('#rdResBox').scrollTop = 0; } }
+  }
+  /* חזרה לרשימה: כשפותחים שוב את אותו חיפוש (אותה מילה, אותו תחום ומקורות), הרשימה נפתחת על התוצאה שנבחרה
+     אחרונה — באמצע החלון — ולא בראש, כדי שאפשר יהיה להמשיך לתוצאה הבאה (חץ למטה + Enter). */
+  let LP = null;
+  const dropSig = () => isTur() ? 'r' + S.rk + S.rsrc + (S.rscope === 's' ? ':' + S.rs : '') : isTal() ? 't' + S.tk + S.tsrc :
+    'b' + S.src + S.scope + (S.scope === 'all' ? IX.books[S.b].cat : S.scope === 'book' ? S.b : S.b + ':' + S.ch);
+  function lastAct() {
+    const q = $r('#rdQ').value, it = LP && dropItems[LP.i];
+    return it && LP.q === q && LP.sig === dropSig() && it.kind === LP.kind ? LP.i : 0;
   }
   function pickDrop(i) {
     const it = dropItems[i]; if (!it) return;
     const q = $r('#rdQ').value;
-    if (it.kind === 'hit' || it.kind === 'thit') { S.hl = q; if (it.r && it.r.tr && S.tr !== it.r.tr) S.tr = it.r.tr; } else { S.hl = ''; $r('#rdQ').value = ''; }
+    if (it.kind === 'hit' || it.kind === 'thit' || it.kind === 'rhit') { S.hl = q; LP = { q, sig: dropSig(), i, kind: it.kind }; if (it.r && it.r.tr && S.tr !== it.r.tr) S.tr = it.r.tr; } else { S.hl = ''; $r('#rdQ').value = ''; }
     $r('#rdQ').blur(); // כדי שהחצים ידפדפו מיד
     updClear(); closeDrop();
     if (it.kind === 'tur') return goTur(it.k, it.s);
     if (it.kind === 'tal') return goTal(it.k, it.j);
+    if (it.kind === 'rhit') return goTurHit(it.x);
     if (it.kind === 'thit') { segTab = it.x.src === 't' ? 't' : 'r'; return goTal(S.tk, it.x.j, it.x.s); }
     goTo(it.r.b, it.r.ch, it.r.v);
   }
@@ -1746,6 +1853,8 @@
       const sc = e.target.closest('[data-scope]'); if (sc) { S.scope = sc.dataset.scope; save(); return renderDrop(); }
       const sr = e.target.closest('[data-src]'); if (sr) { S.src = sr.dataset.src; save(); return renderDrop(); }
       const ts = e.target.closest('[data-tsrc]'); if (ts) { S.tsrc = ts.dataset.tsrc; save(); return renderDrop(); }
+      const rc = e.target.closest('[data-rscope]'); if (rc) { S.rscope = rc.dataset.rscope; save(); return renderDrop(); }
+      const rs = e.target.closest('[data-rsrc]'); if (rs) { S.rsrc = rs.dataset.rsrc; save(); return renderDrop(); }
       const it = e.target.closest('.rdDI'); if (it) pickDrop(Number(it.dataset.i));
     };
     document.addEventListener('mousedown', e => { if (!e.target.closest('#rdSearch')) closeDrop(); });
