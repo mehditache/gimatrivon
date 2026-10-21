@@ -27,7 +27,7 @@
 
 ## הוספת מקורות
 `python3 scripts/build-sources.py <go/data> <Onkelos>` — מוסיף רש״י/אונקלוס/תרגום יונתן ל-`generated/corpus.bundle.js` (תנ״ך ומשנה אינם משתנים; ניתן להריץ שוב).
-`python3 scripts/build-rambam.py [תיקיית מטמון]` ואחריו `node scripts/split-corpus.js 16` — מוריד מיצוא הנתונים של ספריא את משנה תורה (מנוקד) ושלושת המפרשים ומוסיף אותם לקורפוס (קטגוריות 7–10; ניתן להריץ שוב).
+`python3 scripts/build-rambam.py [תיקיית מטמון]` ואחריו `node scripts/split-corpus.js` — מוריד מיצוא הנתונים של ספריא את משנה תורה (מנוקד) ושלושת המפרשים ומוסיף אותם לקורפוס (קטגוריות 7–10; ניתן להריץ שוב).
 
 ## מבנה
 - `index.html`, `styles.css`, `app.js` — הממשק (RTL, Vanilla JS).
@@ -35,6 +35,7 @@
 - `vendor/fonts/` — גופני Frank Ruhl Libre ו-Noto Rashi Hebrew (OFL) למסך הקריאה, מקומיים.
 - `engine.js` — נרמול, כל שיטות הגימטריה, השוואה כל-מול-כל, אינדקס וחיפוש.
 - `generated/corpus.bundle.js` — הקורפוס המעובד (27,310 יחידות: פסוקים + משניות) כקובץ script, כדי שיעבוד תחת `file://`.
+- `generated/corpus/` — אותו קורפוס, קובץ לכל ספר (`node scripts/split-corpus.js`), עם `index.js` = רשימת הספרים. זה מה שהאתר טוען בפועל, דרך `corpus-loader.js` ולפי דרישה; `sw.js` שומר את הקבצים בדפדפן.
 - `generated/corpus-manifest.json`, `generated/corpus-validation-report.json` — דוחות הקורפוס.
 - `tests/run-tests.js` — בדיקות (דורש Node, למפתחים בלבד). `scripts/` — validate/build (זמינים בפרויקט המלא בלבד).
 
