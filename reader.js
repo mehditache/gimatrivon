@@ -275,9 +275,21 @@
     LOADING.add(key);
     // התקדמות לפי גודל הקבצים (books[b].fb), כמו במסכת: כל ספר זוחל לעבר 90% וקופץ למלא כשנטען
     const pe = prog ? progEase(prog, ids.map(b => (IX.books[b].fb || [1]).reduce((a, x) => a + x, 0))) : null;
-    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); again(true); },
-      () => { LOADING.delete(key); if (pe) pe.end(); again(false); });
+    // הקבצים מוחזקים רק עד שהספר נכנס ל-IX.data (GimCorpus.use), ואז משתחררים — הטקסט כבר נמצא כאן
+    const rel = G.GimCorpus.use ? G.GimCorpus.use(ids) : () => {};
+    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); rel(); setTimeout(() => again(true), 0); }, // משימה נפרדת לעימוד, כדי שמסך הטעינה יתעדכן ביניהן
+      () => { LOADING.delete(key); rel(); if (pe) pe.end(); again(false); });
     return false;
+  }
+  /* v3.16.0: ספרים שלא בשימוש משתחררים מהזיכרון. נשארים: הספרים של המסך הנוכחי (הספר, הסמוכים, התרגום והמפרשים),
+     הספרים של החיפוש הפתוח (PIN), ועוד BKEEP הספרים האחרונים שנפתחו — כדי שחזרה לספר קודם תהיה מיידית.
+     ספר שמשתחרר נטען שוב בפעם הבאה (מהמטמון, עם מסך הטעינה) — פרקים ופסוקים מוצגים בינתיים מ-books[b].cv. */
+  const BKEEP = 16, RECENT = []; let PIN = [];
+  function keepBooks(ids) {
+    ids.forEach(b => { const i = RECENT.indexOf(b); if (i >= 0) RECENT.splice(i, 1); RECENT.push(b); });
+    while (RECENT.length > BKEEP) RECENT.shift();
+    const keep = new Set(ids.concat(PIN, RECENT));
+    IX.data.forEach((d, b) => { if (d && !keep.has(b)) { IX.data[b] = null; IX.ncache.delete(b); CMN.delete(b); } });
   }
   // הספרים הסמוכים (לדפדוף רציף בין ספרים) — נטענים יחד עם הספר הפתוח
   const nearBooks = b => { const i = IX.base.indexOf(b); return [IX.base[i - 1], b, IX.base[i + 1]].filter(x => x != null); };
@@ -547,6 +559,7 @@
       $r('#rdWhereTxt').textContent = bkName(IX.books[S.b].heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
       return;
     }
+    keepBooks([].concat(...nearBooks(S.b).map(need)));
     const pages = pagesFor(S.b, S.ch);
     // בשני עמודים הפריסה רציפה בין פרקים: אם בפרק מספר עמודים אי-זוגי, העמוד הראשון של הפרק הבא ממלא את הצד השמאלי
     // (במקום עמוד ריק). לכן S.p יכול להיות אי-זוגי; בקפיצה לפסוק שומרים על הזוגיות של הפריסה הנוכחית באותו פרק.
@@ -951,10 +964,17 @@
   const hilOf = (t, s) => { let n = ''; (t.hil || []).forEach(x => { if (x[0] <= s) n = x[1]; }); return s ? n : ''; };
   const RL = (x, i) => x === 'y' ? '(' + toHeb(i + 1) + ')' : '[' + toHeb(i + 1) + ']';
   const turCmName = x => T(x === 'y' ? 'בית יוסף' : 'ב״ח');
+  // חלקי הטור בזיכרון: אלה שהמסך צריך עכשיו, ועוד TUR_KEEP האחרונים (חלק = בערך 2MB); השאר נטענים שוב כשצריך
+  const TUR_KEEP = 4, TUR_RECENT = [];
+  function keepTur(ids) {
+    ids.forEach(id => { const i = TUR_RECENT.indexOf(id); if (i >= 0) TUR_RECENT.splice(i, 1); TUR_RECENT.push(id); });
+    while (TUR_RECENT.length > Math.max(TUR_KEEP, new Set(ids).size)) { const id = TUR_RECENT.shift(); if (!ids.includes(id) && G.GIM_TUR_P) delete G.GIM_TUR_P[id]; }
+  }
   function loadTur(k, ss, done) {
     const t = turTOf(k), TP = G.GIM_TUR_P || (G.GIM_TUR_P = {});
     const need = [...new Set(ss.filter(s => s >= minS(t) && s < t.n).map(s => turPart(t, s)))].filter(p => !TP[k + '.' + p]);
     const fin = ok => { if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('16px GimFrank', 'אב'), document.fonts.load('16px GimRashi', 'אב')]).then(() => done(ok), () => done(ok)); else done(ok); };
+    keepTur(ss.filter(s => s >= minS(t) && s < t.n).map(s => k + '.' + turPart(t, s)));
     if (!need.length) return done(true);
     let left = need.length, ok = true;
     // מסך הטעינה (אם מוצג): חלק של הטור הוא בערך 2MB
@@ -991,7 +1011,7 @@
     // נקודות חיתוך בטור: תחילת כל רצף של סימנים (לא חותכים בין שני סימנים צמודים), וסוף הסימן
     const cuts = []; tt.forEach((w, i) => { if (i > 0 && ANC.test(w) && !ANC.test(tt[i - 1])) cuts.push(i); }); cuts.push(tt.length);
     const m = { k, s, tt, st, cuts, hd, empty: (x, i) => !(row[x === 'y' ? 1 : 2] || [])[i] };
-    TMC.set(key, m); return m;
+    TMC.set(key, m); trimMap(TMC, 40); return m;
   }
   // HTML לאסימונים [a, b) של זרם; from = תחילת הדיבור (או הטור), שממנה מחושב מצב ההדגשה בנקודה a
   function tokHtml(m, toks, a, b, from, inTur) {
@@ -1148,7 +1168,7 @@
       pages.push(pg); first = false;
     }
     $r('#rdDafHost').innerHTML = '';
-    TPC.set(key, pages); return pages;
+    TPC.set(key, pages); trimMap(TPC, 60); return pages;
   }
   function turHeader(t, s) {
     const hil = hilOf(t, s);
@@ -1496,7 +1516,7 @@
 
   /* ---------- חיפוש מהיר ---------- */
   let dropItems = [], dropAct = -1, qTimer = 0, dropQ = null;
-  function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; }
+  function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; PIN = []; }
   function scopeBooks() { if (S.scope === 'all') return IX.base.filter(i => IX.books[i].cat === IX.books[S.b].cat); return [S.b]; }
   function refLabel(r) { return bkName(IX.books[r.b].heTitle) + ' ' + num(r.ch) + (r.v ? ', ' + num(r.v) : ''); }
   /* תוצאות החיפוש: כל ההתאמות (בלי תקרה) ברשימה וירטואלית, בדומה לרשימת התוצאות במסך הגימטריה.
@@ -1621,7 +1641,8 @@
     if (dropItems.length) html += '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>';
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isRambam(S.b) ? 'בכל הרמב״ם' : isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
     // החיפוש צריך את הספרים שבתחום (והמפרשים/התרגומים שלהם, לפי "חיפוש ב"); עד שהם נטענים — "טוען…" במקום מספר התוצאות
-    const sBooks = scopeBooks(), wait = !ensure(searchNeed(sBooks), () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
+    const sBooks = scopeBooks(); PIN = searchNeed(sBooks);
+    const wait = !ensure(PIN, () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
     const res = wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
     const srcs = [['txt', isRambam(S.b) ? 'הלכות' : isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isRambam(S.b) ? 'מפרשים' : isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
     html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait ? T('טוען…') : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
