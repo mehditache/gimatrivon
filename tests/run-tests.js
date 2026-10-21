@@ -210,6 +210,19 @@ t('reader', 'parseDafRef: ברכות ב. / ב: / שבת קכ ב / Berakhot 2b / 
   eq([r('ברכות ב.'), r('ברכות ב:'), r('שבת קכ ב'), r('Berakhot 2b'), r('בבא מציעא נט'), r('מסכת ברכות'), r('ברכות ב ע"ב')], [['Berakhot', 0, true], ['Berakhot', 1, true], ['Shabbat', RC.amudOf(120, 1), false], ['Berakhot', 1, true], ['Bava Metzia', RC.amudOf(59, 0), false], ['Berakhot', 0, true], ['Berakhot', 1, true]]); });
 t('reader', 'parseDafRef: דף שלא קיים / טקסט חופשי → null; dafLabel', () => eq([RC.parseDafRef(TX, 'ברכות קא'), RC.parseDafRef(TX, 'ויהי אור'), RC.dafLabel(0), RC.dafLabel(1), RC.dafLabel(237), RC.dafLabel(3, true)], [null, null, 'ב.', 'ב:', 'קכ:', '3b']));
 
+// ---- טור, בית יוסף וב״ח (generated/tur, נבנה ב-scripts/build-tur.py) ----
+const RIDX = (() => { const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'generated/tur/index.js'), 'utf8'))(w); return w.GIM_TUR_INDEX; })();
+const RX = RC.turIndex(RIDX);
+t('reader', 'טור: ארבעה טורים בסדר (697/403/178/426 סימנים + הקדמה), וכל קובצי החלקים קיימים ומתחת ל-2.5MB', () => eq(RIDX.map(t => [t.k, t.n]), [['OC', 698], ['YD', 404], ['EH', 179], ['CM', 427]]) || RIDX.every(t => t.parts.every(p => { const f = path.join(__dirname, '..', 'generated/tur', p.f); return fs.existsSync(f) && fs.statSync(f).size < 2.5e6; })));
+t('reader', 'טור: או״ח א מתחיל ב"יהודה בן תימא", ולכל דיבור של בית יוסף וב״ח סימן אחד בדיוק בטור', () => {
+  const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'generated/tur/OC.0.js'), 'utf8'))(w); const P = w.GIM_TUR_P['OC.0'];
+  if (!/^יהודה בן תימא/.test(P.s[1][0].replace(/\u0010[yc]\d+\u0011/g, ''))) return false;
+  return P.s.every(r => ['y', 'c'].every((x, n) => r[n + 1].every((_, i) => r[0].split('\u0010' + x + i + '\u0011').length === 2)));
+});
+t('reader', 'parseTurRef: או״ח ס / אורח חיים 60 / בית יוסף יו״ד קצג / חו״מ הקדמה / Orach Chayim 60', () => { const r = q => { const x = RC.parseTurRef(RX, q); return x && [x.k, x.s]; };
+  eq([r('טור או״ח ס'), r('או"ח סימן ס'), r('אורח חיים 60'), r('בית יוסף יו״ד קצג'), r('חו״מ הקדמה'), r('Orach Chayim 60'), r('טור אבן העזר')], [['OC', 60], ['OC', 60], ['OC', 60], ['YD', 193], ['CM', 0], ['OC', 60], ['EH', 1]]); });
+t('reader', 'parseTurRef: סימן שלא קיים / ספר אחר → null; turToks מפריד סימנים ושורות', () => eq([RC.parseTurRef(RX, 'או״ח תשא'), RC.parseTurRef(RX, 'שמות יב'), RC.parseTurRef(RX, 'ברכות ב.'), RC.turToks('\u0010c0\u0011\u0010y0\u0011אב גד\nהו')], [null, null, null, ['\u0010c0\u0011', '\u0010y0\u0011', 'אב', 'גד', '\n', 'הו']]));
+
 // ---- corpus split (v3.12.0): קובץ לכל ספר + corpus-loader.js ----
 {
   const vm = require('vm'), cdir = path.join(__dirname, '..', 'generated', 'corpus');

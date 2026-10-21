@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.12.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.14.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -42,7 +42,7 @@ const COLORS = ['#2563a8', '#2f8f5b', '#7a4bb5', '#c47a1a', '#c2415a', '#1a8f92'
    מילות-המבנה סביבו (למשל "פרק"/"משנה"/"רש״י על") כן מתורגמות (ראו PFX_EN/heNum למטה). */
 let LANG = (() => { try { return localStorage.getItem('gimatrivonLang') === 'en' ? 'en' : 'he'; } catch (e) { return 'he'; } })();
 const EN = {
-  'תנ״ך · משנה · רש״י · תרגומים · רמב״ם': 'Tanakh · Mishnah · Rashi · Targumim · Rambam', 'בחירת צד': 'Side selection',
+  'בחירת צד': 'Side selection',
   'מעבר בין מראה גוויל למראה לילה': 'Switch between parchment and night themes', 'מראה כהה (לילה בגוויל)': 'Dark theme (night parchment)',
   'הפעלת סיור מודרך קצר באפליקציה': 'Start a short guided tour of the app', '? סיור מודרך': '? Guided Tour',
   'שיטות גימטריה': 'Gematria Methods', 'מידע על האפליקציה': 'About the app', 'ℹ אודות': 'ℹ About',
@@ -1590,7 +1590,6 @@ function applyLangStatic() {
   const aboutBtn = $('#openAbout'); if (aboutBtn) { aboutBtn.title = L('מידע על האפליקציה'); aboutBtn.textContent = L('ℹ אודות'); }
   const contactBtn = $('#openContact'); if (contactBtn) { contactBtn.title = L('יצירת קשר עם המפתח'); contactBtn.textContent = L('✉ צור קשר'); }
   const ws = $('#ws'); if (ws) ws.setAttribute('aria-label', L('סביבת עבודה'));
-  const tagline = document.querySelector('.brand .tagline'); if (tagline) tagline.textContent = L('תנ״ך · משנה · רש״י · תרגומים · רמב״ם');
   const h1 = document.querySelector('.brand h1'); if (h1) h1.textContent = en ? 'Gimatrivon' : 'גימטריבון';
   document.title = en ? `Gimatrivon - ${VERSION}` : `גימטריבון - ${VERSION}`;
   const verEl = $('#ver'); if (verEl) verEl.title = L('מספר גרסה');
