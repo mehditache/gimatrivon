@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.20.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.21.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -84,7 +84,7 @@ const EN = {
   'התאמה ערכית בלבד: הערך הגימטרי תואם, ללא השוואת-אותיות למילת-החיפוש': 'Numeric match only: the gematria value matches, without comparing letters to the search word',
   'שיטת הגימטריה של הפסוק': 'Gematria method of the verse', 'שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה': 'Gematria method of the search word in which the match was found',
   'תיבות': 'words', 'העתק את הפסוק/המשנה ללוח': 'Copy the verse/mishnah to clipboard', 'העתק את המחרוזת המומרת ללוח': 'Copy the transformed string to clipboard',
-  'מספר': 'Number', 'של הפסוק': 'of the verse', 'ערך': 'value', 'התאמות': 'matches', 'של מילת החיפוש': 'of the search word',
+  'מספר': 'Number', 'גימ׳': 'Gem.', 'של הפסוק': 'of the verse', 'ערך': 'value', 'התאמות': 'matches', 'של מילת החיפוש': 'of the search word',
   'אין תוצאות התואמות את הסינון הטקסטואלי.': 'No results match the text filter.', 'אין התאמות בטווח שנבחר.': 'No matches in the selected range.',
   'מחפש…': 'Searching…', 'הקורפוס עדיין נטען…': 'The corpus is still loading…',
   'סמן לפחות סוג גימטריה אחד לחיפוש בפסוקים (⚙).': 'Select at least one gematria type to search verses with (⚙).',
@@ -125,40 +125,19 @@ const FAM_OF = {}; GEM_FAMILIES.forEach(f => { f.ids.forEach(id => { FAM_OF[id] 
 // כמו בשאר האפליקציה (f.color — כבר בשימוש ב-.srcCard/.bdg); נוטריקון ומילוי (שאינם חלק מ-GEM_FAMILIES)
 // מקבלים צבע-ייעודי משלהם, שלא בשימוש אצל אף משפחה אחרת.
 const NOTARIKON_FAM_COLOR = '#2f8f52', MILUI_FAM_COLOR = '#6a4f99';
+// v3.21.0: תווית נפרדת לכל שיטת-מילה (במקום תווית מאוחדת כמו "רגילה +כולל/ +תיבות"). כשמילת-החיפוש היא
+// מילה בודדת, ‎+תיבות שווה תמיד ל-‎+כולל (שתיהן ‎+1), ולכן מציגים רק את ‎+כולל של אותה משפחה.
+function wmName(id) { const f = FAM_OF[id]; return f ? (id === f.ids[0] ? L(f.name) : `${L(f.name)} ${L(f.labels[id])}`) : (L(MNS[id]) || id); }
+function wmsShown(st, wms) {
+  if (!wms || !wms.length) return [];
+  if (numVal(st.num) || E.normalizeText(st.text).words.length !== 1) return wms;
+  return wms.filter(id => { const f = FAM_OF[id]; return !(f && f.labels[id] === '+תיבות' && wms.includes(f.ids[1])); });
+}
+// סוג התאמת-הנוטריקון (לפי אותו סימון כמו ההדגשה בפסוק): האותיות מאייתות את מילת-החיפוש (מילים), אותן אותיות
+// בסדר אחר (אותיות), או ערך גימטרי בלבד (גימ׳)
+const NOT_MATCH = { glowY: ['notLit', 'מילים'], glowP: ['notPerm', 'אותיות'], glowG: ['notGim', 'גימ׳'] };
 function famKeyOf(method) { if (NOTARIKON_IDS.includes(method)) return 'notarikon'; if (method === 'milui') return 'milui'; const f = FAM_OF[method]; return f ? f.key : method; }
 function famColorOf(method) { if (NOTARIKON_IDS.includes(method)) return NOTARIKON_FAM_COLOR; if (method === 'milui') return MILUI_FAM_COLOR; const f = FAM_OF[method]; return f ? f.color : MILUI_FAM_COLOR; }
-// בונה תווית מקובצת-וממוזגת לרשימת שיטות-מילה שתואמות יחד (wms): כש-מילה תואמת כמה סיומות של *אותה* משפחה
-// (למשל רגילה +כולל וגם רגילה +תיבות — ערכים שווים במקרה) הן מתאחדות לתווית אחת "רגילה +כולל +תיבות" במקום
-// שתי תוויות נפרדות; וכש-כמה *משפחות* חולקות בדיוק אותה קבוצת-סיומות (כלומר גם ערכי-המילה שלהן שווים, לא רק
-// שם-הסיומת), שמות-המשפחות מתמזגים ("רגילה ואתב״ש +כולל +תיבות") במקום לחזור על הסיומות לכל משפחה בנפרד.
-function wmsLabel(wms) {
-  if (!wms || !wms.length) return '';
-  const byFam = new Map(); // famKey -> {fam, sufSet, base}
-  const singles = []; // ids שלא שייכים לאף משפחה (כרגע רק מילוי)
-  for (const id of wms) {
-    const fam = FAM_OF[id];
-    if (!fam) { singles.push(id); continue; }
-    if (!byFam.has(fam.key)) byFam.set(fam.key, { fam, sufSet: new Set(), base: false });
-    const g = byFam.get(fam.key);
-    if (id === fam.ids[0]) g.base = true; else g.sufSet.add(id);
-  }
-  const groups = []; // {sigKey, sufLabels, fams}
-  for (const { fam, sufSet, base } of byFam.values()) {
-    const sufIds = fam.ids.slice(1).filter(id => sufSet.has(id)); // בסדר קבוע: קולל, תיבות, אותיות
-    // מזהה-קיבוץ לפי *משמעות* הסיומות (התוויות הקצרות, כגון "+כולל,+תיבות") ולא לפי מזהה-ה-id הגולמי —
-    // ה-id עצמו שונה בין משפחות לאותה סיומת (kollel לעומת atbashKollel), ולכן קיבוץ לפי id לא היה מאחד משפחות.
-    const sigKey = (base ? 'B' : '') + sufIds.map(id => fam.labels[id]).join(',');
-    let grp = groups.find(g => g.sigKey === sigKey);
-    if (!grp) { grp = { sigKey, sufLabels: sufIds.map(id => L(fam.labels[id])), fams: [] }; groups.push(grp); }
-    grp.fams.push(L(fam.name));
-  }
-  const joinHe = arr => LANG === 'en'
-    ? (arr.length <= 1 ? (arr[0] || '') : arr.length === 2 ? `${arr[0]} and ${arr[1]}` : `${arr.slice(0, -1).join(', ')} and ${arr[arr.length - 1]}`)
-    : (arr.length <= 1 ? (arr[0] || '') : arr.length === 2 ? `${arr[0]} ו${arr[1]}` : `${arr.slice(0, -1).join(', ')} ו${arr[arr.length - 1]}`);
-  const parts = groups.map(g => { const famTxt = joinHe(g.fams); return g.sufLabels.length ? `${famTxt} ${g.sufLabels.join('/ ')}` : famTxt; });
-  for (const id of singles) parts.push(L(MNS[id]) || id);
-  return parts.join(' / ');
-}
 const CK = ['tanakh', 'mishnah', 'rashi', 'onkelos', 'yonatan', 'bartenura', 'dict', 'rambam', 'kesef', 'raavad', 'lamelech'], CN = B.books.reduce((o, b) => (o[b.cat] = b.category, o), {});
 const CN_EN = { 0: 'Tanakh', 1: 'Mishnah', 2: 'Rashi', 3: 'Onkelos', 4: 'Targum Yonatan', 5: 'Bartenura', 6: 'Dictionary', 7: 'Rambam', 8: 'Kessef Mishneh', 9: "Ra'avad", 10: 'Mishneh LaMelech' };
 const catName = cat => LANG === 'en' ? (CN_EN[cat] || CN[cat]) : CN[cat];
@@ -1075,7 +1054,7 @@ function topUpHitsSort(k, id) {
 // במקרה הזה אין "אותיות מילת-חיפוש" להשוואה מילולית, כך שהתאמה-טקסטואלית תחזיר 0 תוצאות).
 // שורות-הנוטריקון מתמזגות ישירות ל-st.all/st.info (אותו מנגנון בדיוק כמו תוצאות-חיפוש רגילות — showMore,
 // סינון טקסטואלי, גלילה אינסופית, ולחיצה-על-עיגול-כדי-להקפיץ-למעלה) — לא רשימה/קונטיינר נפרד. wms:['regular']
-// (ערך ה'רגילה' של מילת-החיפוש הוא תמיד היעד) כדי שתווית-הקבוצה/השורה ("רגילה") ייבנו ע״י wmsLabel הקיים
+// (ערך ה'רגילה' של מילת-החיפוש הוא תמיד היעד) כדי שכותרת-הקבוצה ("= רגילה של מילת החיפוש") תיבנה
 // בלי קוד מיוחד, ו-method נשאר notRt/notB/notC/notSt (מזהה ל-showMore שמדובר בשורת-נוטריקון, לרינדור
 // צביעת-האות-הבודדת ולקידום-לפי-עיגול ב-visibleIdx/hitsSortToggle).
 function runNotarikon(k) {
@@ -1270,11 +1249,14 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   // הקשר ("איזו שיטה/ערך אני רואה עכשיו"). ב-appendLiveRows אין צורך בזה כלל: שם p=0 הוא *תמיד* גם תחילת-
   // הקבוצה הראשונה-בפועל (computeGroups תמיד מוסיף גבול ב-pos=0), כך ש-groupPos.has(p) כבר מכסה את זה.
   if (p === forceHeaderAt || groupPos.has(p)) {
-    const f = st.info.find(x => x.method === r.method && x.target === r.target);
-    const wmTag = f && f.wms && f.wms.length ? `<span class="ghW">= ${esc(wmsLabel(f.wms))} ${L('של מילת החיפוש')}</span>` : '';
-    h += `<div class="gh" data-m="${r.method}"><span class="ghM" data-fam="${famKeyOf(r.method)}" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')}</span><span class="ghV">${L('ערך')} <b>${fmt(r.target)}</b></span>${wmTag}${f ? `<span class="ghN">${fmt(f.total)} ${L('התאמות')}</span>` : ''}</div>`;
+    const notRow = NOTARIKON_IDS.includes(r.method);
+    const f = st.info.find(x => x.method === r.method && (notRow ? x.notarikon : x.target === r.target));
+    const fw = f ? wmsShown(st, f.wms) : [];
+    const wmTag = fw.length ? `<span class="ghW">= ${fw.map(id => `<i data-m="${id}">${esc(wmName(id))}</i>`).join(' · ')} ${L('של מילת החיפוש')}</span>` : '';
+    // בנוטריקון אין ערך לשורה (r.target ריק) — לא מציגים את תג-הערך בכלל, במקום "ערך —"
+    const vTag = notRow ? '' : `<span class="ghV">${L('ערך')} <b>${fmt(r.target)}</b></span>`;
+    h += `<div class="gh" data-m="${r.method}"><span class="ghM" data-fam="${famKeyOf(r.method)}" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')}</span>${vTag}${wmTag}${f ? `<span class="ghN">${fmt(f.total)} ${L('התאמות')}</span>` : ''}</div>`;
   }
-  const wmLbl = (r.wms && r.wms.length) ? wmsLabel(r.wms) : L('מספר');
   const copyTxt = `${ref(u)}\n${T.slice(s, e).join(' ')}`;
   const bk = B.books[u.b], prs = parashaOf(u), seder = bk.cat === 1 || bk.cat >= 7 ? bk.g : '';
   const metaTag = prs ? `<span class="tag prs">${esc(parshaName(prs))}</span>` : seder ? `<span class="tag seder">${esc(groupName(seder))}</span>` : '';
@@ -1286,8 +1268,14 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   // שדה-הסינון-הטקסטואלי עדיין מסנן איזה שורות מוצגות דרך tfRowOk, רק ההדגשה-בתוך-הטקסט לא חלה כאן).
   const isNot = NOTARIKON_IDS.includes(r.method);
   const notGlow = r.literal ? 'glowY' : (r.perm ? 'glowP' : 'glowG');
+  // תגיות שיטת-מילת-החיפוש: אחת לכל שיטה; בנוטריקון — סוג ההתאמה (מילים/אותיות/גימ׳); בחיפוש לפי מספר — "מספר"
+  const wmTitle = L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה');
+  const wmIds = wmsShown(st, r.wms);
+  const wmTags = isNot ? `<span class="tag" data-m="${NOT_MATCH[notGlow][0]}" title="${L(NOTARIKON_GLOW_TITLE[notGlow])}">${L(NOT_MATCH[notGlow][1])}</span>`
+    : wmIds.length ? wmIds.map(id => `<span class="tag" data-fam="${famKeyOf(id)}" data-m="${id}" title="${wmTitle}">${esc(wmName(id))}</span>`).join('')
+    : `<span class="tag" title="${wmTitle}">${L('מספר')}</span>`;
   const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
-  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag"${r.wms && r.wms.length ? ` data-fam="${famKeyOf(r.wms[0])}" data-m="${r.wms[0]}"` : ''} title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span></div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
+  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span>${wmTags}</div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
   return h;
 }
 // בונה-מחדש את כל תוכן #rl{k} כחלון של עד N שורות המתחיל ב-start (במרחב-ה-idx, לא בהכרח במרחב st.all) —
