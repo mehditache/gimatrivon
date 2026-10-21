@@ -181,7 +181,7 @@
     'כסף משנה': 'Kessef Mishneh', 'השגות הראב״ד': "Ra'avad", 'משנה למלך': 'Mishneh LaMelech', 'מפרשים בתחתית הדף': 'Commentaries at the foot of the page',
     'ניקוד': 'Vowel points', 'בלי ניקוד': 'Without', 'עם ניקוד': 'With', 'כמו במהדורת פרנקל': 'as in the Frankel edition', 'השגת הראב״ד': "Ra'avad's gloss",
     'ש״ס': 'Talmud', 'צורת הדף': 'Vilna page', 'גמרא ומפרשים': 'Gemara & commentary', 'תוספות': 'Tosafot', 'רשב״ם': 'Rashbam', 'גמרא': 'Gemara', 'מסכת': 'Tractate',
-    'דף': 'Daf', 'דף קודם': 'Previous daf', 'דף הבא': 'Next daf', 'עמוד א': 'Side a', 'עמוד ב': 'Side b', 'מעבר לדף': 'Go to daf', 'קטע': 'Passage', 'טוען את המסכת…': 'Loading the tractate…',
+    'דף': 'Daf', 'דף קודם': 'Previous daf', 'דף הבא': 'Next daf', 'עמוד א': 'Side a', 'עמוד ב': 'Side b', 'מעבר לדף': 'Go to daf', 'קטע': 'Passage', 'טוען': 'Loading',
     'לא ניתן לטעון את המסכת.': 'Could not load the tractate.', 'בדף': 'Daf', 'במסכת': 'Tractate', 'אין פירוש על קטע זה': 'No commentary on this passage', 'הדף הנוכחי (שני העמודים)': 'The current daf (both sides)',
     'לחצו על קטע בגמרא כדי לראות את הפירוש שלו.': 'Click a passage of the Gemara to see its commentary.', 'הקטע שנבחר': 'Selected passage', 'הקטע הקודם': 'Previous passage', 'הקטע הבא': 'Next passage'
   };
@@ -584,23 +584,44 @@
   const plainT = s => String(s).replace(/[\u0001-\u0004]/g, '');
   const talTxt = (s, q) => q ? hlHtml(plainT(s), q) : fmtT(s);
   const innerLabel = (k, j) => T(amudRow(k, j)[3] ? 'רשב״ם' : 'רש״י');
+  /* מסך טעינה: שלד של הדף שהשורות שלו "נכתבות", ושם הספר בכתב חלול שמתמלא בזהב (מימין לשמאל) לפי אחוזי הטעינה.
+     loadingHtml בונה את הדפים; loadProg(k, 0..1) מעדכן את המילוי אם המסך של k עדיין מוצג. */
+  const skLines = (n, c, from) => { let s = ''; for (let i = 0; i < n; i++) s += '<i class="rdSkLn' + c + '" style="--i:' + (from + i) + ';width:' + (i % 6 === 5 ? 58 : 100 - (i * 7 % 13)) + '%"></i>'; return s; };
+  function loadingHtml(k, title, geo) {
+    const pg = (side, first) => '<article class="rdPage rdSkel ' + side + geo.cls + '"' + (first ? '' : ' aria-hidden="true"') + '><div class="rdSkHead"><i></i><i></i><i></i></div>' +
+      (first ? '<div class="rdLoadT" data-k="' + h(k) + '" style="--p:0" role="progressbar" aria-label="' + h(T('טוען') + ' ' + title) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="o">' + h(title) + '</span><span class="f" aria-hidden="true">' + h(title) + '</span></div><div class="rdLoadPct" aria-hidden="true">0%</div>' : '') +
+      '<div class="rdSkTx">' + skLines(30, '', 0) + '</div><div class="rdSkCm">' + skLines(30, ' c', first ? 8 : 12) + '</div></article>';
+    return geo.two ? pg('right', true) + pg('left', false) : pg('single', true);
+  }
+  function loadProg(k, f) {
+    const el = R.querySelector('.rdLoadT[data-k="' + k + '"]'); if (!el) return;
+    const p = Math.max(0, Math.min(100, Math.round(f * 100)));
+    el.style.setProperty('--p', p); el.setAttribute('aria-valuenow', p);
+    const pc = el.nextElementSibling; if (pc) pc.textContent = p + '%';
+  }
+  /* התקדמות הטעינה: תגית script לא מדווחת על בייטים (ו-fetch/XHR אסורים, כדי שזה יעבוד offline וב-file://), אז כל חלק
+     "זוחל" לעבר 90% בקצב שמותאם לגודל שלו (p.b, מ-build-talmud.py; בערך 2MB לשנייה), וקופץ ל-100% כשהוא נטען בפועל. */
   function loadTract(k, done) {
     if (TD[k]) return done(true);
     if (TLOAD[k]) { TLOAD[k].push(done); return; }
     TLOAD[k] = [done];
     const t = TX.list[TX.byK[k]], TP = G.GIM_TP || (G.GIM_TP = {});
+    const need = t.parts.map((p, i) => TP[k + '.' + i] ? 0 : (p.b || 1)), tot = need.reduce((a, b) => a + b, 0) || 1, got = need.map(() => 0);
+    const report = () => loadProg(k, got.reduce((a, b) => a + b, 0) / tot);
+    const t0 = Date.now(), tick = setInterval(() => { const sec = (Date.now() - t0) / 1000; need.forEach((n, i) => { if (got[i] < n) got[i] = Math.max(got[i], n * 0.9 * (1 - Math.exp(-sec / Math.max(0.6, n / 2e6)))); }); report(); }, 100);
     let left = t.parts.length, failed = false;
     const finish = () => {
+      clearInterval(tick); loadProg(k, 1);
       if (!failed) { const all = []; t.parts.forEach((p, i) => { const d = TP[k + '.' + i]; d.a.forEach((row, r) => { all[d.from + r] = row; }); }); TD[k] = all; }
       const cbs = TLOAD[k]; delete TLOAD[k];
       const go = () => cbs.forEach(cb => cb(!failed));
       if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('16px GimFrank'), document.fonts.load('16px GimRashi')]).then(go, go); else go();
     };
+    const partDone = (i, ok) => { if (!ok || !TP[k + '.' + i]) failed = true; got[i] = need[i]; report(); if (--left === 0) finish(); };
     t.parts.forEach((p, i) => {
-      if (TP[k + '.' + i]) { if (--left === 0) finish(); return; }
+      if (TP[k + '.' + i]) { partDone(i, true); return; }
       const sc = document.createElement('script'); sc.src = 'generated/talmud/' + p.f;
-      sc.onload = () => { if (!TP[k + '.' + i]) failed = true; if (--left === 0) finish(); };
-      sc.onerror = () => { failed = true; if (--left === 0) finish(); };
+      sc.onload = () => partDone(i, true); sc.onerror = () => partDone(i, false);
       document.head.appendChild(sc);
     });
   }
@@ -724,7 +745,7 @@
     };
     if (!TD[k]) {
       setBar(); $r('#rdPos').textContent = '';
-      book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('טוען את המסכת…') + '</p></article>';
+      book.innerHTML = loadingHtml(k, T('מסכת') + ' ' + talName(t), geo);
       loadTract(k, ok => { if (!ok) book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את המסכת.') + '</p></article>'; else if (S.tk !== k) return; else if (S.sel) goTal(k, S.sel.j, S.sel.s); else render(); });
       return;
     }

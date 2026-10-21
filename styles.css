@@ -880,6 +880,24 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTal .rdV{padding:0 1px}
 .rdPage.tal .rdCm p.tc{padding:0 2px}
 .rdLoading{display:flex;align-items:center;justify-content:center;font:14px var(--ui);color:var(--rdMu)}
+/* מסך טעינה (loadingHtml ב-reader.js): שלד הדף + שם הספר חלול שמתמלא לפי --p (0..100), מימין לשמאל */
+.rdPage.rdSkel{gap:0}
+.rdSkHead{display:flex;justify-content:space-between;border-bottom:1px solid var(--rdLine);padding-bottom:7px;margin-bottom:16px}
+.rdSkHead i{width:14%;height:6px;border-radius:3px;background:var(--rdLine)}
+.rdPage.right .rdSkHead{padding-left:30px}
+.rdLoadT{position:relative;align-self:center;font:700 2.1em/1.2 "GimFrank",var(--tf);white-space:nowrap;margin-top:4px}
+.rdLoadT span{display:block}
+.rdLoadT .o{color:transparent;-webkit-text-stroke:1.2px var(--rdGold)}
+.rdLoadT .f{position:absolute;inset:0;color:var(--rdGold);clip-path:inset(0 0 0 calc(100% - var(--p) * 1%));transition:clip-path .3s ease-out}
+.rdLoadPct{align-self:center;font:600 11.5px var(--ui);color:var(--rdMu);margin:2px 0 14px;font-variant-numeric:tabular-nums;direction:ltr}
+.rdPage.rdSkel>.rdSkTx,.rdPage.rdSkel>.rdSkCm{flex:3 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--rdFs) * .78)}
+.rdPage.rdSkel>.rdSkCm{flex:2 1 0;gap:calc(var(--rdFs) * .5);border-top:1px solid var(--rdLine);padding-top:14px;margin-top:10px}
+.rdSkLn{flex:none;display:block;height:calc(var(--rdFs) * .3);border-radius:4px;background:rgba(42,33,23,.07);position:relative;overflow:hidden}
+.rdSkLn.c{height:calc(var(--rdFs) * .2)}
+.rdSkLn::after{content:"";position:absolute;inset:0;background:rgba(42,33,23,.26);transform-origin:right;transform:scaleX(0);animation:rdSkWrite 2.8s ease-in-out infinite;animation-delay:calc(var(--i) * .15s)}
+.rdSkLn.c::after{background:rgba(42,33,23,.17)}
+@keyframes rdSkWrite{0%{transform:scaleX(0)}35%,75%{transform:scaleX(1);opacity:1}100%{transform:scaleX(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rdSkLn::after{animation:none;transform:none;opacity:.5}.rdLoadT .f{transition:none}}
 .pvDaf{display:flex;gap:4px}
 .pvDaf i{flex:1;height:auto;margin:0;opacity:.2;background:repeating-linear-gradient(var(--rdMu) 0 2px,transparent 2px 5px)}
 .pvDaf i.m{flex:1.6;opacity:.45}
