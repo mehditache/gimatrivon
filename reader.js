@@ -185,7 +185,7 @@
     vRows: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 6h12M3 12h12M3 18h12M18 6h3M18 12h3M18 18h3"/></svg>'
   };
 
-  let IX = null, built = false, R = null, geo = null, hlTimer = 0;
+  let IX = null, built = false, R = null, geo = null, hlTimer = 0, fxDir = 0, fxLast = 0, fxTimer = 0;
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
   const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all' };
@@ -404,7 +404,37 @@
     $r('#rdPrevCh').disabled = !nextCh(S.b, S.ch, -1); $r('#rdNextCh').disabled = !nextCh(S.b, S.ch, 1);
     R.querySelectorAll('#rdViewSeg button').forEach(x => { const on = x.dataset.view === S.view; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
     $r('#rdViewSeg [data-view=aligned] .t').textContent = T(isMishnah(S.b) ? 'משנה מול תרגום' : 'פסוק מול תרגום');
+    if (fxDir) { reveal(book, fxDir); fxDir = 0; }
     save();
+  }
+
+  /* הופעה הדרגתית של הטקסט בדפדוף ובמעבר פרק (לא בפתיחה, בשינוי גודל או בהגדרות): כל גוש (כותרת, פסקת מקרא/משנה, התרגום,
+     כל דיבור בפירוש) נכנס בדהייה עם הזזה קטנה מכיוון הדפדוף — קדימה מגיע משמאל. סדר קבוע בכל עמוד: מקרא, תרגום, פירוש.
+     רק opacity ו-transform. הפחתת תנועה = דהייה קצרה של העמוד כולו בלי הזזה; דפדוף מהיר ברצף מדלג על האפקט. */
+  const FX_START = [0, 220, 400], FX_STEP = 90, FX_DUR = 880;
+  const FX_BLOCKS = '.rdChTitle,.rdTxt>p,.rdMsh,.rdTr,.rdRowHd,.rdRow,.rdCmHd,.rdCmBody>p,.rdDafIn';
+  function reveal(book, dir) {
+    clearTimeout(fxTimer);
+    const now = performance.now(), quick = now - fxLast < 280; fxLast = now;
+    if (quick) return;
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let end = 0;
+    const set = (el, d, t) => { end = Math.max(end, d + t); el.style.setProperty('--fxD', d + 'ms'); el.style.setProperty('--fxT', t + 'ms'); el.classList.add('fxA'); };
+    book.style.setProperty('--fxDx', (dir > 0 ? -10 : 10) + 'px');
+    book.querySelectorAll('.rdPage:not(.blank)').forEach(pg => {
+      if (calm) { pg.querySelectorAll('.rdBody,.rdCm,.rdDaf').forEach(el => set(el, 0, 160)); return; }
+      const n = [0, 0, 0];
+      pg.querySelectorAll(FX_BLOCKS).forEach(el => {
+        const z = el.closest('.rdCm') ? 2 : el.closest('.rdTr') ? 1 : 0;
+        set(el, FX_START[z] + Math.min(n[z]++, 8) * FX_STEP, FX_DUR);
+      });
+    });
+    book.classList.add('fxRun', calm ? 'fxCalm' : 'fxRise');
+    // אחרי הסיום מסירים הכל, כך שבחירת טקסט והדגשה פועלות על DOM רגיל
+    fxTimer = setTimeout(() => {
+      book.classList.remove('fxRun', 'fxCalm', 'fxRise');
+      book.querySelectorAll('.fxA').forEach(e => { e.classList.remove('fxA'); e.style.removeProperty('--fxD'); e.style.removeProperty('--fxT'); });
+    }, end + 60);
   }
 
   function flash(v) {
@@ -422,7 +452,7 @@
     if (isTal()) return talTurn(dir);
     // np מעבר לסוף הפרק = כמה עמודים של הפרק הבא כבר הוצגו (0 או 1); מתחת לאפס = כמה עמודים לקחת מסוף הפרק הקודם
     const pages = pagesFor(S.b, S.ch), np = S.p + dir * geo.per;
-    if (np >= 0 && np < pages.length) { S.lock = np; render(); return; }
+    if (np >= 0 && np < pages.length) { S.lock = np; fxDir = dir; render(); return; }
     let b = S.b, ch = S.ch, k = dir > 0 ? np - pages.length : np, len;
     for (;;) {
       const n = nextCh(b, ch, dir); if (!n) return;
@@ -431,9 +461,9 @@
       k += dir > 0 ? -len : len; // פרק קצר שכולו כבר הוצג בפריסה הקודמת — ממשיכים לפרק שאחריו
     }
     S.b = b; S.ch = ch; S.lock = dir > 0 ? k : len + k;
-    render();
+    fxDir = dir; render();
   }
-  function stepChapter(dir) { if (isTal()) return talStep(dir); const n = nextCh(S.b, S.ch, dir); if (n) goTo(n.b, n.ch, 0); }
+  function stepChapter(dir) { if (isTal()) return talStep(dir); const n = nextCh(S.b, S.ch, dir); if (n) { fxDir = dir; goTo(n.b, n.ch, 0); } }
 
   /* ---------- ש״ס: גמרא, רש״י ותוספות ----------
      הנתונים: GIM_TALMUD_INDEX (רשימת מסכתות) וחלקים לכל מסכת (generated/talmud/*.js) שנטענים בתגית script רק
@@ -611,6 +641,7 @@
     }
     book.innerHTML = html + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
+    if (fxDir) { reveal(book, fxDir); fxDir = 0; }
     setBar();
     const atStart = S.tview === 'daf' ? from === 0 : !stNext(k, S.tj, S.tp, -1, geo);
     const atEnd = S.tview === 'daf' ? (geo.two ? from + 2 >= t.n : S.tj + 1 >= t.n) : !stNext(k, lastPg.j, lastPg.p, 1, geo);
@@ -621,12 +652,12 @@
   }
   function talTurn(dir) {
     const t = talT();
-    if (S.tview === 'daf') { const step = geo.two ? 2 : 1, base = geo.two ? S.tj - (S.tj & 1) : S.tj, n = base + dir * step; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; return render(); }
+    if (S.tview === 'daf') { const step = geo.two ? 2 : 1, base = geo.two ? S.tj - (S.tj & 1) : S.tj, n = base + dir * step; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; return render(); }
     let x = { j: S.tj, p: S.tp };
     for (let i = 0; i < (geo.two ? 2 : 1); i++) { const n = stNext(t.k, x.j, x.p, dir, geo); if (!n) { if (i === 0) return; break; } x = n; }
-    S.tj = x.j; S.tp = x.p; render();
+    S.tj = x.j; S.tp = x.p; fxDir = dir; render();
   }
-  function talStep(dir) { const t = talT(), base = S.tj - (S.tj & 1), n = base + dir * 2; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; render(); }
+  function talStep(dir) { const t = talT(), base = S.tj - (S.tj & 1), n = base + dir * 2; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; render(); }
   function goTal(k, j, s) {
     S.tk = k; S.tj = j || 0; S.tp = 0; closeSeg();
     if (s != null) S.sel = { j: S.tj, s }; // אם המסכת עוד לא נטענה — החלון ייפתח אחרי הטעינה
