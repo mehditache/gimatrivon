@@ -668,30 +668,40 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 #stage .rs,#stage .rs:hover,#stage .searching .rs:not(.on):hover{background:transparent;border:0;border-bottom:1px solid var(--ln2);border-radius:0;box-shadow:none;margin:0;padding:.45rem .55rem .5rem}
 #stage .rs:hover{background:var(--hov)}
 #stage .rs.on{background:var(--acs);box-shadow:inset -3px 0 0 var(--ac)}
-#stage .rs .rf{flex-wrap:nowrap;overflow:hidden;white-space:nowrap;gap:.3rem}
-#stage .rs .rf b{flex:none;font:700 .9rem "GimFrank",var(--tf);color:var(--tx);margin-inline-end:.15rem}
-#stage .rs .tag{flex:none;border:0;border-radius:6px;padding:.05rem .4rem;font:600 .66rem/1.35 var(--ui);background:var(--chip);color:var(--chipTx)}
-#stage .rs .tag.meth{box-shadow:inset 0 0 0 1px currentColor}
-#stage .rs .tag.prs{background:#dfe2c4;color:#4f661a}
-#stage .rs .tag[data-fam=regular]{background:#d9e1ea;color:#1f4f86}
-#stage .rs .tag[data-fam=atbash]{background:#eed6da;color:#a3344b}
-#stage .rs .tag[data-fam=atbach]{background:#d3e6e3;color:#156f72}
-#stage .rs .tag[data-fam=milui]{background:#e2d9e9;color:#5a4387}
-#stage .rs .tag[data-fam=notarikon]{background:#d6e8db;color:#2b7a45}
-:root[data-theme=dark] #stage .rs .tag.prs{background:#36401f;color:#b9d27a}
-:root[data-theme=dark] #stage .rs .tag[data-fam=regular]{background:#25364a;color:#a9c9ec}
-:root[data-theme=dark] #stage .rs .tag[data-fam=atbash]{background:#4a2730;color:#f0a8b5}
-:root[data-theme=dark] #stage .rs .tag[data-fam=atbach]{background:#1f4040;color:#8fd6d3}
-:root[data-theme=dark] #stage .rs .tag[data-fam=milui]{background:#3a2e50;color:#c9b6ec}
-:root[data-theme=dark] #stage .rs .tag[data-fam=notarikon]{background:#223f2c;color:#91d6a7}
-#stage .rs .tagArrow{flex:none;color:var(--mu);font-size:.66rem}
+/* תוויות התוצאה (v3.18.0, פלטה א׳ "דיו רכה על קלף"): הייחוס בלוחית קלף עם מסגרת זהב, הקטגוריה כתווית מסגרת זהב דקה,
+   הפרשה/הסדר כטקסט שקט אחרי נקודה, וצמד השיטות בקצה השורה. לכל אחת מ-17 השיטות גוון משלה (--h, לפי data-m),
+   רקע בהיר וטקסט כהה באותו גוון; בלילה רקע כהה וטקסט בהיר. בלי עטיפה סביב התגיות — הסיור (tourUnionDim) עובר
+   על הילדים הישירים של .rf. */
+#stage .rs .rf{flex-wrap:nowrap;overflow:hidden;white-space:nowrap;gap:.4rem;align-items:center;min-height:1.5rem;padding:1px}
+#stage .rs .rf b{flex:none;max-width:55%;overflow:hidden;text-overflow:ellipsis;padding:0 .5rem;border-radius:6px;background:#fbf4e2;box-shadow:inset 0 0 0 1px #c9a55a,0 1px 0 rgba(90,65,20,.15);font:700 .92rem/1.45 "GimFrank",var(--tf);color:var(--tx)}
+:root[data-theme=dark] #stage .rs .rf b{background:#3d3020;box-shadow:inset 0 0 0 1px #8a6d2f}
+#stage .rs .tag{flex:none;border:0;border-radius:99px;padding:.08rem .5rem;font:600 .66rem/1.35 var(--ui);background:var(--chip);color:var(--chipTx)}
+#stage .rs .rf > b + .tag{border-radius:4px;padding:0 .35rem;background:transparent;color:var(--gold);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 50%,transparent);font-size:.62rem}
+:root[data-theme=dark] #stage .rs .rf > b + .tag{color:#e7c77e;box-shadow:inset 0 0 0 1px rgba(231,199,126,.45)}
+#stage .rs .tag.prs,#stage .rs .tag.seder{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:0;border-radius:0;background:none;font:500 .8rem/1.3 "GimFrank",var(--tf);color:var(--mu)}
+#stage .rs .tag.prs::before,#stage .rs .tag.seder::before{content:"·";margin-inline-end:.4rem;color:var(--ln)}
+:root[data-theme=dark] #stage .rs .tag.prs::before,:root[data-theme=dark] #stage .rs .tag.seder::before{color:var(--sb)}
+#stage .rs .tag.meth{margin-inline-start:auto;font-weight:700;box-shadow:none}
+#stage .rs .tagArrow{flex:none;color:var(--mu);font-size:.62rem}
+[data-m=regular]{--h:150}[data-m=kollel]{--h:120}[data-m=words]{--h:95}[data-m=letters]{--h:72}
+[data-m=atbash]{--h:22}[data-m=atbashKollel]{--h:40}[data-m=atbashWords]{--h:0}[data-m=atbashLetters]{--h:345}
+[data-m=atbach]{--h:195}[data-m=atbachKollel]{--h:178}[data-m=atbachWords]{--h:210}[data-m=atbachLetters]{--h:165}
+[data-m=milui]{--h:305}[data-m=notRt]{--h:60}[data-m=notB]{--h:32}[data-m=notC]{--h:330}[data-m=notSt]{--h:280}
+#stage .rs .tag[data-m]{background:oklch(.92 .045 var(--h));color:oklch(.42 .12 var(--h))}
+:root[data-theme=dark] #stage .rs .tag[data-m]{background:oklch(.33 .06 var(--h));color:oklch(.86 .1 var(--h))}
 #stage .cx{font:1rem/1.75 "GimFrank",var(--tf);margin-top:.12rem;color:var(--tx)}
 #stage .cx b{color:#5e4518}
 :root[data-theme=dark] #stage .cx b{color:#e7c77e}
 #stage .cx .cxEnd{white-space:nowrap}
 #stage .cx .cpy{display:inline-grid;width:1.25rem;height:1.25rem;vertical-align:-.15rem;margin-inline-start:.35rem;border:0;background:transparent;color:var(--mu);font-size:.78rem;opacity:.75}
 #stage .cx .cpy:hover{opacity:1;background:var(--chip);color:var(--ac)}
-#stage .gh{background:var(--rdBar);border:0;border-bottom:1px solid var(--ln2);margin:0 -.8rem .1rem;padding:.4rem .8rem;font:700 .78rem var(--ui);color:var(--ac)}
+#stage .gh{display:flex;align-items:baseline;gap:.5rem;white-space:nowrap;overflow:hidden;background:var(--rdBar);border:0;border-bottom:1px solid var(--ln2);margin:0 -.8rem .1rem;padding:.45rem .8rem;font:600 .74rem var(--ui);color:var(--mu)}
+#stage .gh .ghM{flex:none;font-weight:700;color:var(--ac)}
+#stage .gh .ghM[data-m]{color:oklch(.45 .12 var(--h))}:root[data-theme=dark] #stage .gh .ghM[data-m]{color:oklch(.82 .1 var(--h))}
+#stage .gh .ghV{flex:none;padding:0 .45rem;border-radius:99px;background:var(--chip);color:var(--chipTx)}
+#stage .gh .ghV b{font:700 .9rem "GimFrank",var(--tf);color:var(--tx)}
+#stage .gh .ghW{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+#stage .gh .ghN{flex:none;margin-inline-start:auto;font-weight:500;font-variant-numeric:tabular-nums}
 
 /* --- לוח החישוב (מחשב): כל ערך בתג, שם השיטה הבסיסית בצבע המשפחה; ערך עם התאמה = טבעת בצבע ההתאמה --- */
 #stage .gr4Wrap{background:transparent;border:0;border-radius:0;box-shadow:none;margin:0 0 .35rem;padding-bottom:.35rem;border-bottom:1px solid var(--ln2)}
