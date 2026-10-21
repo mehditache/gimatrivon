@@ -590,6 +590,35 @@ html.forcePhone .sideSw,html.forcePhone .tools>*:not(#status),html.forcePhone #s
 html.forcePhone #mKebab{display:inline-flex}
 html.forcePhone #mSummaryBar{display:flex}
 
+/* ============ v3.12.0 · פנלי מסך הגימטריה ברקע של הספר ============
+   רקע הפנלים (.pn, וגם הגיליון התחתון בנייד) = רקע "השולחן" של מסך הקריאה (--rdDesk + --rdDeskGlow, שמוגדרים
+   בבלוק של reader למטה ומשתנים לפי גוויל/לילה), והכרטיסים שבתוכם (תוצאות, שדה-הקלט, לוח-החישוב) = נייר הספר
+   (--rdPaper), כמו עמוד על שולחן. רק צבעים — אותו UX ואותה פריסה. המשתנים מוגדרים-מחדש בהיקף הפנל בלבד, כך
+   שהכותרת העליונה/דיאלוגים/סיור לא מושפעים. ערכים קבועים (בלי color-mix) — ראו ההערה על --markbg בראש הקובץ. */
+.pn,.mSheet{--pn:var(--rdPaper);--pn2:#f4ebd6;--ln:#c9b184;--ln2:#e4d7b9;--mu:#6b5a3c;--sb:#b39c6c;--deskLn:rgba(70,50,15,.16)}
+.pn,.mSheet{background-color:var(--rdDesk);background-image:var(--rdDeskGlow);background-attachment:local}
+.pn{border-color:var(--rdBarB);box-shadow:0 1px 2px rgba(80,55,20,.12),0 10px 26px -16px var(--rdShadow)}
+.pn .hd,.pn .gh{background:var(--rdBar)}
+.pn .hd{border-bottom-color:var(--rdBarB)}
+.pn .tsBar,.pn .sum{background:transparent;border-bottom-color:var(--deskLn)}
+.pn .filtPane{background-color:var(--rdDesk);background-image:var(--rdDeskGlow)}
+.ctr .inp{border-bottom-color:var(--deskLn)}
+.pn .chip,.pn .srcCard,.pn .cb,.pn textarea,.pn .gr,.pn .gr4,.pn .gr4cell,.pn .gr4Wrap,.pn .gr4cell.disabled:hover,.pn .rs,.pn .rs:hover,.pn .tfInp,.pn .mcard,.searching .rs:not(.on):hover{background:var(--rdPaper)}
+.pn .gr4cell:hover{background:var(--pn2)}
+.pn .rs{border-color:#e0d1ae;box-shadow:0 1px 2px rgba(80,55,20,.08)}
+.pn .rs.on{background:var(--acs)}
+.pn .fsThumb{box-shadow:0 0 0 2px var(--rdDesk)}
+.mSheet{border-color:var(--rdBarB)}
+.mSheet .ccNote,.mSheet textarea{background:var(--rdPaper)}
+/* לילה: השולחן הכהה של מסך הקריאה, והכרטיסים בגוון הכהה הרגיל של האפליקציה (--pn2) */
+:root[data-theme=dark] .pn,:root[data-theme=dark] .mSheet{--pn:#241b11;--pn2:#2c2114;--ln:#3c2e1a;--ln2:#3a2c19;--mu:#b19d73;--sb:#5f5236;--deskLn:rgba(255,235,190,.08)}
+:root[data-theme=dark] .pn,:root[data-theme=dark] .mSheet{border-color:#2e2315}
+:root[data-theme=dark] .pn{box-shadow:0 0 0 1px rgba(255,235,190,.03) inset,0 16px 34px -18px rgba(0,0,0,.8)}
+:root[data-theme=dark] .pn .chip,:root[data-theme=dark] .pn .srcCard,:root[data-theme=dark] .pn .cb,:root[data-theme=dark] .pn textarea,:root[data-theme=dark] .pn .gr,:root[data-theme=dark] .pn .gr4,:root[data-theme=dark] .pn .gr4cell,:root[data-theme=dark] .pn .gr4Wrap,:root[data-theme=dark] .pn .gr4cell.disabled:hover,:root[data-theme=dark] .pn .rs,:root[data-theme=dark] .pn .rs:hover,:root[data-theme=dark] .pn .tfInp,:root[data-theme=dark] .pn .mcard,:root[data-theme=dark] .searching .rs:not(.on):hover,:root[data-theme=dark] .mSheet .ccNote{background:var(--pn)}
+:root[data-theme=dark] .pn .gr4cell:hover{background:var(--pn2)}
+:root[data-theme=dark] .pn .rs{border-color:#3a2c19;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+:root[data-theme=dark] .pn .rs.on{background:var(--acs)}
+
 /* מעבר-מחדש אחרי demo (ללא היעלמות/הופעה מחדש של הבועה) */
 html.gtNoAnim .driver-popover{animation:none!important;transition:none!important}
 html.gtNoAnim .driver-overlay *{transition:none!important}
