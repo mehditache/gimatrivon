@@ -8,14 +8,14 @@
 // לא נוגע ב-generated/corpus.bundle.js עצמו (הוא עדיין קובץ-המקור/ה-build artifact
 // הקנוני); קורא ממנו בלבד.
 //
-// הרצה: node scripts/split-corpus.js [N]   (N = מספר חלקים, ברירת מחדל 10)
+// הרצה: node scripts/split-corpus.js [N]   (N = מספר חלקים, ברירת מחדל 16 — כמספר תגי ה-script ב-index.html)
 
 const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
 const srcPath = path.join(root, 'generated', 'corpus.bundle.js');
-const N = parseInt(process.argv[2], 10) || 10;
+const N = parseInt(process.argv[2], 10) || 16;
 
 const src = fs.readFileSync(srcPath, 'utf8');
 const PREFIX = 'window.CORPUS_BUNDLE=';

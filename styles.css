@@ -902,7 +902,7 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTRes .rdDI .sn{-webkit-line-clamp:1}
 @container (max-width:640px){.rdSegPop{width:auto;max-height:60%}.rdSegTxt{font-size:16px}}
 .rdPage.tal.right .rdHead{padding-left:24px}
-/* ---- v3.11.0 · טור, בית יוסף וב״ח (reader.js: renderTur) — בסגנון מהדורת "שירת דבורה" ----
+/* ---- v3.12.0 · טור, בית יוסף וב״ח (reader.js: renderTur) — בסגנון מהדורת "שירת דבורה" ----
    .trDaf = שטח הטקסט בעמוד (משתנים --tr* מ-trGeo). הטור (.trMain) באמצע למעלה בכתב מרובע; ב״ח (.trC) בטור הימני
    ובית יוסף (.trY) בשמאלי, בכתב רש״י. בכל טור צד יש מרווח צף (.sp) בגובה הטור, כך שהפירוש מקיף את הטור וממשיך
    מתחתיו ברוחב מלא. .trWide = עמוד של מפרש אחד בשני טורים. גם #rdPrint משתמש בכללים האלה, ולכן הם לא תחת .reader. */
@@ -939,5 +939,20 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 @container (max-width:640px){.rdJGrid.tur{grid-template-columns:104px minmax(0,1fr)}}
 .rdPrint.bw .ra,.rdPrint.bw .rl,.rdPrint.bw .trH,.rdPrint.bw .bh{color:#000!important}
 .trDaf u{text-decoration:none}
-.trDaf u{text-decoration:none}
 .trMain.trFull{left:0;width:var(--trW)}
+/* רמב״ם בעיצוב מהדורת פרנקל (reader.js, ramBody): כותרת בקו כפול, "פרק שמיני", אות הלכה מודגשת, ראב״ד בתוך הטקסט */
+.rdPage{--rdRam:#7a2e3b}
+.rdHead.ram{border-bottom:3px double var(--rdGold);padding-bottom:5px}
+.rdRamT{margin:0 0 8px}
+.rdRamT .ch{display:block;font-size:1.3em;font-weight:800;color:var(--rdInk);letter-spacing:.02em}
+.rdRamT .ch::before,.rdRamT .ch::after{content:none}
+.rdRamT .orn{display:block;font-size:.55em;color:var(--rdGold);margin-top:2px}
+.rdRamTx p{line-height:1.8}
+.rdRamTx .hl{font-weight:800;color:var(--rdRam);font-size:.82em;margin-inline-end:.25em}
+.rdRv{font-size:.64em;line-height:1.55;margin:.25em 1.6em .5em;padding:.3em .7em;border-top:1px solid var(--rdLine);border-bottom:1px solid var(--rdLine);text-align:justify;color:var(--rdInk);border-radius:2px;transition:background .6s}
+.rdRv.fR{font-family:"GimRashi","GimFrank",serif}
+.rdRv b{font-family:"GimFrank",serif;font-weight:700}
+.rdRv .rvh{font-family:"GimFrank",serif;font-weight:800;color:var(--rdRam)}
+.rdRv.flash{background:var(--rdFlash)}
+.rdPage.narrow .rdRv{margin-inline:.6em}
+.rdPrint.bw .rdRamTx .hl,.rdPrint.bw .rdRv .rvh{color:#000}

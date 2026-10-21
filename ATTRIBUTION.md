@@ -59,7 +59,26 @@
 גרסת הגמרא המנוקדת של ספריא (Davidson, CC-BY-NC) **לא** נכללה בכוונה. פריסת "צורת הדף" מחושבת בספריית
 daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICENSE.txt`).
 
-## טור, בית יוסף וב״ח (`generated/tur/`, נוסף ב-v3.11.0)
+## משנה תורה לרמב״ם ומפרשיו — נבדק ב-2026-10-20 (כל הקבצים)
+
+- **מקור**: [Sefaria](https://www.sefaria.org/texts/Halakhah/Mishneh%20Torah), דרך יצוא הנתונים הרשמי
+  ([Sefaria-Export](https://github.com/Sefaria/Sefaria-Export), `books.json`, והקבצים ב-`storage.googleapis.com/sefaria-export`).
+  נבנה ע״י `scripts/build-rambam.py`, שמשתמש בקובץ הגרסה עצמו (לא ב-`merged.json`) ושומר לכל ספר את שם הגרסה (`src`)
+  ואת שדה ה-`license` שלה (`lic`) בתוך הקורפוס.
+
+| קטגוריה | גרסה (`versionTitle`) | ספרים | `license` |
+|---|---|---|---|
+| משנה תורה (מנוקד) | Torat Emet 363 | 77 | **Public Domain** (כולם) |
+| משנה תורה, ספר אהבה | Torat Emet 370 | 7 | 2 Public Domain; 5 בלי שדה (`unknown`): תפילה, מילה, תפילין, ברכות, ציצית |
+| כסף משנה | Torat Emet 363 | 72 | 68 Public Domain; 4 בלי שדה |
+| השגות הראב״ד | ToratEmet | 80 | 74 Public Domain; 6 בלי שדה |
+| משנה למלך | Warsaw, 1881 | 82 | **Public Domain** (כולם) |
+
+הקבצים בלי שדה רישיון הם מאותה מהדורת Torat Emet (תוכנת חינם, טקסט רבני מודפס ישן) כמו שאר הספרים שמסומנים Public Domain.
+**לא נכללו**: מפרשי "מהדורת פרידברג" (אור שמח, קרית ספר ועוד, וכסף משנה על 11 ספרים), שביצוא אין להם שדה `license`
+כלל; מגיד משנה ולחם משנה (חלקיים); וגרסת ויקיטקסט (CC-BY-SA, לא מנוקדת).
+
+## טור, בית יוסף וב״ח (`generated/tur/`, נוסף ב-v3.12.0)
 
 מקור: יצוא הנתונים של ספריא (Sefaria-Export), מהדורת וילנא תרפ״ג (1923), סריקה בספרייה הלאומית
 (`versionSource`: NNL_ALEPH001935970). כל הקבצים נבדקו בשדה `license`:
