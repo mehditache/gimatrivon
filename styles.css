@@ -668,10 +668,7 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 #stage .rs,#stage .rs:hover,#stage .searching .rs:not(.on):hover{background:transparent;border:0;border-bottom:1px solid var(--ln2);border-radius:0;box-shadow:none;margin:0;padding:.45rem .55rem .5rem}
 #stage .rs:hover{background:var(--hov)}
 #stage .rs.on{background:var(--acs);box-shadow:inset -3px 0 0 var(--ac)}
-/* תוויות התוצאה (v3.17.0): ייחוס בגופן הספר, אחריו מיקום שקט (קטגוריה כתווית-מסגרת דקה, פרשה/סדר כטקסט אחרי נקודה),
-   וצמד השיטות כקפסולה אחת בקצה השורה: שני חצאים בצבעי המשפחה, והחץ בעיגול קטן ביניהם. בלי עטיפה סביב הצמד —
-   הסיור (tourUnionDim) עובר על הילדים הישירים של .rf, ולכן כל תגית נשארת ילד ישיר. */
-/* תוויות התוצאה (v3.17.0, פלטה א׳ "דיו רכה על קלף"): הייחוס בלוחית קלף עם מסגרת זהב, הקטגוריה כתווית מסגרת זהב דקה,
+/* תוויות התוצאה (v3.18.0, פלטה א׳ "דיו רכה על קלף"): הייחוס בלוחית קלף עם מסגרת זהב, הקטגוריה כתווית מסגרת זהב דקה,
    הפרשה/הסדר כטקסט שקט אחרי נקודה, וצמד השיטות בקצה השורה. לכל אחת מ-17 השיטות גוון משלה (--h, לפי data-m),
    רקע בהיר וטקסט כהה באותו גוון; בלילה רקע כהה וטקסט בהיר. בלי עטיפה סביב התגיות — הסיור (tourUnionDim) עובר
    על הילדים הישירים של .rf. */

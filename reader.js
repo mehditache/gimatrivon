@@ -80,7 +80,7 @@
   function parseRef(IX, q, cur) {
     const toks = IX.clean(noMarks(q)).split(' ').filter(Boolean); if (!toks.length) return null;
     let b = -1, k = 0;
-    for (let n = Math.min(8, toks.length); n >= 1 && b < 0; n--) { const cand = toks.slice(0, n).join(' '), lc = IX.loose(cand), hit = IX.names.find(x => x.n === cand) || IX.names.find(x => x.l === lc); if (hit) { b = hit.i; k = n; } }
+    for (let n = Math.min(12, toks.length); n >= 1 && b < 0; n--) { const cand = toks.slice(0, n).join(' '), lc = IX.loose(cand), hit = IX.names.find(x => x.n === cand) || IX.names.find(x => x.l === lc); if (hit) { b = hit.i; k = n; } }
     const rest = toks.slice(k);
     if (b < 0) { if (cur == null || toks.length !== 2) return null; b = cur; }
     if (rest.length > 2) return null;
@@ -191,7 +191,26 @@
   const turToks = t => String(t).replace(/\u0010[yc]\d+\u0011/g, ' $& ').replace(/\n/g, ' \n ').split(/ +/).filter(Boolean);
   const ANC = /^\u0010([yc])(\d+)\u0011$/;
 
-  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks };
+  /* קישור ישיר למסך הקריאה: #read/<ספר>/<פרק>/<פסוק>. הנתיב נקרא כמו שורת הקפיצה (עם / או _ במקום רווח), כך שעובד
+     גם בעברית (#read/בראשית/א/ה, #read/ברכות/ב.) וגם באנגלית; הכתובת שנכתבת היא תמיד הצורה האנגלית הקצרה:
+     #read/Genesis/1/5, #read/Mishnah_Berakhot/2/3, #read/Berakhot/2b (גמרא), #read/OC/60 (טור), #read/OC/intro. */
+  const bookSlug = t => String(t).replace(/,/g, '').trim().replace(/\s+/g, '_');
+  function parseHashRef(IX, TX, RX, path) {
+    let q = String(path || ''); try { q = decodeURIComponent(q); } catch (e) {}
+    q = q.replace(/[\/_+#]+/g, ' ').trim(); if (!q) return null;
+    const rr = parseTurRef(RX, q), tr = parseDafRef(TX, q), ref = parseRef(IX, q, null);
+    if (rr) return { kind: 'tur', k: rr.k, s: rr.s };
+    if (tr && (tr.explicit || !ref)) return { kind: 'tal', k: tr.k, j: tr.j };
+    if (ref) return { kind: 'ref', b: ref.b, ch: ref.ch, v: ref.v };
+    return null;
+  }
+  function hashOfRef(IX, x) {
+    if (x.kind === 'tur') return '#read/' + x.k + '/' + (x.s || 'intro');
+    if (x.kind === 'tal') return '#read/' + x.k + '/' + dafLabel(x.j, true);
+    return '#read/' + bookSlug(IX.books[x.b].title) + '/' + x.ch + (x.v && x.v !== versesOf(IX, x.b, x.ch)[0] ? '/' + x.v : '');
+  }
+
+  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks, parseHashRef, hashOfRef };
   G.GimReaderCore = CORE;
   if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
   if (typeof document === 'undefined' || !G.GimCorpus) return;
@@ -250,7 +269,13 @@
   const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc })); } catch (e) {} };
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc })); } catch (e) {} syncHash(); };
+  /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
+     נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
+  const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
+  const setHash = x => { if (location.hash === x || (location.hash && !MODE_HASH.test(location.hash))) return; try { history.replaceState(history.state, '', x); } catch (e) {} };
+  const curRef = () => isTur() ? { kind: 'tur', k: S.rk, s: S.rs } : isTal() ? { kind: 'tal', k: S.tk, j: S.tj } : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
+  function syncHash() { if (IX && document.body.dataset.mode === 'read') setHash(hashOfRef(IX, curRef())); }
 
   let TX = null;
   const ensureIndex = () => {
@@ -1887,9 +1912,28 @@
     try { localStorage.setItem('gimatrivonMode', m); } catch (e) {}
     if (m === 'read') {
       if (!built) build();
-      render();
+      render(); syncHash();
       if (user && APP.trackEvent) APP.trackEvent('reader_open');
     } else if (built) { closePops(); closeDrop(); }
+    if (m === 'gem' && (user || /^#read/i.test(location.hash))) setHash('#gim');
+  }
+  // #read/<מקום> → המקום נקבע ב-S לפני הציור (ספר / מסכת ודף / טור וסימן); מחזיר אם הכתובת היא של מסך הקריאה
+  function hashTarget() {
+    const m = location.hash.match(/^#read(?:[\/#]+(.*))?$/i); if (!m) return false;
+    ensureIndex();
+    const x = m[1] ? parseHashRef(IX, TX, RX, m[1]) : null;
+    if (x) {
+      closeSeg(); S.lock = null;
+      if (x.kind === 'tur') { S.tk = ''; S.rk = x.k; S.rs = x.s; S.rp = 0; }
+      else if (x.kind === 'tal') { S.rk = ''; S.tk = x.k; S.tj = x.j; S.tp = 0; }
+      else { S.tk = ''; S.rk = ''; S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; }
+    }
+    return true;
+  }
+  function fromHash() {
+    if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
+    if (!hashTarget()) return;
+    if (document.body.dataset.mode === 'read') { render(); syncHash(); } else setMode('read', false, 'link');
   }
   function labelModeSw() {
     // בטלפון אין מקום לתווית המלאה — .ls (קצרה) מוצגת במקום .lf
@@ -1922,8 +1966,9 @@
     labelModeSw();
     let start = 'gem';
     try { start = localStorage.getItem('gimatrivonMode') === 'read' ? 'read' : 'gem'; } catch (e) {}
-    if (/^#read\b/.test(location.hash)) start = 'read';
-    setMode(start);
+    if (hashTarget()) setMode('read', false, 'link');
+    else setMode(/^#gim$/i.test(location.hash) ? 'gem' : start, false, /^#gim$/i.test(location.hash) ? 'link' : undefined);
+    window.addEventListener('hashchange', fromHash);
   }
   init();
 })();
