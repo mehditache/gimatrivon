@@ -1126,7 +1126,6 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
    .trDaf = שטח הטקסט בעמוד (משתנים --tr* מ-trGeo). הטור (.trMain) באמצע למעלה בכתב מרובע; ב״ח (.trC) בטור הימני
    ובית יוסף (.trY) בשמאלי, בכתב רש״י. בכל טור צד יש מרווח צף (.sp) בגובה הטור, כך שהפירוש מקיף את הטור וממשיך
    מתחתיו ברוחב מלא. .trWide = עמוד של מפרש אחד בשני טורים. גם #rdPrint משתמש בכללים האלה, ולכן הם לא תחת .reader. */
-.reader.isTur #rdViewSeg{display:none}
 .rdPage.tur .trHead .mid{flex:1;min-width:0;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12.5px "GimFrank",var(--tf);color:var(--rdInk)}
 .rdPage.tur .trHead span:first-child,.rdPage.tur .trHead .l{font:700 13px "GimFrank",var(--tf);color:var(--rdGold);flex:none}
 .trDaf{position:relative;width:var(--trW);height:var(--trH);direction:rtl;color:var(--rdInk);flex:none}
@@ -1135,7 +1134,8 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .trH{display:block;text-align:center;font-weight:700;font-size:1.12em;line-height:1.5;color:var(--rdGold);letter-spacing:.03em}
 .trH::before,.trH::after{content:"";display:inline-block;width:1.4em;height:1px;background:var(--rdLine);vertical-align:middle;margin:0 .45em}
 .trHil{display:block;text-align:center;font-weight:800;font-size:1.22em;line-height:1.45;letter-spacing:.02em}
-.trSide{position:absolute;top:0;width:var(--trSw)}
+.trSide{position:absolute;top:0;width:var(--trSw);pointer-events:none} /* טורי הצד מכסים את הטור (המרווח הצף): רק הדיבורים עצמם תופסים לחיצות, כדי שהסימנים בטור יהיו לחיצים */
+.trSide .rcm{pointer-events:auto}
 .trSide.trC{right:0}
 .trSide.trY{left:0}
 .trSide .sp{width:var(--trSp)}
@@ -1160,6 +1160,15 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdPrint.bw .ra,.rdPrint.bw .rl,.rdPrint.bw .trH,.rdPrint.bw .bh{color:#000!important}
 .trDaf u{text-decoration:none}
 .trMain.trFull{left:0;width:var(--trW)}
+/* הגדרות תצוגה בטור: מפרש אחד (.trOne) — הטור בחצי הימני והפירוש ברוחב מלא מקיף אותו; כתב רגיל לפירוש (.fN) */
+.trDaf.trOne .trMain{left:auto;right:0}
+.trDaf.trOne .trMain.trFull{left:0}
+.trDaf.trOne .trSide .sp{float:right}
+.trDaf.fN .trSide .tx,.trDaf.fN .trWide{font-family:"GimFrank","Frank Ruhl Libre",serif}
+/* טור ומפרשים (reader.js: tsPages) — כמו גמרא ומפרשים */
+.rdTxt.trStudy p{line-height:1.85}
+.rdTxt.trStudy .ra{font-size:.55em;vertical-align:.35em}
+.rdPage.tur.study .rdCm p.rcm{padding:0 2px}
 /* רמב״ם בעיצוב מהדורת פרנקל (reader.js, ramBody): כותרת בקו כפול, "פרק שמיני", אות הלכה מודגשת, ראב״ד בתוך הטקסט */
 .rdPage{--rdRam:#7a2e3b}
 .rdHead.ram{border-bottom:3px double var(--rdGold);padding-bottom:5px}
