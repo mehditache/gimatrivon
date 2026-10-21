@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.16.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.19.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -33,7 +33,8 @@ const GA_MEASUREMENT_ID = 'G-Q77MDW4KVT';
 // אירוע מותאם ל-GA4; no-op כשהמעקב לא נטען (בלי מזהה / הרצה מקומית).
 function trackEvent(name, params) { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); }
 // --- ANALYTICS:END ---
-const COLORS = ['#2563a8', '#2f8f5b', '#7a4bb5', '#c47a1a', '#c2415a', '#1a8f92', '#8a8a10', '#c2571f', '#9d2f8f', '#4b5563', '#6d8f1a', '#a0522d'];
+// v3.16.0: פלטה של 10 צבעים לעיגולי ההתאמות, בגווני הבאנר/הספר (בחירת המשתמש מבין 3 הצעות)
+const COLORS = ['#3b7fc4', '#d0566b', '#26a39b', '#d99a26', '#8b6cc9', '#5aa346', '#e0783a', '#4f9fd1', '#c45f9a', '#9c7a54'];
 
 /* ---------- שפה (עברית/אנגלית): L(he) מחזיר תרגום-אנגלי כש-LANG==='en' (אם קיים ב-EN), אחרת את העברית
    המקורית כמו-שהיא — ברירת-מחדל בטוחה למחרוזת שלא תורגמה. דיפולט=עברית, נשמר ל-localStorage. מכוון/הגייה
@@ -1242,6 +1243,19 @@ function computeGroups(k) {
   }
   st.groups = groups; st.groupsTotal = total;
 }
+// כפתור ההעתקה בסוף הפסוק (v3.16.0): המילה האחרונה והכפתור עטופים יחד ב-.cxEnd (nowrap), כדי שהכפתור לא ירד לבד לשורה
+// חדשה. העטיפה מתחילה ברווח האחרון שמחוץ לכל תגית פתוחה (<mark>/<b>/<span>), כך שהקינון נשמר; זנב ארוך מדי לא נעטף.
+function cxWithCopy(html, btn) {
+  let depth = 0, cut = -1;
+  for (let i = 0; i < html.length; i++) {
+    const c = html[i];
+    if (c === '<') { const j = html.indexOf('>', i); if (j < 0) break; const tag = html.slice(i, j + 1); if (tag[1] === '/') depth--; else if (!tag.endsWith('/>')) depth++; i = j; continue; }
+    if (depth === 0 && /\s/.test(c)) cut = i;
+  }
+  const tail = html.slice(cut + 1);
+  if (tail.replace(/<[^>]*>/g, '').length > 40) return html + '\u2060' + btn;
+  return html.slice(0, cut + 1) + '<span class="cxEnd">' + tail + btn + '</span>';
+}
 // בונה HTML של שורה בודדת (+ כותרת-קבוצה אם רלוונטי) במיקום p (במרחב-ה-idx). משותף ל-renderWindow (בנייה
 // מלאה) ול-appendLiveRows (הוספה אינקרמנטלית — ראו שם) כדי שלא יהיו שני עותקים של אותו HTML-template
 // שעלולים להתבדר-זה-מזה. מחלקת "on" (התוצאה הנבחרת) נאפית ישירות כאן ב-HTML של הכפתור, *לא* מתווספת בנפרד
@@ -1257,8 +1271,8 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   // הקבוצה הראשונה-בפועל (computeGroups תמיד מוסיף גבול ב-pos=0), כך ש-groupPos.has(p) כבר מכסה את זה.
   if (p === forceHeaderAt || groupPos.has(p)) {
     const f = st.info.find(x => x.method === r.method && x.target === r.target);
-    const wmTag = f && f.wms && f.wms.length ? ` (= ${wmsLabel(f.wms)} ${L('של מילת החיפוש')})` : '';
-    h += `<div class="gh" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')} · ${L('ערך')} ${fmt(r.target)}${wmTag}${f ? ` · ${fmt(f.total)} ${L('התאמות')}` : ''}</div>`;
+    const wmTag = f && f.wms && f.wms.length ? `<span class="ghW">= ${esc(wmsLabel(f.wms))} ${L('של מילת החיפוש')}</span>` : '';
+    h += `<div class="gh" data-m="${r.method}"><span class="ghM" data-fam="${famKeyOf(r.method)}" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')}</span><span class="ghV">${L('ערך')} <b>${fmt(r.target)}</b></span>${wmTag}${f ? `<span class="ghN">${fmt(f.total)} ${L('התאמות')}</span>` : ''}</div>`;
   }
   const wmLbl = (r.wms && r.wms.length) ? wmsLabel(r.wms) : L('מספר');
   const copyTxt = `${ref(u)}\n${T.slice(s, e).join(' ')}`;
@@ -1273,7 +1287,7 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const isNot = NOTARIKON_IDS.includes(r.method);
   const notGlow = r.literal ? 'glowY' : (r.perm ? 'glowP' : 'glowG');
   const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
-  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag" title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span><span>${r.r - r.l} ${L('תיבות')}</span><span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span></div><div class="cx">${cxContent}</div></button>`;
+  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag"${r.wms && r.wms.length ? ` data-fam="${famKeyOf(r.wms[0])}" data-m="${r.wms[0]}"` : ''} title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span></div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
   return h;
 }
 // בונה-מחדש את כל תוכן #rl{k} כחלון של עד N שורות המתחיל ב-start (במרחב-ה-idx, לא בהכרח במרחב st.all) —
@@ -1810,7 +1824,7 @@ function tourThemeDemo() {
 // מוסיף לכל צעד עם demo/undo: לפני מעבר "הבא"/"הקודם" מריצים את ה-undo של הצעד (למשל מבטלים מיקוד-התאמה/סינון/מיון) — *לפני*
 // ש-driver.js פותר את היעד של הצעד הבא, כך שהיעד הבא לא מוחלף ב-DOM אחרי שכבר סומן.
 // v3.6.0: תוצאה בודדת — צעד נפרד (עם פוקוס) לכל תווית בכותרת התוצאה הראשונה, עם הסבר על משמעותה. היעדים הם אלמנטים
-// בתוך .rs הראשון (ראו renderRow: <b>ייחוס</b>, .tag קטגוריה, .tag.prs/.seder, .tag.meth, .tagArrow, .tag, span תיבות, .cpy, <mark>).
+// בתוך .rs הראשון (ראו buildRowHtml: <b>ייחוס</b>, .tag קטגוריה, .tag.prs/.seder, .tag.meth, .tagArrow, .tag; ובתוך .cx: <mark> ו-.cpy בסוף הפסוק).
 function resultTourSteps(mobile) {
   const en = LANG === 'en', R = '.resList .rs ';
   const one = (sel, title, desc, side) => ({ element: R + sel, popover: { title, description: desc, side: side || 'bottom', align: 'start' } });
@@ -1819,12 +1833,12 @@ function resultTourSteps(mobile) {
   return en ? [
     group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'Result: reference, category and parsha / order', 'The reference is the exact place of the match: book and chapter:verse (for Mishnah — tractate, chapter and mishnah). The category tag says which part of the corpus the text belongs to (Tanakh, Mishnah, Rashi or Targum), and next to it, where relevant, appears the parsha of the verse, or for Mishnah its order (seder). The whole box is one result.'),
     group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'Result: the two gematria methods', 'Two gematria tags joined by an arrow ↔: the first is the method by which the value of the verse (or of the matching part of it) was calculated, the second is the method of the word you searched, in which the match was found. The value is the same in both.'),
-    one('.rf .cpy', 'Result: copy', 'Copies the whole verse (or mishnah) to the clipboard.'),
+    one('.cx .cpy', 'Result: copy', 'Copies the whole verse (or mishnah) to the clipboard.'),
     one('.cx mark', 'Result: the highlighted words', 'The words that actually matched, highlighted inside the text of the verse.', 'top'),
   ] : [
     group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'תוצאה: ייחוס, קטגוריה ופרשה / סדר', 'הייחוס הוא המקום המדויק של ההתאמה: ספר ופרק:פסוק (במשנה — מסכת, פרק ומשנה). תגית הקטגוריה אומרת לאיזה חלק בקורפוס שייך הטקסט (תנ״ך, משנה, רש״י או תרגום), ולידה מופיעה, כשזה רלוונטי, הפרשה שאליה שייך הפסוק, ובמשנה — הסדר שבו היא נמצאת. כל התיבה היא תוצאה אחת: פסוק או משנה.'),
     group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'תוצאה: שתי שיטות הגימטריה', 'שתי תגיות-גימטריה מחוברות בחץ ↔: הראשונה היא השיטה שלפיה חושב ערך הפסוק (או הקטע התואם בו), והשנייה היא שיטת מילת-החיפוש שלכם שבה נמצאה ההתאמה. הערך בשתיהן זהה.'),
-    one('.rf .cpy', 'תוצאה: העתקה', 'מעתיקה את הפסוק (או המשנה) כולו ללוח.'),
+    one('.cx .cpy', 'תוצאה: העתקה', 'מעתיקה את הפסוק (או המשנה) כולו ללוח.'),
     one('.cx mark', 'תוצאה: המילים המודגשות', 'המילים שתאמו בפועל, מודגשות בתוך טקסט הפסוק.', 'top'),
   ];
 }
