@@ -721,6 +721,7 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .rdFsBub b{font:700 13px "GimFrank",var(--tf);color:var(--rdInk)}
 .rdFs:hover .rdFsBub,.rdFs.drag .rdFsBub{opacity:1;transform:translateY(-50%) scale(1)}
 mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
+.rdPage.tur mark.rdHl{padding:0} /* העימוד בטור נמדד בלי הסימון — לא להוסיף רוחב */
 /* שולחן + ספר */
 .rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--rdDeskGlow)}
 /* v3.12.0: צל כ-box-shadow ולא filter:drop-shadow — filter מצייר מחדש את הצל של כל הספר בכל פריים של אפקט הדפדוף. isolation שומר את קצוות הדפים (::before/::after, z-index:-1) מאחורי הדפים כמו קודם */
@@ -952,9 +953,6 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdSegNav{display:flex;justify-content:space-between;gap:8px}
 .reader .rdSegNav button{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;background:none;border:1px solid var(--rdLine);color:var(--rdInk);font:12.5px var(--ui)}
 /* חיפוש במסכת: רשימה רגילה (לא וירטואלית) */
-.rdTRes{flex:1 1 auto;min-height:0;overflow:auto}
-.reader .rdTRes .rdDI.hit{padding:5px 8px}
-.rdTRes .rdDI .sn{-webkit-line-clamp:1}
 @container (max-width:640px){.rdSegPop{width:auto;max-height:60%}.rdSegTxt{font-size:16px}}
 .rdPage.tal.right .rdHead{padding-left:24px}
 /* ---- v3.12.0 · טור, בית יוסף וב״ח (reader.js: renderTur) — בסגנון מהדורת "שירת דבורה" ----
