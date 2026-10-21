@@ -36,6 +36,51 @@
     if (cat === 2 || cat === 5 || cat >= 8) (c[v] || (c[v] = [])).push(t);
     else c[v] = c[v] ? c[v] + ' ' + t : t;
   }
+  /* ---- ראשי תיבות וקיצורים מקובלים לשמות הספרים (v3.18.0) ----
+     בצורה המנוקה, בלי גרשיים: ש״א = "שא", מו״ק = "מוק". נרשמים אחרי השמות המלאים, כך ששם מלא תמיד קודם.
+     מסכתות: משותף למשנה ולבבלי. רמב״ם: נרשם רק אחרי "הלכות" / "רמבם" ("הל׳ ת״ת", "רמב״ם יסוה״ת"), כי לבד הם שייכים למשנה. */
+  const TANAKH_ABBR = { 'שמואל א': ['שא', 'שמוא', 'שמא'], 'שמואל ב': ['שב', 'שמוב', 'שמב'], 'מלכים א': ['מא', 'מלא', 'מלכא'], 'מלכים ב': ['מב', 'מלב', 'מלכב'],
+    'דברי הימים א': ['דהא', 'דהי א', 'דה א'], 'דברי הימים ב': ['דהב', 'דהי ב', 'דה ב'], 'שיר השירים': ['שהש', 'שיר'], 'תהילים': ['תילים'], 'קהלת': ['קוהלת'] };
+  const TRACT_ABBR = { 'בבא קמא': ['בק'], 'בבא מציעא': ['במ'], 'בבא בתרא': ['בב'], 'עבודה זרה': ['עז', 'עבז'], 'ראש השנה': ['רה'], 'מועד קטן': ['מוק'],
+    'מעשר שני': ['מעש', 'מש'], 'ביצה': ['יוט', 'יום טוב'], 'טבול יום': ['טי', 'טבי'], 'פרקי אבות': ['פרקי אבות'], 'קידושין': ['קדושין'], 'עירובין': ['ערובין'] };
+  const RAMBAM_ABBR = { 'הלכות יסודי התורה': ['יסוהת', 'יסודי'], 'הלכות תלמוד תורה': ['תת'], 'הלכות עבודה זרה וחוקות הגויים': ['עז', 'עבז', 'עכום'],
+    'הלכות קריאת שמע': ['קש', 'קריש'], 'הלכות תפילין ומזוזה וספר תורה': ['סת'], 'הלכות שביתת יום טוב': ['יוט', 'יום טוב'], 'הלכות שביתת עשור': ['יום הכפורים', 'יוהכ'],
+    'הלכות חמץ ומצה': ['חומ', 'חמץ'], 'הלכות קידוש החודש': ['קהח', 'קידוהח', 'קידוה'], 'הלכות איסורי ביאה': ['אסוב', 'איסוב', 'איסורי ביאה'], 'הלכות מאכלות אסורות': ['מאכא', 'מאכלות'],
+    'הלכות מתנות עניים': ['מתע', 'מתנע'], 'הלכות מעשר שני ונטע רבעי': ['מעש', 'מש'], 'הלכות שמיטה ויובל': ['שוי', 'שמוי'], 'הלכות בית הבחירה': ['בהב', 'ביהב'],
+    'הלכות כלי המקדש והעובדין בו': ['כלהמ', 'כלי המקדש'], 'הלכות איסורי המזבח': ['אסוהמ', 'איסוהמ'], 'הלכות מעשה הקרבנות': ['מעהק', 'מעשה הקרבנות'], 'הלכות תמידים ומוספין': ['תומ'],
+    'הלכות פסולי המוקדשין': ['פסוהמ', 'פסולהמ'], 'הלכות עבודת יום הכפורים': ['עיוהכ', 'עבודת יוהכ'], 'הלכות קרבן פסח': ['קפ', 'קרפ'], 'הלכות מחוסרי כפרה': ['מחוכ'],
+    'הלכות טומאת מת': ['טומ'], 'הלכות פרה אדומה': ['פא', 'פרה'], 'הלכות טומאת צרעת': ['טוצ', 'צרעת'], 'הלכות מטמאי משכב ומושב': ['מטמומ', 'מומ'], 'הלכות שאר אבות הטומאות': ['שאהט', 'אבות הטומאות'],
+    'הלכות טומאת אוכלים': ['טוא'], 'הלכות נזקי ממון': ['נזמ', 'נזקמ'], 'הלכות גזילה ואבידה': ['גזוא'], 'הלכות רוצח ושמירת נפש': ['רוש', 'רושנ'], 'הלכות זכייה ומתנה': ['זומ'],
+    'הלכות שלוחין ושותפין': ['שוש'], 'הלכות שאלה ופיקדון': ['שופ'], 'הלכות מלווה ולווה': ['מלול', 'מולו'], 'הלכות טוען ונטען': ['טונ'], 'הלכות נערה בתולה': ['נעב'], 'הלכות יבום וחליצה': ['יוח'] };
+  /* מילים בשאילתה: toks מנוקות; ab = נגמרה בגרש (קיצור: "בר׳" = תחילת "בראשית"); mk = "פ״ב" / "ה״ג" / "מ״א" (פרק / הלכה / משנה + מספר).
+     prep: "ספר" / "מסכת" / "מס׳" בראש יורדים, "הל׳" = הלכות, "משנה תורה" / "יד החזקה" = רמבם. */
+  function qToks(clean, q) {
+    const toks = [], ab = [], mk = [];
+    noMarks(String(q)).replace(/־/g, ' ').trim().split(/\s+/).forEach(r => {
+      const m = /^[פהמ]["״][א-ת]{1,3}$/.test(r) ? r.slice(2) : null, a = /[א-ת][׳'`]$/.test(r);
+      const cs = clean(r.replace(/([א-ת])["״]([א-ת])/g, '$1$2')).split(' ').filter(Boolean); // ש״א = שא, ס״ב = סב
+      cs.forEach((c, i) => { toks.push(c); ab.push(a && i === cs.length - 1); mk.push(m && cs.length === 1 ? m : null); });
+    });
+    const cut = (i, n, w) => { toks.splice(i, n, ...(w ? [w] : [])); ab.splice(i, n, ...(w ? [false] : [])); mk.splice(i, n, ...(w ? [null] : [])); };
+    while (toks.length > 1 && /^(ספר|מסכת|מס)$/.test(toks[0])) cut(0, 1);
+    if (/^(משנה תורה|יד החזקה)$/.test(toks.slice(0, 2).join(' '))) cut(0, 2, 'רמבם');
+    for (let i = 0; i < 2 && i < toks.length; i++) if (/^(הל|הלכ)$/.test(toks[i]) && i + 1 < toks.length) { toks[i] = 'הלכות'; ab[i] = false; }
+    return { toks, ab, mk };
+  }
+  // שם ספר בראש השאילתה, הכי הרבה מילים קודם. מילה עם גרש מתאימה לתחילת המילה בשם; אחרת — מילה שלמה (גם בכתיב חסר/מלא)
+  function findName(names, loose, toks, ab, max) {
+    const wEq = (p, t, a) => p === t || (t.length > 2 && loose(p) === loose(t)) || (a && t.length > 1 && (p.startsWith(t) || (loose(t).length > 1 && loose(p).startsWith(loose(t)))));
+    for (let n = Math.min(max, toks.length); n >= 1; n--) {
+      const w = toks.slice(0, n), c = w.join(' '), lc = loose(c);
+      const hit = ab.slice(0, n).some(Boolean) ? names.find(x => { const p = x.n.split(' '); return p.length === n && w.every((t, j) => wEq(p[j], t, ab[j])); })
+        : names.find(x => x.n === c) || (c.length > 2 && lc.length > 1 && names.find(x => x.l === lc));
+      if (hit) return { i: hit.i, k: n };
+    }
+    return null;
+  }
+  // מילים בשם המקום ("פרק", "סימן"…) שאינן חלק מהמספר
+  const FILL = /^(פרק|פסוק|הלכה|משנה|סימן|סי|chapter|verse|halacha|halakhah|siman)$/;
+  const looseOf = s => s.replace(/[יו]/g, '').replace(/[םן](?=\s|$)/g, 'ם');
   // BN.units (אם יש — בבדיקות, מהקורפוס המלא) נכנסות מיד; אחרת data[b] מתמלא כשהספר נטען (addBook)
   function buildIndex(BN) {
     const books = BN.books, data = books.map(() => null), byKey = {};
@@ -53,7 +98,7 @@
       links[i] = L;
     });
     // כתיב חסר/מלא: "תהלים" = "תהילים", "עוקצין" ~ "עוקצים" — משווים גם בלי י/ו ובלי ם/ן סופיות
-    const loose = s => s.replace(/[יו]/g, '').replace(/[םן](?=\s|$)/g, 'ם');
+    const loose = looseOf;
     const clean = s => String(s).toLowerCase().replace(/[׳״'"`.,:;()[\]]/g, ' ').replace(/[־-]/g, ' ').replace(/\s+/g, ' ').trim();
     const names = [];
     base.forEach(i => {
@@ -61,6 +106,16 @@
       add(b.heTitle); add(b.heTitle.replace(/^משנה /, '').replace(/^פרקי /, '')); add(b.title); add(b.title.replace(/^Mishnah /, ''));
       // רמב״ם: "הלכות שבת", "רמבם שבת", "Mishneh Torah, Sabbath", "Sabbath". "שבת" לבד נשאר למשנה (נרשמה קודם)
       if (b.cat === 7) { const s = b.heTitle.replace(/^הלכות /, ''); add('רמבם ' + b.heTitle); add('רמבם ' + s); add(s); add(b.title.replace(/^Mishneh Torah, /, '')); }
+    });
+    // ראשי תיבות וקיצורים, אחרי כל השמות המלאים. ברמב״ם גם כל חלק בשם ("הלכות סוכה" = הלכות שופר וסוכה ולולב)
+    base.forEach(i => { // לקיצור אין כתיב חסר/מלא (l ריק), אחרת "יבמ" היה נקרא כמו "ב״מ"
+      const b = books[i], add = n => { n = clean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n, l: '' }); };
+      if (b.cat === 0) (TANAKH_ABBR[b.heTitle] || []).forEach(add);
+      if (b.cat === 1) (TRACT_ABBR[b.heTitle.replace(/^משנה /, '')] || TRACT_ABBR[b.heTitle] || []).forEach(a => { add(a); add('משנה ' + a); });
+      if (b.cat === 7) {
+        const parts = b.heTitle.replace(/^הלכות /, '').split(/ ו(?=[א-ת])/).filter(p => p.length > 1);
+        (RAMBAM_ABBR[b.heTitle] || []).concat(parts.length > 1 ? parts : []).forEach(a => { add('הלכות ' + a); add('רמבם ' + a); add('רמבם הלכות ' + a); });
+      }
     });
     return { books, data, base, links, names, clean, loose, ncache: new Map() };
   }
@@ -78,20 +133,43 @@
 
   // "בראשית א ו", "שמות יב", "ברכות ב ג", "Exodus 12 2", "ו ג" (פרק ופסוק בספר הנוכחי — רק בשני מספרים)
   function parseRef(IX, q, cur) {
-    const toks = IX.clean(noMarks(q)).split(' ').filter(Boolean); if (!toks.length) return null;
-    let b = -1, k = 0;
-    for (let n = Math.min(8, toks.length); n >= 1 && b < 0; n--) { const cand = toks.slice(0, n).join(' '), lc = IX.loose(cand), hit = IX.names.find(x => x.n === cand) || IX.names.find(x => x.l === lc); if (hit) { b = hit.i; k = n; } }
-    const rest = toks.slice(k);
+    const { toks, ab, mk } = qToks(IX.clean, q); if (!toks.length) return null;
+    const f = findName(IX.names, IX.loose, toks, ab, 8);
+    let b = f ? f.i : -1; const k = f ? f.k : 0;
     if (b < 0) { if (cur == null || toks.length !== 2) return null; b = cur; }
+    const keep = toks.map((t, j) => j >= k && !(k > 0 && FILL.test(t))), rest = toks.filter((_, j) => keep[j]), rmk = mk.filter((_, j) => keep[j]);
     if (rest.length > 2) return null;
-    const ch = rest.length ? parseNum(rest[0]) : 1, v = rest.length > 1 ? parseNum(rest[1]) : 0;
-    if (!(ch >= 1) || Number.isNaN(v) || !hasRef(IX, b, ch, v)) return null;
-    return { b, ch, v, book: k > 0 };
+    // "פ״ב ה״ג" = פרק ב הלכה ג; "תהלים פ״ב" = מזמור פב — קודם כמספר, ואם אין כזה מקום, כסימון פרק/הלכה
+    const at = useMk => {
+      const n = rest.map((t, j) => parseNum(useMk && rmk[j] ? rmk[j] : t)), ch = n.length ? n[0] : 1, v = n.length > 1 ? n[1] : 0;
+      return ch >= 1 && !Number.isNaN(v) && hasRef(IX, b, ch, v) ? { b, ch, v, book: k > 0 } : null;
+    };
+    const allMk = rest.length === 2 && rmk.every(Boolean);
+    return allMk ? at(true) || at(false) : at(false) || (rmk.some(Boolean) ? at(true) : null);
   }
   function suggestBooks(IX, q, max) {
     const c = IX.clean(noMarks(q)); if (c.length < 2) return [];
     const out = []; const lc = IX.loose(c); IX.names.forEach(x => { if ((x.n.startsWith(c) || x.l.startsWith(lc)) && !out.includes(x.i)) out.push(x.i); });
     return out.slice(0, max || 5);
+  }
+  /* הצעות תוך כדי הקלדה (v3.18.0): ספרים (תנ״ך, משנה, רמב״ם), מסכתות בבלי (TX) וטורים (RX) שהשם, הכינוי או ראשי
+     התיבות שלהם מתחילים במה שהוקלד, מילה מול מילה ("בבא מ" → בבא מציעא, "הל׳ שב" → הלכות שבת). קודם התאמה מלאה.
+     → [{kind: 'ref', b} | {kind: 'tal', i} | {kind: 'tur', i}] */
+  function suggestPlaces(IX, TX, RX, q, max) {
+    let { toks } = qToks(IX.clean, q);
+    const turOnly = /^(טור|tur)$/.test(toks[0] || ''); // "טור" / "טור או" — רק הטורים
+    if (turOnly) { toks = toks.slice(1); if (!toks.length) return RX ? RX.list.map((_, i) => ({ kind: 'tur', i })) : []; }
+    if (!toks.length || toks.join(' ').length < 2) return [];
+    const c = toks.join(' '), lc = looseOf(c), out = [], seen = new Set();
+    const score = x => { if (x.n === c || (c.length > 2 && lc.length > 1 && x.l === lc)) return 0; const p = x.n.split(' ');
+      return p.length >= toks.length && toks.every((t, j) => j === toks.length - 1 ? p[j].startsWith(t) : p[j] === t) ? 1 : lc.length > 2 && x.l.startsWith(lc) ? 2 : -1; };
+    const pool = [];
+    if (!turOnly) IX.names.forEach((x, o) => pool.push({ kind: 'ref', i: x.i, s: score(x), o }));
+    if (TX && !turOnly) TX.names.forEach((x, o) => pool.push({ kind: 'tal', i: x.i, s: score(x), o: 1e4 + o }));
+    if (RX) RX.names.forEach((x, o) => pool.push({ kind: 'tur', i: x.i, s: score(x.l ? x : { n: x.n, l: looseOf(x.n) }), o: 2e4 + o }));
+    const best = Math.min(...pool.map(x => x.s < 0 ? 9 : x.s)); // כתיב חסר/מלא — רק כשאין התאמה ישירה
+    pool.filter(x => x.s >= 0 && (x.s < 2 || best === 2)).sort((a, b) => a.s - b.s || a.o - b.o).forEach(x => { const key = x.kind + x.i; if (!seen.has(key)) { seen.add(key); out.push(x.kind === 'ref' ? { kind: 'ref', b: x.i } : { kind: x.kind, i: x.i }); } });
+    return out.slice(0, max || 6);
   }
   function normBook(IX, b) {
     if (!IX.ncache.has(b)) IX.ncache.set(b, (IX.data[b] || []).map(c => c ? c.map(t => t ? ' ' + norm(t) + ' ' : '') : null));
@@ -139,6 +217,7 @@
     const names = [], clean = s => String(s).toLowerCase().replace(/[׳״'"`.,:;()[\]]/g, ' ').replace(/[־-]/g, ' ').replace(/\s+/g, ' ').trim();
     const loose = s => s.replace(/[יו]/g, '').replace(/[םן](?=\s|$)/g, 'ם');
     (list || []).forEach((t, i) => [t.he, t.k].forEach(n => { n = clean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n, l: loose(n) }); }));
+    (list || []).forEach((t, i) => (TRACT_ABBR[t.he] || []).forEach(n => { n = clean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n, l: '' }); }));
     return { list: list || [], names, clean, loose, byK: Object.fromEntries((list || []).map((t, i) => [t.k, i])) };
   }
   // "ברכות ב.", "ברכות ב:", "ברכות דף ב ע״ב", "שבת קכ ב", "Berakhot 2b". explicit = יש סימן שזו גמרא (דף, נקודה/נקודתיים, ע״א, 2b)
@@ -147,13 +226,15 @@
     let raw = noMarks(String(q)).trim(); if (!raw) return null;
     const explicit = /[.:]\s*$|ע["״׳']\s?[אב]|(^|\s)(מסכת|דף|גמרא|בבלי|ש["״]ס|daf|talmud|bavli|tractate)(\s|$)|\d+\s*[ab]\b/i.test(raw);
     raw = raw.replace(/ע["״׳']\s?א/g, ' @a ').replace(/ע["״׳']\s?ב/g, ' @b ').replace(/(\d+)\s*([ab])\b/gi, (m, n, s) => n + ' @' + s.toLowerCase())
-      .replace(/([א-ת\d])\s*\.\s*$/, '$1 @a').replace(/([א-ת\d])\s*:\s*$/, '$1 @b').replace(/ש["״]ס/g, ' ');
-    const toks = TX.clean(raw).split(' ').filter(t => t && !/^(מסכת|גמרא|בבלי|דף|עמוד|talmud|bavli|daf|amud|tractate)$/.test(t));
-    if (!toks.length) return null;
-    let ti = -1, k = 0;
-    for (let n = Math.min(3, toks.length); n >= 1 && ti < 0; n--) { const c = toks.slice(0, n).join(' '), lc = TX.loose(c), hit = TX.names.find(x => x.n === c) || TX.names.find(x => x.l === lc); if (hit) { ti = hit.i; k = n; } }
-    if (ti < 0) return null;
-    const rest = toks.slice(k), t = TX.list[ti];
+      .replace(/([א-ת])["״]([א-ת])/g, '$1$2').replace(/([א-ת\d])\s*\.\s*$/, '$1 @a').replace(/([א-ת\d])\s*:\s*$/, '$1 @b').replace(/ש["״]ס/g, ' ');
+    // מילה שנגמרת בגרש = קיצור ("סנה׳") — מסומנת ב-\u0001 עד אחרי הניקוי
+    raw = raw.replace(/([א-ת])[׳'`](?=\s|$)/g, '$1\u0001');
+    const all = TX.clean(raw).split(' ').filter(t => t && !/^(מסכת|מס\u0001?|גמרא|בבלי|דף|עמוד|talmud|bavli|daf|amud|tractate)$/.test(t));
+    if (!all.length) return null;
+    const ab = all.map(t => t.endsWith('\u0001')), toks = all.map(t => t.replace(/\u0001/g, ''));
+    const f = findName(TX.names, TX.loose, toks, ab, 3);
+    if (!f) return null;
+    const ti = f.i, k = f.k, rest = toks.slice(k), t = TX.list[ti];
     if (rest.length > 2) return null;
     const d = rest.length ? parseNum(rest[0]) : 2;
     const sd = rest.length > 1 ? ({ '@a': 0, '@b': 1, 'א': 0, 'ב': 1, a: 0, b: 1 })[rest[1]] : 0;
@@ -167,11 +248,11 @@
   /* ---- טור, בית יוסף וב״ח: generated/tur/index.js (ארבעה טורים) + חלקים שנטענים לפי דרישה (scripts/build-tur.py) ----
      בטקסט: \u0003…\u0004 מודגש, \u0005…\u0006 בדק הבית, \n שורה חדשה, \u0010y3\u0011 / \u0010c3\u0011 = כאן מתחיל דיבור 3 (מ-0)
      של בית יוסף / ב״ח. */
-  const TUR_ALIAS = { OC: ['אורח חיים', 'אוח', 'orach chayim', 'orach chaim', 'oc'], YD: ['יורה דעה', 'יוד', 'yoreh deah', 'yd'], EH: ['אבן העזר', 'אהע', 'even haezer', 'eh'], CM: ['חושן משפט', 'חומ', 'חום', 'choshen mishpat', 'cm'] };
+  const TUR_ALIAS = { OC: ['אורח חיים', 'אוח', 'אח', 'orach chayim', 'orach chaim', 'oc'], YD: ['יורה דעה', 'יוד', 'yoreh deah', 'yd'], EH: ['אבן העזר', 'אהע', 'אבהע', 'אהעז', 'אבהעז', 'even haezer', 'eh'], CM: ['חושן משפט', 'חומ', 'חום', 'חמ', 'choshen mishpat', 'cm'] };
   const turClean = s => noMarks(String(s)).toLowerCase().replace(/[״"׳'`]/g, '').replace(/[.,:;()[\]־-]/g, ' ').replace(/\s+/g, ' ').trim();
   function turIndex(list) {
     const names = [];
-    (list || []).forEach((t, i) => (TUR_ALIAS[t.k] || []).concat(t.he, t.en || '').forEach(n => { n = turClean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n }); }));
+    (list || []).forEach((t, i) => (TUR_ALIAS[t.k] || []).concat(t.he, t.en || '').forEach(n => { n = turClean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n, l: looseOf(n) }); }));
     return { list: list || [], names, byK: Object.fromEntries((list || []).map((t, i) => [t.k, i])) };
   }
   // "טור או״ח ס", "או״ח סימן ס", "אורח חיים 60", "בית יוסף יו״ד קצג", "חו״מ הקדמה", "Orach Chayim 60" → {i, k, s}; s = 0 הקדמה
@@ -191,7 +272,7 @@
   const turToks = t => String(t).replace(/\u0010[yc]\d+\u0011/g, ' $& ').replace(/\n/g, ' \n ').split(/ +/).filter(Boolean);
   const ANC = /^\u0010([yc])(\d+)\u0011$/;
 
-  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks };
+  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, suggestPlaces, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks };
   G.GimReaderCore = CORE;
   if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
   if (typeof document === 'undefined' || !G.GimCorpus) return;
@@ -1551,7 +1632,18 @@
   let RS = null;
   const talRefLabel = (k, j) => { const t = TX.list[TX.byK[k]]; return T('מסכת') + ' ' + talName(t) + ' ' + T('דף') + ' ' + dafTxt(j); };
   const turRefLabel = (k, s) => T('טור') + ' ' + turPartName(turTOf(k)) + ' ' + (s ? T('סימן') + ' ' + num(s) : T('הקדמה'));
-  const refItemLabel = it => it.kind === 'tur' ? turRefLabel(it.k, it.s) : it.kind === 'tal' ? talRefLabel(it.k, it.j) : refLabel(it.r);
+  const refItemLabel = it => it.kind === 'tur' ? turRefLabel(it.k, it.s) : it.kind === 'tal' ? talRefLabel(it.k, it.j) : (isRambam(it.r.b) ? T('רמב״ם') + ', ' : '') + refLabel(it.r);
+  /* הצעות ספרים תוך כדי הקלדה (v3.18.0): כל ספר — תנ״ך, משנה, רמב״ם, מסכת בבלי או טור — ששמו או ראשי התיבות שלו מתחילים
+     במה שהוקלד, אם עוד אינו ב"מעבר אל". sg = הצעה (ולא מקום שזוהה), ולכן Enter עדיין הולך לתוצאת החיפוש הראשונה. */
+  const itKey = it => it.kind === 'ref' || it.kind === 'hit' ? 'b' + it.r.b : it.kind === 'tal' ? 't' + it.k : 'r' + it.k;
+  function addSugg(q, max) {
+    const have = new Set(dropItems.map(itKey));
+    suggestPlaces(IX, TX, RX, q, max).forEach(x => {
+      const it = x.kind === 'ref' ? { kind: 'ref', r: { b: x.b, ch: chaptersOf(IX, x.b)[0], v: 0 }, sg: true } : x.kind === 'tal' ? { kind: 'tal', k: TX.list[x.i].k, j: 0, sg: true } : { kind: 'tur', k: RX.list[x.i].k, s: 1, sg: true };
+      if (dropItems.length < max && !have.has(itKey(it))) { have.add(itKey(it)); dropItems.push(it); }
+    });
+  }
+  const refsHtml = () => dropItems.length ? '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>' : '';
   function renderDropTal() {
     const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
     if (!q.trim()) { d.hidden = true; return; }
@@ -1559,7 +1651,8 @@
     if (rref) dropItems.push({ kind: 'tur', k: rref.k, s: rref.s });
     if (tr) dropItems.push({ kind: 'tal', k: tr.k, j: tr.j });
     if (ref && !(tr && tr.explicit)) dropItems.push({ kind: 'ref', r: ref });
-    let html = dropItems.length ? '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>' : '';
+    addSugg(q, 6);
+    let html = refsHtml();
     const res = searchTal(q), n = res.hits.length;
     const srcs = [['g', 'גמרא'], ['r', 'רש״י'], ['t', 'תוספות'], ['all', 'הכל']];
     html += '<div class="rdDScope" role="group"><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-tsrc="' + k + '" class="' + (S.tsrc === k ? 'on' : '') + '" aria-pressed="' + (S.tsrc === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
@@ -1587,7 +1680,8 @@
     else { const n = parseNum(turClean(q)); if (n >= 1 && n < turT().n && /^[א-ת\d]{1,4}$/.test(turClean(q))) dropItems.push({ kind: 'tur', k: S.rk, s: n }); }
     if (tr && tr.explicit) dropItems.push({ kind: 'tal', k: tr.k, j: tr.j });
     if (ref && !rr) dropItems.push({ kind: 'ref', r: ref });
-    let html = dropItems.length ? '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>' : '';
+    addSugg(q, 6);
+    let html = refsHtml();
     const t = turT(), k = t.k, res = searchTur(q), n = res.hits.length;
     // בכל הטור צריך את כל החלקים שלו (כ-2MB כל אחד); עד שהם נטענים — "טוען…" במקום מספר התוצאות
     if (res.wait) loadTur(k, turAll(t), ok => { if (ok && S.rk === k && dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
@@ -1617,8 +1711,8 @@
     if (tref && tref.explicit) dropItems.push({ kind: 'tal', k: tref.k, j: tref.j });
     if (ref) dropItems.push({ kind: 'ref', r: ref });
     if (tref && !tref.explicit) dropItems.push({ kind: 'tal', k: tref.k, j: tref.j });
-    if (!dropItems.length) suggestBooks(IX, q, 4).forEach(b => dropItems.push({ kind: 'ref', r: { b, ch: chaptersOf(IX, b)[0], v: 0 } }));
-    if (dropItems.length) html += '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>';
+    addSugg(q, 6);
+    html += refsHtml();
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isRambam(S.b) ? 'בכל הרמב״ם' : isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
     // החיפוש צריך את הספרים שבתחום (והמפרשים/התרגומים שלהם, לפי "חיפוש ב"); עד שהם נטענים — "טוען…" במקום מספר התוצאות
     const sBooks = scopeBooks(), wait = !ensure(searchNeed(sBooks), () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
@@ -1738,7 +1832,8 @@
     'b' + S.src + S.scope + (S.scope === 'all' ? IX.books[S.b].cat : S.scope === 'book' ? S.b : S.b + ':' + S.ch);
   function lastAct() {
     const q = $r('#rdQ').value, it = LP && dropItems[LP.i];
-    return it && LP.q === q && LP.sig === dropSig() && it.kind === LP.kind ? LP.i : 0;
+    if (it && LP.q === q && LP.sig === dropSig() && it.kind === LP.kind) return LP.i;
+    return dropItems[0] && dropItems[0].sg && RS && RS.n ? RS.start : 0; // רק הצעות ספרים — Enter לתוצאה הראשונה
   }
   function pickDrop(i) {
     const it = dropItems[i]; if (!it) return;
