@@ -685,6 +685,12 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .rdBook{position:relative;display:flex;filter:drop-shadow(0 18px 30px var(--rdShadow))}
 .rdBook.two::before,.rdBook.two::after{content:"";position:absolute;inset:4px -5px -5px -5px;border-radius:4px;background:#e3d8bf;z-index:-1}
 .rdBook.two::after{inset:2px -2.5px -2.5px -2.5px;background:#efe6d0}
+/* v3.9.7 · הופעה הדרגתית בדפדוף (reader.js: reveal). ההשהיה והמשך לכל גוש ב---fxD/--fxT; fill backwards = אחרי הסיום לא נשאר שום סגנון */
+.rdBook.fxRun .fxA{animation:var(--fxT,400ms) cubic-bezier(.2,.7,.3,1) var(--fxD,0ms) backwards}
+.rdBook.fxRise .fxA{animation-name:rdFxRise}
+.rdBook.fxCalm .fxA{animation-name:rdFxCalm;animation-timing-function:linear}
+@keyframes rdFxRise{from{opacity:0;transform:translate3d(var(--fxDx,0px),5px,0)}}
+@keyframes rdFxCalm{from{opacity:.35}}
 .rdSpine{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:rgba(0,0,0,.18);pointer-events:none}
 .rdPage{position:relative;width:var(--rdPw);height:var(--rdPh);display:flex;flex-direction:column;overflow:hidden;padding:30px 40px 18px;background:var(--rdPaper);color:var(--rdInk);font-family:"GimFrank","Frank Ruhl Libre","David",serif;font-size:var(--rdFs);border-radius:3px}
 .rdPage.right{background:linear-gradient(to left,var(--rdPaper) 88%,var(--rdEdge));border-radius:3px 0 0 3px}
@@ -857,6 +863,45 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdMshH::before,.rdMshH::after{content:"";flex:1;height:1px;background:var(--rdLine)}
 .rdMshH i{font-style:normal;font-weight:500;color:var(--rdMu)}
 .rdMsh p{margin:0;text-align:justify;line-height:1.95}
+/* ---- v3.10.0 · ש״ס עם רש״י ותוספות במסך הקריאה (reader.js: renderTal) ----
+   "צורת הדף": .rdDaf מכיל עמוד מוקפא של daf-renderer (.rdDafIn, סגנונות inline). .tg = קטע גמרא, .tc = פירוש
+   (cR רש״י/רשב״ם, cT תוספות); לחיצה פותחת את #rdSeg. גם #rdPrint משתמש באותם כללים, ולכן הם לא תחת .reader. */
+.rdPage.tal{padding:22px 26px 12px}
+.rdPage.tal.narrow{padding:12px 10px 8px}
+.rdPage.tal .rdHead{margin-bottom:8px}
+.rdPage.tal .rdNum{margin-top:4px}
+.rdDaf{flex:1 1 0!important;min-height:0;overflow:hidden;display:flex;justify-content:center;align-items:flex-start}
+.rdDafIn{color:var(--rdInk);flex:none}
+.rdDafIn .tg,.rdDafIn .tc{border-radius:2px}
+.tg .big,.rdTal .big,.rdSegTxt .big{font-weight:700;font-size:1.22em}
+.reader .tg,.reader .tc{cursor:pointer;transition:background .25s}
+.reader .rdDafIn .tg:hover,.reader .rdDafIn .tc:hover{background:var(--rdRow)}
+.reader .rdBook .sel{background:var(--rdHl)}
+.rdTal .rdV{padding:0 1px}
+.rdPage.tal .rdCm p.tc{padding:0 2px}
+.rdLoading{display:flex;align-items:center;justify-content:center;font:14px var(--ui);color:var(--rdMu)}
+.pvDaf{display:flex;gap:4px}
+.pvDaf i{flex:1;height:auto;margin:0;opacity:.2;background:repeating-linear-gradient(var(--rdMu) 0 2px,transparent 2px 5px)}
+.pvDaf i.m{flex:1.6;opacity:.45}
+/* חלון הקטע: לוח בצד בשולחן עבודה, גיליון תחתון בטלפון */
+.rdSegPop{inset-inline-start:14px;width:min(400px,calc(100% - 28px));display:flex;flex-direction:column;gap:10px}
+.rdSegTxt{margin:0;font:17px/1.85 "GimFrank",var(--tf);text-align:justify;padding:8px 10px;border-radius:8px;background:var(--rdRow)}
+.rdSegTabs{display:flex;gap:6px}
+.reader .rdSegTabs button{flex:1;padding:6px 8px;border-radius:8px;background:none;border:1.5px solid var(--rdLine);color:var(--rdInk);font:600 12.5px var(--ui)}
+.reader .rdSegTabs button.on{border-color:var(--rdGold);background:var(--rdRow)}
+.reader .rdSegTabs button:disabled{opacity:.4;cursor:default}
+.rdSegList{overflow:auto;min-height:0;flex:0 1 auto}
+.rdSegList p{margin:0 0 .6em;font-size:15.5px;line-height:1.8;text-align:justify}
+.rdSegList.fR p{font-size:14.5px}
+.rdSegList p.none{font:13px var(--ui);color:var(--rdMu)}
+.rdSegNav{display:flex;justify-content:space-between;gap:8px}
+.reader .rdSegNav button{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;background:none;border:1px solid var(--rdLine);color:var(--rdInk);font:12.5px var(--ui)}
+/* חיפוש במסכת: רשימה רגילה (לא וירטואלית) */
+.rdTRes{flex:1 1 auto;min-height:0;overflow:auto}
+.reader .rdTRes .rdDI.hit{padding:5px 8px}
+.rdTRes .rdDI .sn{-webkit-line-clamp:1}
+@container (max-width:640px){.rdSegPop{width:auto;max-height:60%}.rdSegTxt{font-size:16px}}
+.rdPage.tal.right .rdHead{padding-left:24px}
 /* רמב״ם בעיצוב מהדורת פרנקל (reader.js, ramBody): כותרת בקו כפול, "פרק שמיני", אות הלכה מודגשת, ראב״ד בתוך הטקסט */
 .rdPage{--rdRam:#7a2e3b}
 .rdHead.ram{border-bottom:3px double var(--rdGold);padding-bottom:5px}

@@ -45,6 +45,20 @@
 שדה `license` משלו** — הרישיון תמיד נמצא בגרסה-ה"בסיס" (ה-versionTitle) ולא בקובץ הממוזג, ולכן בדיקה
 עתידית צריכה לבדוק כל גרסת-מקור קונקרטית, לא את ה-merged.
 
+## ש״ס בבלי עם רש״י ותוספות (`generated/talmud/`, נוסף ב-v3.10.0)
+
+נבדק מול שדה `license` ביצוא הרשמי של ספריא (Sefaria-Export) ב-2026-10-20:
+
+| טקסט | גרסה (`versionTitle`) | `license` |
+|---|---|---|
+| גמרא (37 מסכתות) | Wikisource Talmud Bavli | **CC-BY-SA** |
+| רש״י | Vilna Edition | **Public Domain**, חוץ מרש״י על סנהדרין (**CC-BY-SA**) ורש״י על ראש השנה (שדה הרישיון ריק, מקור: הספרייה הלאומית) |
+| תוספות | Vilna Edition | **Public Domain**, חוץ מתוספות על סנהדרין (**CC-BY-SA**) |
+| רשב״ם על בבא בתרא | Vilna Edition | **Public Domain** |
+
+גרסת הגמרא המנוקדת של ספריא (Davidson, CC-BY-NC) **לא** נכללה בכוונה. פריסת "צורת הדף" מחושבת בספריית
+daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICENSE.txt`).
+
 ## משנה תורה לרמב״ם ומפרשיו — נבדק ב-2026-10-20 (כל הקבצים)
 
 - **מקור**: [Sefaria](https://www.sefaria.org/texts/Halakhah/Mishneh%20Torah), דרך יצוא הנתונים הרשמי
