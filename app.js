@@ -1257,7 +1257,7 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   if (p === forceHeaderAt || groupPos.has(p)) {
     const f = st.info.find(x => x.method === r.method && x.target === r.target);
     const wmTag = f && f.wms && f.wms.length ? `<span class="ghW">= ${esc(wmsLabel(f.wms))} ${L('של מילת החיפוש')}</span>` : '';
-    h += `<div class="gh" data-m="${r.method}"><span class="ghM" data-fam="${famKeyOf(r.method)}">${L(MN[r.method])} ${L('של הפסוק')}</span><span class="ghV">${L('ערך')} <b>${fmt(r.target)}</b></span>${wmTag}${f ? `<span class="ghN">${fmt(f.total)} ${L('התאמות')}</span>` : ''}</div>`;
+    h += `<div class="gh" data-m="${r.method}"><span class="ghM" data-fam="${famKeyOf(r.method)}" data-m="${r.method}">${L(MN[r.method])} ${L('של הפסוק')}</span><span class="ghV">${L('ערך')} <b>${fmt(r.target)}</b></span>${wmTag}${f ? `<span class="ghN">${fmt(f.total)} ${L('התאמות')}</span>` : ''}</div>`;
   }
   const wmLbl = (r.wms && r.wms.length) ? wmsLabel(r.wms) : L('מספר');
   const copyTxt = `${ref(u)}\n${T.slice(s, e).join(' ')}`;
@@ -1272,7 +1272,7 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const isNot = NOTARIKON_IDS.includes(r.method);
   const notGlow = r.literal ? 'glowY' : (r.perm ? 'glowP' : 'glowG');
   const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
-  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag"${r.wms && r.wms.length ? ` data-fam="${famKeyOf(r.wms[0])}"` : ''} title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span></div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
+  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span><span class="tag"${r.wms && r.wms.length ? ` data-fam="${famKeyOf(r.wms[0])}" data-m="${r.wms[0]}"` : ''} title="${L('שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה')}">${esc(wmLbl)}</span></div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
   return h;
 }
 // בונה-מחדש את כל תוכן #rl{k} כחלון של עד N שורות המתחיל ב-start (במרחב-ה-idx, לא בהכרח במרחב st.all) —
