@@ -79,6 +79,13 @@ t('corpus', 'אין {פ}/{ס}/הערות שוליים בטקסט', () => B.units
 // ---- search ----
 const ALL13 = E.METHODS.map(m => m.id);
 const IDX = E.buildIndex(B.units.map(u => ({ c: u[0] ? 'mishnah' : 'tanakh', b: u[1], ch: u[2], n: u[3], t: u[4] })));
+// v3.16.0: בנייה בפרוסות (indexBuilder) — אותו אינדקס בדיוק כמו בבת אחת
+t('search', 'indexBuilder בפרוסות קטנות בונה אינדקס זהה ל-buildIndex', () => {
+  const us = B.units.slice(0, 30000).map(u => ({ c: 'tanakh', b: u[1], ch: u[2], n: u[3], t: u[4] }));
+  const a = E.buildIndex(us), bd = E.indexBuilder(us); let n = 0; while (!bd.step(0)) n++; const x = bd.finish();
+  const same = (p, q) => p.length === q.length && p.every((v, i) => v === q[i]);
+  return n > 10 && ['regular', 'words', 'letters', 'milui', 'atbash', 'atbach'].every(m => same(x.W[m], a.W[m])) && same(x.L, a.L) && same(x.MAQAF, a.MAQAF) && same(x.start, a.start) && same(x.toks, a.toks) && x.W.kollel === x.W.regular;
+});
 t('search', 'buildIndex: idx.L (סכום-אותיות-לכל-תיבה) קיים, אורכו תואם מספר התיבות, וערכיו תואמים את calculateLetters', () => {
   return IDX.L && IDX.L.length === IDX.toks.length && [0, 1, 2, 100, IDX.L.length - 1].every(i => IDX.L[i] === E.normalizeText(IDX.toks[i]).normalizedText.replace(/ /g, '').length);
 });
@@ -254,6 +261,11 @@ t('reader', 'קישור ישיר #read/…: כל ספר, מסכת וטור עו�
     const before = RC.chaptersOf(IX, g).length === 50 && RC.versesOf(IX, g, 1).length === 31 && !!RC.parseRef(IX, 'בראשית ב ג', null);
     RC.addBook(IX, g, GC.each);
     return before && JSON.stringify(IX.data[g]) === JSON.stringify(RIX.data[g]) && RC.versesOf(IX, g, 1).length === 31;
+  });
+  t('split', 'use(): ספר שאף אחד כבר לא צריך משתחרר; ספר שעוד מוחזק נשאר', () => {
+    const r1 = GC.use([0, 1]), r2 = GC.use([1]);
+    r1(); const a = !GC.ready(0) && GC.ready(1);
+    r2(); r2(); return a && !GC.ready(1) && GC.ready(2);
   });
 }
 

@@ -266,6 +266,28 @@ textarea{width:100%;resize:none;height:5.6rem;background:#fff;border:1px solid v
    contain-intrinsic-size נותן גובה-שיער ראשוני (ומזכיר את הגובה האמיתי אחרי שהכרטיס נראה פעם אחת), כדי
    שהגלילה לא תקפוץ בצורה בולטת לפני שכרטיס נכנס לתצוגה בפעם הראשונה. */
 .rs{content-visibility:auto;contain-intrinsic-size:auto 90px;display:block;width:100%;text-align:start;margin:0 0 .4rem;padding:.45rem .65rem;border-radius:9px;border:1px solid var(--ln2);background:#fff}
+/* v3.16.0: המתנה לאינדקס הגימטריה — האותיות ג־י־מ־ט־ר־י־ה בקו מתאר מתמלאות בזהב אחת אחרי השנייה (כל אות מימין לשמאל,
+   --p = 0..100), הערך של כל אות מופיע כשהיא מלאה, ומתחת תוצאות־שלד ש"נכתבות" (כמו במסך הטעינה של הספרים) */
+.gmLoad{display:flex;flex-direction:column;align-items:center;padding:22px 8px 14px}
+.gmLet{display:flex;gap:8px;direction:rtl}
+.gmMini{flex-direction:row;justify-content:center;gap:12px;padding:2px 4px 10px}
+.gmMini .gmLet{gap:5px}.gmMini .gmLet b{font-size:22px}.gmMini .gmLet i{font-size:9.5px}
+.gmMini .gmPct{margin:0;font-size:13px}.gmMini .gmTxt{display:none}
+.gmLet>div{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px}
+.gmLet b{font:700 34px/1.1 "GimFrank",var(--tf,serif)}
+.gmLet .o{color:transparent;-webkit-text-stroke:1.1px var(--gold)}
+.gmLet .f{position:absolute;top:0;inset-inline:0;text-align:center;color:var(--gold);clip-path:inset(0 0 0 calc(100% - var(--p) * 1%));transition:clip-path .25s ease-out}
+.gmLet i{font:600 11px var(--ui,system-ui);font-style:normal;color:var(--mu);opacity:.25;transition:opacity .3s,color .3s;font-variant-numeric:tabular-nums}
+.gmLet .on i{opacity:1;color:var(--gold)}
+.gmPct{font:700 15px var(--ui,system-ui);color:var(--gold);margin:8px 0 2px;direction:ltr;font-variant-numeric:tabular-nums}
+.gmTxt{font-size:12.5px;color:var(--mu);margin-bottom:16px;text-align:center}
+.gmSk{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:0 0 .4rem;padding:.6rem .75rem;border-radius:9px;border:1px solid var(--ln2);background:#fff}
+:root[data-theme=dark] .gmSk{background:var(--pn2)}
+.gmLn{display:block;height:7px;border-radius:4px;background:color-mix(in srgb,var(--tx) 7%,transparent);position:relative;overflow:hidden}
+.gmLn.h{height:9px;background:color-mix(in srgb,var(--gold) 13%,transparent)}
+.gmLn::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--tx) 22%,transparent);transform-origin:right;transform:scaleX(0);animation:rdSkWrite 2.8s ease-in-out infinite;animation-delay:calc(var(--i) * .18s)}
+.gmLn.h::after{background:color-mix(in srgb,var(--gold) 45%,transparent)}
+@media (prefers-reduced-motion:reduce){.gmLn::after{animation:none;transform:none;opacity:.5}.gmLet .f{transition:none}}
 .rs:hover{border-color:var(--ac);background:#fff}.rs.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--acs);background:var(--acs)}
 /* .searching (ראו run()/step() ב-app.js): בזמן שחיפוש עדיין רץ, renderWindow בונה-מחדש את כל ה-DOM של
    חלון-התוצאות בכל רענון-חי (עד פעם ב-150 מ״ש) — גם אם עכבר המשתמש נח ללא-תזוזה בדיוק מעל מיקום-המסך של
