@@ -251,7 +251,14 @@ t('reader', 'קישור ישיר #read/…: כל ספר, מסכת וטור עו�
   const p = q => { const x = RC.parseHashRef(RIX, TX, RX, q); return x && Object.values(x).join(); };
   return all && eq([RC.hashOfRef(RIX, { kind: 'ref', b: 0, ch: 1, v: 5 }), RC.hashOfRef(RIX, { kind: 'tal', k: 'Berakhot', j: 1 }), RC.hashOfRef(RIX, { kind: 'tur', k: 'OC', s: 0 }),
     p('בראשית/א/ה'), p(encodeURIComponent('ברכות') + '/ב.'), p('Berakhot/2b'), p('OC/60'), p('Mishneh_Torah_Sabbath/1/2'), p('x/y')],
-    ['#read/Genesis/1/5', '#read/Berakhot/2b', '#read/OC/intro', 'ref,0,1,5', 'tal,Berakhot,0', 'tal,Berakhot,1', 'tur,OC,60', 'ref,' + bkIdx(7, 'הלכות שבת') + ',1,2', null]);
+    ['#read/TN/Gen/1/5', '#read/TB/Ber/2b', '#read/TUR/OC/intro', 'ref,0,1,5', 'tal,Berakhot,0', 'tal,Berakhot,1', 'tur,OC,60', 'ref,' + bkIdx(7, 'הלכות שבת') + ',1,2', null]);
+});
+t('reader', 'קישור קצר: MT/HD/7/4, קטע בגמרא ודיבור בטור עוברים הלוך-חזור; כל ספר מקבל קיצור ייחודי; ישן → חדש', () => {
+  const p = q => { const x = RC.parseHashRef(RIX, TX, RX, q); return x && Object.values(x).join(); }, hd = bkIdx(7, 'הלכות דעות');
+  const urls = RIX.base.map(b => RC.hashOfRef(RIX, { kind: 'ref', b, ch: 1, v: 0 }).toUpperCase());
+  return new Set(urls).size === urls.length && eq([p('MT/HD/7/4'), p('mt/hd/7/4'), p('Mishneh_Torah_Human_Dispositions/7/4'), p('TB/BM/59b/3'), p('TUR/OC/60/BY/3'), p('TN/Gen/99'), p('TB/Ber/2b/0'),
+    RC.hashOfRef(RIX, { kind: 'ref', b: hd, ch: 7, v: 4 }), RC.hashOfRef(RIX, { kind: 'tal', k: 'Bava Metzia', j: 115, s: 2 }), RC.hashOfRef(RIX, { kind: 'tur', k: 'OC', s: 60, x: 'c', i: 0 })],
+    ['ref,' + hd + ',7,4', 'ref,' + hd + ',7,4', 'ref,' + hd + ',7,4', 'tal,Bava Metzia,115,2', 'tur,OC,60,y,2', null, null, '#read/MT/HD/7/4', '#read/TB/BM/59b/3', '#read/TUR/OC/60/BH/1']);
 });
 
 // ---- מעבר מתוצאת גימטריה לספר במסך הקריאה (unitRef) ----

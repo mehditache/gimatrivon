@@ -275,12 +275,86 @@
   const turToks = t => String(t).replace(/\u0010[yc]\d+\u0011/g, ' $& ').replace(/\n/g, ' \n ').split(/ +/).filter(Boolean);
   const ANC = /^\u0010([yc])(\d+)\u0011$/;
 
-  /* קישור ישיר למסך הקריאה: #read/<ספר>/<פרק>/<פסוק>. הנתיב נקרא כמו שורת הקפיצה (עם / או _ במקום רווח), כך שעובד
-     גם בעברית (#read/בראשית/א/ה, #read/ברכות/ב.) וגם באנגלית; הכתובת שנכתבת היא תמיד הצורה האנגלית הקצרה:
-     #read/Genesis/1/5, #read/Mishnah_Berakhot/2/3, #read/Berakhot/2b (גמרא), #read/OC/60 (טור), #read/OC/intro. */
+  /* קישור ישיר למסך הקריאה (v3.30.0): #read/<אוסף>/<ספר>/<פרק>/<סעיף>, בראשי תיבות באנגלית:
+     #read/TN/Gen/1/5 (תנ״ך), #read/MS/Ber/2/3 (משנה), #read/MT/HD/7/4 (רמב״ם), #read/TB/Ber/2b/3 (גמרא: דף, ואם יש — קטע,
+     שחלון הפירוש שלו נפתח), #read/TUR/OC/60 (טור; /BY/3 או /BH/3 = דיבור בבית יוסף / ב״ח, שנפתח בחלון).
+     פסוק / הלכה / משנה בכתובת מודגשים בפתיחה. כתובות ישנות עדיין נקראות כמו שורת הקפיצה (עם / או _ במקום רווח):
+     #read/Genesis/1/5, #read/Mishneh_Torah_Human_Dispositions/7/4, #read/Berakhot/2b, #read/OC/60, #read/בראשית/א/ה. */
   const bookSlug = t => String(t).replace(/,/g, '').trim().replace(/\s+/g, '_');
+  const URL_COL = { 0: 'TN', 1: 'MS', 7: 'MT' };
+  const TN_AB = { Genesis: 'Gen', Exodus: 'Exod', Leviticus: 'Lev', Numbers: 'Num', Deuteronomy: 'Deut', Joshua: 'Josh', Judges: 'Judg', 'I Samuel': '1Sam', 'II Samuel': '2Sam',
+    'I Kings': '1Kgs', 'II Kings': '2Kgs', Isaiah: 'Isa', Jeremiah: 'Jer', Ezekiel: 'Ezek', Hosea: 'Hos', Joel: 'Joel', Amos: 'Amos', Obadiah: 'Obad', Jonah: 'Jonah', Micah: 'Mic',
+    Nahum: 'Nah', Habakkuk: 'Hab', Zephaniah: 'Zeph', Haggai: 'Hag', Zechariah: 'Zech', Malachi: 'Mal', Psalms: 'Ps', Proverbs: 'Prov', Job: 'Job', 'Song of Songs': 'Song',
+    Ruth: 'Ruth', Lamentations: 'Lam', Ecclesiastes: 'Eccl', Esther: 'Esth', Daniel: 'Dan', Ezra: 'Ezra', Nehemiah: 'Neh', 'I Chronicles': '1Chr', 'II Chronicles': '2Chr' };
+  // מסכתות: משותף למשנה (MS) ולבבלי (TB); המפתח = השם האנגלי בלי "Mishnah " ובלי גרש
+  const TRACT_URL = { Berakhot: 'Ber', Peah: 'Peah', Demai: 'Dem', Kilayim: 'Kil', Sheviit: 'Shvi', Terumot: 'Ter', Maasrot: 'Maas', 'Maaser Sheni': 'MSh', Challah: 'Chal', Orlah: 'Orl',
+    Bikkurim: 'Bik', Shabbat: 'Shab', Eruvin: 'Eruv', Pesachim: 'Pes', Shekalim: 'Shek', Yoma: 'Yoma', Sukkah: 'Suk', Beitzah: 'Beitz', 'Rosh Hashanah': 'RH', Taanit: 'Taan',
+    Megillah: 'Meg', 'Moed Katan': 'MK', Chagigah: 'Chag', Yevamot: 'Yev', Ketubot: 'Ket', Nedarim: 'Ned', Nazir: 'Naz', Sotah: 'Sot', Gittin: 'Git', Kiddushin: 'Kid',
+    'Bava Kamma': 'BK', 'Bava Metzia': 'BM', 'Bava Batra': 'BB', Sanhedrin: 'Sanh', Makkot: 'Mak', Shevuot: 'Shvu', Eduyot: 'Ed', 'Avodah Zarah': 'AZ', 'Pirkei Avot': 'Avot',
+    Horayot: 'Hor', Zevachim: 'Zev', Menachot: 'Men', Chullin: 'Chul', Bekhorot: 'Bekh', Arakhin: 'Arak', Temurah: 'Tem', Keritot: 'Ker', Meilah: 'Meil', Tamid: 'Tam',
+    Middot: 'Mid', Kinnim: 'Kin', Kelim: 'Kel', Oholot: 'Ohol', Negaim: 'Neg', Parah: 'Par', Tahorot: 'Tah', Mikvaot: 'Mik', Niddah: 'Nid', Makhshirin: 'Makh', Zavim: 'Zav',
+    'Tevul Yom': 'TY', Yadayim: 'Yad', Oktzin: 'Okt' };
+  // רמב״ם: ראשי התיבות של השם האנגלי (Human Dispositions → HD); שם של מילה אחת — שלוש אותיות ראשונות
+  const MT_AB = { 'Foundations of the Torah': 'FT', 'Human Dispositions': 'HD', 'Torah Study': 'TS', 'Foreign Worship and Customs of the Nations': 'FW', Repentance: 'Rep',
+    'Reading the Shema': 'RS', 'Prayer and the Priestly Blessing': 'PPB', 'Tefillin, Mezuzah and the Torah Scroll': 'TMT', Fringes: 'Fri', Blessings: 'Ble', Circumcision: 'Cir',
+    'The Order of Prayer': 'OP', Sabbath: 'Sab', Eruvin: 'Eru', 'Rest on the Tenth of Tishrei': 'RTT', 'Rest on a Holiday': 'RHo', 'Leavened and Unleavened Bread': 'LUB',
+    'Shofar, Sukkah and Lulav': 'SSL', 'Sheqel Dues': 'SDu', 'Sanctification of the New Month': 'SNM', Fasts: 'Fas', 'Scroll of Esther and Hanukkah': 'SEH', Marriage: 'Mar',
+    Divorce: 'Div', 'Levirate Marriage and Release': 'LMR', 'Virgin Maiden': 'VM', 'Woman Suspected of Infidelity': 'WSI', 'Forbidden Intercourse': 'FI', 'Forbidden Foods': 'FF',
+    'Ritual Slaughter': 'RSl', Oaths: 'Oat', Vows: 'Vow', Nazariteship: 'Naz', 'Appraisals and Devoted Property': 'ADP', 'Diverse Species': 'DS', 'Gifts to the Poor': 'GP',
+    'Heave Offerings': 'HO', Tithes: 'Tit', "Second Tithes and Fourth Year's Fruit": 'STF', 'First Fruits and other Gifts to Priests Outside the Sanctuary': 'FFG',
+    'Sabbatical Year and the Jubilee': 'SYJ', 'The Chosen Temple': 'CT', 'Vessels of the Sanctuary and Those Who Serve Therein': 'VS', 'Admission into the Sanctuary': 'AS',
+    'Things Forbidden on the Altar': 'TFA', 'Sacrificial Procedure': 'SP', 'Daily Offerings and Additional Offerings': 'DOA', 'Sacrifices Rendered Unfit': 'SRU',
+    'Service on the Day of Atonement': 'SDA', Trespass: 'Tre', 'Paschal Offering': 'PO', 'Festival Offering': 'FO', Firstlings: 'Fir', 'Offerings for Unintentional Transgressions': 'OUT',
+    'Offerings for Those with Incomplete Atonement': 'OIA', Substitution: 'Sub', 'Defilement by a Corpse': 'DC', 'Red Heifer': 'RHe', 'Defilement by Leprosy': 'DL',
+    'Those Who Defile Bed or Seat': 'DBS', 'Other Sources of Defilement': 'OSD', 'Defilement of Foods': 'DF', Vessels: 'Ves', 'Immersion Pools': 'IP', 'Damages to Property': 'DP',
+    Theft: 'Thf', 'Robbery and Lost Property': 'RLP', 'One Who Injures a Person or Property': 'IPP', 'Murderer and the Preservation of Life': 'MPL', Sales: 'Sal',
+    'Ownerless Property and Gifts': 'OPG', Neighbors: 'Nei', 'Agents and Partners': 'AP', Slaves: 'Sla', Hiring: 'Hir', 'Borrowing and Deposit': 'BD', 'Creditor and Debtor': 'CD',
+    'Plaintiff and Defendant': 'PD', Inheritances: 'Inh', 'The Sanhedrin and the Penalties within Their Jurisdiction': 'San', Testimony: 'Tes', Rebels: 'Reb', Mourning: 'Mou',
+    'Kings and Wars': 'KW' };
+  const tractUrl = k => TRACT_URL[String(k).replace(/'/g, '')] || bookSlug(k);
+  // ספר בסיס → "TN/Gen" / "MS/Ber" / "MT/HD"; ובכיוון ההפוך (באותיות גדולות) — נבנה פעם אחת לכל אינדקס
+  function urlOf(IX, b) {
+    const t = IX.books[b].title, c = IX.books[b].cat;
+    const s = c === 0 ? TN_AB[t] : c === 1 ? tractUrl(t.replace(/^Mishnah /, '')) : MT_AB[t.replace(/^Mishneh Torah, /, '')];
+    return URL_COL[c] + '/' + (s || bookSlug(t.replace(/^Mishnah |^Mishneh Torah, /, '')));
+  }
+  function urlBooks(IX) {
+    if (!IX.byUrl) { IX.byUrl = {}; IX.base.forEach(b => { IX.byUrl[urlOf(IX, b).toUpperCase()] = b; }); }
+    return IX.byUrl;
+  }
+  const urlNum = t => { const n = parseNum(String(t || '')); return n >= 1 ? n : NaN; };
+  // הצורה החדשה בלבד; undefined = לא מתחיל באוסף מוכר (ואז הצורה הישנה), null = אוסף מוכר ומקום שאין
+  function parseUrlRef(IX, TX, RX, seg) {
+    const col = (seg[0] || '').toUpperCase(), n = seg.length;
+    if (col === 'TB') {
+      if (!TX || n < 2 || n > 4) return null;
+      const t = TX.list.find(x => tractUrl(x.k).toUpperCase() === seg[1].toUpperCase() || x.k.toUpperCase() === seg[1].toUpperCase()); if (!t) return null;
+      const m = n > 2 ? /^(\d+)([ab])?$/i.exec(seg[2]) : ['', '2', 'a']; if (!m) return null;
+      const d = +m[1], j = amudOf(d, /b/i.test(m[2] || '') ? 1 : 0); if (d < 2 || j >= t.n) return null;
+      const x = { kind: 'tal', k: t.k, j };
+      if (n > 3) { const s = urlNum(seg[3]); if (!(s >= 1)) return null; x.s = s - 1; }
+      return x;
+    }
+    if (col === 'TUR') {
+      if (!RX || n < 2 || n > 5 || n === 4) return null;
+      const ti = RX.byK[seg[1].toUpperCase()], t = RX.list[ti]; if (!t) return null;
+      const s = n < 3 ? 1 : /^(intro|0)$/i.test(seg[2]) ? 0 : urlNum(seg[2]);
+      if (!(s >= 0) || s >= t.n || (s === 0 && !t.intro)) return null;
+      const x = { kind: 'tur', k: t.k, s };
+      if (n === 5) { const c = ({ BY: 'y', BH: 'c', BACH: 'c' })[seg[3].toUpperCase()], i = urlNum(seg[4]); if (!c || !(i >= 1)) return null; x.x = c; x.i = i - 1; }
+      return x;
+    }
+    if (!['TN', 'MS', 'MT'].includes(col)) return undefined;
+    if (n < 2 || n > 4) return null;
+    const b = urlBooks(IX)[col + '/' + seg[1].toUpperCase()]; if (b == null) return null;
+    const ch = n > 2 ? urlNum(seg[2]) : chaptersOf(IX, b)[0], v = n > 3 ? urlNum(seg[3]) : 0;
+    if (!(ch >= 1) || Number.isNaN(v) || !hasRef(IX, b, ch, v)) return null;
+    return { kind: 'ref', b, ch, v };
+  }
   function parseHashRef(IX, TX, RX, path) {
     let q = String(path || ''); try { q = decodeURIComponent(q); } catch (e) {}
+    const nw = parseUrlRef(IX, TX, RX, q.split(/[\/#]+/).filter(Boolean));
+    if (nw !== undefined) return nw;
     q = q.replace(/[\/_+#]+/g, ' ').trim(); if (!q) return null;
     const rr = parseTurRef(RX, q), tr = parseDafRef(TX, q), ref = parseRef(IX, q, null);
     if (rr) return { kind: 'tur', k: rr.k, s: rr.s };
@@ -288,10 +362,11 @@
     if (ref) return { kind: 'ref', b: ref.b, ch: ref.ch, v: ref.v };
     return null;
   }
+  // x.s (גמרא) / x.x + x.i (טור) = החלון הפתוח; x.v = הפסוק או ההלכה (כשאינו הראשון בפרק)
   function hashOfRef(IX, x) {
-    if (x.kind === 'tur') return '#read/' + x.k + '/' + (x.s || 'intro');
-    if (x.kind === 'tal') return '#read/' + x.k + '/' + dafLabel(x.j, true);
-    return '#read/' + bookSlug(IX.books[x.b].title) + '/' + x.ch + (x.v && x.v !== versesOf(IX, x.b, x.ch)[0] ? '/' + x.v : '');
+    if (x.kind === 'tur') return '#read/TUR/' + x.k + '/' + (x.s || 'intro') + ((x.x === 'y' || x.x === 'c') && x.i >= 0 ? '/' + (x.x === 'y' ? 'BY' : 'BH') + '/' + (x.i + 1) : '');
+    if (x.kind === 'tal') return '#read/TB/' + tractUrl(x.k) + '/' + dafLabel(x.j, true) + (x.s >= 0 ? '/' + (x.s + 1) : '');
+    return '#read/' + urlOf(IX, x.b) + '/' + x.ch + (x.v && x.v !== versesOf(IX, x.b, x.ch)[0] ? '/' + x.v : '');
   }
 
   /* מקום של יחידה בקורפוס (ספר, פרק, פסוק/משנה/הלכה — גם במפרש או בתרגום) → המקום במסך הקריאה: הספר שמוצג שם,
@@ -383,7 +458,9 @@
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
   const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
   const setHash = x => { if (location.hash === x || (location.hash && !MODE_HASH.test(location.hash))) return; try { history.replaceState(history.state, '', x); } catch (e) {} };
-  const curRef = () => isTur() ? { kind: 'tur', k: S.rk, s: S.rs } : isTal() ? { kind: 'tal', k: S.tk, j: S.tj } : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
+  // חלון פתוח (קטע בגמרא, דיבור בטור) נכנס לכתובת, כדי שקישור שמועתק ממנו יפתח אותו שוב
+  const curRef = () => isTur() ? Object.assign({ kind: 'tur', k: S.rk, s: S.rs }, S.rsel && S.rsel.x !== 't' ? { x: S.rsel.x, i: S.rsel.i, s: S.rsel.s } : {})
+    : isTal() ? Object.assign({ kind: 'tal', k: S.tk, j: S.tj }, S.sel ? { j: S.sel.j, s: S.sel.s } : {}) : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
   function syncHash() { if (IX && document.body.dataset.mode === 'read') setHash(hashOfRef(IX, curRef())); }
 
   let TX = null;
@@ -787,8 +864,9 @@
       (nxPg ? '<article class="rdPage left next' + nar + '" aria-label="' + T('עמוד') + ' ' + num(1) + '">' + pageInner(nx.b, nx.ch, nxPg, 1, '') + '</article>' :
         geo.two && shown.length < 2 ? '<article class="rdPage left blank' + nar + '" aria-hidden="true"></article>' : '') + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
-    if (flashV) { const v = flashV; flashV = 0; flash(v); }
+    if (flashV) { const v = flashV; flashV = 0; flash(v, flashKeep); flashKeep = false; }
     else if (flashOn && flashOn.at === S.b + ':' + S.ch) flashEls(flashOn.v).forEach(e => e.classList.add('flash'));
+    else if (flashOn) { clearTimeout(hlTimer); flashOn = null; } // עברו לפרק אחר — הדגשה מקישור לא חוזרת כשחוזרים
     const bk = IX.books[S.b], chs = chaptersOf(IX, S.b);
     $r('#rdWhereTxt').textContent = bkName(bk.heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
     $r('#rdPos').textContent = (shown.length > 1 ? T('עמודים') + ' ' + num(S.p + 1) + '–' + num(S.p + 2) : T('עמוד') + ' ' + num(S.p + 1)) + ' ' + T('מתוך') + ' ' + (all ? num(pages.length) : '…') +
@@ -869,17 +947,18 @@
   // flashOn = הפסוק שמהבהב עכשיו: ציור חוזר בזמן ההבהוב (שינוי גודל, טעינת גופנים) מסמן אותו שוב
   let flashOn = null;
   const flashEls = v => R.querySelectorAll('.rdBook .rdPage:not(.next) [data-v="' + v + '"]');
-  function flash(v) {
+  // keep = מקישור (#read/…/פרק/פסוק): ההדגשה נשארת כל עוד הפרק פתוח, ולא נעלמת אחרי שתי שניות
+  function flash(v, keep) {
     clearTimeout(hlTimer); flashOn = { at: S.b + ':' + S.ch, v };
     flashEls(v).forEach(e => { e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); });
-    hlTimer = setTimeout(() => { flashOn = null; flashEls(v).forEach(e => e.classList.remove('flash')); }, 2600);
+    if (!keep) hlTimer = setTimeout(() => { flashOn = null; flashEls(v).forEach(e => e.classList.remove('flash')); }, 2600);
   }
   // flashV = פסוק להבהב בציור הבא של הספר — גם כשהספר עוד נטען והציור מגיע רק אחרי הטעינה
-  let flashV = 0;
+  let flashV = 0, flashKeep = false;
   function goTo(b, ch, v) {
     S.tk = ''; S.rk = ''; closeSeg();
     S.b = b; S.ch = ch; S.anchor = v || versesOf(IX, b, ch)[0] || 1;
-    flashV = v || 0; render();
+    flashV = v || 0; flashKeep = false; render();
   }
   function turn(dir) {
     if (isTur()) return turTurn(dir);
@@ -1145,10 +1224,10 @@
     if (!S.sel || !isTal()) return;
     R.querySelectorAll('.rdBook [data-j="' + S.sel.j + '"][data-s="' + S.sel.s + '"]').forEach(e => e.classList.add('sel'));
   }
-  function closeSeg() { const p = $r('#rdSeg'); if (p) p.hidden = true; S.sel = null; S.rsel = null; if (R) markSel(); }
+  function closeSeg() { const p = $r('#rdSeg'), was = S.sel || S.rsel; if (p) p.hidden = true; S.sel = null; S.rsel = null; if (R) markSel(); if (was) syncHash(); }
   function openSeg(j, s) {
     if (!TD[S.tk]) return;
-    S.sel = { j, s }; markSel();
+    S.sel = { j, s }; markSel(); syncHash();
     const a = amudRow(S.tk, j), rl = a[1].filter(e => e[0] === s), tl = a[2].filter(e => e[0] === s);
     if (segTab === 'r' && !rl.length && tl.length) segTab = 't'; else if (segTab === 't' && !tl.length && rl.length) segTab = 'r';
     const list = segTab === 'r' ? rl : tl, cmCls = S.cmFont === 'rashi' ? 'fR' : 'fN';
@@ -1570,7 +1649,7 @@
     if (!isTur() || !turRow(S.rk, s)) return;
     const t = turT(), m = turModel(S.rk, s), z = m.st[x];
     if (i < 0 || i >= z.n || m.empty(x, i)) return;
-    S.rsel = { s, x, i }; markTurSel();
+    S.rsel = { s, x, i }; markTurSel(); syncHash();
     // הקטע בטור: מהסימן של הדיבור עד הסימן הבא (או 40 מילים)
     const a = z.anc[i] || 0; let b = a + 1; while (b < m.tt.length && (ANC.test(m.tt[b]) || b === a + 1) && b - a < 3) b++;
     let e = b; while (e < m.tt.length && !ANC.test(m.tt[e]) && e - a < 45) e++;
@@ -2321,12 +2400,15 @@
     const x = m[1] ? parseHashRef(IX, TX, RX, m[1]) : null;
     if (x) {
       closeSeg(); S.lock = null;
-      if (x.kind === 'tur') { S.tk = ''; S.rk = x.k; S.rs = x.s; S.rp = 0; }
-      else if (x.kind === 'tal') { S.rk = ''; S.tk = x.k; S.tj = x.j; S.tp = 0; }
-      else { S.tk = ''; S.rk = ''; S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; }
+      // דיבור בטור: נפתח בחלון אחרי הציור (S.rgo, כמו תוצאת חיפוש); קטע בגמרא: goTal אחרי הציור (linkSeg)
+      if (x.kind === 'tur') { S.tk = ''; S.rk = x.k; S.rs = x.s; S.rp = 0; S.rgo = x.x ? { k: x.k, s: x.s, x: x.x, i: x.i } : null; }
+      else if (x.kind === 'tal') { S.rk = ''; S.tk = x.k; S.tj = x.j; S.tp = 0; linkSeg = x.s >= 0 ? x : null; }
+      else { S.tk = ''; S.rk = ''; S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; flashV = x.v || 0; flashKeep = !!x.v; }
     }
     return true;
   }
+  let linkSeg = null;
+  const openLinkSeg = () => { const x = linkSeg; linkSeg = null; if (x && isTal() && S.tk === x.k) goTal(x.k, x.j, x.s); };
   /* מעבר מתוצאה במסך הגימטריה (app.js) אל המקום שלה במסך הקריאה: ספר b בקורפוס (גם מפרש או תרגום), פרק ch, יחידה v */
   const canOpen = b => { ensureIndex(); return IX.owner[b] != null; };
   function openUnit(b, ch, v) {
@@ -2343,6 +2425,7 @@
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;
     if (document.body.dataset.mode === 'read') { render(); syncHash(); } else setMode('read', false, 'link');
+    openLinkSeg();
   }
   function labelModeSw() {
     // בטלפון אין מקום לתווית המלאה — .ls (קצרה) מוצגת במקום .lf
@@ -2375,7 +2458,7 @@
     labelModeSw();
     let start = 'gem';
     try { start = localStorage.getItem('gimatrivonMode') === 'read' ? 'read' : 'gem'; } catch (e) {}
-    if (hashTarget()) setMode('read', false, 'link');
+    if (hashTarget()) { setMode('read', false, 'link'); openLinkSeg(); }
     else setMode(/^#gim$/i.test(location.hash) ? 'gem' : start, false, /^#gim$/i.test(location.hash) ? 'link' : undefined);
     window.addEventListener('hashchange', fromHash);
   }
