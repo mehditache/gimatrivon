@@ -843,6 +843,8 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .rdSearch input::-webkit-search-cancel-button{display:none}
 .rdSearch kbd{flex:none;font:600 10.5px var(--ui);border:1px solid var(--rdG3);border-radius:5px;padding:1px 5px;color:var(--rdBarMu);direction:ltr}
 .reader .rdSeg{display:inline-flex;flex:none;border:1px solid var(--rdG3);border-radius:9px;overflow:hidden}
+/* משנה: אין בחירת סוג תצוגה (reader.js: hasViews) */
+.reader .rdSeg[hidden],.reader .rdSeg[hidden]+.rdToolsSep{display:none}
 .reader .rdSeg button{display:inline-flex;align-items:center;gap:6px;height:32px;border:0;border-radius:0;background:none;padding:0 12px;font-size:13px;white-space:nowrap}
 .reader .rdSeg button:hover{background:var(--rdG1)}
 .reader .rdSeg button.on{background:var(--rdOn);color:#2e2416;font-weight:600}
