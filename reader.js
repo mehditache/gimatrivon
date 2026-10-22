@@ -851,7 +851,8 @@
     const locked = S.lock != null;
     let idx = locked ? S.lock : pages.findIndex(p => p.vs.includes(S.anchor));
     S.lock = null; if (idx < 0 || idx >= pages.length) idx = 0;
-    if (locked || geo.per === 1) S.p = idx;
+    // קפיצה לפסוק / הלכה מסוימים (קישור, תוצאת גימטריה): העמוד שלהם הוא הימני בפריסה, ולא השמאלי אחרי עמוד קודם
+    if (locked || geo.per === 1 || flashV) S.p = idx;
     else { const par = S.at === S.b + ':' + S.ch ? S.p % 2 : 0; S.p = idx < par ? 0 : idx - ((idx - par) % 2); }
     S.at = S.b + ':' + S.ch;
     const shown = pages.slice(S.p, S.p + geo.per);
