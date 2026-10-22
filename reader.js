@@ -117,7 +117,10 @@
         (RAMBAM_ABBR[b.heTitle] || []).concat(parts.length > 1 ? parts : []).forEach(a => { add('הלכות ' + a); add('רמבם ' + a); add('רמבם הלכות ' + a); });
       }
     });
-    return { books, data, base, links, names, clean, loose, ncache: new Map() };
+    // owner[b] = הספר שבו b מוצג במסך הקריאה: ספר בסיס לעצמו, ומפרש או תרגום לספר שעליו הם (למעבר מתוצאת גימטריה)
+    const owner = books.map(() => null);
+    base.forEach(i => { const L = links[i]; owner[i] = i; [L.onkelos, L.yonatan].concat(L.cms.map(x => x.b)).forEach(x => { if (x != null) owner[x] = i; }); });
+    return { books, data, base, links, owner, names, clean, loose, ncache: new Map() };
   }
   // ספר שנטען: each(fn) עובר על היחידות שלו (GimCorpus.each)
   function addBook(IX, b, each) { if (IX.data[b]) return; IX.data[b] = []; each(b, (cat, bb, ch, v, t) => addUnit(IX.data, cat, bb, ch, v, t)); }
@@ -291,7 +294,14 @@
     return '#read/' + bookSlug(IX.books[x.b].title) + '/' + x.ch + (x.v && x.v !== versesOf(IX, x.b, x.ch)[0] ? '/' + x.v : '');
   }
 
-  const CORE = { noTeamim, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, suggestPlaces, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks, parseHashRef, hashOfRef };
+  /* מקום של יחידה בקורפוס (ספר, פרק, פסוק/משנה/הלכה — גם במפרש או בתרגום) → המקום במסך הקריאה: הספר שמוצג שם,
+     הפרק, והפסוק אם קיים בו (מפרש על פסוק שאין → תחילת הפרק). null אם אין לה מקום במסך הקריאה (מילון, פרק שלא קיים). */
+  function unitRef(IX, b, ch, v) {
+    const o = IX.owner[b]; if (o == null || !hasRef(IX, o, ch, 0)) return null;
+    return { kind: 'ref', b: o, ch, v: v && hasRef(IX, o, ch, v) ? v : 0 };
+  }
+
+  const CORE = { noTeamim, unitRef, noMarks, norm, toHeb, parseNum, buildIndex, addBook, chaptersOf, versesOf, parseRef, suggestBooks, suggestPlaces, search, markWords, splitComm, splitOne, splitCm, talIndex, parseDafRef, dafOf, amudOf, dafLabel, turIndex, parseTurRef, turToks, parseHashRef, hashOfRef };
   G.GimReaderCore = CORE;
   if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
   if (typeof document === 'undefined' || !G.GimCorpus) return;
@@ -689,6 +699,8 @@
       (nxPg ? '<article class="rdPage left next' + nar + '" aria-label="' + T('עמוד') + ' ' + num(1) + '">' + pageInner(nx.b, nx.ch, nxPg, 1, '') + '</article>' :
         geo.two && shown.length < 2 ? '<article class="rdPage left blank' + nar + '" aria-hidden="true"></article>' : '') + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
+    if (flashV) { const v = flashV; flashV = 0; flash(v); }
+    else if (flashOn && flashOn.at === S.b + ':' + S.ch) flashEls(flashOn.v).forEach(e => e.classList.add('flash'));
     const bk = IX.books[S.b], chs = chaptersOf(IX, S.b);
     $r('#rdWhereTxt').textContent = bkName(bk.heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
     $r('#rdPos').textContent = (shown.length > 1 ? T('עמודים') + ' ' + num(S.p + 1) + '–' + num(S.p + 2) : T('עמוד') + ' ' + num(S.p + 1)) + ' ' + T('מתוך') + ' ' + num(pages.length) +
@@ -743,16 +755,20 @@
     }, end + 60);
   }
 
+  // flashOn = הפסוק שמהבהב עכשיו: ציור חוזר בזמן ההבהוב (שינוי גודל, טעינת גופנים) מסמן אותו שוב
+  let flashOn = null;
+  const flashEls = v => R.querySelectorAll('.rdBook .rdPage:not(.next) [data-v="' + v + '"]');
   function flash(v) {
-    clearTimeout(hlTimer);
-    const els = R.querySelectorAll('.rdBook .rdPage:not(.next) [data-v="' + v + '"]');
-    els.forEach(e => { e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); });
-    hlTimer = setTimeout(() => els.forEach(e => e.classList.remove('flash')), 2600);
+    clearTimeout(hlTimer); flashOn = { at: S.b + ':' + S.ch, v };
+    flashEls(v).forEach(e => { e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); });
+    hlTimer = setTimeout(() => { flashOn = null; flashEls(v).forEach(e => e.classList.remove('flash')); }, 2600);
   }
+  // flashV = פסוק להבהב בציור הבא של הספר — גם כשהספר עוד נטען והציור מגיע רק אחרי הטעינה
+  let flashV = 0;
   function goTo(b, ch, v) {
     S.tk = ''; S.rk = ''; closeSeg();
     S.b = b; S.ch = ch; S.anchor = v || versesOf(IX, b, ch)[0] || 1;
-    render(); if (v) flash(v);
+    flashV = v || 0; render();
   }
   function turn(dir) {
     if (isTur()) return turTurn(dir);
@@ -2148,6 +2164,18 @@
     }
     return true;
   }
+  /* מעבר מתוצאה במסך הגימטריה (app.js) אל המקום שלה במסך הקריאה: ספר b בקורפוס (גם מפרש או תרגום), פרק ch, יחידה v */
+  const canOpen = b => { ensureIndex(); return IX.owner[b] != null; };
+  function openUnit(b, ch, v) {
+    ensureIndex();
+    const x = unitRef(IX, b, ch, v); if (!x) return false;
+    S.lock = null;
+    if (document.body.dataset.mode !== 'read') { S.tk = ''; S.rk = ''; closeSeg(); S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; flashV = x.v; setMode('read', true, 'result'); }
+    else goTo(x.b, x.ch, x.v);
+    save();
+    return true;
+  }
+  G.GimReader = { canOpen, openUnit };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;
