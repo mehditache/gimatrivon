@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.23.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.24.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -83,7 +83,7 @@ const EN = {
   'התאמת צירוף-אותיות: אותן אותיות של מילת-החיפוש, אך בסדר שונה (לא מאייתות אותה בדיוק)': 'Letter-combination match: the same letters as the search word, but in a different order (not spelling it exactly)',
   'התאמה ערכית בלבד: הערך הגימטרי תואם, ללא השוואת-אותיות למילת-החיפוש': 'Numeric match only: the gematria value matches, without comparing letters to the search word',
   'שיטת הגימטריה של הפסוק': 'Gematria method of the verse', 'שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה': 'Gematria method of the search word in which the match was found',
-  'תיבות': 'words', 'העתק את הפסוק/המשנה ללוח': 'Copy the verse/mishnah to clipboard', 'העתק את המחרוזת המומרת ללוח': 'Copy the transformed string to clipboard',
+  'תיבות': 'words', 'העתק את הפסוק/המשנה ללוח': 'Copy the verse/mishnah to clipboard', 'פתיחת הספר במסך הקריאה, במקום הזה': 'Open the book in the reader, at this place', 'העתק את המחרוזת המומרת ללוח': 'Copy the transformed string to clipboard',
   'מספר': 'Number', 'גימ׳': 'Gem.', 'של הפסוק': 'of the verse', 'ערך': 'value', 'התאמות': 'matches', 'של מילת החיפוש': 'of the search word',
   'אין תוצאות התואמות את הסינון הטקסטואלי.': 'No results match the text filter.', 'אין התאמות בטווח שנבחר.': 'No matches in the selected range.',
   'מחפש…': 'Searching…', 'הקורפוס עדיין נטען…': 'The corpus is still loading…',
@@ -652,8 +652,8 @@ function bind(k) {
   $('#nm' + k).onblur = e => { const v = e.target.value; if (!v) return; const n = numVal(v); if (Number.isFinite(n) && String(n) !== v) { e.target.value = n; st.num = String(n); } };
   q('.meta').onclick = e => { const a = e.target.dataset.a; if (!a) return; if (a === 'clear') { st.text = ''; st.num = ''; $('#t' + k).value = ''; $('#nm' + k).value = ''; renderCenter(); run(k); } else { const t = E.METHODS.filter(m => st.ms.has(m.id)).map(m => L(MN[m.id]) + ': ' + fmt(E.calculateGematria(st.text, m.id).value)).join('\n'); copyText(L(SIDE[k]) + ': ' + st.text + '\n' + t); e.target.textContent = L('הועתק ✓'); setTimeout(() => { e.target.textContent = L('העתק'); }, 1200); } };
   const doCopy = cp => { copyText(cp.dataset.copy); cp.textContent = '✓'; setTimeout(() => { cp.textContent = '⧉'; }, 900); };
-  $('#rl' + k).onclick = e => { const cp = e.target.closest('.cpy'); if (cp) { e.stopPropagation(); return doCopy(cp); } const b = e.target.closest('.rs'); if (!b) return; select(k, +b.dataset.i); };
-  $('#rl' + k).addEventListener('keydown', e => { const cp = e.target.closest('.cpy'); if (!cp) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); doCopy(cp); } });
+  $('#rl' + k).onclick = e => { const cp = e.target.closest('.cpy'); if (cp) { e.stopPropagation(); return doCopy(cp); } const go = e.target.closest('.goRd'); if (go) { e.stopPropagation(); return openInReader(go); } const b = e.target.closest('.rs'); if (!b) return; select(k, +b.dataset.i); };
+  $('#rl' + k).addEventListener('keydown', e => { const cp = e.target.closest('.cpy,.goRd'); if (!cp) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); cp.classList.contains('goRd') ? openInReader(cp) : doCopy(cp); } });
   // גלילה אינסופית: טוענים את מנת ה-100 הבאה כשמתקרבים לתחתית הרשימה (במקום כפתור "הצג עוד")
   $('#rl' + k).addEventListener('scroll', () => { fsLayout(k); maybeShiftWindow(k); });
   // סינון טקסטואלי חופשי בתוך התוצאות המוצגות (לא קשור לחישוב הגימטרי) — מהיר, פועל על מה שכבר נמצא בזיכרון
@@ -1241,6 +1241,8 @@ function cxWithCopy(html, btn) {
 // אחרי ההכנסה ל-DOM — כי ל-.rs (כפתור) יש transition כללי על border-color/background/box-shadow (מוגדר על
 // button), ואם ה-class הייתה מתווספת לאלמנט *קיים*, זה היה נחשב "שינוי" ומפעיל את ה-transition מחדש בכל
 // רענון-חי — בדיוק באג-ההבהוב שדווח (גם כש-הבחירה אוטומטית וגם כש-המשתמש בוחר בעצמו בלחיצה תוך-כדי חיפוש).
+const GO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5h6a4 4 0 0 1 4 4V20a3 3 0 0 0-3-3H2z"/><path d="M22 5.5h-6a4 4 0 0 0-4 4V20a3 3 0 0 1 3-3h7z"/></svg>';
+const openInReader = el => { const [b, ch, n] = el.dataset.go.split(',').map(Number); if (window.GimReader) window.GimReader.openUnit(b, ch, n); };
 function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const i = idxArr ? idxArr[p] : p, r = st.all[i], u = IDX.units[r.u], s = IDX.start[r.u], e = IDX.start[r.u + 1], T = IDX.toks;
   let h = '';
@@ -1275,7 +1277,9 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
     : wmIds.length ? wmIds.map(id => `<span class="tag" data-fam="${famKeyOf(id)}" data-m="${id}" title="${wmTitle}">${esc(wmName(id))}</span>`).join('')
     : `<span class="tag" title="${wmTitle}">${L('מספר')}</span>`;
   const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
-  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span>${wmTags}</div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>`)}</div></button>`;
+  // כפתור "פתיחה בספר" ליד ההעתקה: מעבר למסך הקריאה, לספר (או לספר שעליו המפרש / התרגום), לפרק וליחידה של התוצאה
+  const goBtn = window.GimReader && window.GimReader.canOpen(u.b) ? `<span class="goRd" role="button" tabindex="0" title="${L('פתיחת הספר במסך הקריאה, במקום הזה')}" aria-label="${L('פתיחת הספר במסך הקריאה, במקום הזה')}" data-go="${u.b},${u.ch},${u.n}">${GO_ICON}</span>` : '';
+  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf"><b>${esc(ref(u))}</b><span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span>${wmTags}</div><div class="cx">${cxWithCopy(cxContent, `<span class="cpy" role="button" tabindex="0" title="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>${goBtn}`)}</div></button>`;
   return h;
 }
 // בונה-מחדש את כל תוכן #rl{k} כחלון של עד N שורות המתחיל ב-start (במרחב-ה-idx, לא בהכרח במרחב st.all) —
