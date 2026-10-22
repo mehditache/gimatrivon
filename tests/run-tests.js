@@ -89,7 +89,7 @@ t('search', 'indexBuilder בפרוסות קטנות בונה אינדקס זהה
 t('search', 'buildIndex: idx.L (סכום-אותיות-לכל-תיבה) קיים, אורכו תואם מספר התיבות, וערכיו תואמים את calculateLetters', () => {
   return IDX.L && IDX.L.length === IDX.toks.length && [0, 1, 2, 100, IDX.L.length - 1].every(i => IDX.L[i] === E.normalizeText(IDX.toks[i]).normalizedText.replace(/ /g, '').length);
 });
-// v3.22.0: idx.toks נגזר מטקסט היחידות (לא מערך שמור) — חייב להיות זהה למילים המקוריות של כל יחידה, לפי הסדר
+// v3.23.0: idx.toks נגזר מטקסט היחידות (לא מערך שמור) — חייב להיות זהה למילים המקוריות של כל יחידה, לפי הסדר
 t('search', 'idx.toks (נגזר לפי דרישה) זהה למילים המקוריות של כל הקורפוס', () => {
   let i = 0; for (let u = 0; u < IDX.units.length; u++) for (const tk of E.tokens(E.unpackText(IDX.units[u].t))) { if (IDX.toks[i] !== tk.orig) throw new Error('token ' + i); i++; }
   const sl = IDX.toks.slice(IDX.start[5] - 1, IDX.start[9] + 2), ex = []; for (let k = IDX.start[5] - 1; k < IDX.start[9] + 2; k++) ex.push(IDX.toks[k]);

@@ -705,10 +705,13 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 :root[data-theme=dark] #stage .rs .tag.prs::before,:root[data-theme=dark] #stage .rs .tag.seder::before{color:var(--sb)}
 #stage .rs .tag.meth{margin-inline-start:auto;font-weight:700;box-shadow:none}
 #stage .rs .tagArrow{flex:none;color:var(--mu);font-size:.62rem}
+#stage .rs .tagArrow ~ .tag + .tag{margin-inline-start:-.15rem}
 [data-m=regular]{--h:150}[data-m=kollel]{--h:120}[data-m=words]{--h:95}[data-m=letters]{--h:72}
 [data-m=atbash]{--h:22}[data-m=atbashKollel]{--h:40}[data-m=atbashWords]{--h:0}[data-m=atbashLetters]{--h:345}
 [data-m=atbach]{--h:195}[data-m=atbachKollel]{--h:178}[data-m=atbachWords]{--h:210}[data-m=atbachLetters]{--h:165}
 [data-m=milui]{--h:305}[data-m=notRt]{--h:60}[data-m=notB]{--h:32}[data-m=notC]{--h:330}[data-m=notSt]{--h:280}
+/* v3.22.0: סוג התאמת-הנוטריקון (מילים/אותיות/גימ׳) — בגוון של ההדגשה בפסוק: צהוב, סגול, ירוק */
+[data-m=notLit]{--h:88}[data-m=notPerm]{--h:295}[data-m=notGim]{--h:135}
 #stage .rs .tag[data-m]{background:oklch(.92 .045 var(--h));color:oklch(.42 .12 var(--h))}
 :root[data-theme=dark] #stage .rs .tag[data-m]{background:oklch(.33 .06 var(--h));color:oklch(.86 .1 var(--h))}
 #stage .cx{font:1rem/1.75 "GimFrank",var(--tf);margin-top:.12rem;color:var(--tx)}
@@ -723,6 +726,7 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 #stage .gh .ghV{flex:none;padding:0 .45rem;border-radius:99px;background:var(--chip);color:var(--chipTx)}
 #stage .gh .ghV b{font:700 .9rem "GimFrank",var(--tf);color:var(--tx)}
 #stage .gh .ghW{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+#stage .gh .ghW i{font-style:normal;font-weight:700;color:oklch(.45 .12 var(--h))}:root[data-theme=dark] #stage .gh .ghW i{color:oklch(.82 .1 var(--h))}
 #stage .gh .ghN{flex:none;margin-inline-start:auto;font-weight:500;font-variant-numeric:tabular-nums}
 
 /* --- לוח החישוב (מחשב): כל ערך בתג, שם השיטה הבסיסית בצבע המשפחה; ערך עם התאמה = טבעת בצבע ההתאמה --- */
