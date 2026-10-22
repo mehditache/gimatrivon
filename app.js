@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.23.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.23.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -1138,7 +1138,7 @@ function run(k) {
   // שיטות-חיפוש שלא קיבלו אף יעד (למשל קולל/תיבות/אותיות כש-*כל* שיטות-המילה הפעילות אסורות עליהן לפי חוק
   // אי-ההתאמה) לא יופיעו בתור כלל — נחשבות "גמורות" כבר מההתחלה, כדי שמונה ההתקדמות (X/Y שיטות) יהיה מדויק.
   const zeroTargetSms = sms.length - new Set(queue.map(x => x.sm)).size;
-  let total = 0, pos = 0, smsDone = 0, lastSm = null, uAt = 0, tgCount = 0;
+  let total = 0, shown = 0, pos = 0, smsDone = 0, lastSm = null, uAt = 0, tgCount = 0;
   const nUnits = IDX.units.length, SLICE_UNITS = 25000;
   // עדכון-חי של רשימת-התוצאות תוך-כדי הסריקה: renderWindow (כמו renderCenter) לא נקרא על כל "חתיכה"
   // בודדת (יכולות להיות מאות) — תמיד בונה-מחדש את כל חלון-התצוגה (עד N = getLimit() שורות, ראו renderWindow)
@@ -1151,7 +1151,10 @@ function run(k) {
   const step = () => {
     if (myGen !== st.gen) return; // חיפוש חדש יותר כבר התחיל — מפסיקים את זה בשקט
     if (pos >= queue.length) {
-      say(LANG === 'en' ? `<b>${fmt(total)}</b> matches in ${Math.round(performance.now() - t0)} ms` : `<b>${fmt(total)}</b> התאמות ב-${Math.round(performance.now() - t0)} מ״ש`);
+      // כשמגבלת-התצוגה (RESULTS_LIMIT_PER_METHOD לכל שיטה) חתכה תוצאות — אומרים זאת במפורש, כדי שהפער בין
+      // מספר-ההתאמות הכולל לבין מה שנטען לרשימה (ומוצג ב"תוצאה X מתוך Y") לא ייראה כמו טעות
+      const capNote = shown < total ? (LANG === 'en' ? ` · showing the first <b>${fmt(shown)}</b> (up to ${fmt(limit)} per method)` : ` · מוצגות <b>${fmt(shown)}</b> הראשונות (עד ${fmt(limit)} לכל שיטה)`) : '';
+      say(LANG === 'en' ? `<b>${fmt(total)}</b> matches in ${Math.round(performance.now() - t0)} ms${capNote}` : `<b>${fmt(total)}</b> התאמות ב-${Math.round(performance.now() - t0)} מ״ש${capNote}`);
       box.classList.remove('searching'); // ראו הערה למעלה ליד ההוספה — רק מעכשיו :hover שוב מגיב-מיידית כרגיל
       if (!st.all.length) box.innerHTML = `<div class="emp">${L('אין התאמות בטווח שנבחר.')}</div>`;
       else liveRefresh(k, true);
@@ -1168,7 +1171,7 @@ function run(k) {
       if (sm !== lastSm) { smsDone++; lastSm = sm; }
       const uTo = Math.min(nUnits, uAt + SLICE_UNITS);
       const r = E.search(IDX, [tg], [sm], Object.assign({}, filt, { uFrom: uAt, uTo }), Math.max(0, smLimitLeft[sm]));
-      total += r.total; smLimitLeft[sm] -= r.results.length;
+      total += r.total; shown += r.results.length; smLimitLeft[sm] -= r.results.length;
       tgCount += r.counts[sm] ? r.counts[sm].get(tg.value) || 0 : 0;
       c = 0;
       if (uTo >= nUnits) { c = tgCount; tgCount = 0; uAt = 0; pos++; } else uAt = uTo;
@@ -1403,14 +1406,15 @@ function fsLayout(k) {
   thumb.style.height = th + 'px'; thumb.style.top = pos + 'px';
 }
 // שתי שורות לבועת-התווית (לפי בקשת המשתמש): שורה 1 = הקבוצה (שיטה·ערך) הקרובה למיקום הנוכחי, שורה 2 =
-// "תוצאה X מתוך Y" — Y הוא *כל* התוצאות (groupsTotal), לא רק מה שבפועל מרונדר כרגע.
+// "תוצאה X מתוך Y המוצגות" — Y הוא כל התוצאות שנטענו לרשימה (groupsTotal, עד getLimit() לכל שיטה), לא רק מה
+// שבפועל מרונדר כרגע; זה לא מספר-ההתאמות הכולל בקורפוס שבשורת-המצב (שם מצוין גם כמה מוצגות).
 function fsBubbleLines(k, scrollTop) {
   const st = S[k], total = st.groupsTotal || 0;
   if (!total) return ['', ''];
   const pos = fsPositionAt(k, scrollTop);
   let g = null; for (const x of st.groups) { if (x.pos <= pos) g = x; else break; }
   const line1 = g ? `${L(MN[g.method])} · ${L('ערך')} ${fmt(g.target)}` : '';
-  const line2 = LANG === 'en' ? `result ${fmt(pos + 1)} of ${fmt(total)}` : `תוצאה ${fmt(pos + 1)} מתוך ${fmt(total)}`;
+  const line2 = LANG === 'en' ? `result ${fmt(pos + 1)} of ${fmt(total)} shown` : `תוצאה ${fmt(pos + 1)} מתוך ${fmt(total)} המוצגות`;
   return [line1, line2];
 }
 // אתחול חד-פעמי (לכל צד) של גרירת-הידית ולחיצה-על-המסלול — נקרא מתוך bind(k)
