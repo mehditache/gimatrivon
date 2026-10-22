@@ -726,6 +726,9 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 :root[data-theme=dark] #stage .rs .tag[data-m]{background:oklch(.33 .06 var(--h));color:oklch(.86 .1 var(--h))}
 #stage .cx{font:1rem/1.75 "GimFrank",var(--tf);margin-top:.12rem;color:var(--tx)}
 #stage .cx b{color:#5e4518}
+/* v3.27.0: עד 4 שורות לכל תוצאה. app.js (cxClip) כבר בוחר קטע סביב ההתאמה; ה-line-clamp מבטיח את התקרה גם כשההערכה לא מדויקת */
+.resList .cx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;line-clamp:4;overflow:hidden}
+.cx .cxCut{color:var(--mu);user-select:none}
 :root[data-theme=dark] #stage .cx b{color:#e7c77e}
 /* כפתורי ההעתקה והפתיחה בספר בסוף הפסוק: במסגרת, כמו כפתורים */
 /* ⧉ וכפתור הספר בשורת התגיות (.rf), עטופים יחד ב-.cxBtns (inline-flex, ממורכז) כך שהם תמיד על אותו קו */
