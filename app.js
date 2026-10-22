@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.27.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.28.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -347,6 +347,45 @@ function cxHtml(T, s, e, ml, mr, boldEnd, tfRanges) {
   }
   return out;
 }
+
+/* ---------- עד 4 שורות לכל תוצאה (v3.28.0) ----------
+   בקשת המשתמש: בפנל התוצאות אין להציג טקסט ארוך מ-4 שורות. פירוש או הלכה ארוכים (עד כ-1,700 תיבות ליחידה) הוצגו
+   במלואם, ושורה אחת יכלה לתפוס מסך שלם. כאן נבחר מהיחידה רק קטע סביב ההתאמה, בערך באמצע, עם "…" בקצה שנחתך;
+   ב-CSS (.resList .cx) יש גם line-clamp של 4 שורות, כך שגם אם ההערכה כאן לא מדויקת, לא יוצגו יותר מ-4 שורות.
+   הקיבולת (cap) היא מספר האותיות שנכנסות ב-4 שורות ברוחב הנוכחי של הרשימה, נמדדת בכל ציור (cxCapFor). */
+const NIKUD_RE = /[֑-ׇ]/g;
+const tokLen = t => t.replace(NIKUD_RE, '').length + 1; // אותיות בלי ניקוד וטעמים, ועוד רווח
+const CX_SAMPLE = 'בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ וְהָאָרֶץ הָיְתָה תֹהוּ וָבֹהוּ וְחֹשֶׁךְ עַל פְּנֵי תְהוֹם';
+function cxCapFor(box) {
+  const w = box.clientWidth;
+  if (!w) return 0; // הרשימה מוסתרת: בלי חיתוך מראש, רק ה-line-clamp
+  const probe = document.createElement('button'); probe.className = 'rs'; probe.style.cssText = 'position:absolute;visibility:hidden;inset-inline-start:0;top:0;width:' + w + 'px';
+  probe.innerHTML = '<div class="cx"><span>' + CX_SAMPLE + '</span></div>'; box.appendChild(probe);
+  const cx = probe.firstChild, sp = cx.firstChild, cxW = cx.clientWidth, spW = sp.getBoundingClientRect().width;
+  probe.remove();
+  if (!cxW || !spW) return 0;
+  const perChar = spW / CX_SAMPLE.replace(NIKUD_RE, '').length;
+  return Math.max(40, Math.floor(4 * cxW / perChar * 0.7)); // 0.7: טקסט בלי ניקוד רחב יותר מהדוגמה, ומקום לשבירת שורה בין מילים ולמילים רחבות
+}
+// מחזיר את טווח התיבות להצגה [a,b) בתוך [s,e), כשההתאמה [ml,mr) בערך באמצע. cap=0: בלי חיתוך
+function cxClip(T, s, e, ml, mr, cap) {
+  if (!cap) return { a: s, b: e };
+  let all = 0;
+  for (let t = s; t < e && all <= cap; t++) all += tokLen(T[t]);
+  if (all <= cap) return { a: s, b: e };
+  ml = Math.min(Math.max(ml, s), e); mr = Math.min(Math.max(mr, ml), e);
+  let m = 0; for (let t = ml; t < mr && m <= cap; t++) m += tokLen(T[t]);
+  const before = Math.max(cap * 0.08, (cap - m) / 2);
+  let a = ml, acc = 0;
+  while (a > s && acc + tokLen(T[a - 1]) <= before) acc += tokLen(T[--a]);
+  // אחרי ההתאמה: מה שנשאר מהקיבולת, ועוד רבע כדי שה-line-clamp יחתוך בסוף שורה ולא באמצע
+  const after = Math.max(0, cap - acc - m) + cap * 0.25;
+  let b = mr, acc2 = 0;
+  while (b < e && acc2 < after) acc2 += tokLen(T[b++]);
+  if (mr === ml && b === ml) b = Math.min(e, ml + 1);
+  return { a, b };
+}
+const CX_CUT = '<span class="cxCut" aria-hidden="true">…</span>';
 
 /* ---------- סינון טקסטואלי חופשי בתוך תוצאות החיפוש (לא קשור לחישוב הגימטרי) ---------- */
 // "היתולי": הסרה היוריסטית של תחיליות/סיומות נפוצות — תופס הרבה מהטיות השם/הסמיכות הנפוצות,
@@ -1321,7 +1360,8 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const metaTag = prs ? `<span class="tag prs">${esc(parshaName(prs))}</span>` : seder ? `<span class="tag seder">${esc(groupName(seder))}</span>` : '';
   // ד״ה ברש״י: לא מוצג כתגית נפרדת ליד הייחוס — מודגש (bold) בתוך גוף הפירוש עצמו (.cx), ע״י ספירת התיבות של הד״ה
   const dhLen = (bk.cat === 2 || bk.cat === 5 || bk.cat >= 8) ? E.tokens(dibburFor(r.u)).length : 0, boldEnd = dhLen ? s + dhLen : s;
-  const tfRanges = (st.tf && st.tf.trim()) ? tfWordRanges(T, s, e, st.tf, st.fuzzy) : null;
+  const { a: cs, b: ce } = cxClip(T, s, e, r.l, r.r, st.cxCap || 0); // עד 4 שורות סביב ההתאמה (ראו cxClip)
+  const tfRanges = (st.tf && st.tf.trim()) ? tfWordRanges(T, cs, ce, st.tf, st.fuzzy) : null;
   // שורת-נוטריקון (method ∈ notRt/notB/notC/notSt): צביעת האות הבודדת שחולצה (צהוב-זוהר = גם מילולי,
   // ירוק-זוהר = ערכי-בלבד) במקום הדגשת-כל-החלון הרגילה של cxHtml (אין תמיכה ב-tfRanges כאן — זניח,
   // שדה-הסינון-הטקסטואלי עדיין מסנן איזה שורות מוצגות דרך tfRowOk, רק ההדגשה-בתוך-הטקסט לא חלה כאן).
@@ -1333,7 +1373,7 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const wmTags = isNot ? `<span class="tag" data-m="${NOT_MATCH[notGlow][0]}" title="${L(NOTARIKON_GLOW_TITLE[notGlow])}">${L(NOT_MATCH[notGlow][1])}</span>`
     : wmIds.length ? wmIds.map(id => `<span class="tag" data-fam="${famKeyOf(id)}" data-m="${id}" title="${wmTitle}">${esc(wmName(id))}</span>`).join('')
     : `<span class="tag" title="${wmTitle}">${L('מספר')}</span>`;
-  const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
+  const cxContent = (cs > s ? CX_CUT + ' ' : '') + (isNot ? notarikonCxHtml(T, cs, ce, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, cs, ce, r.l, r.r, boldEnd, tfRanges)) + (ce < e ? ' ' + CX_CUT : '');
   // כפתור "פתיחה בספר" ליד ההעתקה: מעבר למסך הקריאה, לספר (או לספר שעליו המפרש / התרגום), לפרק וליחידה של התוצאה
   // ⧉ וכפתור הספר בשורת התגיות, אחרי הקטגוריה והפרשה / הסדר
   const canGo = window.GimReader && window.GimReader.canOpen(u.b), goAt = `data-go="${u.b},${u.ch},${u.n}"`, goTip = esc(`${L('פתיחה בספר, במסך הקריאה')}: ${ref(u)}`);
@@ -1362,6 +1402,7 @@ function renderWindow(k, start) {
   const count = Math.min(WINDOW, total - start);
   st.winStart = start; st.winCount = count;
   const groupPos = new Set(st.groups.map(g => g.pos));
+  st.cxCap = cxCapFor(box);
   let h = '';
   for (let p = start; p < start + count; p++) h += buildRowHtml(st, p, idxArr, groupPos, start);
   const vh = vRowH(st, total);
@@ -1394,6 +1435,7 @@ function appendLiveRows(k) {
   st.winCount = targetCount;
   if (targetCount > renderedCount) { // יש שורות-חדשות להוסיף בסוף (עד תקרת-החלון)
     const groupPos = new Set(st.groups.map(g => g.pos));
+    if (!st.cxCap) st.cxCap = cxCapFor(box);
     let h = '';
     for (let p = renderedCount; p < targetCount; p++) h += buildRowHtml(st, p, null, groupPos);
     rowsEl.insertAdjacentHTML('beforeend', h);
