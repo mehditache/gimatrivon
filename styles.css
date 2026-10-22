@@ -319,6 +319,12 @@ textarea{width:100%;resize:none;height:5.6rem;background:#fff;border:1px solid v
 .goRd{flex:none;width:1.6rem;height:1.6rem;display:inline-grid;place-content:center;border:1px solid var(--ln);border-radius:7px;background:var(--pn);color:var(--mu);line-height:1;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
 .goRd svg{width:.95rem;height:.95rem;display:block}
 .goRd:hover,.goRd:focus-visible{border-color:var(--ac);background:var(--acs);color:var(--ac)}
+/* הייחוס (״בראשית א:א״) פותח גם הוא את הספר */
+.rs .rf b.goRef{cursor:pointer}
+.rs .rf b.goRef:hover,#stage .rs .rf b.goRef:hover{color:var(--ac);text-decoration:underline;text-underline-offset:3px}
+/* הסבר בריחוף לכפתורים ולייחוס בתוצאות (resTips ב-app.js) */
+.resTip{position:fixed;z-index:9999;max-width:min(320px,90vw);padding:.3rem .6rem;border-radius:7px;background:#2a2117;color:#fbf4e2;font:500 .78rem/1.4 var(--ui);box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;direction:rtl;text-align:center}
+:root[data-theme=dark] .resTip{background:#efe3c9;color:#241b11}
 .cx{font:1.05rem/1.7 var(--tf);margin-top:.15rem;cursor:text}mark{background:var(--markbg);color:inherit;border-bottom:2px solid var(--ac);border-radius:3px;padding:0 .1rem}
 .rs .rf b{cursor:text}
 .cx b{font-weight:700;color:#5e4518}
@@ -722,11 +728,11 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 #stage .cx b{color:#5e4518}
 :root[data-theme=dark] #stage .cx b{color:#e7c77e}
 #stage .cx .cxEnd{white-space:nowrap}
-#stage .cx .cpy{display:inline-grid;width:1.25rem;height:1.25rem;vertical-align:-.15rem;margin-inline-start:.35rem;border:0;background:transparent;color:var(--mu);font-size:.78rem;opacity:.75}
-#stage .cx .cpy:hover{opacity:1;background:var(--chip);color:var(--ac)}
-#stage .cx .goRd{display:inline-grid;width:1.25rem;height:1.25rem;vertical-align:-.2rem;margin-inline-start:.2rem;border:0;background:transparent;color:var(--mu);opacity:.75}
+/* כפתורי ההעתקה והפתיחה בספר בסוף הפסוק: במסגרת, כמו כפתורים */
+#stage .cx .cpy,#stage .cx .goRd{display:inline-grid;width:1.45rem;height:1.45rem;vertical-align:middle;margin-inline-start:.35rem;border:1px solid var(--ln);border-radius:6px;background:var(--pn);color:var(--mu);font-size:.78rem}
+#stage .cx .goRd{margin-inline-start:.25rem}
 #stage .cx .goRd svg{width:.9rem;height:.9rem}
-#stage .cx .goRd:hover,#stage .cx .goRd:focus-visible{opacity:1;background:var(--chip);color:var(--ac)}
+#stage .cx .cpy:hover,#stage .cx .goRd:hover,#stage .cx .cpy:focus-visible,#stage .cx .goRd:focus-visible{border-color:var(--ac);background:var(--chip);color:var(--ac)}
 #stage .gh{display:flex;align-items:baseline;gap:.5rem;white-space:nowrap;overflow:hidden;background:var(--rdBar);border:0;border-bottom:1px solid var(--ln2);margin:0 -.8rem .1rem;padding:.45rem .8rem;font:600 .74rem var(--ui);color:var(--mu)}
 #stage .gh .ghM{flex:none;font-weight:700;color:var(--ac)}
 #stage .gh .ghM[data-m]{color:oklch(.45 .12 var(--h))}:root[data-theme=dark] #stage .gh .ghM[data-m]{color:oklch(.82 .1 var(--h))}
