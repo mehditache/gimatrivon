@@ -232,9 +232,6 @@ textarea{width:100%;resize:none;height:5.6rem;background:#fff;border:1px solid v
 /* שורת נוטריקון מקוננת בתוך מלבן ה"רגילה" (ראו renderCenter ב-app.js): מפריד דק, ובלי style="--c:…"
    כך שפס-הצבע העליון של gr4cell נופל לברירת-המחדל הניטרלית (var(--ln2)) — לא מקבל צבע-משפחה כמו שאר המלבנים. */
 .notDivider{border:0;border-top:1px solid var(--ln2);margin:0}
-.gr4cell.disabled{cursor:default}
-.gr4cell.disabled:hover{background:#fff}
-.gr4cell.disabled .mn{opacity:.75}
 /* צביעת-האות שחולצה בתוצאת-נוטריקון (שורות נוטריקון משולבות ברשימת-התוצאות הרגילה #rl{k} — אין קונטיינר
    נפרד): אותה שפת-עיצוב בדיוק כמו הדגשת-מילה-שלמה (mark, למעלה) — מלבן (לא אליפסה) + פס תחתון מלא (לא
    underline מקווקו/זוהר). צהוב = התאמה מילולית מדויקת (אותן אותיות, אותו סדר), ירוק = התאמה ערכית-בלבד
@@ -510,6 +507,7 @@ html[lang="en"] .dlg{direction:ltr}
    ערך מקבל את מלוא-רוחב-התא ולא נחתך יותר בשלוש-נקודות (אושר ע"י המשתמש במוק, 2026-10-15). */
 .cGrid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin-bottom:.55rem}
 .cGridSingle{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.ccell.notCell .ccChip{cursor:pointer}
 .ccell{position:relative;background:var(--pn);border:1px solid var(--ln2);border-radius:var(--r);padding:.5rem .55rem .45rem;text-align:start;box-shadow:0 1px 2px rgba(90,65,20,.07);overflow:visible;cursor:default}
 .ccell::before,.ccell::after{content:"";position:absolute;top:0;height:3px;width:50%}
 /* שני חצאי הפס הם שני אלמנטים (לא גרדיאנט אחד), כדי שבהבהוב-התאמה יהבהב רק החצי שבצבע העיגול */
@@ -557,7 +555,7 @@ html[lang="en"] .dlg{direction:ltr}
 :root[data-theme=dark] .pn{box-shadow:0 0 0 1px rgba(255,255,255,.02) inset,0 16px 34px -18px rgba(0,0,0,.7)}
 :root[data-theme=dark] .brand h1,:root[data-theme=dark] .cx b,:root[data-theme=dark] .dh h2,:root[data-theme=dark] .doc h2{color:var(--gold)}
 :root[data-theme=dark] select{background-image:linear-gradient(45deg,transparent 50%,var(--mu) 50%),linear-gradient(135deg,var(--mu) 50%,transparent 50%)}
-:root[data-theme=dark] .chip,:root[data-theme=dark] .srcCard,:root[data-theme=dark] .gr,:root[data-theme=dark] .gr4,:root[data-theme=dark] .gr4cell,:root[data-theme=dark] .gr4Wrap,:root[data-theme=dark] .rs,:root[data-theme=dark] .rs:hover,:root[data-theme=dark] .gr4cell.disabled:hover,:root[data-theme=dark] .mcard{background:var(--pn2)}
+:root[data-theme=dark] .chip,:root[data-theme=dark] .srcCard,:root[data-theme=dark] .gr,:root[data-theme=dark] .gr4,:root[data-theme=dark] .gr4cell,:root[data-theme=dark] .gr4Wrap,:root[data-theme=dark] .rs,:root[data-theme=dark] .rs:hover,:root[data-theme=dark] .mcard{background:var(--pn2)}
 :root[data-theme=dark] .chip,:root[data-theme=dark] textarea,:root[data-theme=dark] .tfInp{color:var(--tx)}
 :root[data-theme=dark] .cb{border-color:#6b5b36;background:var(--pn2)}
 :root[data-theme=dark] textarea,:root[data-theme=dark] .tfInp{background:var(--pn2)}
@@ -752,7 +750,6 @@ html.forcePhone body[data-mode=gem] .top{border-bottom:0;min-height:0;padding-bo
 #stage .gr4cell{background:transparent;border-top:0;border-inline-start:1px dashed var(--ln2);padding:.45rem .25rem .3rem;align-items:center;gap:.2rem}
 #stage .gr4cell:first-child{border-inline-start:0}
 #stage .gr4cell:hover{background:var(--hov)}
-#stage .gr4cell.disabled:hover{background:transparent}
 #stage .gr4cell .mn{text-align:center;font:700 .72rem var(--ui);color:var(--mu)}
 .gr4cell[data-m=regular]{--fam:var(--famReg)}.gr4cell[data-m=atbash]{--fam:var(--famAtbash)}.gr4cell[data-m=atbach]{--fam:var(--famAtbach)}.gr[data-m=milui]{--fam:var(--famMilui)}
 #stage .gr4cell[data-m=regular] .mn,#stage .gr4cell[data-m=atbash] .mn,#stage .gr4cell[data-m=atbach] .mn,#stage .gr[data-m=milui] .mn{color:var(--fam);font-size:.78rem}
