@@ -254,6 +254,24 @@ t('reader', 'קישור ישיר #read/…: כל ספר, מסכת וטור עו�
     ['#read/Genesis/1/5', '#read/Berakhot/2b', '#read/OC/intro', 'ref,0,1,5', 'tal,Berakhot,0', 'tal,Berakhot,1', 'tur,OC,60', 'ref,' + bkIdx(7, 'הלכות שבת') + ',1,2', null]);
 });
 
+// ---- מעבר מתוצאת גימטריה לספר במסך הקריאה (unitRef) ----
+t('reader', 'unitRef: כל יחידה בקורפוס (מלבד המילון) מגיעה לספר, לפרק וכמעט תמיד לפסוק שלה במסך הקריאה', () => {
+  let none = 0, v0 = 0, n = 0;
+  for (const u of B.units) { if (u[0] === 6) continue; n++; const x = RC.unitRef(RIX, u[1], u[2], u[3]); if (!x || x.kind !== 'ref' || !RIX.base.includes(x.b) || x.ch !== u[2]) none++; else if (x.v !== u[3]) v0++; }
+  return n > 100000 && none === 0 && v0 < n / 1000;
+});
+t('reader', 'unitRef: מפרש ותרגום → הספר שעליו הם; מילון ופרק שלא קיים → null; פסוק שלא קיים → תחילת הפרק', () => {
+  const ge = bkIdx(0, 'בראשית'), ber = bkIdx(1, 'משנה ברכות'), sh = bkIdx(7, 'הלכות שבת'), r = (b, ch, v) => { const x = RC.unitRef(RIX, b, ch, v); return x && [x.b, x.ch, x.v]; };
+  const L = RIX.links[ge], Lr = RIX.links[sh];
+  eq([r(ge, 1, 5), r(L.cm, 1, 5), r(L.onkelos, 12, 2), r(L.yonatan, 3, 1), r(RIX.links[ber].cm, 2, 3), r(sh, 3, 5), ...Lr.cms.map(c => r(c.b, 3, 5)), r(bkIdx(6, 'מילון עברי'), 0, 1), r(ge, 51, 1), r(ge, 1, 40)],
+    [[ge, 1, 5], [ge, 1, 5], [ge, 12, 2], [ge, 3, 1], [ber, 2, 3], [sh, 3, 5], ...Lr.cms.map(() => [sh, 3, 5]), null, null, [ge, 1, 0]]);
+});
+t('reader', 'תוצאות הגימטריה: כפתור "פתיחה בספר" והייחוס פותחים את הספר, עם הסבר בריחוף; הלחיצה לא בוחרת את השורה', () => {
+  const a = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8'), r = fs.readFileSync(path.join(__dirname, '..', 'reader.js'), 'utf8');
+  return /class="goRd" role="button" tabindex="0" data-tip="\$\{goTip\}"/.test(a) && /<b class="goRef" data-tip="\$\{goTip\}" \$\{goAt\}>/.test(a) && /goAt = `data-go="\$\{u\.b\},\$\{u\.ch\},\$\{u\.n\}"`/.test(a) &&
+    /class="cpy" role="button" tabindex="0" data-tip=/.test(a) && /closest\('\.goRd,\.goRef'\); if \(go\) \{ e\.stopPropagation\(\); return openInReader\(go\); \}/.test(a) && /G\.GimReader = \{ canOpen, openUnit \}/.test(r);
+});
+
 // ---- ראשי תיבות וקיצורים בקפיצה (v3.21.0) ----
 t('reader', 'ראשי תיבות: תנ״ך (ש״א, מ״ב, דה״י, שה״ש) וקיצור בגרש (בר׳, שמ׳, תהל׳)', () => { const r = q => { const x = RC.parseRef(RIX, q, null); return x && [B.books[x.b].heTitle, x.ch, x.v]; };
   eq([r('ש"א ג'), r('שמו״א ג ד'), r('מ"ב ד'), r('דה"י א ה'), r('שה"ש ב'), r("בר' א ג"), r('שמ׳ יב'), r("תהל' כג"), r('ספר בראשית'), r('בראשית פרק א פסוק ג')],
