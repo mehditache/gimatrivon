@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.29.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.29.2'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -78,6 +78,7 @@ const EN = {
   'מ ': 'From ', 'עד ': 'to ', 'פרק': 'Ch.', "פס׳": 'Ver.', 'מפרק': 'From chapter', 'מפסוק': 'From verse', 'עד פרק': 'To chapter', 'עד פסוק': 'To verse',
   'רגילה': 'Regular', 'אתב״ש': 'Atbash', 'אטב״ח': 'Atbach', '+כולל': '+Kollel', '+תיבות': '+Words', '+אותיות': '+Letters', 'מילוי': 'Milui',
   'עם הכולל': 'With Kollel', 'עם מספר תיבות': 'With Word Count', 'עם מספר אותיות': 'With Letter Count',
+  'רגילה עם הכולל': 'Regular with Kollel', 'רגילה עם מספר תיבות': 'Regular with Word Count', 'רגילה עם מספר אותיות': 'Regular with Letter Count',
   'אתב״ש עם הכולל': 'Atbash with Kollel', 'אתב״ש עם מספר תיבות': 'Atbash with Word Count', 'אתב״ש עם מספר אותיות': 'Atbash with Letter Count',
   'אטב״ח עם הכולל': 'Atbach with Kollel', 'אטב״ח עם מספר תיבות': 'Atbach with Word Count', 'אטב״ח עם מספר אותיות': 'Atbach with Letter Count',
   'ר״ת': 'Acronym', 'אות ב׳': '2nd Letter', 'אות ג׳': '3rd Letter', 'ס״ת': 'Last Letters', 'נוטריקון': 'Notarikon',
@@ -111,6 +112,8 @@ const EN = {
 };
 function L(he) { return LANG === 'en' ? (EN[he] != null ? EN[he] : he) : he; }
 const MN = {}; E.METHODS.forEach(m => { MN[m.id] = m.name; });
+// "עם הכולל"/"עם מספר תיבות"/"עם מספר אותיות" של משפחת רגילה: בתווית תמיד "רגילה" בתחילה, כמו "אתב״ש עם הכולל"
+['kollel', 'words', 'letters'].forEach(id => { MN[id] = 'רגילה ' + MN[id]; });
 // שלוש משפחות הגימטריה שמוצגות כמלבן 4-עמודות (בסיס/+כולל/+תיבות/+אותיות): רגילה/אתב״ש/אטב״ח.
 // משותף ל-renderCenter (תצוגת המלבנים) ול-drawSearchMethods (פנל הסינון בעץ) כדי שהמבנה/התוויות יישארו עקביים.
 const GEM_FAMILIES = [
@@ -210,12 +213,14 @@ const PARSHA_EN = {
 };
 const parshaName = he => LANG === 'en' ? (PARSHA_EN[he] || he) : he;
 /* ---------- נוטריקון: ר״ת / אות ב׳ / אות ג׳ / ס״ת ---------- */
-// שורה מקוננת בתוך מלבן ה"רגילה" (לא כפתור/קופסה נפרדת) — תמיד גלויה, "מנוטרלת" (לא לחיצה, בלי פס-צבע,
+// שורה מקוננת בתוך מלבן ה"רגילה" (לא כפתור/קופסה נפרדת) — תמיד גלויה ולחיצה (ממיינת לפי השיטה), בלי פס-צבע,
 // בלי עיגולי-התאמה-לצד-שני), מציגה רק מונה-תוצאות חי לכל אחת מ-4 שיטות-החילוץ. מקורות-החיפוש מוגבלים
 // תמיד לתנ״ך/משנה/אונקלוס/יונתן (NOTARIKON_CATS), בחיתוך עם עץ-המקורות שנבחר לצד (st.sel) — לא עץ נפרד.
 const NOTARIKON_IDS = ['notRt', 'notB', 'notC', 'notSt'];
 const NOTARIKON_LABELS = { notRt: 'ר״ת', notB: 'אות ב׳', notC: 'אות ג׳', notSt: 'ס״ת' };
-NOTARIKON_IDS.forEach(m => { MN[m] = 'נוטריקון: ' + NOTARIKON_LABELS[m]; }); // משולב ברשימה המאוחדת (showMore) — כותרת-קבוצה/תגית-שורה משתמשות ב-MN כרגיל
+NOTARIKON_IDS.forEach(m => { MN[m] = 'נוטריקון: ' + NOTARIKON_LABELS[m]; });
+// סדר השיטות ברשימת התוצאות = סדר לוח החישוב: רגילה, +כולל … עד סוף השורה, אתב״ש …, אטב״ח …, מילוי, ובסוף נוטריקון
+const METHOD_RANK = {}; [...GEM_FAMILIES.flatMap(f => f.ids), 'milui', ...NOTARIKON_IDS].forEach((id, i) => { METHOD_RANK[id] = i; }); // משולב ברשימה המאוחדת (showMore) — כותרת-קבוצה/תגית-שורה משתמשות ב-MN כרגיל
 const NOTARIKON_POS = E.NOTARIKON_POS; // {notRt:0, notB:1, notC:2, notSt:-1}
 const NOTARIKON_CATS = new Set([0, 1, 3, 4]); // תנ״ך, משנה, אונקלוס, יונתן (לא רש״י/ברטנורא/מילון)
 const NOTARIKON_BOOKS = new Set(B.books.map((b, i) => i).filter(i => NOTARIKON_CATS.has(B.books[i].cat)));
@@ -566,7 +571,7 @@ function visibleIdx(st) {
   const c = st.sortCache;
   if (c && c.sto === sto && c.key === key) return c.idx;
   // עיגולי-נוטריקון מקודמים לפי השיטה עצמה; עיגולי-גימטריה לפי שיטת-המילה (wms) של הקבוצה
-  const id = st.hitsSort, isNot = NOTARIKON_IDS.includes(id), hitG = sto.groups.map(g => isNot ? g.method === id : g.wms.includes(id));
+  const id = st.hitsSort, isNot = NOTARIKON_IDS.includes(id), hitG = sto.groups.map(g => isNot ? g.method === id : !g.notarikon && g.wms.includes(id));
   const out = new Int32Array(n); let m = 0;
   for (const want of [true, false]) for (let p = 0; p < n; p++) { const i = base ? base[p] : p; if (hitG[sto.g[i]] === want) out[m++] = i; }
   st.sortCache = { sto, key, idx: out };
@@ -747,7 +752,7 @@ function bind(k) {
   };
   $('#ms' + k).onclick = e => { const tw = e.target.closest('.tw[data-fo]'); if (!tw) return; const o = tw.dataset.fo; st.smOpen.has(o) ? st.smOpen.delete(o) : st.smOpen.add(o); drawSearchMethods(k); };
   $('#wrb' + k).onclick = e => { const t = e.target.dataset.t; if (!t) return; st.ms = t === 'all' ? new Set(E.METHODS.map(m => m.id)) : new Set(); run(k); renderCenter(); };
-  $('#gr' + k).addEventListener('click', e => { const ncp = e.target.closest('.cpy'); if (ncp) { e.stopPropagation(); return doCopy(ncp); } if (e.target.closest('.bdg,.bdgH')) return; const row = e.target.closest('.gr,.gr4cell'); if (!row || row.classList.contains('disabled')) return; const m = row.dataset.m; if (!m) return; st.ms.has(m) ? st.ms.delete(m) : st.ms.add(m); run(k); renderCenter(); });
+  $('#gr' + k).addEventListener('click', e => { const ncp = e.target.closest('.cpy'); if (ncp) { e.stopPropagation(); return doCopy(ncp); } if (e.target.closest('.bdg,.bdgH')) return; const row = e.target.closest('.gr,.gr4cell'); if (!row) return; if (row.classList.contains('notCell')) return hitsSortToggle(k, row.dataset.m); const m = row.dataset.m; if (!m) return; st.ms.has(m) ? st.ms.delete(m) : st.ms.add(m); run(k); renderCenter(); });
   $('#gr' + k).addEventListener('keydown', e => { const ncp = e.target.closest('.cpy'); if (!ncp) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); doCopy(ncp); } });
   const debRun = () => { clearTimeout(st.timer); st.timer = setTimeout(() => run(k), 350); }; // ממתינים שההקלדה "תירגע" לפני שמריצים חיפוש כבד
   // עדכון טווח פר-ספר (Map st.ranges): patch חלקי על {fc,fv,tc,tv,pname}; טווח ריק לגמרי מוסר מה-Map
@@ -799,7 +804,7 @@ function bind(k) {
   $('#fu' + k).onchange = e => { st.fullUnit = e.target.checked; run(k); };
   $('#sw' + k).onchange = e => { st.singleWord = e.target.checked; run(k); };
   $('#tfx' + k).onclick = () => { st.tf = ''; $('#tf' + k).value = ''; tfRebuild(k); };
-  $('#fp' + k).querySelectorAll('input[data-notmode]').forEach(r => { r.onchange = () => { if (r.checked) { st.notMode = r.dataset.notmode; runNotarikon(k); } }; });
+  $('#fp' + k).querySelectorAll('input[data-notmode]').forEach(r => { r.onchange = () => { if (r.checked) { st.notMode = r.dataset.notmode; run(k); } }; });
   drawSearchMethods(k); drawTree(k); fsInit(k);
 }
 
@@ -836,9 +841,9 @@ function renderCenter() {
       }).join('')}</div>`;
       if (f.key === 'regular') {
         // שורת נוטריקון מקוננת בתוך אותו מלבן (לא כפתור/קופסה נפרדת) — תמיד גלויה, בלי פס-צבע עליון
-        // (אין style="--c:…"), במראה מנוטרל (gr4cell.disabled): רק מונה-תוצאות חי לכל שיטת-חילוץ,
+        // (אין style="--c:…"): רק מונה-תוצאות חי לכל שיטת-חילוץ. לחיצה על התא (כמו על העיגול) ממיינת לפי השיטה,
         // ללא ערך-גי' (תמיד שווה ל'רגילה' שכבר מוצג למעלה) וללא עיגולי-התאמה-לצד-שני.
-        const notCells = NOTARIKON_IDS.map(m => { const c = (st.notCounts && st.notCounts[m]) || 0, hitOn = st.hitsSort === m ? ' on' : ''; return `<div class="gr4cell disabled" data-m="${m}" title="${L(NOTARIKON_LABELS[m])} — ${L('נוטריקון')}"><div class="mn">${L(NOTARIKON_LABELS[m])}</div><div class="bdgRow"><span class="bdgH${hitOn}" data-m="${m}" title="${fmt(c)} ${L('התאמות נוטריקון')}${hitOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(c)}</span></div></div>`; }).join('');
+        const notCells = NOTARIKON_IDS.map(m => { const c = (st.notCounts && st.notCounts[m]) || 0, hitOn = st.hitsSort === m ? ' on' : ''; return `<div class="gr4cell notCell${hitOn}" data-m="${m}" title="${L(NOTARIKON_LABELS[m])} — ${L('נוטריקון')}${hitOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}"><div class="mn">${L(NOTARIKON_LABELS[m])}</div><div class="bdgRow"><span class="bdgH${hitOn}" data-m="${m}" title="${fmt(c)} ${L('התאמות נוטריקון')}${hitOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(c)}</span></div></div>`; }).join('');
         return `<div class="gr4Wrap">${cells}<hr class="notDivider"><div class="gr4">${notCells}</div></div>`;
       }
       const baseR = res[k][f.ids[0]], noteFull = hasTxt ? (baseR.transformedText || '') : '';
@@ -896,7 +901,7 @@ function updateCenterCounts(k) {
       : `${fmt(hits)} התאמות ${isNot ? 'נוטריקון' : 'במקורות'}${on ? ' — פעיל, לחצו לביטול' : ' — לחצו למיון התוצאות לפי שיטה זו'}`;
   });
   // אותו עדכון-חי קל-משקל, גם על לוח-החישוב המשולב של UX הנייד (#mgr) — ראו buildMobileGrid למטה.
-  // ה-class ccHits הוא גם עיגול-"תוצאות במקורות" וגם עיגול-נוטריקון (disabled), מבדילים לפי NOTARIKON_IDS
+  // ה-class ccHits הוא גם עיגול-"תוצאות במקורות" וגם עיגול-נוטריקון, מבדילים לפי NOTARIKON_IDS
   // בדיוק כמו למעלה — data-k מזהה לאיזה צד (א׳/ב׳) העיגול הזה שייך בתוך התא הממוזג.
   const mroot = $('#mgr');
   if (mroot) {
@@ -945,9 +950,9 @@ function buildMobileGrid(res) {
       const notCells = NOTARIKON_IDS.map(m => {
         const cA = (S.A.notCounts && S.A.notCounts[m]) || 0, cB = (S.B.notCounts && S.B.notCounts[m]) || 0;
         const hitOnA = S.A.hitsSort === m ? ' on' : '', hitOnB = S.B.hitsSort === m ? ' on' : '';
-        return `<div class="ccell disabled"><div class="ccMn">${L(NOTARIKON_LABELS[m])}</div><div class="ccVals">
-          <div class="ccChip" data-k="A"><button class="ccHits${hitOnA}" data-k="A" data-m="${m}" title="${L('התאמות נוטריקון')}">${fmt(cA)}</button></div>
-          <div class="ccChip" data-k="B"><button class="ccHits${hitOnB}" data-k="B" data-m="${m}" title="${L('התאמות נוטריקון')}">${fmt(cB)}</button></div>
+        return `<div class="ccell notCell"><div class="ccMn">${L(NOTARIKON_LABELS[m])}</div><div class="ccVals">
+          <div class="ccChip" data-k="A" data-not="${m}"><button class="ccHits${hitOnA}" data-k="A" data-m="${m}" title="${L('התאמות נוטריקון')}">${fmt(cA)}</button></div>
+          <div class="ccChip" data-k="B" data-not="${m}"><button class="ccHits${hitOnB}" data-k="B" data-m="${m}" title="${L('התאמות נוטריקון')}">${fmt(cB)}</button></div>
         </div></div>`;
       }).join('');
       return `<div class="cGrid4"${idAttr}>${cellsHtml}</div><hr class="notDivider"><div class="cGrid4">${notCells}</div>`;
@@ -982,6 +987,8 @@ function bindMobileGrid() {
     if (hb) { hitsSortToggle(hb.dataset.k, hb.dataset.m); return; }
     const cp = e.target.closest('.cpy');
     if (cp) { copyText(cp.dataset.copy); cp.textContent = '✓'; setTimeout(() => { cp.textContent = '⧉'; }, 900); return; }
+    const nchip = e.target.closest('.ccChip[data-not]');
+    if (nchip) { hitsSortToggle(nchip.dataset.k, nchip.dataset.not); return; }
     const chip = e.target.closest('.ccChip[data-m]');
     if (chip) { const k = chip.dataset.k, m = chip.dataset.m, st = S[k]; st.ms.has(m) ? st.ms.delete(m) : st.ms.add(m); run(k); renderCenter(); }
   });
@@ -1150,8 +1157,11 @@ function runNotarikon(k) {
     if (myGen !== st.notGen) return;
     st.notCounts = counts;
     if (rows.length) {
-      st.info = st.info.concat(NOTARIKON_IDS.filter(m => counts[m]).map(m => ({ method: m, target, wms: ['regular'], total: counts[m], notarikon: true })));
-      storeAdd(st.all, rows);
+      const add = () => { st.info = st.info.concat(NOTARIKON_IDS.filter(m => counts[m]).map(m => ({ method: m, target, wms: ['regular'], total: counts[m], notarikon: true }))); storeAdd(st.all, rows); };
+      // שורות הנוטריקון תמיד בסוף הרשימה (אחרי מילוי): כל עוד החיפוש הראשי רץ הן נשמרות בצד, ו-run() מוסיף
+      // אותן כשהוא מסיים (flushNot). אחרת היו נכנסות לראש הרשימה, כי בדרך-כלל הן מסיימות ראשונות.
+      if (st.mainBusy) { st.notPend = add; updateCenterCounts(k); return; }
+      add();
       // שימו-לב: *לא* בוחרים (select) כאן, בכוונה — runNotarikon בדרך-כלל מסיים *לפני* ש-run()'s step()-loop
       // החיצוני (שיטות-חיפוש רגילות) מסיים; אם היינו בוחרים כבר כאן, הבחירה הייתה מתווספת-מחדש (class "on")
       // על אלמנט-DOM חדש בכל רענון-חי נוסף של הלולאה החיצונית (עד שזו מסיימת) — בדיוק אותו באג-הבהוב-מסגרת
@@ -1187,19 +1197,29 @@ function runNotarikon(k) {
     finish(counts, rows, target);
   }, GEM_WAIT);
 }
+// מוסיף את שורות-הנוטריקון שחיכו לסוף החיפוש הראשי (ראו runNotarikon). מחזיר true אם נוספו שורות
+function flushNot(st) {
+  st.mainBusy = false;
+  const f = st.notPend; st.notPend = null;
+  if (f) f();
+  return !!f;
+}
 function run(k) {
   const st = S[k]; st.gen = (st.gen || 0) + 1; const myGen = st.gen; // מבטל כל חיפוש מדורג קודם של הצד הזה
   if (!IDX) { if (GEM.busy) gemShowWait(); else $('#rs' + k).textContent = L('הקורפוס עדיין נטען…'); return; }
   const box = $('#rl' + k);
   st.all = makeStore(); st.cur = -1; st.winStart = 0; st.winCount = 0; st.info = []; box.innerHTML = ''; box.classList.add('searching'); updateTfBar(k);
+  st.mainBusy = true; st.notPend = null;
   runNotarikon(k); // אחרי האיפוס (לא לפניו) — כדי שמסקנה-סינכרונית (אינדקס-נוטריקון כבר בנוי) לא תימחק ע״י האיפוס
   renderCenter(); // מרענן מייד את עיגולי-המידע (כולל איפוסם) — גם אם החיפוש נעצר כאן (למשל טקסט ריק) ולא מגיע לסופו
   const say = h => { $('#rs' + k).innerHTML = h; };
+  // עצירה מוקדמת (אין שיטות/מקורות/טקסט): אין חיפוש ראשי, ולכן שורות-נוטריקון שכבר חיכו מוצגות מיד
+  const stop = h => { say(h); if (flushNot(st)) { if (!appendLiveRows(k)) renderWindow(k, 0); updateTfBar(k); } };
   const { q, num, wms, sms, limit, filt, targetsFor } = buildSearchContext(st);
-  if (!sms.length) return say(L('סמן לפחות סוג גימטריה אחד לחיפוש בפסוקים (⚙).'));
-  if (!num && !wms.length) return say(L('סמן לפחות סוג גימטריה אחד עבור מילת החיפוש.'));
-  if (!st.sel.size) return say(L('סמן לפחות מקור אחד בעץ המקורות.'));
-  if (!num && !E.normalizeText(q).words.length) return say(L('התחל להקליד — התוצאות יופיעו כאן בזמן אמת.'));
+  if (!sms.length) return stop(L('סמן לפחות סוג גימטריה אחד לחיפוש בפסוקים (⚙).'));
+  if (!num && !wms.length) return stop(L('סמן לפחות סוג גימטריה אחד עבור מילת החיפוש.'));
+  if (!st.sel.size) return stop(L('סמן לפחות מקור אחד בעץ המקורות.'));
+  if (!num && !E.normalizeText(q).words.length) return stop(L('התחל להקליד — התוצאות יופיעו כאן בזמן אמת.'));
   const t0 = performance.now();
   // כל שיטת-חיפוש נסרקת כ"חתיכה" נפרדת: נבדק בעבר שפיצול עדין יותר לפי *טווח יחידות* (כמה פרוסות
   // לכל שיטה) רק האט את הזמן הכולל — ל-setTimeout יש overhead לא-מבוטל, וכפל הקריאות עלה יותר משהחיסכון
@@ -1219,7 +1239,7 @@ function run(k) {
   // אם יש מיון-לפי-עיגול-תוצאות פעיל (st.hitsSort — לחיצה על עיגול-המקורות): היעדים ששייכים לשיטת-המילה
   // הזו (tg.tag כולל אותה) מוזזים לראש רשימת-היעדים של כל שיטת-חיפוש, לפני בניית התור — כך שהם מקבלים
   // עדיפות על התקציב (left) — רלוונטי רק כשתקרת-הבטיחות נחצית.
-  const queue = []; for (const sm of sms) { const list = targetsFor(sm); if (st.hitsSort) list.sort((a, b) => (b.tag.includes(st.hitsSort) ? 1 : 0) - (a.tag.includes(st.hitsSort) ? 1 : 0)); for (const tg of list) queue.push({ sm, tg }); }
+  const queue = []; for (const sm of [...sms].sort((a, b) => METHOD_RANK[a] - METHOD_RANK[b])) { const list = targetsFor(sm); if (st.hitsSort) list.sort((a, b) => (b.tag.includes(st.hitsSort) ? 1 : 0) - (a.tag.includes(st.hitsSort) ? 1 : 0)); for (const tg of list) queue.push({ sm, tg }); }
   let left = limit;
   // שיטות-חיפוש שלא קיבלו אף יעד (למשל קולל/תיבות/אותיות כש-*כל* שיטות-המילה הפעילות אסורות עליהן לפי חוק
   // אי-ההתאמה) לא יופיעו בתור כלל — נחשבות "גמורות" כבר מההתחלה, כדי שמונה ההתקדמות (X/Y שיטות) יהיה מדויק.
@@ -1242,6 +1262,7 @@ function run(k) {
       const capNote = shown < total ? (LANG === 'en' ? ` · showing the first <b>${fmt(shown)}</b> (up to ${fmt(limit)})` : ` · מוצגות <b>${fmt(shown)}</b> הראשונות (עד ${fmt(limit)})`) : '';
       say(LANG === 'en' ? `<b>${fmt(total)}</b> matches in ${Math.round(performance.now() - t0)} ms${capNote}` : `<b>${fmt(total)}</b> התאמות ב-${Math.round(performance.now() - t0)} מ״ש${capNote}`);
       box.classList.remove('searching'); // ראו הערה למעלה ליד ההוספה — רק מעכשיו :hover שוב מגיב-מיידית כרגיל
+      flushNot(st); // שורות-הנוטריקון נכנסות רק עכשיו, בסוף הרשימה
       if (!st.all.n) box.innerHTML = `<div class="emp">${L('אין התאמות בטווח שנבחר.')}</div>`;
       else liveRefresh(k, true);
       updateTfBar(k);
@@ -1364,8 +1385,20 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const metaTag = prs ? `<span class="tag prs">${esc(parshaName(prs))}</span>` : seder ? `<span class="tag seder">${esc(groupName(seder))}</span>` : '';
   // ד״ה ברש״י: לא מוצג כתגית נפרדת ליד הייחוס — מודגש (bold) בתוך גוף הפירוש עצמו (.cx), ע״י ספירת התיבות של הד״ה
   const dhLen = (bk.cat === 2 || bk.cat === 5 || bk.cat >= 8) ? E.tokens(dibburFor(r.u)).length : 0, boldEnd = dhLen ? s + dhLen : s;
-  const { a: cs, b: ce } = cxClip(T, s, e, r.l, r.r, st.cxCap || 0); // עד 4 שורות סביב ההתאמה (ראו cxClip)
-  const tfRanges = (st.tf && st.tf.trim()) ? tfWordRanges(T, cs, ce, st.tf, st.fuzzy) : null;
+  const cap = st.cxCap || 0, hasTf = !!(st.tf && st.tf.trim());
+  let segs = [cxClip(T, s, e, r.l, r.r, cap)]; // עד 4 שורות סביב ההתאמה (ראו cxClip)
+  let tfRanges = hasTf ? tfWordRanges(T, segs[0].a, segs[0].b, st.tf, st.fuzzy) : null;
+  // סינון טקסטואלי שהמילה שלו נמצאת בחלק שקוצר: מציגים קטע סביב ההתאמה הגימטרית, "…", ואז קטע סביב המילה שחיפשו
+  if (hasTf && cap && !tfRanges.length) {
+    const all = tfWordRanges(T, s, e, st.tf, st.fuzzy), half = Math.max(20, Math.floor(cap * 0.45));
+    const g = cxClip(T, s, e, r.l, r.r, half);
+    const m = all.find(x => x.a >= g.b) || all.filter(x => x.b <= g.a).pop();
+    if (m) {
+      const t = cxClip(T, s, e, m.a, m.b, half);
+      if (m.a >= g.b) t.a = Math.max(t.a, g.b); else t.b = Math.min(t.b, g.a);
+      segs = [g, t]; tfRanges = all;
+    }
+  }
   // שורת-נוטריקון (method ∈ notRt/notB/notC/notSt): צביעת האות הבודדת שחולצה (צהוב-זוהר = גם מילולי,
   // ירוק-זוהר = ערכי-בלבד) במקום הדגשת-כל-החלון הרגילה של cxHtml (אין תמיכה ב-tfRanges כאן — זניח,
   // שדה-הסינון-הטקסטואלי עדיין מסנן איזה שורות מוצגות דרך tfRowOk, רק ההדגשה-בתוך-הטקסט לא חלה כאן).
@@ -1377,7 +1410,9 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
   const wmTags = isNot ? `<span class="tag" data-m="${NOT_MATCH[notGlow][0]}" title="${L(NOTARIKON_GLOW_TITLE[notGlow])}">${L(NOT_MATCH[notGlow][1])}</span>`
     : wmIds.length ? wmIds.map(id => `<span class="tag" data-fam="${famKeyOf(id)}" data-m="${id}" title="${wmTitle}">${esc(wmName(id))}</span>`).join('')
     : `<span class="tag" title="${wmTitle}">${L('מספר')}</span>`;
-  const cxContent = (cs > s ? CX_CUT + ' ' : '') + (isNot ? notarikonCxHtml(T, cs, ce, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, cs, ce, r.l, r.r, boldEnd, tfRanges)) + (ce < e ? ' ' + CX_CUT : '');
+  const piece = (a, b) => isNot ? notarikonCxHtml(T, a, b, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, a, b, r.l, r.r, boldEnd, tfRanges);
+  const lastB = segs[segs.length - 1].b;
+  const cxContent = segs.map((g, j) => (j ? ' ' + CX_CUT + ' ' : g.a > s ? CX_CUT + ' ' : '') + piece(g.a, g.b)).join('') + (lastB < e ? ' ' + CX_CUT : '');
   // כפתור "פתיחה בספר" ליד ההעתקה: מעבר למסך הקריאה, לספר (או לספר שעליו המפרש / התרגום), לפרק וליחידה של התוצאה
   // ⧉ וכפתור הספר בשורת התגיות, אחרי הקטגוריה והפרשה / הסדר
   const canGo = window.GimReader && window.GimReader.canOpen(u.b), goAt = `data-go="${u.b},${u.ch},${u.n}"`, goTip = esc(`${L('פתיחה בספר, במסך הקריאה')}: ${ref(u)}`);
