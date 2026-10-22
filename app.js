@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.28.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.29.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -267,9 +267,13 @@ const PFX_EN = ['', '', 'Rashi on ', 'Onkelos ', 'Targum Yonatan on ', 'Bartenur
 // הטקסט הגולמי של יחידה (לפני טוקניזציה, עדיין עם נקודות) — E.unpackText(IDX.units[ri].t) (באינדקס הוא שמור ארוז), לפי אותו סדר כמו IDX.units
 
 /* ---------- עץ המקורות: קטגוריה ← קבוצה ← ספר ---------- */
-const TREE = []; B.books.forEach((b, i) => { let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
+// מקורות שאין מחפשים בהם בגימטריה כלל (לא נטענים לאינדקס, לא מופיעים בעץ המקורות ולא בספירות) — רק במסך הקריאה:
+// ברטנורא (5), כסף משנה (8), השגות הראב״ד (9), משנה למלך (10)
+const NO_SEARCH_CATS = new Set([5, 8, 9, 10]);
+const SEARCH_BOOKS = B.books.map((_, i) => i).filter(i => !NO_SEARCH_CATS.has(B.books[i].cat));
+const TREE = []; SEARCH_BOOKS.forEach(i => { const b = B.books[i]; let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
 TREE.forEach(c => { c.ids = [].concat(...c.groups.map(g => g.ids)); });
-const ALL = new Set(B.books.map((_, i) => i));
+const ALL = new Set(SEARCH_BOOKS);
 const CATCOLORS = { 0: '#23527f', 1: '#8a6d1f', 2: '#6d8f1a', 3: '#9d2f8f', 4: '#c2571f', 5: '#1a8f92', 6: '#6d4b1f', 7: '#7a2e3b', 8: '#3f6f4a', 9: '#5b4a8a', 10: '#8a5a2b' };
 
 /* ---------- 54 פרשות השבוע (פרק:פסוק, חלוקה מסורתית) — רלוונטי רק לספרי החומש ולמקבילים (רש״י/אונקלוס) ---------- */
