@@ -282,7 +282,7 @@ const numVal = s => { const n = Math.trunc(Number(s)); return Number.isFinite(n)
 function copyText(txt) { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { const x = document.createElement('textarea'); x.value = txt; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); } catch (er) {} x.remove(); }); }
 const PFX = ['', '', 'רש״י על ', 'אונקלוס ', 'תרגום יונתן על ', 'ברטנורא על ', '', 'רמב״ם ', 'כסף משנה על ', 'השגות הראב״ד על ', 'משנה למלך על '];
 const PFX_EN = ['', '', 'Rashi on ', 'Onkelos ', 'Targum Yonatan on ', 'Bartenura on ', '', 'Mishneh Torah, ', 'Kessef Mishneh on ', "Ra'avad on ", 'Mishneh LaMelech on '];
-// הטקסט הגולמי של יחידה (לפני טוקניזציה, עדיין עם נקודות) — IDX.units[ri].t, לפי אותו סדר כמו IDX.units
+// הטקסט הגולמי של יחידה (לפני טוקניזציה, עדיין עם נקודות) — E.unpackText(IDX.units[ri].t) (באינדקס הוא שמור ארוז), לפי אותו סדר כמו IDX.units
 
 /* ---------- עץ המקורות: קטגוריה ← קבוצה ← ספר ---------- */
 const TREE = []; B.books.forEach((b, i) => { let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
@@ -320,7 +320,7 @@ function parashaOf(u) {
 }
 // ד״ה (דיבור המתחיל) לפירוש רש״י: כל פירוש בקורפוס פותח במילות הפסוק המפורשות ואז נקודה (למשל "בראשית ברא. אמר רבי יצחק…") —
 // נבדק על מדגם רחב ועובד באופן עקבי. ri = אינדקס היחידה (כמו ב-IDX.units, אותו סדר).
-function dibburFor(ri) { const raw = (IDX && IDX.units[ri] && IDX.units[ri].t) || ''; const idx = raw.indexOf('.'); return idx > 0 ? raw.slice(0, idx).trim() : ''; }
+function dibburFor(ri) { const raw = (IDX && IDX.units[ri] && E.unpackText(IDX.units[ri].t)) || ''; const idx = raw.indexOf('.'); return idx > 0 ? raw.slice(0, idx).trim() : ''; }
 // קיצור טקסט ארוך עם "…" (לד״ה / להערות שיטת מילוי-אתב״ש-אטב״ח) — הערך המלא תמיד זמין ב-title (mouse hover)
 const trunc = (s, n) => s.length > (n || 26) ? s.slice(0, n || 26).trim() + '…' : s;
 // [טיוטה — לא סופי, ממתין לאישור] הוספת מקף תצוגתי-בלבד בתוך השם המפורש (יהוה ← יה-וה) בטקסט-הפסוק
@@ -993,7 +993,7 @@ function setupMobileUX() {
 /* ---------- חיפוש ---------- */
 // ייחוס לתצוגה — "הערה N" הוסרה לגמרי לבקשת המשתמש (מספור פנימי של קטעי פירוש, לא משמעותי למשתמש)
 const ref = u => {
-  const b = B.books[u.b]; if (b.kind === 'word') return u.t;
+  const b = B.books[u.b]; if (b.kind === 'word') return E.unpackText(u.t);
   const p = (LANG === 'en' ? PFX_EN[b.cat] : PFX[b.cat]) + bookName(b.heTitle);
   if (b.kind === 'mishnah') return LANG === 'en' ? `${p} ch. ${heNum(u.ch)} mishnah ${heNum(u.n)}` : `${p} פרק ${heNum(u.ch)} משנה ${heNum(u.n)}`;
   if (b.kind === 'halakha') return LANG === 'en' ? `${p} ch. ${heNum(u.ch)} halakhah ${heNum(u.n)}` : `${p} פרק ${heNum(u.ch)} הלכה ${heNum(u.n)}`;

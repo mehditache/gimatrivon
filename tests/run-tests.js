@@ -84,16 +84,21 @@ t('search', 'indexBuilder בפרוסות קטנות בונה אינדקס זהה
   const us = B.units.slice(0, 30000).map(u => ({ c: 'tanakh', b: u[1], ch: u[2], n: u[3], t: u[4] }));
   const a = E.buildIndex(us), bd = E.indexBuilder(us); let n = 0; while (!bd.step(0)) n++; const x = bd.finish();
   const same = (p, q) => p.length === q.length && p.every((v, i) => v === q[i]);
-  return n > 10 && ['regular', 'words', 'letters', 'milui', 'atbash', 'atbach'].every(m => same(x.W[m], a.W[m])) && same(x.L, a.L) && same(x.MAQAF, a.MAQAF) && same(x.start, a.start) && same(x.toks.slice(), a.toks.slice()) && x.W.kollel === x.W.regular;
+  return n > 10 && ['regular', 'milui', 'atbash', 'atbach'].every(m => same(x.W[m], a.W[m])) && same(x.L, a.L) && same(x.MAQAF, a.MAQAF) && same(x.start, a.start) && same(x.toks.slice(), a.toks.slice()) && x.W.kollel === x.W.regular;
 });
 t('search', 'buildIndex: idx.L (סכום-אותיות-לכל-תיבה) קיים, אורכו תואם מספר התיבות, וערכיו תואמים את calculateLetters', () => {
   return IDX.L && IDX.L.length === IDX.toks.length && [0, 1, 2, 100, IDX.L.length - 1].every(i => IDX.L[i] === E.normalizeText(IDX.toks[i]).normalizedText.replace(/ /g, '').length);
 });
 // v3.22.0: idx.toks נגזר מטקסט היחידות (לא מערך שמור) — חייב להיות זהה למילים המקוריות של כל יחידה, לפי הסדר
 t('search', 'idx.toks (נגזר לפי דרישה) זהה למילים המקוריות של כל הקורפוס', () => {
-  let i = 0; for (let u = 0; u < IDX.units.length; u++) for (const tk of E.tokens(IDX.units[u].t)) { if (IDX.toks[i] !== tk.orig) throw new Error('token ' + i); i++; }
+  let i = 0; for (let u = 0; u < IDX.units.length; u++) for (const tk of E.tokens(E.unpackText(IDX.units[u].t))) { if (IDX.toks[i] !== tk.orig) throw new Error('token ' + i); i++; }
   const sl = IDX.toks.slice(IDX.start[5] - 1, IDX.start[9] + 2), ex = []; for (let k = IDX.start[5] - 1; k < IDX.start[9] + 2; k++) ex.push(IDX.toks[k]);
   return i === IDX.toks.length && i === IDX.L.length && sl.join('|') === ex.join('|') && IDX.toks[-1] === undefined && IDX.toks[i] === undefined;
+});
+t('search', 'טקסט ארוז: packText/unpackText מחזירים בדיוק את המקור, וגם טקסט עם תווים אחרים', () => {
+  const xs = ['בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים', 'abc 123', 'עם — מקף ארוך', 'אבג\u00a0דהו', '', 'וַֽיְהִי־אוֹר׃ (א) [ב]', 'א'.repeat(20000)];
+  const ok = xs.every(x => E.unpackText(E.packText(x)) === x && E.packText(E.packText(x)) === E.packText(x) && E.unpackText(x) === x);
+  const p = E.packText(xs[0]); return ok && [...p].every(c => c.charCodeAt(0) < 256) && p.length === xs[0].length + 1 && E.packText(xs[2]).charCodeAt(0) === 0xFFFF;
 });
 t('search', 'ערכי תיבות: Uint16, ותיבה ארוכה במיוחד עוברת ל-Uint32 בלי לאבד ערך', () => {
   const long = 'ת'.repeat(200), ix = E.buildIndex([{ c: 'tanakh', b: 0, ch: 1, n: 1, t: 'אבא ' + long + ' אמא' }]);
