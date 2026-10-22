@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.23.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.24.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -8,9 +8,12 @@ const VERSION = '3.23.1'; // מספר גרסה — לעדכן בכל שינוי 
 // עם API שתומך בכמה יעדים בבת אחת (לשימוש עתידי), ללא פגיעה בביצועים.
 const E = window.GematriaEngine, B = window.GIM_CORPUS_INDEX, // רשימת הספרים בלבד; הטקסטים נטענים לפי ספר (corpus-loader.js)
    $ = s => document.querySelector(s), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-// "תוצאות מקס' לשיטה": בעבר בקרה נבחרת-ע״י-משתמש (.limitSel) בשני פנלי-הסינון; הוסרה — ערך-קבוע יחיד בלבד.
-const RESULTS_LIMIT_PER_METHOD = 500;
-function getLimit() { return RESULTS_LIMIT_PER_METHOD; }
+// גודל חלון-התצוגה: כמה שורות אמיתיות נמצאות ב-DOM בכל רגע (הגלילה הוירטואלית מחליפה אותן לפי המיקום).
+// עד v3.23 זו הייתה גם מגבלת-התוצאות לשיטה; מאז v3.24.0 כל ההתאמות נטענות (ראו מאגר-התוצאות הדחוס, makeStore).
+const RESULTS_WINDOW = 200;
+function getLimit() { return RESULTS_WINDOW; }
+// תקרת-בטיחות לכמות ההתאמות שנטענות לרשימה בחיפוש אחד (13 בתים לשורה, כ-65MB); מעליה ההתאמות רק נספרות
+const MAX_RESULTS_PER_SEARCH = 5000000;
 const verEl = document.getElementById('ver'); if (verEl) verEl.textContent = 'v' + VERSION;
 document.title = `גימטריבון - ${VERSION}`; // כותרת טאב הדפדפן — לא "סביבת עבודה"
 // --- ANALYTICS:START ---
@@ -85,7 +88,7 @@ const EN = {
   'שיטת הגימטריה של הפסוק': 'Gematria method of the verse', 'שיטת הגימטריה של מילת החיפוש שבה נמצאה ההתאמה': 'Gematria method of the search word in which the match was found',
   'תיבות': 'words', 'העתק את הפסוק/המשנה ללוח': 'Copy the verse/mishnah to clipboard', 'העתק את המחרוזת המומרת ללוח': 'Copy the transformed string to clipboard',
   'מספר': 'Number', 'גימ׳': 'Gem.', 'של הפסוק': 'of the verse', 'ערך': 'value', 'התאמות': 'matches', 'של מילת החיפוש': 'of the search word',
-  'אין תוצאות התואמות את הסינון הטקסטואלי.': 'No results match the text filter.', 'אין התאמות בטווח שנבחר.': 'No matches in the selected range.',
+  'אין תוצאות התואמות את הסינון הטקסטואלי.': 'No results match the text filter.', 'מסנן…': 'Filtering…', 'אין התאמות בטווח שנבחר.': 'No matches in the selected range.',
   'מחפש…': 'Searching…', 'הקורפוס עדיין נטען…': 'The corpus is still loading…',
   'סמן לפחות סוג גימטריה אחד לחיפוש בפסוקים (⚙).': 'Select at least one gematria type to search verses with (⚙).',
   'סמן לפחות סוג גימטריה אחד עבור מילת החיפוש.': 'Select at least one gematria type for the search word.',
@@ -408,34 +411,123 @@ function tfWordRanges(T, s, e, q, fuzzy) {
   }
   return out;
 }
-// אינדקסים של st.all בסדר-התצוגה בפועל — null אם אין לא סינון טקסטואלי ולא מיון-לפי-עיגול פעילים (משתמשים
-// ב-st.all ישירות, בסדר המקורי). אחרת תמיד מוחזר מערך: קודם מוחל סינון טקסטואלי (אם יש), ואז — אם יש
-// מיון-לפי-עיגול פעיל (st.hitsSort) — התוצאות ששייכות לשיטה הנבחרת (wms כולל אותה) מועלות לראש הרשימה
-// (מיון-יציב: סדר-המקור נשמר בתוך כל קבוצה), בלי לסנן כלום.
-// התאמת-הסינון-הטקסטואלי (tfMatch) לא זולה — מנרמלת את טקסט הפסוק (הסרת ניקוד/טעמים וכו׳) בכל קריאה.
-// התוצאה נשמרת ישירות על אובייקט-השורה (r.__tfQ/__tfFuzzy/__tfOk) ומחושבת-מחדש רק אם שאילתת-הסינון או
-// מצב-ההיתולי השתנו מאז הבדיקה האחרונה על אותה שורה בדיוק — כך שכל שורה מנורמלת פעם אחת לכל ערך-שאילתה,
-// לא בכל קריאה (ראו גם warmTfCache, שמנצלת את אותה cache כדי לפזר את עלות-הנרמול הראשונית על כמה "חתיכות").
-function tfRowOk(st, r) {
-  if (r.__tfQ === st.tf && r.__tfFuzzy === st.fuzzy) return r.__tfOk;
-  const u2 = IDX.units[r.u], s2 = IDX.start[r.u], e2 = IDX.start[r.u + 1];
-  const ok = tfMatch(IDX.toks.slice(s2, e2).join(' '), st.tf, st.fuzzy);
-  r.__tfQ = st.tf; r.__tfFuzzy = st.fuzzy; r.__tfOk = ok;
-  return ok;
+/* ---------- מאגר-תוצאות דחוס (v3.24.0) ----------
+   לפי בקשת המשתמש: הרשימה מחזיקה את *כל* ההתאמות (גם מיליון ומעלה), לא רק 500 לכל שיטה. אובייקט לכל שורה
+   היה תופס מאות מגה-בייט, ולכן כל התאמה נשמרת כמספרים במערכים דחוסים: יחידה (u), תחילת וסוף טווח-התיבות
+   (l/r), קבוצה (g: שיטה+ערך+שיטות-המילה, טבלה קטנה ב-groups) ודגלי-נוטריקון (f: 1=מילולי, 2=פרמוטציה) —
+   13 בתים לשורה. אובייקט-שורה נבנה רק כשהשורה נכנסת לחלון-התצוגה (rowAt). st.all הוא המאגר הזה. */
+function makeStore() {
+  const cap = 1024;
+  return { n: 0, cap, u: new Int32Array(cap), l: new Int32Array(cap), r: new Int32Array(cap), g: new Uint16Array(cap), f: new Uint8Array(cap), groups: [], gKey: new Map() };
 }
-// מחממת מראש את ה-cache של tfRowOk עבור קבוצת-שורות נתונה (לא כל st.all) — משמש את topUpHitsSort כדי לפזר
-// את עלות-הנרמול-הראשונית על פני כמה שיטות-חיפוש/חתיכות, במקום שתיפול כולה בבת-אחת בקריאה הסופית ל-showMore
-// (עם רבבות שורות, הנרמול החד-פעמי הזה יכול לקחת יותר משנייה ברצף אחד — "דיליי" מורגש, גם בלי "הקפאה" מוחלטת).
-function warmTfCache(st, rows) { if (st.tf && st.tf.trim()) for (const r of rows) tfRowOk(st, r); }
+function storeGroup(sto, method, target, wms, notarikon) {
+  const key = method + '|' + target + '|' + (wms || []).join(',');
+  let gi = sto.gKey.get(key);
+  if (gi == null) { gi = sto.groups.length; sto.groups.push({ method, target, wms: wms || [], notarikon: !!notarikon }); sto.gKey.set(key, gi); }
+  return gi;
+}
+function storePush(sto, gi, u, l, r, f) {
+  if (sto.n === sto.cap) {
+    const cap = sto.cap * 2, grow = (a, T) => { const b = new T(cap); b.set(a); return b; };
+    sto.u = grow(sto.u, Int32Array); sto.l = grow(sto.l, Int32Array); sto.r = grow(sto.r, Int32Array); sto.g = grow(sto.g, Uint16Array); sto.f = grow(sto.f, Uint8Array); sto.cap = cap;
+  }
+  const i = sto.n++; sto.u[i] = u; sto.l[i] = l; sto.r[i] = r; sto.g[i] = gi; sto.f[i] = f || 0;
+}
+// מוסיף שורות-תוצאה כפי ש-E.search/E.searchNotarikon מחזירים אותן (אובייקטים זמניים של פרוסה אחת) למאגר
+function storeAdd(sto, rows) {
+  let lastKey = null, gi = 0;
+  for (const x of rows) {
+    const key = x.method + '|' + x.value;
+    if (key !== lastKey) { const not = NOTARIKON_IDS.includes(x.method); gi = storeGroup(sto, x.method, x.value, not ? ['regular'] : x.tag, not); lastKey = key; }
+    storePush(sto, gi, x.u, x.l, x.r, (x.literal ? 1 : 0) | (x.perm ? 2 : 0));
+  }
+}
+function rowAt(st, i) {
+  const sto = st.all; if (i == null || i < 0 || i >= sto.n) return null;
+  const g = sto.groups[sto.g[i]], f = sto.f[i];
+  return { u: sto.u[i], l: sto.l[i], r: sto.r[i], method: g.method, target: g.target, value: g.target, wms: g.wms, literal: !!(f & 1), perm: !!(f & 2) };
+}
+// סינון טקסטואלי: תלוי רק בטקסט היחידה, ולכן נשמר ליחידה (לא לשורה) — כמה התאמות באותו פסוק נבדקות פעם אחת.
+// 0 = עוד לא נבדק, 1 = מתאים, 2 = לא מתאים. המטמון מתאפס כשהשאילתה או מצב ההיתולי משתנים.
+// הטקסט המנורמל נגזר ישר מטקסט היחידה (unitNormText) ולא דרך IDX.toks: עם מאות-אלפי יחידות, פירוק לתיבות,
+// חיבור ופירוק שוב (tfMatch על הטקסט המקורי) היה פי כמה איטי. התוצאה זהה ל-E.normalizeText(...).normalizedText:
+// רצף של תווים שאינם אותיות הופך לרווח אם יש בו מפריד (כמו ב-E.tokens), ונמחק אם הוא רק ניקוד/טעמים.
+const TF_SEP = /[\s\u05BE\-–—_/\\.,;:!?()\[\]{}"'׳״<>|׀׃]/;
+function unitNormText(u) { return E.unpackText(IDX.units[u].t || '').replace(/<[^>]*>/g, ' ').replace(/[^א-ת]+/g, m => TF_SEP.test(m) ? ' ' : '').trim(); }
+function unitTfOk(st, u) {
+  const key = st.tf + '|' + st.fuzzy;
+  let c = st.tfCache;
+  if (!c || c.key !== key || c.ix !== IDX) {
+    const qn = E.normalizeText(st.tf).normalizedText, { lead, trail } = qBounds(st.tf);
+    c = st.tfCache = { key, ix: IDX, v: new Uint8Array(IDX.units.length), needle: qn ? (lead ? ' ' : '') + qn + (trail ? ' ' : '') : '' };
+  }
+  const v = c.v; if (v[u]) return v[u] === 1;
+  const norm = unitNormText(u);
+  const ok = !c.needle || (' ' + norm + ' ').includes(c.needle) || (st.fuzzy && tfMatch(norm, st.tf, true));
+  v[u] = ok ? 1 : 2; return ok;
+}
+// סינון טקסטואלי על כל המאגר: עם מיליון שורות הבדיקה לוקחת כמה שניות, ולכן היא נסרקת בפרוסות של עד
+// TF_SLICE_MS (st.tfScan זוכר עד איזו שורה הגיע ואילו עברו). כל קריאה ממשיכה מהמקום שנעצרה, ושורות חדשות
+// שנוספות תוך-כדי חיפוש פשוט נסרקות בהמשך. כל עוד הסריקה לא הסתיימה, מתוזמנת המשך-סריקה (tfContinue) שמרעננת
+// את התצוגה — התוצאות הראשונות מופיעות מיד, והשאר מתווספות.
+const TF_SLICE_MS = 12;
+function tfIdx(st) {
+  const sto = st.all, fkey = st.tf + '|' + st.fuzzy;
+  let c = st.tfScan;
+  if (!c || c.sto !== sto || c.fkey !== fkey) c = st.tfScan = { sto, fkey, n: 0, m: 0, buf: new Int32Array(Math.max(1024, sto.n)) };
+  if (c.n < sto.n) {
+    if (c.buf.length < sto.n) { const b2 = new Int32Array(Math.max(sto.n, c.buf.length * 2)); b2.set(c.buf.subarray(0, c.m)); c.buf = b2; }
+    const t0 = performance.now(), buf = c.buf, U = sto.u, n = sto.n; let i = c.n, m = c.m;
+    while (i < n) {
+      if (unitTfOk(st, U[i])) buf[m++] = i;
+      i++;
+      if ((i & 1023) === 0 && performance.now() - t0 > TF_SLICE_MS) break;
+    }
+    c.n = i; c.m = m;
+  }
+  if (c.n < sto.n) tfSchedule(st);
+  return c.buf.subarray(0, c.m);
+}
+function tfScanning(st) { const c = st.tfScan; return !!(st.tf && st.tf.trim() && c && c.sto === st.all && c.n < st.all.n); }
+function tfSchedule(st) {
+  if (st.tfPending) return;
+  st.tfPending = true;
+  GEM_WAIT(() => { st.tfPending = false; tfContinue(st.k); });
+}
+// המשך-סריקה: מתקדם פרוסה אחת, ומרענן את התצוגה — במלואה רק כשהחלון עוד לא מלא או כשהסריקה הסתיימה (כדי לא
+// להרוס-ולבנות שורות שהמשתמש כבר רואה בכל פרוסה), ואחרת רק את מה שתלוי בסך-הכול (מונה, ספייסר, סימוני-מסלול).
+function tfContinue(k) {
+  const st = S[k]; if (!(st.tf && st.tf.trim())) return;
+  const box = $('#rl' + k), now = performance.now();
+  visibleIdx(st);
+  const done = !tfScanning(st);
+  if (!done && now - (st.tfLastPaint || 0) < 200) return;
+  st.tfLastPaint = now;
+  if (done || st.winCount < getLimit()) { const keep = box.scrollTop, ws = st.winStart; renderWindow(k, ws); if (ws) box.scrollTop = keep; }
+  else {
+    computeGroups(k);
+    const after = box.lastElementChild; if (after && after.classList.contains('rlSpacer')) after.style.height = Math.round((st.groupsTotal - st.winStart - st.winCount) * vRowH(st, st.groupsTotal)) + 'px';
+    updateTfBar(k); fsBuildTicks(k); fsLayout(k);
+  }
+}
+// אינדקסים של st.all בסדר-התצוגה בפועל — null אם אין לא סינון טקסטואלי ולא מיון-לפי-עיגול פעילים (משתמשים
+// ב-st.all ישירות, בסדר המקורי). אחרת מוחזר Int32Array: קודם מוחל סינון טקסטואלי (אם יש — ראו tfIdx; תוך-כדי
+// סריקה זו רשימה חלקית), ואז — אם יש מיון-לפי-עיגול פעיל (st.hitsSort) — התוצאות ששייכות לשיטה הנבחרת מועלות
+// לראש הרשימה (מיון-יציב), בלי לסנן. המיון נשמר (st.sortCache) עד שמשהו מהם משתנה.
 function visibleIdx(st) {
-  const hasTf = st.tf && st.tf.trim(), hasSort = !!st.hitsSort;
+  const hasTf = !!(st.tf && st.tf.trim()), hasSort = !!st.hitsSort;
   if (!hasTf && !hasSort) return null;
-  let idx = st.all.map((_, i) => i);
-  if (hasTf) idx = idx.filter(i => tfRowOk(st, st.all[i]));
-  // עיגולי-נוטריקון (ר״ת/אות ב׳/אות ג׳/ס״ת): מקודמות לפי r.method עצמו (לא wms — שורות-נוטריקון תמיד
-  // מתויגות wms:['regular'], וזה לא ייחודי-לשיטה; method כן, מבדיל בין 4 שיטות-החילוץ).
-  if (hasSort) { const id = st.hitsSort, isNot = NOTARIKON_IDS.includes(id), hit = [], rest = []; idx.forEach(i => { const r = st.all[i]; (isNot ? r.method === id : (r.wms && r.wms.includes(id))) ? hit.push(i) : rest.push(i); }); idx = hit.concat(rest); }
-  return idx;
+  const base = hasTf ? tfIdx(st) : null;
+  if (!hasSort) return base;
+  const sto = st.all, n = base ? base.length : sto.n, key = sto.n + '|' + n + '|' + (hasTf ? st.tfScan.fkey : '') + '|' + st.hitsSort;
+  const c = st.sortCache;
+  if (c && c.sto === sto && c.key === key) return c.idx;
+  // עיגולי-נוטריקון מקודמים לפי השיטה עצמה; עיגולי-גימטריה לפי שיטת-המילה (wms) של הקבוצה
+  const id = st.hitsSort, isNot = NOTARIKON_IDS.includes(id), hitG = sto.groups.map(g => isNot ? g.method === id : g.wms.includes(id));
+  const out = new Int32Array(n); let m = 0;
+  for (const want of [true, false]) for (let p = 0; p < n; p++) { const i = base ? base[p] : p; if (hitG[sto.g[i]] === want) out[m++] = i; }
+  st.sortCache = { sto, key, idx: out };
+  return out;
 }
 // הופך/מבטל מיון-לפי-עיגול-תוצאות עבור שיטה ספציפית (id) בצד k: מעלה את התוצאות הרלוונטיות לראש פנל
 // התוצאות-מהמקורות (בלי לאבד אף תוצאה), ומסמן את העיגול כ"פעיל" (צבוע בצבע הצד). לחיצה על אותו עיגול
@@ -451,13 +543,9 @@ function hitsSortToggle(k, id) {
     return;
   }
   st.hitsSort = id;
-  // עיגולי-נוטריקון: כל שיטת-חילוץ נסרקת תמיד בתקציב (limit) עצמאי משלה, לא משותף/מתחרה עם שיטות אחרות
-  // (בניגוד לחיפוש הרגיל) — כלומר כל מה שנמצא כבר טעון ב-st.all עד אותו תקציב, ואין מה "להשלים" מהקורפוס.
-  if (NOTARIKON_IDS.includes(id)) { $('#rl' + k).scrollTop = 0; renderWindow(k, 0); renderCenter(); return; }
-  // לא מספיק לסדר-מחדש את st.all הקיים: יעדים ששייכים לשיטה הזו עלולים כלל לא להיות טעונים בו עדיין
-  // (תקציב-החיפוש-המשותף-לשיטה כבר "נגמר" על יעדים אחרים שעובדו קודם בתור). חיפוש-מחדש-מלא (run) היה
-  // עובד אבל איטי (כמה שניות) — במקום זה, חיפוש-השלמה ממוקד (topUpHitsSort) שמביא רק את מה שבאמת חסר.
-  topUpHitsSort(k, id);
+  // כל ההתאמות כבר טעונות ב-st.all (מאז v3.24.0 אין יותר תקציב-תוצאות לשיטה), כך שאין מה "להשלים" מהקורפוס —
+  // רק סידור-מחדש של התצוגה (visibleIdx).
+  $('#rl' + k).scrollTop = 0; const fi = renderWindow(k, 0); if (st.cur < 0 && fi != null) select(k, fi); renderCenter();
 }
 
 /* ---------- מצב לכל צד ---------- */
@@ -467,7 +555,7 @@ function hitsSortToggle(k, id) {
 // winStart/winCount/avgRowH/groups/groupsTotal: שדות הגלילה-הוירטואלית (ראו renderWindow/computeGroups
 // למטה) — לא חלק מ"שדות-הגדרה" הסיור שומר/משחזר (SETTINGS_FIELDS), ממש כמו all/info/cur: מתמלאים-מחדש
 // נכון מעצמם בכל renderWindow/computeGroups.
-const S = {}; KS.forEach(k => { S[k] = { text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: [], winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
+const S = {}; KS.forEach(k => { S[k] = { k, text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: makeStore(), winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
 let IDX = null, CM = null, FOCUS = null;
 // מצב בניית אינדקס הגימטריה (ראו gemStart בסוף הקובץ): gen = מונה לביטול, stage = 0 (אין) / 1 (תנ״ך ומשנה) / 2 (הכל)
 const GEM = { gen: 0, busy: false, stage: 0, f: 0 };
@@ -983,13 +1071,12 @@ const ref = u => {
 // כך המסך לא קופא גם כשכל השיטות/המקורות פעילים, התוצאות מופיעות בהדרגה, ואפשר לבטל חיפוש ישן (st.gen)
 // ברגע שמתחיל חיפוש חדש (למשל כשממשיכים להקליד) בלי לחכות שהישן יסתיים.
 // מחשב את "הקשר-החיפוש" הבסיסי של צד (k): מילת/מספר-החיפוש, שיטות פעילות, תקציב-תוצאות, מסנן-מקורות,
-// וערכי מילת-החיפוש לפי כל שיטת-מילה. משותף בין run() (חיפוש מלא) ל-topUpHitsSort() (חיפוש-השלמה ממוקד),
-// כדי לא לשכפל את הלוגיקה (כולל חוק אי-ההתאמה ב-targetsFor).
+// וערכי מילת-החיפוש לפי כל שיטת-מילה.
 function buildSearchContext(st) {
   const q = st.text, num = numVal(st.num);
   const wms = E.METHODS.map(m => m.id).filter(m => st.ms.has(m)); // שיטות של מילת החיפוש
   const sms = E.METHODS.map(m => m.id).filter(m => st.sms.has(m)); // שיטות לחיפוש בפסוקים
-  const limit = getLimit();
+  const limit = MAX_RESULTS_PER_SEARCH;
   const filt = { books: st.sel.size === ALL.size ? null : st.sel, ranges: st.ranges.size ? st.ranges : null, fullUnit: st.fullUnit, singleWord: st.singleWord };
   // ערכי מילת החיפוש לפי כל שיטת-מילה פעילה (מחושב פעם אחת; המספר, אם הוזן, לא תלוי בשיטת-מילה כלשהי)
   const wmVal = new Map();
@@ -1004,49 +1091,6 @@ function buildSearchContext(st) {
     return [...vmap].map(([value, srcWms]) => ({ value, tag: srcWms }));
   };
   return { q, num, wms, sms, limit, filt, wmVal, targetsFor };
-}
-// חיפוש-השלמה ממוקד: נקרא כשמפעילים מיון-לפי-עיגול-תוצאות (hitsSortToggle) על שיטת-מילה מסוימת. ייתכן
-// שהיעד שמתויג בשיטה הזו כלל לא נטען ל-st.all (תקציב-התוצאות המשותף-לשיטת-חיפוש "נוצל" ע״י יעדים אחרים
-// שעובדו קודם בתור של run() המקורי — גם אם הוא נספר נכון ב-st.info). במקום להריץ run() מחדש על *כל*
-// הצירופים (איטי — יכול לקחת כמה שניות), מריצים E.search רק על היעד הבודד המתויג בשיטה הזו, לכל שיטת-חיפוש
-// פעילה בנפרד, עם תקציב-תוצאות עצמאי (לא תלוי במה שנוצל כבר) — ומחליפים רק את השורות של אותו (שיטה,יעד)
-// הספציפי ב-st.all/st.info, בלי לגעת בשאר הנתונים שכבר טעונים נכון. שדה-הסינון הטקסטואלי (st.tf) ממשיך
-// לפעול כרגיל על גבי התוצאה (visibleIdx/showMore לא השתנו).
-function topUpHitsSort(k, id) {
-  const st = S[k]; if (!IDX || !st.all.length) { renderCenter(); return; } // אין (עדיין) מה למיין — רק משקף את מצב "פעיל" בעיגול
-  const ctx = buildSearchContext(st);
-  st.gen = (st.gen || 0) + 1; const myGen = st.gen; // מבטל חיפוש-מדורג ישן של אותו צד, כמו run()
-  // רצות כל שיטות-החיפוש (sms) ברצף אחד, סינכרוני לגמרי (ללא setTimeout ביניהן), היה עלול "להקפיא" את
-  // הדפדפן לרגע מורגש כש-st.all כבר גדול (סינון-טקסטואלי פעיל מכביד את ה-filter/concat החוזרים על כל שיטה) —
-  // לכן, בדיוק כמו ב-run(), מתקדמים שיטה-שיטה דרך setTimeout(...,0) כדי לתת לדפדפן "לנשום" בין כל אחת.
-  const queue = ctx.sms.map(sm => ({ sm, tg: ctx.targetsFor(sm).find(t => t.tag.includes(id)) })).filter(x => x.tg);
-  let pos = 0;
-  const finish = () => {
-    const box = $('#rl' + k); box.scrollTop = 0; // ראו הערה ב-hitsSortToggle על אותו תיקון
-    if (!st.all.length) box.innerHTML = '<div class="emp">אין התאמות בטווח שנבחר.</div>';
-    else { const fi = renderWindow(k, 0); if (st.cur < 0 && fi != null) select(k, fi); }
-    updateTfBar(k); renderCenter();
-  };
-  const step = () => {
-    if (myGen !== st.gen) return; // חיפוש חדש יותר (הקלדה/סינון) כבר התחיל — מפסיקים בשקט
-    if (pos >= queue.length) return finish();
-    const { sm, tg } = queue[pos++];
-    const r = E.search(IDX, [tg], [sm], ctx.filt, ctx.limit);
-    const c = r.counts[sm] ? r.counts[sm].get(tg.value) : 0;
-    st.info = st.info.filter(x => !(x.method === sm && x.target === tg.value));
-    if (c) st.info.push({ method: sm, target: tg.value, wms: tg.tag, total: c });
-    st.all = st.all.filter(x => !(x.method === sm && x.target === tg.value));
-    // E.search מחזיר תמיד אובייקטי-שורה *חדשים* (לא את אותם אובייקטים מהחיפוש-המקורי) — גם אם היה
-    // cache חם של tfRowOk על שורות קודמות שמייצגות בפועל את אותם פסוקים, השורות החדשות מתחילות בלי cache
-    // כלל. מחממים אותו כאן, שורה-שורה לכל "חתיכה" (שיטה), כדי לפזר את עלות-הנרמול-הראשונית על פני כל
-    // ה-setTimeout-ים — במקום שהיא תיפול כולה בבת-אחת בתוך renderWindow() היחיד שרץ ב-finish() (עם רבבות
-    // שורות זה היה גורם ל"דיליי" מורגש-בבירור, גם בלי הקפאה מוחלטת).
-    const newRows = r.results.length ? r.results.map(x => Object.assign(x, { target: x.value, wms: x.tag })) : [];
-    warmTfCache(st, newRows);
-    if (newRows.length) st.all = st.all.concat(newRows);
-    GEM_WAIT(step);
-  };
-  GEM_WAIT(step);
 }
 // חיפוש הנוטריקון (ר״ת/אות ב׳/אות ג׳/ס״ת) — עצמאי לגמרי מ-run() (לא חלק מ-sms/ms, אין עוד כפתור-הפעלה),
 // נקרא תמיד מתוך run() כדי שיתעדכן בכל טריגר (הקלדה/שינוי עץ-מקורות/מגבלת-תוצאות וכו') בלי לשכפל קריאות
@@ -1064,7 +1108,7 @@ function runNotarikon(k) {
     st.notCounts = counts;
     if (rows.length) {
       st.info = st.info.concat(NOTARIKON_IDS.filter(m => counts[m]).map(m => ({ method: m, target, wms: ['regular'], total: counts[m], notarikon: true })));
-      st.all = st.all.concat(rows);
+      storeAdd(st.all, rows);
       // שימו-לב: *לא* בוחרים (select) כאן, בכוונה — runNotarikon בדרך-כלל מסיים *לפני* ש-run()'s step()-loop
       // החיצוני (שיטות-חיפוש רגילות) מסיים; אם היינו בוחרים כבר כאן, הבחירה הייתה מתווספת-מחדש (class "on")
       // על אלמנט-DOM חדש בכל רענון-חי נוסף של הלולאה החיצונית (עד שזו מסיימת) — בדיוק אותו באג-הבהוב-מסגרת
@@ -1091,12 +1135,12 @@ function runNotarikon(k) {
   const filt = { books, ranges: st.ranges.size ? st.ranges : null };
   const compareLetters = num ? null : baseify(E.normalizeText(st.text).normalizedText.replace(/ /g, ''));
   const literalOnly = st.notMode === 'lit', permOnly = st.notMode === 'perm';
-  const limit = getLimit();
+  const limit = MAX_RESULTS_PER_SEARCH;
   const ix = IDX;
   E.ensureNotarikonAsync(ix, err => {
     if (err || myGen !== st.notGen || IDX !== ix) return;
     const counts = {}, rows = [];
-    NOTARIKON_IDS.forEach(m => { const r = E.searchNotarikon(IDX, target, [m], filt, limit, { maxWindow: NOTARIKON_MAXWINDOW, compareLetters, literalOnly, permOnly }); counts[m] = r.counts[m] || 0; rows.push(...r.results); });
+    NOTARIKON_IDS.forEach(m => { const r = E.searchNotarikon(IDX, target, [m], filt, limit, { maxWindow: NOTARIKON_MAXWINDOW, compareLetters, literalOnly, permOnly }); counts[m] = r.counts[m] || 0; for (const x of r.results) rows.push(x); }); // לא push(...) — עם מאות-אלפי שורות זה חורג ממגבלת-הארגומנטים
     finish(counts, rows, target);
   }, GEM_WAIT);
 }
@@ -1104,7 +1148,7 @@ function run(k) {
   const st = S[k]; st.gen = (st.gen || 0) + 1; const myGen = st.gen; // מבטל כל חיפוש מדורג קודם של הצד הזה
   if (!IDX) { if (GEM.busy) gemShowWait(); else $('#rs' + k).textContent = L('הקורפוס עדיין נטען…'); return; }
   const box = $('#rl' + k);
-  st.all = []; st.cur = -1; st.winStart = 0; st.winCount = 0; st.info = []; box.innerHTML = ''; box.classList.add('searching'); updateTfBar(k);
+  st.all = makeStore(); st.cur = -1; st.winStart = 0; st.winCount = 0; st.info = []; box.innerHTML = ''; box.classList.add('searching'); updateTfBar(k);
   runNotarikon(k); // אחרי האיפוס (לא לפניו) — כדי שמסקנה-סינכרונית (אינדקס-נוטריקון כבר בנוי) לא תימחק ע״י האיפוס
   renderCenter(); // מרענן מייד את עיגולי-המידע (כולל איפוסם) — גם אם החיפוש נעצר כאן (למשל טקסט ריק) ולא מגיע לסופו
   const say = h => { $('#rs' + k).innerHTML = h; };
@@ -1123,18 +1167,17 @@ function run(k) {
   // (כולל לחיצות על כפתורים כמו מעבר לתצוגת התוצאות, שמחכות בתור עד שהחסימה משתחררת). לכן כאן מפרקים כל
   // שיטת-חיפוש לתור שטוח של (שיטה, יעד-בודד) — יחידת-העבודה הקטנה ביותר (המסלול המהיר של "שני מצביעים"
   // ב-engine.js) — ונותנים לדפדפן "לנשום" בין *כל* יעד בודד, לא רק בין שיטת-חיפוש לשיטת-חיפוש. ה-"מגבלת
-  // תוצאות לשיטת חיפוש" (limit) נשמרת זהה למקור ע״י תקציב פוחת (smLimitLeft) המשותף לכל יעדי אותה שיטה.
+  // תקרת-הבטיחות (limit) נשמרת ע״י תקציב פוחת (left) המשותף לכל השיטות והיעדים.
   // רק אם עדיין אין מה להציג (אין תוצאות-נוטריקון שכבר נותרו ע״י runNotarikon למעלה — ראו הערה שם; קריאה
   // אסינכרונית-למעשה-אך-מתבצעת-מיידית כש-ensureNotarikonAsync מוצא את אינדקס-הנוטריקון כבר בנוי, *בתוך*
   // אותה קריאה סינכרונית ל-run) — מציגים את "מחפש…"; אחרת היינו מוחקים תוצאות-נוטריקון אמיתיות שכבר
   // הוצגו, ובלי לנקות אותן בהמשך (ל-step למטה אין דרך לדעת שצריך לנקות, כי st.all.length כבר לא 0 מראש).
-  say(L('מחפש…')); if (!st.all.length) box.innerHTML = `<div class="emp">${L('מחפש…')}</div>`;
+  say(L('מחפש…')); if (!st.all.n) box.innerHTML = `<div class="emp">${L('מחפש…')}</div>`;
   // אם יש מיון-לפי-עיגול-תוצאות פעיל (st.hitsSort — לחיצה על עיגול-המקורות): היעדים ששייכים לשיטת-המילה
   // הזו (tg.tag כולל אותה) מוזזים לראש רשימת-היעדים של כל שיטת-חיפוש, לפני בניית התור — כך שהם מקבלים
-  // עדיפות על התקציב-המשותף-לשיטה (smLimitLeft) ובאמת נטענים ל-st.all (לא רק נספרים ב-st.info), במקום
-  // שהתקציב יתמלא ע״י יעדים אחרים שמופיעים ראשונים בסדר הטבעי.
+  // עדיפות על התקציב (left) — רלוונטי רק כשתקרת-הבטיחות נחצית.
   const queue = []; for (const sm of sms) { const list = targetsFor(sm); if (st.hitsSort) list.sort((a, b) => (b.tag.includes(st.hitsSort) ? 1 : 0) - (a.tag.includes(st.hitsSort) ? 1 : 0)); for (const tg of list) queue.push({ sm, tg }); }
-  const smLimitLeft = {}; sms.forEach(sm => { smLimitLeft[sm] = limit; });
+  let left = limit;
   // שיטות-חיפוש שלא קיבלו אף יעד (למשל קולל/תיבות/אותיות כש-*כל* שיטות-המילה הפעילות אסורות עליהן לפי חוק
   // אי-ההתאמה) לא יופיעו בתור כלל — נחשבות "גמורות" כבר מההתחלה, כדי שמונה ההתקדמות (X/Y שיטות) יהיה מדויק.
   const zeroTargetSms = sms.length - new Set(queue.map(x => x.sm)).size;
@@ -1151,12 +1194,12 @@ function run(k) {
   const step = () => {
     if (myGen !== st.gen) return; // חיפוש חדש יותר כבר התחיל — מפסיקים את זה בשקט
     if (pos >= queue.length) {
-      // כשמגבלת-התצוגה (RESULTS_LIMIT_PER_METHOD לכל שיטה) חתכה תוצאות — אומרים זאת במפורש, כדי שהפער בין
-      // מספר-ההתאמות הכולל לבין מה שנטען לרשימה (ומוצג ב"תוצאה X מתוך Y") לא ייראה כמו טעות
-      const capNote = shown < total ? (LANG === 'en' ? ` · showing the first <b>${fmt(shown)}</b> (up to ${fmt(limit)} per method)` : ` · מוצגות <b>${fmt(shown)}</b> הראשונות (עד ${fmt(limit)} לכל שיטה)`) : '';
+      // אם תקרת-הבטיחות (MAX_RESULTS_PER_SEARCH) חתכה תוצאות — אומרים זאת במפורש, כדי שהפער בין מספר-ההתאמות
+      // הכולל לבין מה שנטען לרשימה (ומוצג ב"תוצאה X מתוך Y") לא ייראה כמו טעות
+      const capNote = shown < total ? (LANG === 'en' ? ` · showing the first <b>${fmt(shown)}</b> (up to ${fmt(limit)})` : ` · מוצגות <b>${fmt(shown)}</b> הראשונות (עד ${fmt(limit)})`) : '';
       say(LANG === 'en' ? `<b>${fmt(total)}</b> matches in ${Math.round(performance.now() - t0)} ms${capNote}` : `<b>${fmt(total)}</b> התאמות ב-${Math.round(performance.now() - t0)} מ״ש${capNote}`);
       box.classList.remove('searching'); // ראו הערה למעלה ליד ההוספה — רק מעכשיו :hover שוב מגיב-מיידית כרגיל
-      if (!st.all.length) box.innerHTML = `<div class="emp">${L('אין התאמות בטווח שנבחר.')}</div>`;
+      if (!st.all.n) box.innerHTML = `<div class="emp">${L('אין התאמות בטווח שנבחר.')}</div>`;
       else liveRefresh(k, true);
       updateTfBar(k);
       renderCenter(); // מרענן את עיגולי-המידע (מספר ההתאמות במקורות) במלבנים עם התוצאה הסופית של החיפוש
@@ -1170,15 +1213,15 @@ function run(k) {
       const { sm, tg } = queue[pos];
       if (sm !== lastSm) { smsDone++; lastSm = sm; }
       const uTo = Math.min(nUnits, uAt + SLICE_UNITS);
-      const r = E.search(IDX, [tg], [sm], Object.assign({}, filt, { uFrom: uAt, uTo }), Math.max(0, smLimitLeft[sm]));
-      total += r.total; shown += r.results.length; smLimitLeft[sm] -= r.results.length;
+      const r = E.search(IDX, [tg], [sm], Object.assign({}, filt, { uFrom: uAt, uTo }), Math.max(0, left));
+      total += r.total; shown += r.results.length; left -= r.results.length;
       tgCount += r.counts[sm] ? r.counts[sm].get(tg.value) || 0 : 0;
       c = 0;
       if (uTo >= nUnits) { c = tgCount; tgCount = 0; uAt = 0; pos++; } else uAt = uTo;
       if (c) st.info.push({ method: sm, target: tg.value, wms: tg.tag, total: c });
       if (r.total) {
-        for (const x of r.results) st.all.push(Object.assign(x, { target: x.value, wms: x.tag }));
-        const firstChunk = st.all.length === r.results.length;
+        storeAdd(st.all, r.results);
+        const firstChunk = st.all.n === r.results.length;
         const liveNow = performance.now();
         if (firstChunk || liveNow - lastLiveRefresh > 150) { liveRefresh(k); lastLiveRefresh = liveNow; }
       }
@@ -1197,8 +1240,8 @@ function run(k) {
 // האינדיקסים המסוננת (idx) במקום על st.all ישירות — כך שה-"הצג עוד" וכותרות הקבוצה ממשיכים לעבוד נכון.
 /* ---------- גלילה וירטואלית בפנל-התוצאות ----------
    לפי בקשת המשתמש: פס-הגלילה (וה-scrollbar-המותאם fsTrack/fsThumb) צריכים "להרגיש" כאילו *כל* התוצאות
-   (idx.length — יכול להגיע לעשרות-אלפים: עד "תוצאות מקס׳ לשיטה" כפול מספר השיטות הפעילות) מרונדרות,
-   אבל בפועל רק חלון של עד N = getLimit() ("תוצאות מקס׳ לשיטה" — אותו ערך בדיוק, לפי ההנחיה) שורות אמיתיות
+   (idx.length — יכול להגיע למיליון ומעלה) מרונדרות,
+   אבל בפועל רק חלון של עד N = getLimit() (RESULTS_WINDOW) שורות אמיתיות
    נמצא ב-DOM בכל רגע; ה-DOM גדל/קטן לפי מיקום-הגלילה, לא רק גדל ללא-הגבלה (כמו שהיה עד כה, עם showMore
    מצטבר). כל הנתונים (st.all) כבר נמצאים בזיכרון במלואם ברגע שהחיפוש מתקדם — זו לא "אחזור מרחוק לפי
    offset" אלא חיתוך (slice) של מערך שכבר קיים, ולכן לא נדרש שינוי במנוע (engine.js): החידוש הוא ברינדור
@@ -1216,12 +1259,12 @@ function run(k) {
 // עובר על *כל* idx (לא רק החלון המרונדר) וקובע את רשימת גבולות-הקבוצה (שינוי method/target) — משמש גם
 // לקביעת הכותרות בתוך renderWindow וגם ל-fsBuildTicks/fsBubbleLines (עצמאי לגמרי ממה שבפועל מרונדר).
 function computeGroups(k) {
-  const st = S[k], idxArr = visibleIdx(st), total = idxArr ? idxArr.length : st.all.length;
+  const st = S[k], idxArr = visibleIdx(st), total = idxArr ? idxArr.length : st.all.n, sto = st.all;
   const groups = []; let prevR = null;
   for (let p = 0; p < total; p++) {
-    const i = idxArr ? idxArr[p] : p, r = st.all[i];
-    if (!prevR || prevR.method !== r.method || prevR.target !== r.target) groups.push({ pos: p, method: r.method, target: r.target });
-    prevR = r;
+    const g = sto.groups[sto.g[idxArr ? idxArr[p] : p]];
+    if (!prevR || prevR.method !== g.method || prevR.target !== g.target) groups.push({ pos: p, method: g.method, target: g.target });
+    prevR = g;
   }
   st.groups = groups; st.groupsTotal = total;
 }
@@ -1245,7 +1288,7 @@ function cxWithCopy(html, btn) {
 // button), ואם ה-class הייתה מתווספת לאלמנט *קיים*, זה היה נחשב "שינוי" ומפעיל את ה-transition מחדש בכל
 // רענון-חי — בדיוק באג-ההבהוב שדווח (גם כש-הבחירה אוטומטית וגם כש-המשתמש בוחר בעצמו בלחיצה תוך-כדי חיפוש).
 function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
-  const i = idxArr ? idxArr[p] : p, r = st.all[i], u = IDX.units[r.u], s = IDX.start[r.u], e = IDX.start[r.u + 1], T = IDX.toks;
+  const i = idxArr ? idxArr[p] : p, r = rowAt(st, i), u = IDX.units[r.u], s = IDX.start[r.u], e = IDX.start[r.u + 1], T = IDX.toks;
   let h = '';
   // forceHeaderAt: שימוש ע״י renderWindow בלבד (ראו שם) — תמיד מציג כותרת לשורה הראשונה-בחלון (p===start),
   // גם אם היא לא *באמת* תחילת-קבוצה (למשל אחרי קפיצה ישירה ע״י גרירת ה-thumb לאמצע קבוצה), כדי שתמיד יהיה
@@ -1290,7 +1333,7 @@ function renderWindow(k, start) {
   const total = st.groupsTotal;
   if (!total) {
     st.winStart = 0; st.winCount = 0;
-    if (st.tf && st.tf.trim() && st.all.length) box.innerHTML = `<div class="emp">${L('אין תוצאות התואמות את הסינון הטקסטואלי.')}</div>`;
+    if (st.tf && st.tf.trim() && st.all.n) box.innerHTML = `<div class="emp">${L(tfScanning(st) ? 'מסנן…' : 'אין תוצאות התואמות את הסינון הטקסטואלי.')}</div>`;
     updateTfBar(k); fsBuildTicks(k); fsLayout(k);
     return null;
   }
@@ -1302,8 +1345,8 @@ function renderWindow(k, start) {
   const groupPos = new Set(st.groups.map(g => g.pos));
   let h = '';
   for (let p = start; p < start + count; p++) h += buildRowHtml(st, p, idxArr, groupPos, start);
-  const rowH = st.avgRowH || 110; // אומדן ראשוני — מתעדן למטה לפי מדידה בפועל
-  const beforeH = Math.round(start * rowH), afterH = Math.round((total - start - count) * rowH);
+  const vh = vRowH(st, total);
+  const beforeH = Math.round(start * vh), afterH = Math.round((total - start - count) * vh);
   box.innerHTML = `<div class="rlSpacer" style="height:${beforeH}px"></div><div class="rlRows">${h}</div><div class="rlSpacer" style="height:${afterH}px"></div>`;
   const rowsEl = box.querySelector('.rlRows');
   if (rowsEl && count) { const measured = rowsEl.offsetHeight / count; if (measured > 10) st.avgRowH = st.avgRowH ? (st.avgRowH * 0.5 + measured * 0.5) : measured; }
@@ -1337,7 +1380,7 @@ function appendLiveRows(k) {
     rowsEl.insertAdjacentHTML('beforeend', h);
     const measured = rowsEl.offsetHeight / targetCount; if (measured > 10) st.avgRowH = st.avgRowH ? (st.avgRowH * 0.5 + measured * 0.5) : measured;
   } // אם targetCount===renderedCount (החלון כבר מלא) — אין מה להוסיף; עדיין מעדכנים afterSpacer/groups/ticks למטה
-  const rowH = st.avgRowH || 110, afterH = Math.round((total - targetCount) * rowH);
+  const afterH = Math.round((total - targetCount) * vRowH(st, total));
   const afterSpacer = box.lastElementChild; if (afterSpacer && afterSpacer.classList.contains('rlSpacer')) afterSpacer.style.height = afterH + 'px';
   updateTfBar(k); fsBuildTicks(k); fsLayout(k);
   return true;
@@ -1356,7 +1399,7 @@ function liveRefresh(k, finalize) {
   // אלמנט-DOM קיים (כולל זה שהעכבר מעליו, כולל זה שנבחר) לא נהרס-ונבנה-מחדש בזמן חיפוש-פעיל, מה שמחסל
   // מהשורש את כל משפחת-באגי-ההבהוב (מסגרת/hover/box-shadow/סמן-העכבר) ולא רק סימפטום בודד שלה. חוזר false
   // (ונופל ל-renderWindow המלא) רק כש-זה לא-בטוח: רינדור ראשוני (.rlRows עוד לא קיים) או סינון/מיון פעילים.
-  if (appendLiveRows(k)) { if (finalize && st.cur < 0) { const idxArr = visibleIdx(st); const fi = idxArr ? idxArr[0] : 0; if (st.all[fi]) select(k, fi); } return; }
+  if (appendLiveRows(k)) { if (finalize && st.cur < 0) { const idxArr = visibleIdx(st); const fi = idxArr ? idxArr[0] : 0; if (fi < st.all.n) select(k, fi); } return; }
   const fi = renderWindow(k, 0); if (finalize && st.cur < 0 && fi != null) select(k, fi);
 }
 /* ---------- סקרולר-מותאם לרשימת-התוצאות (fast-scroll, בסגנון Google Photos) ----------
@@ -1369,21 +1412,43 @@ function liveRefresh(k, finalize) {
      (היסטרזיס, כדי לא לבנות-מחדש על כל פיקסל), בונים-מחדש חלון חדש הממורכז סביב המיקום הנוכחי. נקראת גם
      מ-scroll רגיל וגם מגרירת ה-thumb/קליק על ה-track — באותה נוסחה בדיוק, כך שהתנהגות "קפיצה ישירה"
      (גרירת הידית לאמצע) ו"גלילה טבעית" (עכבר/מגע) מתכנסות לאותו מנגנון. */
-function fsPositionAt(k, scrollTop) {
+// גובה-שורה "וירטואלי" לספייסרים שמחוץ לחלון המרונדר: הגובה הממוצע הנמדד, אבל לא יותר מ-MAX_SCROLL_PX
+// בסך-הכול — לדפדפנים יש תקרה לגובה אלמנט (כ-17 מיליון פיקסלים בפיירפוקס, כ-33 בכרום), ומיליון שורות של
+// 110px היו חוצות אותה בהרבה. בתוך החלון המרונדר השורות בגובהן האמיתי, כך שגלילה רגילה מרגישה טבעית.
+const MAX_SCROLL_PX = 8000000;
+function vRowH(st, total) { return Math.min(st.avgRowH || 110, MAX_SCROLL_PX / Math.max(1, total)); }
+// ממירה scrollTop למיקום-לוגי (שבר, 0..total) בתוך *כל* התוצאות: בספייסר שלפני/אחרי החלון לפי vRowH, ובתוך
+// החלון המרונדר לפי הגובה האמיתי של השורות שבו.
+function fsPosRaw(k, scrollTop) {
   const st = S[k], box = $('#rl' + k), total = st.groupsTotal || 0; if (!total) return 0;
-  const maxScroll = Math.max(1, box.scrollHeight - box.clientHeight);
-  const frac = Math.max(0, Math.min(1, scrollTop / maxScroll));
-  return Math.min(total - 1, Math.round(frac * (total - 1)));
+  const vh = vRowH(st, total), rowsEl = box.querySelector('.rlRows');
+  if (!rowsEl || !st.winCount) return Math.max(0, Math.min(total, scrollTop / vh));
+  const top = rowsEl.previousElementSibling ? rowsEl.previousElementSibling.offsetHeight : 0, h = rowsEl.offsetHeight;
+  const pos = scrollTop < top ? scrollTop / vh
+    : scrollTop < top + h ? st.winStart + (scrollTop - top) / Math.max(1, h) * st.winCount
+    : st.winStart + st.winCount + (scrollTop - top - h) / vh;
+  return Math.max(0, Math.min(total, pos));
 }
+function fsPositionAt(k, scrollTop) {
+  const total = S[k].groupsTotal || 0; if (!total) return 0;
+  return Math.min(total - 1, Math.floor(fsPosRaw(k, scrollTop)));
+}
+// הלב של הגלילה הוירטואלית: כש-מיקום-הגלילה זז מספיק הרחק ממרכז החלון המרונדר (היסטרזיס, כדי לא לבנות-מחדש
+// על כל פיקסל), בונים-מחדש חלון ממורכז סביב המיקום הנוכחי — ומחזירים את scrollTop לאותו מיקום-לוגי בדיוק
+// בתוך החלון החדש, כדי שהתוכן לא "יקפוץ" (הספייסרים והשורות האמיתיות לא באותו גובה-לשורה).
 function maybeShiftWindow(k) {
   const st = S[k], box = $('#rl' + k), total = st.groupsTotal || 0; if (!total) return;
   const count = Math.min(Math.max(1, getLimit()), total);
-  const pos = fsPositionAt(k, box.scrollTop);
+  const raw = fsPosRaw(k, box.scrollTop), pos = Math.min(total - 1, Math.floor(raw));
   const desired = Math.max(0, Math.min(total - count, pos - Math.floor(count / 2)));
   const threshold = Math.max(20, Math.floor(count / 4));
   const atStart = desired === 0 && st.winStart !== 0;
   const atEnd = desired + count >= total && st.winStart + st.winCount < total;
-  if (atStart || atEnd || Math.abs(desired - st.winStart) >= threshold) renderWindow(k, desired);
+  if (!(atStart || atEnd || Math.abs(desired - st.winStart) >= threshold)) return;
+  renderWindow(k, desired);
+  const rowsEl = box.querySelector('.rlRows'); if (!rowsEl || !st.winCount) return;
+  const top = rowsEl.previousElementSibling ? rowsEl.previousElementSibling.offsetHeight : 0;
+  box.scrollTop = top + (raw - st.winStart) / st.winCount * rowsEl.offsetHeight;
 }
 function fsBuildTicks(k) {
   const st = S[k], track = $('#fsTrack' + k); if (!track) return;
@@ -1406,15 +1471,14 @@ function fsLayout(k) {
   thumb.style.height = th + 'px'; thumb.style.top = pos + 'px';
 }
 // שתי שורות לבועת-התווית (לפי בקשת המשתמש): שורה 1 = הקבוצה (שיטה·ערך) הקרובה למיקום הנוכחי, שורה 2 =
-// "תוצאה X מתוך Y המוצגות" — Y הוא כל התוצאות שנטענו לרשימה (groupsTotal, עד getLimit() לכל שיטה), לא רק מה
-// שבפועל מרונדר כרגע; זה לא מספר-ההתאמות הכולל בקורפוס שבשורת-המצב (שם מצוין גם כמה מוצגות).
+// "תוצאה X מתוך Y" — Y הוא *כל* התוצאות (groupsTotal), לא רק מה שבפועל מרונדר כרגע.
 function fsBubbleLines(k, scrollTop) {
   const st = S[k], total = st.groupsTotal || 0;
   if (!total) return ['', ''];
   const pos = fsPositionAt(k, scrollTop);
   let g = null; for (const x of st.groups) { if (x.pos <= pos) g = x; else break; }
   const line1 = g ? `${L(MN[g.method])} · ${L('ערך')} ${fmt(g.target)}` : '';
-  const line2 = LANG === 'en' ? `result ${fmt(pos + 1)} of ${fmt(total)} shown` : `תוצאה ${fmt(pos + 1)} מתוך ${fmt(total)} המוצגות`;
+  const line2 = LANG === 'en' ? `result ${fmt(pos + 1)} of ${fmt(total)}` : `תוצאה ${fmt(pos + 1)} מתוך ${fmt(total)}`;
   return [line1, line2];
 }
 // אתחול חד-פעמי (לכל צד) של גרירת-הידית ולחיצה-על-המסלול — נקרא מתוך bind(k)
@@ -1467,12 +1531,15 @@ function fsInit(k) {
 function updateTfBar(k) {
   const st = S[k], cnt = $('#tfc' + k), clr = $('#tfx' + k); if (!cnt) return;
   const has = !!(st.tf && st.tf.trim()); cnt.hidden = !has; clr.hidden = !has;
-  if (has) { const idx = visibleIdx(st); cnt.textContent = LANG === 'en' ? `${fmt(idx.length)} of ${fmt(st.all.length)}` : `${fmt(idx.length)} מתוך ${fmt(st.all.length)}`; }
+  if (has) {
+    const idx = visibleIdx(st), c = st.tfScan, pct = tfScanning(st) ? Math.floor(c.n / Math.max(1, st.all.n) * 100) : -1;
+    cnt.textContent = (LANG === 'en' ? `${fmt(idx.length)} of ${fmt(st.all.n)}` : `${fmt(idx.length)} מתוך ${fmt(st.all.n)}`) + (pct >= 0 ? (LANG === 'en' ? ` · filtering… ${pct}%` : ` · מסנן… ${pct}%`) : '');
+  }
 }
 // מאפס את תצוגת התוצאות ובונה אותה מחדש (נקרא כשמשתנה שדה הסינון הטקסטואלי/ה-checkbox ההיתולי)
 function tfRebuild(k) { $('#rl' + k).scrollTop = 0; renderWindow(k, 0); }
 function select(k, i) {
-  const st = S[k], r = st.all[i]; if (!r) return; st.cur = i; $('#rl' + k).querySelectorAll('.rs.on').forEach(x => x.classList.remove('on')); const el = $('#rl' + k).querySelector(`[data-i="${i}"]`); if (el) el.classList.add('on');
+  const st = S[k]; if (!(i >= 0 && i < st.all.n)) return; st.cur = i; $('#rl' + k).querySelectorAll('.rs.on').forEach(x => x.classList.remove('on')); const el = $('#rl' + k).querySelector(`[data-i="${i}"]`); if (el) el.classList.add('on');
 }
 
 /* ---------- חלונות מידע ---------- */
@@ -2113,7 +2180,7 @@ function gemStart() {
 function gemRelease() {
   if (!inRead() || (!IDX && !GEM.busy)) return;
   GEM.gen++; GEM.busy = false; GEM.stage = 0; GEM.f = 0; IDX = null; gemHideMini();
-  KS.forEach(k => { const st = S[k]; st.gen = (st.gen || 0) + 1; st.notGen = (st.notGen || 0) + 1; st.all = []; st.info = []; st.cur = -1; st.winStart = 0; st.winCount = 0; $('#rl' + k).innerHTML = ''; $('#rs' + k).textContent = ''; });
+  KS.forEach(k => { const st = S[k]; st.gen = (st.gen || 0) + 1; st.notGen = (st.notGen || 0) + 1; st.all = makeStore(); st.info = []; st.cur = -1; st.winStart = 0; st.winCount = 0; $('#rl' + k).innerHTML = ''; $('#rs' + k).textContent = ''; });
   $('#status').textContent = '';
 }
 // מי שפותח ישר במסך הקריאה (reader.js זוכר את המסך האחרון) לא טוען את הקורפוס לגימטריה עד שעובר אליה —
