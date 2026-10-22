@@ -744,7 +744,7 @@
     ['#rdPrev', '#rdPrev2'].forEach(s => { $r(s).disabled = atStart; });
     ['#rdNext', '#rdNext2'].forEach(s => { $r(s).disabled = atEnd; });
     $r('#rdPrevCh').disabled = !nextCh(S.b, S.ch, -1); $r('#rdNextCh').disabled = !nextCh(S.b, S.ch, 1);
-    if (fxDir) { reveal(book, fxDir); fxDir = 0; }
+    fxAfter(book);
     save();
     prePaginate();
   }
@@ -757,20 +757,44 @@
     });
   }
 
-  /* הופעה הדרגתית של הטקסט בדפדוף ובמעבר פרק (לא בפתיחה, בשינוי גודל או בהגדרות): כל גוש (כותרת, פסקת מקרא/משנה, התרגום,
+  /* הופעה הדרגתית של הטקסט בדפדוף ובמעבר פרק (לא בפתיחה או בשינוי גודל): כל גוש (כותרת, פסקת מקרא/משנה, התרגום,
      כל דיבור בפירוש) נכנס בדהייה עם הזזה קטנה מכיוון הדפדוף — קדימה מגיע משמאל. סדר קבוע בכל עמוד: מקרא, תרגום, פירוש.
-     רק opacity ו-transform. הפחתת תנועה = דהייה קצרה של העמוד כולו בלי הזזה; דפדוף מהיר ברצף מדלג על האפקט. */
+     רק opacity ו-transform. הפחתת תנועה = דהייה קצרה של העמוד כולו בלי הזזה; דפדוף מהיר ברצף מדלג על האפקט.
+     בשינוי הגדרת תצוגה (fxSetting) אותו אפקט רץ רק על הכתב שההגדרה נוגעת בו — ועל כתב שהעימוד החדש שינה את תוכנו בעמוד. */
   const FX_START = [0, 220, 400], FX_STEP = 90, FX_DUR = 880;
   const FX_BLOCKS = '.rdChTitle,.rdTxt>p,.rdMsh,.rdTr,.rdRowHd,.rdRow,.rdCmHd,.rdCmBody>p,.rdDafIn,.trMain,.trSide,.trWide';
-  function reveal(book, dir) {
+  // אזורי הכתב לאפקט ההגדרות: מקרא/משנה/גמרא/טור, תרגום, פירוש. בתצוגת פסוק מול תרגום — כל תא בשורה לחוד
+  const FX_Z = {
+    main: '.rdChTitle,.rdTxt>p,.rdMsh,.rdRowHd>span:not(.trh),.rdRow>.vnc,.rdRow>.he,.rdDafIn,.trMain,.trWide',
+    tr: '.rdTr,.rdRowHd>.trh,.rdRow>.tr',
+    cm: '.rdTxt>.rdRv,.rdCmHd,.rdCmBody>p,.trSide'
+  };
+  const FX_KEY = { tr: ['tr'], trFont: ['tr'], cmFont: ['cm'], cm: ['cm'], rcm: ['cm'], ramNik: ['main'] }; // כל השאר (סוג תצוגה, גודל): הכל
+  const fxEls = (book, sel) => [...book.querySelectorAll('.rdPage:not(.blank)')].flatMap(pg => [...pg.querySelectorAll(sel)]);
+  const fxSig = book => Object.fromEntries(Object.keys(FX_Z).map(z => [z, fxEls(book, FX_Z[z]).map(e => e.textContent).join('\u0001')]));
+  // לפני שינוי הגדרה: לזכור אילו אזורים ההגדרה משנה ומה הכתב בכל אזור עכשיו. הציור הבא של הספר (fxAfter) משווה ומפעיל
+  let fxSet = null;
+  function fxSetting(k) { const book = R && $r('#rdBook'); fxSet = { z: FX_KEY[k] || Object.keys(FX_Z), sig: book ? fxSig(book) : {} }; }
+  function fxAfter(book) {
+    if (fxDir) { reveal(book, fxDir); fxDir = 0; fxSet = null; return; }
+    const x = fxSet; fxSet = null; if (!x) return;
+    const now = fxSig(book), zs = Object.keys(FX_Z).filter(z => x.z.includes(z) || now[z] !== x.sig[z]);
+    if (zs.length) reveal(book, 1, zs);
+  }
+  function reveal(book, dir, zs) {
     clearTimeout(fxTimer);
     const now = performance.now(), quick = now - fxLast < 280; fxLast = now;
-    if (quick) return;
+    if (quick && !zs) return;
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let end = 0;
     const set = (el, d, t) => { end = Math.max(end, d + t); el.style.setProperty('--fxD', d + 'ms'); el.style.setProperty('--fxT', t + 'ms'); el.classList.add('fxA'); };
+    book.querySelectorAll('.fxA').forEach(e => e.classList.remove('fxA')); // אפקט קודם שעוד רץ (שתי הגדרות ברצף)
+    book.classList.remove('fxRun', 'fxCalm', 'fxRise'); void book.offsetWidth;
     book.style.setProperty('--fxDx', (dir > 0 ? -10 : 10) + 'px');
-    book.querySelectorAll('.rdPage:not(.blank)').forEach(pg => {
+    if (zs) book.querySelectorAll('.rdPage:not(.blank)').forEach(pg => zs.forEach((z, zi) => {
+      let n = 0; pg.querySelectorAll(FX_Z[z]).forEach(el => set(el, calm ? 0 : FX_START[zi] + Math.min(n++, 8) * FX_STEP, calm ? 160 : FX_DUR));
+    }));
+    else book.querySelectorAll('.rdPage:not(.blank)').forEach(pg => {
       if (calm) { pg.querySelectorAll('.rdBody,.rdCm,.rdDaf').forEach(el => set(el, 0, 160)); return; }
       const n = [0, 0, 0];
       pg.querySelectorAll(FX_BLOCKS).forEach(el => {
@@ -778,6 +802,7 @@
         set(el, FX_START[z] + Math.min(n[z]++, 8) * FX_STEP, FX_DUR);
       });
     });
+    if (!end) return;
     book.classList.add('fxRun', calm ? 'fxCalm' : 'fxRise');
     // אחרי הסיום מסירים הכל, כך שבחירת טקסט והדגשה פועלות על DOM רגיל
     fxTimer = setTimeout(() => {
@@ -1032,7 +1057,7 @@
     }
     book.innerHTML = html + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
-    if (fxDir) { reveal(book, fxDir); fxDir = 0; }
+    fxAfter(book);
     setBar();
     const atStart = S.tview === 'daf' ? from === 0 : !stNext(k, S.tj, S.tp, -1, geo);
     const atEnd = S.tview === 'daf' ? (geo.two ? from + 2 >= t.n : S.tj + 1 >= t.n) : !stNext(k, lastPg.j, lastPg.p, 1, geo);
@@ -1459,7 +1484,7 @@
     const atStart = S.rs <= minS(t) && S.rp === 0, atEnd = last.s >= t.n - 1 && last.p >= turPages(k, last.s, Q).length - 1;
     ['#rdPrev', '#rdPrev2'].forEach(x => { $r(x).disabled = atStart; });
     ['#rdNext', '#rdNext2'].forEach(x => { $r(x).disabled = atEnd; });
-    if (fxDir) { reveal(book, fxDir); fxDir = 0; }
+    fxAfter(book);
     markTurSel();
     if (go && go.x !== 't') openTurCm(go.s, go.x, go.i); // תוצאה בבית יוסף / ב״ח: גם פותחים את הדיבור, כמו קטע בגמרא
     save();
@@ -1476,8 +1501,8 @@
   // שינוי הגדרה בטור (תצוגה, מפרשים, כתב, גודל): העימוד משתנה, ונשארים בעמוד שבו נמצא אותו מקום בטור
   function turKeep(fn) {
     const k = S.rk, ready = rowsReady(k, [S.rs]), pg = ready ? turPages(k, S.rs, trGeo(geo))[S.rp] : null, at = pg ? (pg.t[1] > pg.t[0] ? pg.t[0] : Math.max(0, pg.t[0] - 1)) : 0;
-    fn(); render();
-    if (pg && isTur() && rowsReady(k, [S.rs])) { const i = Math.max(0, turPages(k, S.rs, trGeo(geo)).findIndex(p => p.t[1] > at)); if (i !== S.rp) { S.rp = i; render(); } }
+    const fs = fxSet; fn(); render();
+    if (pg && isTur() && rowsReady(k, [S.rs])) { const i = Math.max(0, turPages(k, S.rs, trGeo(geo)).findIndex(p => p.t[1] > at)); if (i !== S.rp) { S.rp = i; fxSet = fs; render(); } }
   }
 
   /* חלון הדיבור: הדיבור שנבחר (בית יוסף או ב״ח) במלואו, באותיות קריאות, עם הקטע בטור שהוא מפרש */
@@ -2145,11 +2170,13 @@
       S[t.dataset.pset] = t.dataset.val; save(); renderPrintPop();
     };
     $r('#rdScrim').onclick = closePops;
-    document.querySelectorAll('#rdViewSeg button').forEach(x => { x.onclick = () => { if (isTur()) return turKeep(() => { S.rview = x.dataset.view === 'book' ? 'daf' : 'study'; }); if (isTal()) { S.tview = x.dataset.view === 'book' ? 'daf' : 'study'; S.tp = 0; } else if (isRambam(S.b)) S.ramView = x.dataset.view; else S.view = x.dataset.view; render(); }; });
+    document.querySelectorAll('#rdViewSeg button').forEach(x => { x.onclick = () => { if (x.classList.contains('on')) return; fxSetting('view'); if (isTur()) return turKeep(() => { S.rview = x.dataset.view === 'book' ? 'daf' : 'study'; }); if (isTal()) { S.tview = x.dataset.view === 'book' ? 'daf' : 'study'; S.tp = 0; } else if (isRambam(S.b)) S.ramView = x.dataset.view; else S.view = x.dataset.view; render(); }; });
     $r('#rdSet').onclick = e => {
       if (e.target.closest('[data-close]')) return closePops();
       const t = e.target.closest('[data-set]'); if (!t) return;
       const k = t.dataset.set;
+      if (k !== 'cm' && k !== 'rcm' && t.dataset.val === String(k === 'view' ? vw(S.b) : S[k])) return; // כבר בחור — בלי ציור ובלי אפקט
+      fxSetting(k);
       if (isTur()) return turKeep(() => {
         if (k === 'rcm') { const x = t.dataset.val; S.rOff = S.rOff.includes(x) ? S.rOff.filter(v => v !== x) : S.rOff.concat(x); if (S.rsel && S.rOff.includes(S.rsel.x)) closeSeg(); }
         else S[k] = k === 'size' ? Number(t.dataset.val) : t.dataset.val;
