@@ -402,6 +402,13 @@
   const need = b => { const t = trBook(b); return [b].concat(t ? [t.b] : [], cmsOn(b).map(x => x.b)); };
   const loaded = ids => ids.every(b => IX.data[b]);
   const LOADING = new Set();
+  const FONTS = ['16px GimFrank', '16px GimRashi'];
+  const fontsIn = () => !document.fonts || !document.fonts.check || FONTS.every(f => document.fonts.check(f, 'אב'));
+  const fontsFor = go => { if (document.fonts && document.fonts.load && !fontsIn()) Promise.all(FONTS.map(f => document.fonts.load(f, 'אב'))).then(go, go); else go(); };
+  // fontsLate = נמדד עמוד לפני שהגופנים נטענו — רק אז מעמדים מחדש כשהם מגיעים (לא בכל טעינה, כמו קודם: בפרק ארוך זה עוד כמה שניות)
+  let fontsLate = false;
+  const reMeasure = () => { if (!fontsLate) return; fontsLate = false; PG.clear(); PC.clear(); DC.clear(); TPC.clear(); TGC.clear(); render(); };
+  const measured = () => { if (fontsLate || fontsIn()) return; fontsLate = true; fontsFor(() => setTimeout(reMeasure, 0)); };
   function ensure(ids, again, prog) {
     ids = [...new Set(ids.filter(b => b != null && !IX.data[b]))];
     if (!ids.length) return true;
@@ -411,7 +418,8 @@
     const pe = prog ? progEase(prog, ids.map(b => (IX.books[b].fb || [1]).reduce((a, x) => a + x, 0))) : null;
     // הקבצים מוחזקים רק עד שהספר נכנס ל-IX.data (GimCorpus.use), ואז משתחררים — הטקסט כבר נמצא כאן
     const rel = G.GimCorpus.use ? G.GimCorpus.use(ids) : () => {};
-    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); rel(); setTimeout(() => again(true), 0); }, // משימה נפרדת לעימוד, כדי שמסך הטעינה יתעדכן ביניהן
+    // העימוד מודד בגופנים של הדף — מחכים להם (כמו במסכת), אחרת העמודים נמדדים בגופן חלופי ומחושבים שוב כשהגופנים מגיעים
+    G.GimCorpus.load(ids, b => { if (pe) pe.got(ids.indexOf(b)); }).then(() => { LOADING.delete(key); if (pe) pe.end(); ids.forEach(b => addBook(IX, b, G.GimCorpus.each)); rel(); fontsFor(() => setTimeout(() => again(true), 0)); }, // משימה נפרדת לעימוד, כדי שמסך הטעינה יתעדכן ביניהן
       () => { LOADING.delete(key); rel(); if (pe) pe.end(); again(false); });
     return false;
   }
@@ -558,7 +566,8 @@
   const over = el => el.scrollHeight > el.clientHeight + 1;
   // חיתוך רשימת דיבורים אחרי n מילים (דיבור מתחיל + פירוש): [מה שנשאר בעמוד, ההמשך]. חלק ראשון מסומן cut, ההמשך cont
   const cmWordsOf = e => (e.dh ? e.dh.split(/\s+/).filter(Boolean) : []).concat(e.body.split(/\s+/).filter(Boolean));
-  const cmLen = e => cmWordsOf(e).length;
+  const CML = new WeakMap(); // אורך דיבור במילים — נספר הרבה פעמים בעימוד, לכן נשמר לכל דיבור
+  const cmLen = e => { let n = CML.get(e); if (n == null) CML.set(e, n = cmWordsOf(e).length); return n; };
   function cutCm(list, n) {
     const keep = [], rest = []; let left = n;
     list.forEach(e => {
@@ -574,9 +583,40 @@
     return [keep, rest];
   }
 
-  function pagesFor(b, ch) {
-    const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return PC.get(key);
-    const probe = $r('#rdProbe'), ents = cmEntries(b, ch), pages = [];
+  /* v3.29.1: העימוד הוא גנרטור שמחזיר עמוד אחרי עמוד. pagesRun מריץ אותו עד שיש מספיק עמודים להצגה (until),
+     והשאר ממשיך ברקע בפרוסות קצרות (pagesBg) — כך פרק ארוך עם פירוש ארוך לא מקפיא את המסך בפתיחה, בדפדוף או
+     בשינוי הגדרה. pagesFor = העימוד המלא (הדפסה, פרק קודם). PG = עימודים שהתחילו ועוד לא הסתיימו */
+  const PG = new Map();
+  function pagesRun(b, ch, until) {
+    const key = b + ':' + ch + '|' + geo.key; if (PC.has(key)) return { pages: PC.get(key), done: true };
+    let job = PG.get(key);
+    if (!job) { measured(); const pages = []; job = { b, ch, pages, it: pageGen(b, ch, pages) }; PG.set(key, job); }
+    $r('#rdProbe').className = 'rdPage' + geo.cls; // מדידה אחרת (פרק אחר, ש״ס, טור) יכלה לשנות אותו בינתיים
+    while (!(until && until(job.pages))) {
+      if (job.it.next().done) { PG.delete(key); $r('#rdProbe').innerHTML = ''; PC.set(key, job.pages); trimMap(PC, 60); return { pages: job.pages, done: true }; }
+    }
+    pagesBg();
+    return { pages: job.pages, done: false };
+  }
+  const pagesFor = (b, ch) => pagesRun(b, ch).pages;
+  let bgT = 0;
+  function pagesBg() {
+    if (bgT) return;
+    bgT = setTimeout(() => {
+      bgT = 0; if (!built || !geo) return;
+      // ממשיכים רק את הפרק הפתוח והסמוכים לו, בגודל ובהגדרות הנוכחיים; השאר כבר לא יוצג (וייתכן שהספר שלו שוחרר)
+      const near = [{ b: S.b, ch: S.ch }, nextCh(S.b, S.ch, 1), nextCh(S.b, S.ch, -1)].filter(Boolean).map(x => x.b + ':' + x.ch + '|' + geo.key);
+      PG.forEach((j, key) => { if (isTal() || isTur() || !near.includes(key) || !loaded(need(j.b))) PG.delete(key); });
+      const job = near.map(k => PG.get(k)).find(Boolean);
+      if (!job) return;
+      const t0 = performance.now(), { b, ch } = job;
+      const r = pagesRun(b, ch, () => performance.now() - t0 > 30);
+      if (r.done && b === S.b && ch === S.ch && !isTal() && !isTur() && document.body.dataset.mode === 'read') render(); // מספר העמודים, הסרגל וכפתורי הדפדוף
+      if (PG.size) pagesBg();
+    }, 0);
+  }
+  function* pageGen(b, ch, pages) {
+    const probe = $r('#rdProbe'), ents = cmEntries(b, ch);
     probe.className = 'rdPage' + geo.cls;
     // דיבורים של קטע: לפי מיקום הדיבור המתחיל במילים [from, to); הקטע האחרון של פסוק לוקח גם את מה שאחרי
     const entsOf = s => { const n = wordsOf(b, ch, s.v).length; return ents.filter(e => e.v === s.v && e.pos >= s.from && (s.to >= n || e.pos < s.to)); };
@@ -584,7 +624,22 @@
     // הוא בא בראש הפירוש בעמוד הבא, ותמיד עם טקסט חדש באותו עמוד. cut = כמה מילים של הפירוש להשאיר בעמוד (השאר עובר ל-carry).
     let carry = [];
     const mk = (segs, cut) => { const all = carry.concat(...segs.map(entsOf)); return { segs, vs: [...new Set(segs.map(s => s.v))], cm: cut == null ? all : cutCm(all, cut)[0] }; };
-    const fits = (segs, cut) => { probe.innerHTML = pageInner(b, ch, mk(segs, cut), pages.length + 1, ''); return !over(probe); };
+    /* v3.29.1: מדידה בדפדפן עולה כמה מילישניות, ובחיפוש הדוהר מודדים גם מועמדים ענקיים (עשרות הלכות עם כל הפירוש) —
+       בפרקים עם פירוש ארוך (עבודה זרה ז) זה היה כמה שניות שבהן המסך קפוא. capW = כמה מילות פירוש נכנסות בעמוד
+       (הכתב הצפוף ביותר בדף); מועמד שיש בו יותר מפי שניים מילים מזה בוודאי לא נכנס, ונדחה בלי מדידה. */
+    let capW = 0;
+    const capWords = () => {
+      if (capW) return capW;
+      const all = ents.reduce((m, e) => m + cmLen(e), 0), v = versesOf(IX, b, ch)[0];
+      const c = maxOk(0, all, c => { probe.innerHTML = pageInner(b, ch, { segs: [{ v, from: 0, to: 1 }], vs: [v], cm: cutCm(ents, c)[0] }, 1, ''); return !over(probe); });
+      return (capW = c >= all ? Infinity : Math.max(40, c)); // כל הפירוש נכנס — אין ממנו חסם
+    };
+    const pgWords = pg => pg.segs.reduce((m, x) => m + x.to - x.from, 0) + pg.cm.reduce((m, e) => m + cmLen(e), 0);
+    const fits = (segs, cut) => {
+      const pg = mk(segs, cut), n = ents.length ? pgWords(pg) : 0;
+      if (n > 300 && n > 2 * capWords()) return false;
+      probe.innerHTML = pageInner(b, ch, pg, pages.length + 1, ''); return !over(probe);
+    };
     const cmWords = segs => carry.concat(...segs.map(entsOf)).reduce((n, e) => n + cmLen(e), 0);
     // הכמות הגדולה ביותר k (בין lo ל-max) שעבורה ok(k) — ok מונוטוני יורד; חיפוש דוהר+בינארי כדי למדוד מעט פעמים גם בפרקים ארוכים (תהלים קיט)
     const maxOk = (lo, max, ok) => {
@@ -638,14 +693,14 @@
       const segs = take(X), pg = mk(segs, cut);
       carry = cut == null ? [] : cutCm(carry.concat(...segs.map(entsOf)), cut)[1];
       segs.forEach(g => { const s = queue[0]; if (g.to < s.to) queue[0] = { v: s.v, from: g.to, to: s.to }; else queue.shift(); });
-      pages.push(pg);
+      pages.push(pg); yield;
       if (pages.length > 600) break;
     }
     // נדיר: נשאר פירוש אחרי המילה האחרונה של הפרק — ממשיכים אותו עם המילים האחרונות שוב, כדי שלא יאבד ולא יהיה עמוד בלי טקסט
     while (ram && carry.length && pages.length < 600) {
       const last = pages[pages.length - 1].segs.slice(-1), pg = c => ({ segs: last, vs: [last[0].v], cm: cutCm(carry, c)[0] });
       const c = Math.max(1, maxOk(0, cmWords([]), c => { probe.innerHTML = pageInner(b, ch, pg(c), pages.length + 1, ''); return !over(probe); }));
-      pages.push(pg(c)); carry = cutCm(carry, c)[1];
+      pages.push(pg(c)); carry = cutCm(carry, c)[1]; yield;
     }
     while (queue.length) {
       const segs = [];
@@ -671,11 +726,9 @@
       }
       const pg = mk(segs, cut);
       carry = cut == null ? [] : cutCm(carry.concat(...segs.map(entsOf)), cut)[1];
-      pages.push(pg);
+      pages.push(pg); yield;
       if (pages.length > 600) break;
     }
-    probe.innerHTML = '';
-    PC.set(key, pages); trimMap(PC, 60); return pages;
   }
   const baseIdx = b => IX.base.indexOf(b);
   function nextCh(b, ch, dir) {
@@ -713,7 +766,9 @@
       return;
     }
     keepBooks([].concat(...nearBooks(S.b).map(need)));
-    const pages = pagesFor(S.b, S.ch);
+    // רק העמודים עד המקום המבוקש (והפריסה שלו); השאר מעומד ברקע, ואז render נקרא שוב
+    const want = S.lock != null ? pg => pg.length > S.lock + geo.per : pg => { const i = pg.findIndex(p => p.vs.includes(S.anchor)); return i >= 0 && pg.length >= i + geo.per; };
+    const run = pagesRun(S.b, S.ch, want), pages = run.pages, all = run.done;
     // בשני עמודים הפריסה רציפה בין פרקים: אם בפרק מספר עמודים אי-זוגי, העמוד הראשון של הפרק הבא ממלא את הצד השמאלי
     // (במקום עמוד ריק). לכן S.p יכול להיות אי-זוגי; בקפיצה לפסוק שומרים על הזוגיות של הפריסה הנוכחית באותו פרק.
     const locked = S.lock != null;
@@ -724,7 +779,7 @@
     S.at = S.b + ':' + S.ch;
     const shown = pages.slice(S.p, S.p + geo.per);
     S.anchor = shown[0].segs[0].v;
-    const nx = geo.two && shown.length < 2 ? nextCh(S.b, S.ch, 1) : null, nxPg = nx && pagesFor(nx.b, nx.ch)[0];
+    const nx = geo.two && shown.length < 2 ? nextCh(S.b, S.ch, 1) : null, nxPg = nx && pagesRun(nx.b, nx.ch, pg => pg.length > 0).pages[0];
     const book = $r('#rdBook');
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
     const side = i => geo.two ? (i ? 'left' : 'right') : 'single', nar = geo.cls;
@@ -736,11 +791,11 @@
     else if (flashOn && flashOn.at === S.b + ':' + S.ch) flashEls(flashOn.v).forEach(e => e.classList.add('flash'));
     const bk = IX.books[S.b], chs = chaptersOf(IX, S.b);
     $r('#rdWhereTxt').textContent = bkName(bk.heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
-    $r('#rdPos').textContent = (shown.length > 1 ? T('עמודים') + ' ' + num(S.p + 1) + '–' + num(S.p + 2) : T('עמוד') + ' ' + num(S.p + 1)) + ' ' + T('מתוך') + ' ' + num(pages.length) +
+    $r('#rdPos').textContent = (shown.length > 1 ? T('עמודים') + ' ' + num(S.p + 1) + '–' + num(S.p + 2) : T('עמוד') + ' ' + num(S.p + 1)) + ' ' + T('מתוך') + ' ' + (all ? num(pages.length) : '…') +
       (nxPg ? ' · ' + T('ממשיך ל') + (nx.b !== S.b ? bkName(IX.books[nx.b].heTitle) + ' ' : '') + T('פרק') + ' ' + num(nx.ch) : '');
     $r('#rdChPos').textContent = T('פרק') + ' ' + num(S.ch) + ' ' + T('מתוך') + ' ' + num(chs.length);
     $r('#rdProgBar').style.width = Math.max(2, Math.round(100 * (chs.indexOf(S.ch) + (S.p + shown.length) / pages.length) / chs.length)) + '%';
-    const atStart = S.p === 0 && !nextCh(S.b, S.ch, -1), atEnd = S.p + geo.per >= pages.length && !nextCh(S.b, S.ch, 1);
+    const atStart = S.p === 0 && !nextCh(S.b, S.ch, -1), atEnd = all && S.p + geo.per >= pages.length && !nextCh(S.b, S.ch, 1);
     ['#rdPrev', '#rdPrev2'].forEach(s => { $r(s).disabled = atStart; });
     ['#rdNext', '#rdNext2'].forEach(s => { $r(s).disabled = atEnd; });
     $r('#rdPrevCh').disabled = !nextCh(S.b, S.ch, -1); $r('#rdNextCh').disabled = !nextCh(S.b, S.ch, 1);
@@ -753,7 +808,7 @@
     const ric = G.requestIdleCallback || (f => setTimeout(f, 200)), key = geo.key;
     ric(() => {
       if (!built || isTal() || !geo || geo.key !== key) return;
-      const n = nextCh(S.b, S.ch, 1); if (n && loaded(need(n.b))) pagesFor(n.b, n.ch);
+      const n = nextCh(S.b, S.ch, 1); if (n && loaded(need(n.b))) pagesRun(n.b, n.ch, pg => pg.length > 0);
     });
   }
 
@@ -830,12 +885,12 @@
     if (isTur()) return turTurn(dir);
     if (isTal()) return talTurn(dir);
     // np מעבר לסוף הפרק = כמה עמודים של הפרק הבא כבר הוצגו (0 או 1); מתחת לאפס = כמה עמודים לקחת מסוף הפרק הקודם
-    const pages = pagesFor(S.b, S.ch), np = S.p + dir * geo.per;
+    const np = S.p + dir * geo.per, pages = pagesRun(S.b, S.ch, pg => np < 0 || pg.length > np).pages; // קדימה: מספיק שהעמוד הבא כבר עומד
     if (np >= 0 && np < pages.length) { S.lock = np; fxDir = dir; render(); return; }
     let b = S.b, ch = S.ch, k = dir > 0 ? np - pages.length : np, len;
     for (;;) {
       const n = nextCh(b, ch, dir); if (!n) return;
-      b = n.b; ch = n.ch; len = pagesFor(b, ch).length;
+      b = n.b; ch = n.ch; const kk = k; len = (dir > 0 ? pagesRun(b, ch, pg => pg.length > kk).pages : pagesFor(b, ch)).length;
       if (dir > 0 ? k < len : len + k >= 0) break;
       k += dir > 0 ? -len : len; // פרק קצר שכולו כבר הוצג בפריסה הקודמת — ממשיכים לפרק שאחריו
     }
@@ -958,7 +1013,7 @@
     if (run(hi) <= H) lo = hi;
     else for (let i = 0; i < 7; i++) { const m = (lo + hi) / 2; if (run(m) <= H) lo = m; else hi = m; }
     run(lo); out = freezeDaf(host.firstChild); host.innerHTML = '';
-    DC.set(key, out); trimMap(DC, 40); return out;
+    measured(); DC.set(key, out); trimMap(DC, 40); return out;
   }
   const talHead = (t, j) => '<header class="rdHead"><span>' + h(T('מסכת') + ' ' + talName(t)) + '</span><span class="mid">' + h(grpName(t.g)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(dafTxt(j)) + '</span></header>';
   // מידות שטח הטקסט בעמוד (בלי כותרת ומספר), לפי עמוד-בדיקה עם אותן מחלקות
@@ -1248,7 +1303,7 @@
     const out = { W, H, fm, fs, lm: r2(fm * 1.45), ls: r2(fs * 1.4), gap, mw, sw: one ? W : Math.floor((W - gap) / 2), sp: one ? mw + gap : Math.ceil(mw / 2 + gap / 2), vg: Math.round(fs * 0.45), key: gk + '|' + W + 'x' + H };
     out.dc = (one ? ' trOne' : '') + (S.cmFont === 'rashi' ? '' : ' fN');
     out.vars = '--trW:' + W + 'px;--trH:' + H + 'px;--trMw:' + mw + 'px;--trSw:' + out.sw + 'px;--trSp:' + out.sp + 'px;--trG:' + gap + 'px;--trFm:' + fm + 'px;--trLm:' + out.lm + 'px;--trFs:' + fs + 'px;--trLs:' + out.ls + 'px';
-    TGC.set(gk, out); return out;
+    measured(); TGC.set(gk, out); return out;
   }
   function trProbe(Q) {
     const host = $r('#rdDafHost'); host.style.width = Q.W + 'px';
@@ -1355,7 +1410,7 @@
       pages.push(pg); first = false;
     }
     $r('#rdDafHost').innerHTML = '';
-    TPC.set(key, pages); trimMap(TPC, 60); return pages;
+    measured(); TPC.set(key, pages); trimMap(TPC, 60); return pages;
   }
   function turHeader(t, s, study) {
     const hil = hilOf(t, s), on = x => !S.rOff.includes(x);
@@ -1445,7 +1500,7 @@
       tp = te; yp = ny; cp = nc; first = false;
     }
     probe.innerHTML = '';
-    TPC.set(key, pages); trimMap(TPC, 60); return pages;
+    measured(); TPC.set(key, pages); trimMap(TPC, 60); return pages;
   }
   const trNext = (k, s, p, dir, Q) => {
     const t = turTOf(k);
@@ -2241,7 +2296,7 @@
     }, { passive: true });
   }
 
-  function rebuild() { if (!built) return; const qv = $r('#rdQ') ? $r('#rdQ').value : ''; built = false; PC.clear(); CMC.clear(); WC.clear(); DC.clear(); TPC.clear(); TGC.clear(); build(); $r('#rdQ').value = qv; updClear(); render(); }
+  function rebuild() { if (!built) return; const qv = $r('#rdQ') ? $r('#rdQ').value : ''; built = false; PG.clear(); PC.clear(); CMC.clear(); WC.clear(); DC.clear(); TPC.clear(); TGC.clear(); build(); $r('#rdQ').value = qv; updClear(); render(); }
 
   /* ---------- מעבר בין מצבים (גימטריה / קריאה) ---------- */
   let curMode = null; // המסך האחרון שדווח ל-GA — לחיצה על המסך שכבר פתוח לא נספרת שוב
@@ -2303,7 +2358,7 @@
     const lb = $r('#langSw'); if (lb) lb.addEventListener('click', () => setTimeout(() => { labelModeSw(); rebuild(); }, 0));
     let rt = 0;
     window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 120); });
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { PC.clear(); DC.clear(); TPC.clear(); TGC.clear(); render(); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(reMeasure);
     document.addEventListener('keydown', e => {
       if (document.body.dataset.mode !== 'read' || !built || document.querySelector('dialog[open]')) return;
       const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName), mod = e.ctrlKey || e.metaKey;
