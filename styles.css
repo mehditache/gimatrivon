@@ -980,6 +980,8 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .reader .rdTurn:disabled{opacity:.25;cursor:default}
 /* שורה תחתונה */
 .rdFoot{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;padding:6px 14px 8px;font-size:12px;color:var(--rdBarMu)}
+/* v3.28.1: גובה קבוע לשורה — בזמן הטעינה היא ריקה, ואם היא גדלה אחרי הציור הדף מתכווץ והפרק כולו מעומד שוב */
+.rdFoot>#rdPos,.rdFoot>#rdChPos{min-height:1.5em}
 .rdFoot .rdIco{display:none}
 .rdProg{width:180px;height:3px;border-radius:2px;background:var(--rdG2);overflow:hidden}
 .rdProg span{display:block;height:100%;background:var(--rdOn);margin-inline-start:0}
