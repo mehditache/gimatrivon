@@ -116,6 +116,57 @@ function compareAll(textA, textB, methodsA, methodsB) { // כל שיטה בצד 
 // (toks) ולא שדה הטקסט (t) של כל יחידה — חוסך זיכרון משמעותי (המילים המקוריות של כל הקורפוס) כשלא נדרש.
 // v3.16.0: הבנייה מחולקת לצעדים (indexBuilder), כדי שהדפדפן יוכל לבנות את האינדקס בפרוסות קטנות (buildIndexAsync)
 // בלי לחסום את המסך — למשל מעבר למסך הקריאה באמצע הבנייה. buildIndex בונה הכל בבת אחת, והתוצאה זהה.
+// v3.23.0: הטקסט של יחידה באינדקס נשמר "ארוז": כל תו בטווח העברי (U+0580–U+05FF: אותיות, ניקוד, טעמים, מקף, גרשיים)
+// נשמר כתו אחד בין 0x80 ל-0xFF, כך שהמחרוזת כולה היא מחרוזת של בית לתו (במקום שני בתים לכל תו עברי) — חצי זיכרון.
+// מחרוזת ארוזה מתחילה ב-\u0001. טקסט עם תו אחר (מחוץ ל-ASCII ולטווח העברי) נשמר כמו שהוא, עם \uFFFF בהתחלה.
+// unpackText מחזיר את הטקסט המקורי בדיוק, וטקסט שלא נארז מוחזר כמו שהוא — לכן אפשר לקרוא לה על כל u.t.
+const PACKED = 1, RAWTXT = 0xFFFF, PK = 0x500;
+function packText(s) {
+  if (typeof s !== 'string' || !s) return s;
+  const c0 = s.charCodeAt(0); if (c0 === PACKED || c0 === RAWTXT) return s; // כבר ארוז
+  const n = s.length + 1; if (n > PKBUF.length) PKBUF = new Uint8Array(n * 2);
+  const a = PKBUF; a[0] = PACKED; // מאגר משותף; הסימון והתווים במחרוזת שטוחה אחת (לא שרשור, שתופס עוד זיכרון)
+  for (let i = 1; i < n; i++) { const c = s.charCodeAt(i - 1); if (c < 0x80) a[i] = c; else if (c >= 0x580 && c <= 0x5FF) a[i] = c - PK; else return String.fromCharCode(RAWTXT) + s; }
+  if (n <= 8192) return String.fromCharCode.apply(null, a.subarray(0, n));
+  let out = '';
+  for (let i = 0; i < n; i += 8192) out += String.fromCharCode.apply(null, a.subarray(i, Math.min(n, i + 8192)));
+  return out;
+}
+function unpackText(p) {
+  if (typeof p !== 'string' || !p) return p;
+  const c0 = p.charCodeAt(0);
+  if (c0 === RAWTXT) return p.slice(1);
+  if (c0 !== PACKED) return p;
+  const n = p.length - 1; if (n > UNBUF.length) UNBUF = new Uint16Array(n * 2);
+  const a = UNBUF; // מאגר משותף (לא הקצאה לכל יחידה)
+  for (let i = 0; i < n; i++) { const c = p.charCodeAt(i + 1); a[i] = c < 0x80 ? c : c + PK; }
+  if (n <= 8192) return String.fromCharCode.apply(null, a.subarray(0, n));
+  let out = '';
+  for (let i = 0; i < n; i += 8192) out += String.fromCharCode.apply(null, a.subarray(i, Math.min(n, i + 8192)));
+  return out;
+}
+let UNBUF = new Uint16Array(4096), PKBUF = new Uint8Array(4096);
+// v3.23.0: idx.toks = המילים המקוריות (עם ניקוד) לפי מספר תיבה בכל הקורפוס. במקום מערך של כ-5 מיליון מחרוזות (כ-190MB
+// בזיכרון, רובו של אינדקס הגימטריה) זה אובייקט שמתנהג כמו מערך לקריאה (toks[i], toks.length, toks.slice) ומחשב את
+// המילים של יחידה מהטקסט שלה (units[u].t) רק כשמבקשים — בעיקר להצגת התוצאות. היחידות האחרונות נשמרות במטמון קטן.
+function lazyToks(units, start, N) {
+  const cache = new Map(), MAX = 256;
+  const unitOf = i => { let lo = 0, hi = units.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (start[mid] <= i) lo = mid; else hi = mid - 1; } return lo; };
+  const words = u => {
+    let w = cache.get(u);
+    if (!w) { w = tokens(unpackText(units[u].t)).map(t => t.orig); if (cache.size >= MAX) cache.delete(cache.keys().next().value); cache.set(u, w); }
+    return w;
+  };
+  const at = i => { if (!(i >= 0 && i < N)) return undefined; const u = unitOf(i); return words(u)[i - start[u]]; };
+  const slice = (a, b) => {
+    a = a == null ? 0 : a < 0 ? Math.max(0, N + a) : Math.min(a, N); b = b == null ? N : b < 0 ? Math.max(0, N + b) : Math.min(b, N);
+    const out = []; let i = a;
+    while (i < b) { const u = unitOf(i), w = words(u), s = start[u], e = Math.min(b, s + w.length); for (; i < e; i++) out.push(w[i - s]); }
+    return out;
+  };
+  const api = { length: N, slice, at, unitWords: words };
+  return new Proxy(api, { get: (o, k) => typeof k === 'string' && k.length && k.charCodeAt(0) >= 48 && k.charCodeAt(0) <= 57 ? at(+k) : o[k] });
+}
 function indexBuilder(units, opts) {
   const keepText = !opts || opts.keepText !== false;
   // טבלאות לפי קוד תו (אותיות סופיות ממופות לבסיס) — מהיר פי כמה מבניית מערכים לכל תיבה
@@ -127,9 +178,15 @@ function indexBuilder(units, opts) {
   // תאים היא עצירה ארוכה אחת
   let cap = 1024; for (let u = 0; u < units.length; u++) cap += (units[u].t ? units[u].t.length : 0) / 6.3;
   cap = Math.ceil(cap);
-  let R = new Uint32Array(cap), WD = new Uint32Array(cap), LT = new Uint32Array(cap), L = new Uint8Array(cap), M = new Uint32Array(cap), A = new Uint32Array(cap), H = new Uint32Array(cap), MQ = new Uint8Array(cap);
-  const grow = () => { cap = Math.ceil(cap * 1.25); const g = (x, T) => { const y = new T(cap); y.set(x); return y; }; R = g(R, Uint32Array); WD = g(WD, Uint32Array); LT = g(LT, Uint32Array); L = g(L, Uint8Array); M = g(M, Uint32Array); A = g(A, Uint32Array); H = g(H, Uint32Array); MQ = g(MQ, Uint8Array); };
-  const toks = [], start = new Int32Array(units.length + 1);
+  // v3.23.0: ערכי התיבות ב-Uint16 (חצי זיכרון): הערך הגבוה ביותר של תיבה אחת בכל הקורפוס הוא 3,335 (מילוי). תיבה שעוברת
+  // 65,535 מעבירה את כל המערכים ל-Uint32 (wide), כך שהתוצאה תמיד נכונה. הסכומים של החלונות מחושבים ב-search() במספרי JS רגילים.
+  let VT = Uint16Array, wide = false;
+  let R = new VT(cap), L = new Uint8Array(cap), M = new VT(cap), A = new VT(cap), H = new VT(cap), MQ = new Uint8Array(cap);
+  const resize = (T, c) => { const g = x => { const y = new T(c); y.set(x.subarray(0, Math.min(x.length, c))); return y; }; R = g(R); M = g(M); A = g(A); H = g(H); };
+  const grow = () => { const c = Math.ceil(cap * 1.25); resize(VT, c); const g = (x, T) => { const y = new T(c); y.set(x); return y; }; L = g(L, Uint8Array); MQ = g(MQ, Uint8Array); cap = c; };
+  const widen = () => { VT = Uint32Array; wide = true; resize(VT, cap); };
+  // v3.23.0: המילים המקוריות לא נשמרות כמערך (5 מיליון מחרוזות, כ-190MB) — idx.toks נגזר מטקסט היחידה כשצריך (lazyToks)
+  const start = new Int32Array(units.length + 1);
   let n = 0, i = 0;
   // step(ms): ממשיך בבנייה עד שעובר הזמן (בודק כל 16 יחידות); מחזיר true כשכל היחידות עובדו.
   // המערכים הסופיים הם תצוגות (subarray) על המערכים שנאספו — בלי העתקה בסוף, שהייתה עצירה ארוכה אחת
@@ -139,13 +196,15 @@ function indexBuilder(units, opts) {
     for (; i < units.length; i++) {
       if ((i & 15) === 0 && i && (Date.now() - t0 > ms || (urgent && urgent()))) return false;
       start[i] = n;
-      for (const t of tokens(units[i].t)) {
+      const txt = unpackText(units[i].t);
+      for (const t of tokens(txt)) {
         const s = t.norm; let r = 0, m = 0, a = 0, h = 0;
         for (let k = 0; k < s.length; k++) { const c = s.charCodeAt(k) - OFF; r += reg[c]; m += mil[c]; a += atb[c]; h += ath[c]; }
-        if (keepText) toks.push(t.orig);
         if (n === cap) grow();
-        R[n] = r; WD[n] = r + 1; LT[n] = r + s.length; L[n] = s.length; M[n] = m; A[n] = a; H[n] = h; MQ[n] = t.maqafBefore ? 1 : 0; n++;
+        if (!wide && (m > 65535 || r > 65535 || a > 65535 || h > 65535)) widen();
+        R[n] = r; L[n] = s.length; M[n] = m; A[n] = a; H[n] = h; MQ[n] = t.maqafBefore ? 1 : 0; n++;
       }
+      if (keepText) units[i].t = packText(txt); // v3.23.0: הטקסט נשאר באינדקס ארוז (ראו packText)
     }
     return true;
   };
@@ -153,7 +212,8 @@ function indexBuilder(units, opts) {
     step(Infinity);
     start[units.length] = n;
     const v = x => x.subarray(0, n);
-    const W = { regular: v(R), words: v(WD), letters: v(LT), milui: v(M), atbash: v(A), atbach: v(H) };
+    // v3.23.0: גם "עם מספר תיבות" ו"עם מספר אותיות" (של רגילה) מחושבות ב-search() מ-regular ומ-idx.L, כמו אצל אתב״ש/אטב״ח
+    const W = { regular: v(R), milui: v(M), atbash: v(A), atbach: v(H) };
     W.kollel = W.regular; // כולל: סכום החלון + 1
     // אתב״ש/אטב״ח + כולל/תיבות/אותיות: ממומשות ללא מערכים חדשים (אופטימיזציית זיכרון, ~2MB במקום ~33MB) —
     // אליאס-כולל חינמי בדיוק כמו W.kollel; תיבות/אותיות מחושבות ב-search() ישירות מהמערך הבסיסי + idx.L המשותף.
@@ -162,7 +222,7 @@ function indexBuilder(units, opts) {
     // MAQAF[i]=1 אם התיבה i חוברה במקף-עליון לתיבה i-1 (ראו tokens() למעלה) — משמש ב-search()'s
     // filter.singleWord כדי להבחין בין זוג-תיבות-שחוברו-במקף (למשל "אֶת־הָאָרֶץ", נחשב "מילה אחת" לצורך
     // הסינון הזה) לבין שתי תיבות רגילות המופרדות ברווח.
-    return { units: outUnits, toks: keepText ? toks : null, start, W, L: v(L), MAQAF: v(MQ) };
+    return { units: outUnits, toks: keepText ? lazyToks(units, start, n) : null, start, W, L: v(L), MAQAF: v(MQ) };
   };
   const progress = () => units.length ? i / units.length : 1;
   return { step, finish, progress };
@@ -230,8 +290,8 @@ function search(idx, targets, methods, filter, limit) {
   // זיכרון, ~2MB במקום ~33MB) — הן נגזרות בזמן-ריצה מהמערך הבסיסי (אתב״ש/אטב״ח) בתוספת אורך-החלון (תיבות)
   // או סכום-רץ של idx.L (אותיות). אתב״ש-כולל/אטב״ח-כולל, לעומת זאת, הן אליאס חינמי כמו kollel הקיים —
   // אין להן overhead כלל, הן עוברות במסלול הרגיל (הלא-"extra") עם תיקון יעד T-1 בלבד.
-  const WORDS_EXTRA = { atbashWords: 'atbash', atbachWords: 'atbach' };
-  const LETTERS_EXTRA = { atbashLetters: 'atbash', atbachLetters: 'atbach' };
+  const WORDS_EXTRA = { words: 'regular', atbashWords: 'atbash', atbachWords: 'atbach' };
+  const LETTERS_EXTRA = { letters: 'regular', atbashLetters: 'atbash', atbachLetters: 'atbach' };
   const KOLLEL_LIKE = new Set(['kollel', 'atbashKollel', 'atbachKollel']);
   for (const m of methods) {
     const wordsBase = WORDS_EXTRA[m], lettersBase = LETTERS_EXTRA[m], extraBase = wordsBase || lettersBase;
@@ -314,20 +374,24 @@ function search(idx, targets, methods, filter, limit) {
 // (כמו search()) עובד נכון גם כאן: תיבה-בלי-אות-רלוונטית פשוט לא תורמת לסכום.
 const NOTARIKON_POS = { notRt: 0, notB: 1, notC: 2, notSt: -1 };
 const VALUE_TO_LETTER = {}; Object.keys(VALUES).forEach(c => { VALUE_TO_LETTER[VALUES[c]] = c; }); // כל 22 הערכים שונים זה מזה — החזרה מערך לאות חד-משמעית
-function notarikonValueOf(norm, pos) { if (!norm) return 0; const i = pos < 0 ? norm.length + pos : pos; return (i >= 0 && i < norm.length) ? val(norm[i]) : 0; }
-// בונה טווח-יחידות [uFrom,uTo) לתוך buf (4 מערכי Uint32Array באורך idx.toks.length) — משותף לגרסה הסינכרונית והמדורגת
+const LETTER_VAL = new Uint16Array(27); for (let c = 0x5D0; c <= 0x5EA; c++) LETTER_VAL[c - 0x5D0] = val(String.fromCharCode(c));
+// בונה טווח-יחידות [uFrom,uTo) לתוך buf (4 מערכי Uint16Array באורך idx.toks.length) — משותף לגרסה הסינכרונית והמדורגת
 function notarikonBuildRange(idx, buf, uFrom, uTo) {
-  const s0 = idx.start[uFrom], e0 = idx.start[uTo];
-  for (let i = s0; i < e0; i++) {
-    const norm = idx.toks[i].replace(/[^א-ת]/g, ''); // v3.5.0: ראו הערה ב-tokens() — replace(MARKS,'') מיותר
-    buf.notRt[i] = notarikonValueOf(norm, 0); buf.notB[i] = notarikonValueOf(norm, 1);
-    buf.notC[i] = notarikonValueOf(norm, 2); buf.notSt[i] = notarikonValueOf(norm, -1);
+  // v3.23.0: התיבות נלקחות ישר מטקסט היחידה (אותו סדר כמו ב-indexBuilder), לא דרך idx.toks
+  for (let u = uFrom; u < uTo; u++) {
+    let i = idx.start[u];
+    // רק norm של כל תיבה (כמו tokens(), בלי ליצור אובייקט לכל תיבה) — אותו סדר ואותן תיבות בדיוק
+    for (const raw of unpackText(idx.units[u].t || '').replace(/<[^>]*>/g, ' ').split(NON_LETTER_SEP)) {
+      const norm = raw && raw.replace(/[^א-ת]/g, ''); if (!norm) continue;
+      const n = norm.length, lv = k => LETTER_VAL[norm.charCodeAt(k) - 0x5D0]; // הערך של האות במקום הזה בתיבה, 0 אם אין כזו
+      buf.notRt[i] = lv(0); buf.notB[i] = n > 1 ? lv(1) : 0; buf.notC[i] = n > 2 ? lv(2) : 0; buf.notSt[i] = lv(n - 1); i++;
+    }
   }
 }
 function ensureNotarikonSync(idx) {
   if (idx.W.notRt) return idx;
   if (!idx.toks) throw new Error('נוטריקון דורש idx שנבנה עם keepText (ברירת מחדל)');
-  const N = idx.toks.length, buf = { notRt: new Uint32Array(N), notB: new Uint32Array(N), notC: new Uint32Array(N), notSt: new Uint32Array(N) };
+  const N = idx.toks.length, buf = { notRt: new Uint16Array(N), notB: new Uint16Array(N), notC: new Uint16Array(N), notSt: new Uint16Array(N) }; // ערך של אות אחת (עד 400)
   notarikonBuildRange(idx, buf, 0, idx.units.length);
   Object.assign(idx.W, buf);
   return idx;
@@ -342,7 +406,7 @@ function ensureNotarikonAsync(idx, cb, wait) {
   if (idx.__notBuilding) { idx.__notBuilding.push(cb); return; }
   idx.__notBuilding = [cb];
   if (!idx.toks) { const cbs = idx.__notBuilding; idx.__notBuilding = null; const err = new Error('נוטריקון דורש idx שנבנה עם keepText'); cbs.forEach(f => f(err)); return; }
-  const N = idx.toks.length, buf = { notRt: new Uint32Array(N), notB: new Uint32Array(N), notC: new Uint32Array(N), notSt: new Uint32Array(N) };
+  const N = idx.toks.length, buf = { notRt: new Uint16Array(N), notB: new Uint16Array(N), notC: new Uint16Array(N), notSt: new Uint16Array(N) }; // ערך של אות אחת (עד 400)
   const UNITS_PER_CHECK = 200, next = wait || (f => setTimeout(f, 0));
   let u = 0;
   const step = () => {
@@ -414,6 +478,6 @@ function searchNotarikon(idx, target, methods, filter, limit, opts) {
   }
   return { results: res, counts, total };
 }
-root.GematriaEngine = { METHODS, VALUES, FINALS, MILUI_NAMES, MILUI, ATBASH, normalizeText, tokens, calculateRegular, calculateKollel, calculateWords, calculateLetters, calculateMilui, calculateAtbash, calculateAtbach, calculateGematria, setAtbachTable, getAtbachTable, compareAll, buildIndex, buildIndexAsync, indexBuilder, search, pairAllowed, NOTARIKON_POS, ensureNotarikonSync, ensureNotarikonAsync, searchNotarikon };
+root.GematriaEngine = { METHODS, VALUES, FINALS, MILUI_NAMES, MILUI, ATBASH, normalizeText, tokens, calculateRegular, calculateKollel, calculateWords, calculateLetters, calculateMilui, calculateAtbash, calculateAtbach, calculateGematria, setAtbachTable, getAtbachTable, compareAll, buildIndex, buildIndexAsync, indexBuilder, search, pairAllowed, packText, unpackText, NOTARIKON_POS, ensureNotarikonSync, ensureNotarikonAsync, searchNotarikon };
 if (typeof module !== 'undefined') module.exports = root.GematriaEngine;
 })(typeof window !== 'undefined' ? window : globalThis);
