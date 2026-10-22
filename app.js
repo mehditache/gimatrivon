@@ -1222,19 +1222,6 @@ function computeGroups(k) {
   }
   st.groups = groups; st.groupsTotal = total;
 }
-// כפתור ההעתקה בסוף הפסוק (v3.16.0): המילה האחרונה והכפתור עטופים יחד ב-.cxEnd (nowrap), כדי שהכפתור לא ירד לבד לשורה
-// חדשה. העטיפה מתחילה ברווח האחרון שמחוץ לכל תגית פתוחה (<mark>/<b>/<span>), כך שהקינון נשמר; זנב ארוך מדי לא נעטף.
-function cxWithCopy(html, btn) {
-  let depth = 0, cut = -1;
-  for (let i = 0; i < html.length; i++) {
-    const c = html[i];
-    if (c === '<') { const j = html.indexOf('>', i); if (j < 0) break; const tag = html.slice(i, j + 1); if (tag[1] === '/') depth--; else if (!tag.endsWith('/>')) depth++; i = j; continue; }
-    if (depth === 0 && /\s/.test(c)) cut = i;
-  }
-  const tail = html.slice(cut + 1);
-  if (tail.replace(/<[^>]*>/g, '').length > 40) return html + '\u2060' + btn;
-  return html.slice(0, cut + 1) + '<span class="cxEnd">' + tail + btn + '</span>';
-}
 // בונה HTML של שורה בודדת (+ כותרת-קבוצה אם רלוונטי) במיקום p (במרחב-ה-idx). משותף ל-renderWindow (בנייה
 // מלאה) ול-appendLiveRows (הוספה אינקרמנטלית — ראו שם) כדי שלא יהיו שני עותקים של אותו HTML-template
 // שעלולים להתבדר-זה-מזה. מחלקת "on" (התוצאה הנבחרת) נאפית ישירות כאן ב-HTML של הכפתור, *לא* מתווספת בנפרד
@@ -1302,10 +1289,12 @@ function buildRowHtml(st, p, idxArr, groupPos, forceHeaderAt) {
     : `<span class="tag" title="${wmTitle}">${L('מספר')}</span>`;
   const cxContent = isNot ? notarikonCxHtml(T, s, e, notarikonSpansFor(T, r.l, r.r, r.method), notGlow, L(NOTARIKON_GLOW_TITLE[notGlow])) : cxHtml(T, s, e, r.l, r.r, boldEnd, tfRanges);
   // כפתור "פתיחה בספר" ליד ההעתקה: מעבר למסך הקריאה, לספר (או לספר שעליו המפרש / התרגום), לפרק וליחידה של התוצאה
+  // ⧉ וכפתור הספר בשורת התגיות, אחרי הקטגוריה והפרשה / הסדר
   const canGo = window.GimReader && window.GimReader.canOpen(u.b), goAt = `data-go="${u.b},${u.ch},${u.n}"`, goTip = esc(`${L('פתיחה בספר, במסך הקריאה')}: ${ref(u)}`);
   const goBtn = canGo ? `<span class="goRd" role="button" tabindex="0" data-tip="${goTip}" aria-label="${goTip}" ${goAt}>${GO_ICON}</span>` : '';
   const refHtml = canGo ? `<b class="goRef" data-tip="${goTip}" ${goAt}>${esc(ref(u))}</b>` : `<b>${esc(ref(u))}</b>`;
-  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf">${refHtml}<span class="tag">${catName(bk.cat)}</span>${metaTag}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span>${wmTags}</div><div class="cx">${cxWithCopy(cxContent, `<span class="cxBtns"><span class="cpy" role="button" tabindex="0" data-tip="${L('העתק את הפסוק/המשנה ללוח')}" aria-label="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>${goBtn}</span>`)}</div></button>`;
+  const btns = `<span class="cxBtns"><span class="cpy" role="button" tabindex="0" data-tip="${L('העתק את הפסוק/המשנה ללוח')}" aria-label="${L('העתק את הפסוק/המשנה ללוח')}" data-copy="${esc(copyTxt)}">⧉</span>${goBtn}</span>`;
+  h += `<button class="rs${i === st.cur ? ' on' : ''}" data-i="${i}"><div class="rf">${refHtml}<span class="tag">${catName(bk.cat)}</span>${metaTag}${btns}<span class="tag meth" data-fam="${famKeyOf(r.method)}" data-m="${r.method}" title="${L('שיטת הגימטריה של הפסוק')}">${L(MN[r.method])}</span><span class="tagArrow">↔</span>${wmTags}</div><div class="cx">${cxContent}</div></button>`;
   return h;
 }
 // בונה-מחדש את כל תוכן #rl{k} כחלון של עד N שורות המתחיל ב-start (במרחב-ה-idx, לא בהכרח במרחב st.all) —
@@ -1851,12 +1840,12 @@ function resultTourSteps(mobile) {
   return en ? [
     group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'Result: reference, category and parsha / order', 'The reference is the exact place of the match: book and chapter:verse (for Mishnah — tractate, chapter and mishnah). The category tag says which part of the corpus the text belongs to (Tanakh, Mishnah, Rashi or Targum), and next to it, where relevant, appears the parsha of the verse, or for Mishnah its order (seder). The whole box is one result.'),
     group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'Result: the two gematria methods', 'Two gematria tags joined by an arrow ↔: the first is the method by which the value of the verse (or of the matching part of it) was calculated, the second is the method of the word you searched, in which the match was found. The value is the same in both.'),
-    one('.cx .cpy', 'Result: copy', 'Copies the whole verse (or mishnah) to the clipboard.'),
+    one('.rf .cpy', 'Result: copy', 'Copies the whole verse (or mishnah) to the clipboard.'),
     one('.cx mark', 'Result: the highlighted words', 'The words that actually matched, highlighted inside the text of the verse.', 'top'),
   ] : [
     group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'תוצאה: ייחוס, קטגוריה ופרשה / סדר', 'הייחוס הוא המקום המדויק של ההתאמה: ספר ופרק:פסוק (במשנה — מסכת, פרק ומשנה). תגית הקטגוריה אומרת לאיזה חלק בקורפוס שייך הטקסט (תנ״ך, משנה, רש״י או תרגום), ולידה מופיעה, כשזה רלוונטי, הפרשה שאליה שייך הפסוק, ובמשנה — הסדר שבו היא נמצאת. כל התיבה היא תוצאה אחת: פסוק או משנה.'),
     group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'תוצאה: שתי שיטות הגימטריה', 'שתי תגיות-גימטריה מחוברות בחץ ↔: הראשונה היא השיטה שלפיה חושב ערך הפסוק (או הקטע התואם בו), והשנייה היא שיטת מילת-החיפוש שלכם שבה נמצאה ההתאמה. הערך בשתיהן זהה.'),
-    one('.cx .cpy', 'תוצאה: העתקה', 'מעתיקה את הפסוק (או המשנה) כולו ללוח.'),
+    one('.rf .cpy', 'תוצאה: העתקה', 'מעתיקה את הפסוק (או המשנה) כולו ללוח.'),
     one('.cx mark', 'תוצאה: המילים המודגשות', 'המילים שתאמו בפועל, מודגשות בתוך טקסט הפסוק.', 'top'),
   ];
 }
