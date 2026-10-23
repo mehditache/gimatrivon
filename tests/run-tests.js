@@ -329,7 +329,7 @@ t('reader', 'suggestPlaces: הצעות תוך כדי הקלדה מכל הספר�
 // חריג מכוון יחיד: בלוק "צור קשר" (EmailJS) ב-app.js, בין EMAILJS:START/EMAILJS:END — הדבר היחיד באפליקציה
 // שדורש רשת בפועל (וגם זה רק כש-המשתמש בעצמו לוחץ "שליחה" בטופס, ראו הערה שם). נבדק בנפרד למטה שהבלוק
 // אכן מבודד (לא "דולף" רשת לשאר הקוד) ושה-script הדינמי היחיד נטען רק דרך ה-CDN המוגדר, לא ממקור אחר.
-const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js', 'reader.js', 'corpus-loader.js'];
+const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js', 'reader.js', 'corpus-loader.js', 'sqlite-search.js'];
 const EMAILJS_RE = /\/\/ --- EMAILJS:START ---[\s\S]*?\/\/ --- EMAILJS:END ---/;
 const ANALYTICS_RE = /\/\/ --- ANALYTICS:START ---[\s\S]*?\/\/ --- ANALYTICS:END ---/; // חריג שני: Google Analytics, רק כשמוגדר מזהה-מדידה
 const stripEmailJs = s => s.replace(EMAILJS_RE, '').replace(ANALYTICS_RE, '');

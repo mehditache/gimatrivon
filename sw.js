@@ -4,6 +4,7 @@
    - מסכתות הגמרא והטור (generated/talmud/*.js, generated/tur/*.js, בלי hash): מהמטמון מיד, ומתעדכנות ברקע לפעם הבאה.
    - כל השאר (index.html, app.js, reader.js, styles.css, generated/corpus/index.js…): קודם מהרשת, כך שגרסה חדשה
      מופיעה מיד; בלי רשת — מהמטמון.
+   - מסד החיפוש (generated/sqlite/): לא נוגעים — הדפדפן קורא ממנו טווחים ישר מהשרת.
    נרשם מ-app.js רק ב-http(s) (לא ב-file:// ולא ב-localhost). בקשות לאתרים אחרים (EmailJS, Analytics) לא נוגעים בהן. */
 const CACHE = 'gimatrivon-v1';
 const HASHED = /\/generated\/corpus\/\d+\.(\d+\.)?[0-9a-f]{8}\.js$|\/vendor\/fonts\//;
@@ -27,6 +28,7 @@ const prune = res => res.text().then(t => {
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.pathname.includes('/generated/sqlite/')) return; // מסד החיפוש (v3.31.0): נקרא בטווחים (Range), ישר מהרשת, בלי מטמון
   if (HASHED.test(url.pathname)) {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => put(req, res))));
   } else if (TALMUD.test(url.pathname)) {
