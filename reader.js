@@ -1962,15 +1962,17 @@
     if (S.src === 'both' || (S.src === 'tr' && isMishnah(S.b))) S.src = 'all'; // ערך ישן / אין תרגום במשנה וברמב״ם
     const nq = norm(q), hits = [], all = S.src === 'all', txt = all || S.src === 'txt', cm = all || S.src === 'cm', tr = all || S.src === 'tr';
     if (nq.length < 2) return { hits, total: 0, q: nq };
+    // v3.31.0: ביטוי של כמה מילים נמצא גם כשהמילים לא צמודות (כל המילים באותו פסוק / פירוש)
+    const ws = nq.split(' '), has = t => t.includes(nq) || (ws.length > 1 && ws.every(w => t.includes(w)));
     for (const b of books) {
       const T1 = txt ? normBook(IX, b) : null, L = IX.links[b] || {}, C1 = cm ? (L.cms || []).map(m => ({ c: m.c, n: cmNorm(m.b) })) : [];
       const TR = tr ? ['onkelos', 'yonatan'].filter(k => L[k] != null).map(k => ({ k, n: normBook(IX, L[k]) })) : [];
       chaptersOf(IX, b).forEach(ch => {
         if (onlyCh && ch !== onlyCh) return;
         versesOf(IX, b, ch).forEach(v => {
-          if (T1 && ((T1[ch] || [])[v] || '').includes(nq)) hits.push({ b, ch, v });
-          TR.forEach(t => { if (((t.n[ch] || [])[v] || '').includes(nq)) hits.push({ b, ch, v, tr: t.k }); });
-          C1.forEach(m => ((m.n[ch] || [])[v] || []).forEach((t, k) => { if (t.includes(nq)) hits.push({ b, ch, v, cm: k, cs: m.c }); }));
+          if (T1 && has((T1[ch] || [])[v] || '')) hits.push({ b, ch, v });
+          TR.forEach(t => { if (has((t.n[ch] || [])[v] || '')) hits.push({ b, ch, v, tr: t.k }); });
+          C1.forEach(m => ((m.n[ch] || [])[v] || []).forEach((t, k) => { if (has(t)) hits.push({ b, ch, v, cm: k, cs: m.c }); }));
         });
       });
     }
