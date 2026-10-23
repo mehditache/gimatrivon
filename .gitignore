@@ -4,3 +4,5 @@
 
 # קבצי מערכת
 .DS_Store
+
+node_modules/

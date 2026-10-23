@@ -1,0 +1,6 @@
+{
+  "name": "gimatrivon",
+  "private": true,
+  "description": "build tools only; the app itself has no runtime dependencies",
+  "devDependencies": { "pagefind": "1.5.2" }
+}

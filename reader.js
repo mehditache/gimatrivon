@@ -2048,6 +2048,39 @@
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
+  /* חיפוש בכל התנ״ך עם Pagefind (v3.31.0): האינדקס נבנה מראש (scripts/build-search.js) ונטען בחלקים קטנים לפי המילים,
+     ולכן לא טוענים לזיכרון את כל ספרי התנ״ך. התוצאות לפי רלוונטיות, 50 בכל פעם (נטענות בגלילה). ב-file:// או בכשל — החיפוש הרגיל. */
+  let PF = null, PF_FAIL = false, pfMod = null;
+  const pfOn = () => !PF_FAIL && /^https?:$/.test(location.protocol) && IX.books[S.b].cat === 0 && S.scope === 'all' && S.src === 'txt';
+  const pfLoad = () => pfMod || (pfMod = import(new URL('generated/search/pagefind.js', location.href).href).then(m => m.init().then(() => m)));
+  function pfMore(me) { // הדף הבא של 50 תוצאות: כל תוצאה = קובץ קטן עם הפסוק ({b, ch, v, pt: הפסוק להצגה})
+    me.busy = true;
+    return Promise.all(me.res.slice(me.hits.length, me.hits.length + 50).map(r => r.data())).then(ds => {
+      if (PF !== me) return false;
+      ds.forEach(d => { const u = d.url.split('/'); me.hits.push({ b: +u[1], ch: +u[2], v: +u[3], pt: d.meta.t }); });
+      me.busy = false; return true;
+    });
+  }
+  const pfRedraw = keep => { // אחרי טעינה: מציירים מחדש, ובגלילה לשמור את מקום הגלילה
+    if ($r('#rdDrop').hidden) return;
+    const top = keep && $r('#rdResBox') ? $r('#rdResBox').scrollTop : 0;
+    renderDrop(); const box = $r('#rdResBox'); if (keep && box) { box.scrollTop = top; resWin(true); }
+  };
+  function pfSearch(raw) {
+    const nq = norm(raw);
+    if (nq.length < 2) return { hits: [], total: 0, q: nq };
+    if (!PF || PF.q !== nq) {
+      const me = PF = { q: nq, res: [], hits: [], total: 0, busy: true };
+      pfLoad().then(m => m.search(nq.includes(' ') ? '"' + nq + '"' : nq)).then(s => { me.res = s.results; me.total = s.results.length; return pfMore(me); })
+        .then(ok => { if (ok && dropQ === raw) pfRedraw(false); })
+        .catch(() => { PF_FAIL = true; PF = null; if (dropQ === raw) pfRedraw(false); });
+    }
+    return { hits: PF.hits, total: PF.total, q: nq, wait: PF.busy && !PF.hits.length };
+  }
+  function pfNext() {
+    if (!PF || PF.busy || PF.hits.length >= PF.total) return;
+    const me = PF; pfMore(me).then(ok => { if (ok) pfRedraw(true); }).catch(() => { me.busy = false; });
+  }
   function renderDrop() {
     if (isTur()) return renderDropTur();
     if (isTal()) return renderDropTal();
@@ -2063,22 +2096,22 @@
     html += refsHtml();
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isRambam(S.b) ? 'בכל הרמב״ם' : isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
     // החיפוש צריך את הספרים שבתחום (והמפרשים/התרגומים שלהם, לפי "חיפוש ב"); עד שהם נטענים — "טוען…" במקום מספר התוצאות
-    const sBooks = scopeBooks(); PIN = searchNeed(sBooks);
-    const wait = !ensure(PIN, () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
-    const res = wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
+    const sBooks = scopeBooks(), pf = pfOn(); PIN = pf ? [] : searchNeed(sBooks); // v3.31.0: חיפוש בכל התנ״ך = Pagefind, בלי לטעון את כל הספרים
+    const wait = pf ? false : !ensure(PIN, () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
+    const res = pf ? pfSearch(q) : wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
     const srcs = [['txt', isRambam(S.b) ? 'הלכות' : isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isRambam(S.b) ? 'מפרשים' : isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
-    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait ? T('טוען…') : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
+    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait || res.wait ? T('טוען…') : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
     if (res.hits.length) {
-      const byBook = S.scope === 'all';
+      const byBook = S.scope === 'all' && !pf;
       html += resList(res.hits, start, q, {
-        key: S.scope === 'ch' ? null : byBook ? x => x.b : x => x.b + ':' + x.ch,
+        pf, key: pf || S.scope === 'ch' ? null : byBook ? x => x.b : x => x.b + ':' + x.ch,
         gh: x => byBook ? bkName(IX.books[x.b].heTitle) : T('פרק') + ' ' + num(x.ch),
         tick: byBook ? x => IX.books[x.b].g : null, tickName: grpName,
         bub: x => refLabel({ b: x.b, ch: x.ch, v: 0 }),
         row: x => {
-          const cm = x.cm != null, tr = !!x.tr, t = cm ? cmText(x) : tr ? noMarks(chText(IX.links[x.b][x.tr], x.ch, x.v)) : noTeamim(chText(x.b, x.ch, x.v));
+          const cm = x.cm != null, tr = !!x.tr, t = x.pt != null ? x.pt : cm ? cmText(x) : tr ? noMarks(chText(IX.links[x.b][x.tr], x.ch, x.v)) : noTeamim(chText(x.b, x.ch, x.v));
           return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', fc: cm ? S.cmFont : tr ? S.trFont : '', ref: refLabel(x), t };
         }
       });
@@ -2134,6 +2167,7 @@
     st.hidden = !g || (f.gh && RS.off[firstAt(top)] >= top - 1);
     if (g && !st.hidden) st.innerHTML = '<span>' + h(ghLabel(g.x)) + '</span><span class="n">' + resN(g.n) + '</span>';
     fsLay();
+    if (RS.o.pf && to >= RS.items.length - 6) pfNext();
   }
   function fsLay() {
     const box = $r('#rdResBox'), tr = $r('#rdFs'), th = $r('#rdFsThumb'); if (!box || !tr) return;
