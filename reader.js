@@ -2071,7 +2071,8 @@
     if (nq.length < 2) return { hits: [], total: 0, q: nq };
     if (!PF || PF.q !== nq) {
       const me = PF = { q: nq, res: [], hits: [], total: 0, busy: true };
-      pfLoad().then(m => m.search(nq.includes(' ') ? '"' + nq + '"' : nq)).then(s => { me.res = s.results; me.total = s.results.length; return pfMore(me); })
+      // ביטוי של כמה מילים: קודם כביטוי רצוף; אם אין — כל המילים בפסוק, גם כשהן רחוקות זו מזו
+      pfLoad().then(m => nq.includes(' ') ? m.search('"' + nq + '"').then(s => s.results.length ? s : m.search(nq)) : m.search(nq)).then(s => { me.res = s.results; me.total = s.results.length; return pfMore(me); })
         .then(ok => { if (ok && dropQ === raw) pfRedraw(false); })
         .catch(() => { PF_FAIL = true; PF = null; if (dropQ === raw) pfRedraw(false); });
     }
