@@ -1207,3 +1207,25 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdRv.flash{background:var(--rdFlash)}
 .rdPage.narrow .rdRv{margin-inline:.6em}
 .rdPrint.bw .rdRamTx .hl,.rdPrint.bw .rdRv .rvh{color:#000}
+/* ============ מצב פשוט (v3.31.0): רק שורת ה"רגילה" — רגילה/+כולל/+אותיות ============
+   כפתור-גלולה בכותרת כל פנל-תוצאות (משותף לשני הצדדים). כשפעיל: נקודה בצבע-הצד, מסגרת וטקסט בצבע-הצד. */
+.simpleTgl{flex:none;display:inline-flex;align-items:center;gap:.35rem;height:1.9rem;padding:0 .7rem;margin-inline-start:auto;border-radius:99px;font-size:.78rem;font-weight:600;color:var(--mu)}
+.simpleTgl .stDot{width:.5rem;height:.5rem;border-radius:50%;border:1.5px solid currentColor;transition:background .15s}
+.simpleTgl.on{color:var(--ac);border-color:var(--ac);background:var(--acs)}
+.simpleTgl.on .stDot{background:var(--ac);border-color:var(--ac)}
+body.simple .wrow,body.simple .filtPane .fullOnly{display:none}
+/* הלוח הפשוט בדסקטופ: מלבן אחד, 3 עמודות רחבות ("רגילה" רחבה יותר), ערכים גדולים — מנצל את המקום שהתפנה */
+#stage .simpleCard{border-bottom:0;padding-bottom:0}
+#stage .simpleCard .gr4{grid-template-columns:1.3fr 1fr 1fr}
+#stage .simpleCard .gr4cell{padding:.8rem .3rem .7rem;gap:.35rem}
+#stage .simpleCard .gr4cell .mn{font-size:.86rem}
+#stage .simpleCard .gr4cell[data-m=regular] .mn{font-size:.95rem}
+#stage .simpleCard .gr4cell .num{font-size:1.6rem;min-width:3.8rem;padding:.12rem .7rem}
+#stage .simpleCard .gr4cell[data-m=regular] .num{font-size:2rem;min-width:4.6rem}
+#stage .simpleCard .gr4cell .bdgH{min-width:1.5rem;height:1.4rem;padding:0 .45rem;font-size:.72rem}
+#stage .simpleCard .gr4cell .bdgSmall{grid-template-columns:repeat(3,1.35rem)}
+#stage .simpleCard .gr4cell .bdg{min-width:1.35rem;height:1.35rem;line-height:1.35rem;font-size:.72rem}
+/* נייד: "רגילה" ברוחב מלא, +כולל ו-+אותיות זה-לצד-זה מתחתיה */
+.cSimple .ccell:first-child{grid-column:1/-1}
+.cSimple .ccell:first-child .ccNum{font-size:1.2rem}
+.simpleNote{text-align:center;font-size:.74rem;color:var(--mu);padding:.2rem .6rem}

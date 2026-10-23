@@ -60,7 +60,7 @@ const EN = {
   'סינון טקסטואלי בתוך התוצאות…': 'Text filter within results…',
   'סינון טקסטואלי בתוך תוצאות החיפוש': 'Text filter within search results',
   'כולל הטיות קרובות (הסרת תחיליות/סיומות נפוצות) — לא מדויק, לא תופס טיות פועל פנימיות': 'Includes close inflections (removes common prefixes/suffixes) — not exact, does not catch internal verb inflections',
-  'הטיות': 'Inflections', 'נקה': 'Clear', 'סוגי גימטריה לחיפוש': 'Gematria types to search',
+  'הטיות': 'Inflections', 'פשוט': 'Simple', 'מצב פשוט — לכל השיטות, כבו את ״פשוט״ בפנל התוצאות': 'Simple mode — for all methods, turn off “Simple” in the results panel', 'מצב פשוט: רק רגילה, +כולל ו-+אותיות': 'Simple mode: only Regular, +Kollel and +Letters', 'נקה': 'Clear', 'סוגי גימטריה לחיפוש': 'Gematria types to search',
   'הצג התאמות לפסוק שלם או משנה שלמה בלבד': 'Show matches for a whole verse or mishnah only',
   'רק מילה בודדת או זוג מילים עם מקף': 'Single word, or a maqaf-joined pair only',
   'מגביל את ההתאמות למילה בודדת, או לשתי תיבות שמחוברות ביניהן במקף-עליון (מקף) בטקסט המקורי — לא כל צירוף של כמה מילים נפרדות': 'Restricts matches to a single word, or two words joined by a maqaf (upper hyphen) in the original text — not any combination of separate words',
@@ -605,6 +605,12 @@ function hitsSortToggle(k, id) {
 // נכון מעצמם בכל renderWindow/computeGroups.
 const S = {}; KS.forEach(k => { S[k] = { k, text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: makeStore(), winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
 let IDX = null, CM = null, FOCUS = null;
+// מצב פשוט (v3.31.0): משותף לשני הצדדים ולמעטפת-הנייד — רק שורת ה"רגילה" (רגילה/+כולל/+אותיות): שאר המשפחות,
+// מילוי, נוטריקון ו-+תיבות מוסתרים, והחיפוש במקורות וההשוואה בין הצדדים מוגבלים לשלוש השיטות האלה בלבד.
+// st.ms/st.sms לא משתנים (מסננים בזמן-ריצה בלבד), כך שיציאה מהמצב הפשוט מחזירה בדיוק את הבחירות הקודמות.
+const SIMPLE_IDS = ['regular', 'kollel', 'letters'];
+let SIMPLE = (() => { try { return localStorage.getItem('gimatrivonSimple') === '1'; } catch (e) { return false; } })();
+const simpleOk = id => !SIMPLE || SIMPLE_IDS.includes(id);
 // מצב בניית אינדקס הגימטריה (ראו gemStart בסוף הקובץ): gen = מונה לביטול, stage = 0 (אין) / 1 (תנ״ך ומשנה) / 2 (הכל)
 const GEM = { gen: 0, busy: false, stage: 0, f: 0 };
 let GEM_WAIT = f => setTimeout(f, 0);
@@ -628,7 +634,7 @@ const TITLES = { filt: 'סינון', res: 'תוצאות החיפוש במקור�
 function sideHtml(k) {
   return `<section class="side" data-k="${k}">
   <section class="pn res" data-mode="res" aria-label="${L('תוצאות החיפוש במקורות')} ${L(SIDE[k])}">
-    <div class="hd"><h2 id="rh${k}">${L(TITLES.res)}</h2><button class="filtToggle" id="ft${k}" title="${L('סינון')}" aria-label="${L('סינון')}">⚙</button></div>
+    <div class="hd"><h2 id="rh${k}">${L(TITLES.res)}</h2><button class="simpleTgl${SIMPLE ? ' on' : ''}" data-simple aria-pressed="${SIMPLE}" title="${L('מצב פשוט: רק רגילה, +כולל ו-+אותיות')}"><span class="stDot" aria-hidden="true"></span>${L('פשוט')}</button><button class="filtToggle" id="ft${k}" title="${L('סינון')}" aria-label="${L('סינון')}">⚙</button></div>
     <div class="resBody">
       <div class="tsBar" id="tsb${k}">
         <span class="tsIcon" aria-hidden="true"><svg viewBox="0 0 22 22"><circle cx="9.5" cy="9.5" r="5.8" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="13.7" y1="13.7" x2="19" y2="19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
@@ -645,10 +651,10 @@ function sideHtml(k) {
         <div class="fsTrack" id="fsTrack${k}"><div class="fsThumb" id="fsThumb${k}"><div class="fsBubble" id="fsBubble${k}"></div></div></div>
       </div>
       <div class="sc filtPane" id="fp${k}">
-        <div class="sec"><h3>${L('סוגי גימטריה לחיפוש')}</h3><div id="ms${k}" class="smTree"></div></div>
+        <div class="sec fullOnly"><h3>${L('סוגי גימטריה לחיפוש')}</h3><div id="ms${k}" class="smTree"></div></div>
         <div class="sec"><label class="opt"><input type="checkbox" class="cb" id="fu${k}"><span>${L('הצג התאמות לפסוק שלם או משנה שלמה בלבד')}</span></label></div>
         <div class="sec"><label class="opt" title="${L('מגביל את ההתאמות למילה בודדת, או לשתי תיבות שמחוברות ביניהן במקף-עליון (מקף) בטקסט המקורי — לא כל צירוף של כמה מילים נפרדות')}"><input type="checkbox" class="cb" id="sw${k}"><span>${L('רק מילה בודדת או זוג מילים עם מקף')}</span></label></div>
-        <div class="sec"><h3>${L('התאמת נוטריקון')}<span class="hint">${L('קובע מתי מילת-החיפוש נחשבת תואמת לחילוץ (ר״ת/אות ב׳/אות ג׳/ס״ת) בתוך פסוק')}</span></h3>
+        <div class="sec fullOnly"><h3>${L('התאמת נוטריקון')}<span class="hint">${L('קובע מתי מילת-החיפוש נחשבת תואמת לחילוץ (ר״ת/אות ב׳/אות ג׳/ס״ת) בתוך פסוק')}</span></h3>
           <div class="radioRow">
             <label class="opt"><input type="radio" name="notMode${k}" class="cb" data-notmode="gem"><span>${L('גימטרית')}</span></label>
             <label class="opt"><input type="radio" name="notMode${k}" class="cb" data-notmode="perm" checked><span>${L('אותיות (צירופים)')}</span></label>
@@ -683,6 +689,16 @@ function toggleFilt(k, force) {
   $('#ft' + k).classList.toggle('on', toFilt);
 }
 KS.forEach(k => { $('#ft' + k).onclick = () => toggleFilt(k); });
+// כפתור "פשוט" בכותרת כל פנל-תוצאות — delegation על document, כי sideHtml נבנה מחדש (החלפת שפה/סיור)
+function setSimple(on) {
+  SIMPLE = on; document.body.classList.toggle('simple', on);
+  document.querySelectorAll('[data-simple]').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  try { localStorage.setItem('gimatrivonSimple', on ? '1' : '0'); } catch (e) {}
+  KS.forEach(k => { const st = S[k]; if (st.hitsSort && !simpleOk(st.hitsSort)) st.hitsSort = null; });
+  renderCenter(); if (IDX) KS.forEach(run);
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-simple]')) setSimple(!SIMPLE); });
+document.body.classList.toggle('simple', SIMPLE);
 
 /* ---------- עץ + סוגי גימטריה לחיפוש בפסוקים (st.sms) ---------- */
 // בנוי בדיוק כמו עץ המקורות (srcCard/srcHd/tw/srcLeaves) — כרטיס מתקפל לכל משפחה (רגילה/אתב״ש/אטב״ח) עם
@@ -816,7 +832,7 @@ function sourceHits(st, id) { return (st.info || []).reduce((s, x) => s + (!x.no
 /* ---------- אזור מרכזי: ערכי כל סוגי הגימטריה + השוואה בין הצדדים ---------- */
 function renderCenter() {
   const res = {}; KS.forEach(k => { res[k] = {}; E.METHODS.forEach(m => { res[k][m.id] = E.calculateGematria(S[k].text, m.id); }); });
-  CM = E.compareAll(S.A.text, S.B.text, E.METHODS.map(m => m.id).filter(m => S.A.ms.has(m)), E.METHODS.map(m => m.id).filter(m => S.B.ms.has(m)));
+  CM = E.compareAll(S.A.text, S.B.text, E.METHODS.map(m => m.id).filter(m => S.A.ms.has(m) && simpleOk(m)), E.METHODS.map(m => m.id).filter(m => S.B.ms.has(m) && simpleOk(m)));
   CM.matches.forEach(m => { m.color = COLORS[(m.id - 1) % COLORS.length]; });
   const empty = !S.A.text.trim() || !S.B.text.trim();
   KS.forEach(k => {
@@ -828,8 +844,8 @@ function renderCenter() {
     // לאורך כל רוחב המלבן, עם המחרוזת המומרת בלבד (ללא טקסט-המקור/נוסחה — לבקשת המשתמש). מילוי נשאר
     // שורת-הערה בודדת (מלבן נפרד) כמו היום.
     const hasTxt = !!st.text.trim();
-    const gr4Html = GEM_FAMILIES.map(f => {
-      const cells = `<div class="gr4">${f.ids.map(id => {
+    const gr4Html = GEM_FAMILIES.filter(f => !SIMPLE || f.key === 'regular').map(f => {
+      const cells = `<div class="gr4">${f.ids.filter(simpleOk).map(id => {
         const r = res[k][id], on = st.ms.has(id), mine = CM.matches.filter(x => x[side].method === id), hl = mine.find(x => x.id === FOCUS) || mine[0];
         const matchBdgs = mine.map(x => `<button class="bdg${blinkOn(x) ? ' blinkBdg' : ''}" style="--c:${x.color};${blinkOn(x) ? blinkDelay() : ''}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
         const badges = matchBdgs ? `<div class="bdgSmall">${matchBdgs}</div>` : '';
@@ -839,6 +855,7 @@ function renderCenter() {
         const bk = blinkOn(hl);
         return `<div class="gr4cell${on ? '' : ' off'}${bk ? ' blinkBar' : ''}" data-m="${id}" style="--c:${hl ? hl.color : 'var(--ln2)'};${bk ? blinkDelay() : ''}" title="${L(f.labels[id])} · ${fmt(r.value)}${on ? ' · ' + L('לחצו לכיבוי שיטה זו') : ' · ' + L('לחצו להפעלת שיטה זו')}"><div class="mn">${L(f.labels[id])}</div><div class="num">${fmt(r.value)}</div><div class="bdgRow">${hitsBdg}${badges}</div></div>`;
       }).join('')}</div>`;
+      if (SIMPLE) return `<div class="gr4Wrap simpleCard">${cells}</div><div class="simpleNote">${L('מצב פשוט — לכל השיטות, כבו את ״פשוט״ בפנל התוצאות')}</div>`;
       if (f.key === 'regular') {
         // שורת נוטריקון מקוננת בתוך אותו מלבן (לא כפתור/קופסה נפרדת) — תמיד גלויה, בלי פס-צבע עליון
         // (אין style="--c:…"): רק מונה-תוצאות חי לכל שיטת-חילוץ. לחיצה על התא (כמו על העיגול) ממיינת לפי השיטה,
@@ -852,7 +869,7 @@ function renderCenter() {
     }).join('');
     // מילוי: אותה "מראה" כמו אתב״ש/אטב״ח — מלבן + שורת-הערה לאורך כל הרוחב בתחתית, עם המחרוזת המומרת
     // בלבד (שמות-האותיות המלאים, ללא נוסחת-הסכום), במקום ההערה-הקטנה-ליד-השם הישנה.
-    const restHtml = E.METHODS.filter(m => m.id === 'milui').map(m => { const r = res[k][m.id], on = st.ms.has(m.id), mine = CM.matches.filter(x => x[side].method === m.id), hl = mine.find(x => x.id === FOCUS) || mine[0];
+    const restHtml = E.METHODS.filter(m => m.id === 'milui' && simpleOk(m.id)).map(m => { const r = res[k][m.id], on = st.ms.has(m.id), mine = CM.matches.filter(x => x[side].method === m.id), hl = mine.find(x => x.id === FOCUS) || mine[0];
       const noteFull = hasTxt ? (r.transformedText || '') : '';
       const hits = sourceHits(st, m.id), hitsOn = st.hitsSort === m.id ? ' on' : '', hitsBdg = `<span class="bdgH${hitsOn}" data-m="${m.id}" title="${fmt(hits)} ${L('התאמות במקורות')}${hitsOn ? ' — ' + L('פעיל, לחצו לביטול') : ' — ' + L('לחצו למיון התוצאות לפי שיטה זו')}">${fmt(hits)}</span>`;
       const matchBdgs = mine.map(x => `<button class="bdg${blinkOn(x) ? ' blinkBdg' : ''}" style="--c:${x.color};${blinkOn(x) ? blinkDelay() : ''}" data-f="${x.id}" title="${L('התאמה')} ${heNum(x.id)}">${heNum(x.id)}</button>`).join('');
@@ -933,19 +950,20 @@ function mobileChip(k, id, label, r, res) {
 }
 function buildMobileGrid(res) {
   const hasTxtA = !!S.A.text.trim(), hasTxtB = !!S.B.text.trim();
-  const famHtml = GEM_FAMILIES.map((f, fi) => {
+  const famHtml = GEM_FAMILIES.filter(f => !SIMPLE || f.key === 'regular').map((f, fi) => {
     // v3.4.1: לתא-השיטה *הראשון* בלבד יש id ייעודי (mgrFirstFam) — הסיור-המודרך-בנייד מצביע עליו, לא על
     // כל #mgr (ראו bugfix בהמשך: #mgr כולו גבוה מ-1000px, גבוה בהרבה מגובה-המסך, ולכן ה-highlight של
     // driver.js היה "נמתח" הרבה מעבר לתצוגה — בפועל נראה כאילו שום דבר לא מודגש/מטושטש).
     const idAttr = fi === 0 ? ' id="mgrFirstFam"' : '';
     let barA = '', barB = '';
-    const cellsHtml = f.ids.map(id => {
+    const cellsHtml = f.ids.filter(simpleOk).map(id => {
       const a = mobileChip('A', id, f.labels[id], res.A[id], res), b = mobileChip('B', id, f.labels[id], res.B[id], res);
       if (a.barVar) barA = a.barVar.match(/--barA:([^;]+)/)[1];
       if (b.barVar) barB = b.barVar.match(/--barB:([^;]+)/)[1];
       const bk = a.foc || b.foc;
       return `<div class="ccell${a.foc ? ' blinkA' : ''}${b.foc ? ' blinkB' : ''}" style="--barA:${barA || 'var(--acA)'};--barB:${barB || 'var(--acB)'};${bk ? blinkDelay() : ''}"><div class="ccMn">${L(f.labels[id])}</div><div class="ccVals">${a.html}${b.html}</div></div>`;
     }).join('');
+    if (SIMPLE) return `<div class="cGrid4 cSimple"${idAttr}>${cellsHtml}</div>`;
     if (f.key === 'regular') {
       const notCells = NOTARIKON_IDS.map(m => {
         const cA = (S.A.notCounts && S.A.notCounts[m]) || 0, cB = (S.B.notCounts && S.B.notCounts[m]) || 0;
@@ -972,7 +990,7 @@ function buildMobileGrid(res) {
   const miluiNoteTxt = (noteMA || noteMB) ? `<b>${L('צד א׳')}</b> ${esc(noteMA || '—')} &nbsp;·&nbsp; <b>${L('צד ב׳')}</b> ${esc(noteMB || '—')}` : '&nbsp;';
   const miluiCopy = (noteMA || noteMB) ? `${L('צד א׳')}: ${noteMA}\n${L('צד ב׳')}: ${noteMB}` : '';
   const miluiNote = `<div class="ccNote">${miluiCopy ? `<span class="cpy" role="button" tabindex="0" title="${L('העתק את המחרוזת המומרת ללוח')}" data-copy="${esc(miluiCopy)}">⧉</span>` : ''}<span class="noteTxt">${miluiNoteTxt}</span></div>`;
-  $('#mgr').innerHTML = famHtml + `<div class="cGridSingle cGrid4">${miluiCell}</div>${miluiNote}`;
+  $('#mgr').innerHTML = famHtml + (SIMPLE ? '' : `<div class="cGridSingle cGrid4">${miluiCell}</div>${miluiNote}`);
 }
 // event-delegation יחיד על #mgr (נרשם פעם אחת ב-setupMobileUX) — מטפל בכל הקליקים האפשריים בתוך הלוח
 // הממוזג: עיגול-התאמה (ccBdg2, ממקד כמו .bdg הרגיל), עיגול-תוצאות (ccHits, ממיין כמו .bdgH הרגיל), כפתור-
@@ -1124,8 +1142,8 @@ const ref = u => {
 // וערכי מילת-החיפוש לפי כל שיטת-מילה.
 function buildSearchContext(st) {
   const q = st.text, num = numVal(st.num);
-  const wms = E.METHODS.map(m => m.id).filter(m => st.ms.has(m)); // שיטות של מילת החיפוש
-  const sms = E.METHODS.map(m => m.id).filter(m => st.sms.has(m)); // שיטות לחיפוש בפסוקים
+  const wms = E.METHODS.map(m => m.id).filter(m => st.ms.has(m) && simpleOk(m)); // שיטות של מילת החיפוש
+  const sms = E.METHODS.map(m => m.id).filter(m => st.sms.has(m) && simpleOk(m)); // שיטות לחיפוש בפסוקים
   const limit = MAX_RESULTS_PER_SEARCH;
   const filt = { books: st.sel.size === ALL.size ? null : st.sel, ranges: st.ranges.size ? st.ranges : null, fullUnit: st.fullUnit, singleWord: st.singleWord };
   // ערכי מילת החיפוש לפי כל שיטת-מילה פעילה (מחושב פעם אחת; המספר, אם הוזן, לא תלוי בשיטת-מילה כלשהי)
@@ -1210,7 +1228,7 @@ function run(k) {
   const box = $('#rl' + k);
   st.all = makeStore(); st.cur = -1; st.winStart = 0; st.winCount = 0; st.info = []; box.innerHTML = ''; box.classList.add('searching'); updateTfBar(k);
   st.mainBusy = true; st.notPend = null;
-  runNotarikon(k); // אחרי האיפוס (לא לפניו) — כדי שמסקנה-סינכרונית (אינדקס-נוטריקון כבר בנוי) לא תימחק ע״י האיפוס
+  if (SIMPLE) { st.notGen = (st.notGen || 0) + 1; st.notCounts = {}; } else runNotarikon(k); // אחרי האיפוס (לא לפניו) — כדי שמסקנה-סינכרונית (אינדקס-נוטריקון כבר בנוי) לא תימחק ע״י האיפוס
   renderCenter(); // מרענן מייד את עיגולי-המידע (כולל איפוסם) — גם אם החיפוש נעצר כאן (למשל טקסט ריק) ולא מגיע לסופו
   const say = h => { $('#rs' + k).innerHTML = h; };
   // עצירה מוקדמת (אין שיטות/מקורות/טקסט): אין חיפוש ראשי, ולכן שורות-נוטריקון שכבר חיכו מוצגות מיד
