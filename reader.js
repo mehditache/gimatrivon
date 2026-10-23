@@ -2048,6 +2048,45 @@
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
+  /* חיפוש בכל התנ״ך עם FlexSearch (v3.31.0): האינדקס נבנה מראש (scripts/build-flexsearch.js) לקובץ אחד שנטען בחיפוש הראשון,
+     ולכן לא טוענים לזיכרון את כל ספרי התנ״ך. כתיב חסר ומלא נחשבים זהים (fxKtiv). התוצאות: קודם הביטוי הרצוף, אחר כך פסוקים
+     שיש בהם את כל המילים; 50 בכל פעם (נטענות בגלילה). ב-file:// או בכשל — החיפוש הרגיל. */
+  let FX = null, FX_FAIL = false, fxData = null;
+  const fxOn = () => !FX_FAIL && /^https?:$/.test(location.protocol) && IX.books[S.b].cat === 0 && S.scope === 'all' && S.src === 'txt';
+  // חייב להיות זהה ל-ktiv ב-scripts/build-flexsearch.js: בלי ו/י אחרי האות הראשונה, ובלי אותיות סופיות
+  const fxKtiv = w => (w[0] + w.slice(1).replace(/[וי]/g, '')).replace(/[ךםןףץ]/g, c => 'כמנפצ'['ךםןףץ'.indexOf(c)]);
+  const fxNorm = s => norm(s).split(' ').filter(Boolean).map(fxKtiv).join(' ');
+  const fxScript = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
+  const fxLoad = () => fxData || (fxData = Promise.all([G.FlexSearch || fxScript('vendor/flexsearch.compact.min.js'), G.GIM_FX_TANAKH || fxScript('generated/flexsearch/tanakh.js')]).then(() => {
+    const d = G.GIM_FX_TANAKH;
+    const FS = G.FlexSearch, index = new FS.Index({ tokenize: 'strict', encoder: new FS.Encoder({ normalize: false, dedupe: false }) });
+    for (const k in d.ix) index.import(k, d.ix[k]);
+    return { index, docs: d.docs };
+  }));
+  const fxHit = d => ({ b: d[0], ch: d[1], v: d[2], pt: d[3] });
+  function fxSearch(raw) {
+    const nq = norm(raw);
+    if (nq.length < 2) return { hits: [], total: 0, q: nq };
+    if (!FX || FX.q !== nq) {
+      const me = FX = { q: nq, ids: [], n: 50, busy: true };
+      fxLoad().then(X => {
+        if (FX !== me) return;
+        const kq = fxNorm(nq), ids = X.index.search(kq, { limit: 1e6 });
+        // ביטוי של כמה מילים: קודם הפסוקים שבהם הוא רצוף, אחר כך שאר הפסוקים שבהם כל המילים
+        if (kq.includes(' ')) { const p = ' ' + kq + ' ', ph = [], rest = []; ids.forEach(i => (( ' ' + fxNorm(X.docs[i][3]) + ' ').includes(p) ? ph : rest).push(i)); me.ids = ph.concat(rest); }
+        else me.ids = ids;
+        me.docs = X.docs; me.busy = false;
+        if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop();
+      }).catch(() => { FX_FAIL = true; FX = null; if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); });
+    }
+    return { hits: FX.busy ? [] : FX.ids.slice(0, FX.n).map(i => fxHit(FX.docs[i])), total: FX.ids.length, q: nq, wait: FX.busy };
+  }
+  function fxNext() { // עוד 50 תוצאות בגלילה, ושמירת מקום הגלילה
+    if (!FX || FX.busy || FX.n >= FX.ids.length) return;
+    FX.n += 50;
+    const top = $r('#rdResBox') ? $r('#rdResBox').scrollTop : 0;
+    renderDrop(); const box = $r('#rdResBox'); if (box) { box.scrollTop = top; resWin(true); }
+  }
   function renderDrop() {
     if (isTur()) return renderDropTur();
     if (isTal()) return renderDropTal();
@@ -2063,22 +2102,22 @@
     html += refsHtml();
     const scopes = [['ch', 'בפרק'], ['book', 'בספר'], ['all', isRambam(S.b) ? 'בכל הרמב״ם' : isMishnah(S.b) ? 'בכל המשנה' : 'בכל התנ״ך']];
     // החיפוש צריך את הספרים שבתחום (והמפרשים/התרגומים שלהם, לפי "חיפוש ב"); עד שהם נטענים — "טוען…" במקום מספר התוצאות
-    const sBooks = scopeBooks(); PIN = searchNeed(sBooks);
-    const wait = !ensure(PIN, () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
-    const res = wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
+    const sBooks = scopeBooks(), fx = fxOn(); PIN = fx ? [] : searchNeed(sBooks); // v3.31.0: חיפוש בכל התנ״ך = FlexSearch, בלי לטעון את כל הספרים
+    const wait = fx ? false : !ensure(PIN, () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
+    const res = fx ? fxSearch(q) : wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
     const srcs = [['txt', isRambam(S.b) ? 'הלכות' : isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isRambam(S.b) ? 'מפרשים' : isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
-    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait ? T('טוען…') : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
+    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait || res.wait ? T('טוען…') : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
     if (res.hits.length) {
-      const byBook = S.scope === 'all';
+      const byBook = S.scope === 'all' && !fx;
       html += resList(res.hits, start, q, {
-        key: S.scope === 'ch' ? null : byBook ? x => x.b : x => x.b + ':' + x.ch,
+        fx, key: fx || S.scope === 'ch' ? null : byBook ? x => x.b : x => x.b + ':' + x.ch,
         gh: x => byBook ? bkName(IX.books[x.b].heTitle) : T('פרק') + ' ' + num(x.ch),
         tick: byBook ? x => IX.books[x.b].g : null, tickName: grpName,
         bub: x => refLabel({ b: x.b, ch: x.ch, v: 0 }),
         row: x => {
-          const cm = x.cm != null, tr = !!x.tr, t = cm ? cmText(x) : tr ? noMarks(chText(IX.links[x.b][x.tr], x.ch, x.v)) : noTeamim(chText(x.b, x.ch, x.v));
+          const cm = x.cm != null, tr = !!x.tr, t = x.pt != null ? x.pt : cm ? cmText(x) : tr ? noMarks(chText(IX.links[x.b][x.tr], x.ch, x.v)) : noTeamim(chText(x.b, x.ch, x.v));
           return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', fc: cm ? S.cmFont : tr ? S.trFont : '', ref: refLabel(x), t };
         }
       });
@@ -2134,6 +2173,7 @@
     st.hidden = !g || (f.gh && RS.off[firstAt(top)] >= top - 1);
     if (g && !st.hidden) st.innerHTML = '<span>' + h(ghLabel(g.x)) + '</span><span class="n">' + resN(g.n) + '</span>';
     fsLay();
+    if (RS.o.fx && to >= RS.items.length - 6) fxNext();
   }
   function fsLay() {
     const box = $r('#rdResBox'), tr = $r('#rdFs'), th = $r('#rdFsThumb'); if (!box || !tr) return;
