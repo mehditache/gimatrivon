@@ -2048,11 +2048,11 @@
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
-  /* חיפוש בכל התנ״ך עם FlexSearch (v3.31.0): האינדקס נבנה מראש (scripts/build-flexsearch.js) לקובץ אחד שנטען בחיפוש הראשון,
+  /* חיפוש בתנ״ך (בפרק, בספר ובכל התנ״ך) עם FlexSearch (v3.31.0): האינדקס נבנה מראש (scripts/build-flexsearch.js) לקובץ אחד שנטען בחיפוש הראשון,
      ולכן לא טוענים לזיכרון את כל ספרי התנ״ך. כתיב חסר ומלא נחשבים זהים (fxKtiv). התוצאות: קודם הביטוי הרצוף, אחר כך פסוקים
      שיש בהם את כל המילים; 50 בכל פעם (נטענות בגלילה). ב-file:// או בכשל — החיפוש הרגיל. */
   let FX = null, FX_FAIL = false, fxData = null;
-  const fxOn = () => !FX_FAIL && /^https?:$/.test(location.protocol) && IX.books[S.b].cat === 0 && S.scope === 'all' && S.src === 'txt';
+  const fxOn = () => !FX_FAIL && /^https?:$/.test(location.protocol) && IX.books[S.b].cat === 0 && S.src === 'txt';
   // חייב להיות זהה ל-ktiv ב-scripts/build-flexsearch.js: בלי ו/י אחרי האות הראשונה, ובלי אותיות סופיות
   const fxKtiv = w => (w[0] + w.slice(1).replace(/[וי]/g, '')).replace(/[ךםןףץ]/g, c => 'כמנפצ'['ךםןףץ'.indexOf(c)]);
   const fxNorm = s => norm(s).split(' ').filter(Boolean).map(fxKtiv).join(' ');
@@ -2067,11 +2067,12 @@
   function fxSearch(raw) {
     const nq = norm(raw);
     if (nq.length < 2) return { hits: [], total: 0, q: nq };
-    if (!FX || FX.q !== nq) {
-      const me = FX = { q: nq, ids: [], n: 50, busy: true };
+    const sc = S.scope === 'all' ? '' : S.scope === 'book' ? S.b + '' : S.b + ':' + S.ch; // בפרק / בספר: אותו אינדקס, מסונן
+    if (!FX || FX.q !== nq || FX.sc !== sc) {
+      const me = FX = { q: nq, sc, ids: [], n: 50, busy: true };
       fxLoad().then(X => {
         if (FX !== me) return;
-        const kq = fxNorm(nq), ids = X.index.search(kq, { limit: 1e6 });
+        const kq = fxNorm(nq), ids = X.index.search(kq, { limit: 1e6 }).filter(i => !sc || (S.scope === 'book' ? X.docs[i][0] + '' : X.docs[i][0] + ':' + X.docs[i][1]) === sc);
         // ביטוי של כמה מילים: קודם הפסוקים שבהם הוא רצוף, אחר כך שאר הפסוקים שבהם כל המילים
         if (kq.includes(' ')) { const p = ' ' + kq + ' ', ph = [], rest = []; ids.forEach(i => (( ' ' + fxNorm(X.docs[i][3]) + ' ').includes(p) ? ph : rest).push(i)); me.ids = ph.concat(rest); }
         else me.ids = ids;
