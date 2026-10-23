@@ -1228,4 +1228,27 @@ body.simple .wrow,body.simple .filtPane .fullOnly{display:none}
 /* נייד: "רגילה" ברוחב מלא, +כולל ו-+אותיות זה-לצד-זה מתחתיה */
 .cSimple .ccell:first-child{grid-column:1/-1}
 .cSimple .ccell:first-child .ccNum{font-size:1.2rem}
-.simpleNote{text-align:center;font-size:.74rem;color:var(--mu);padding:.2rem .6rem}
+/* פס נגלל (מצב פשוט): "שאר השיטות" בלוח החישוב ו"חיפוש במקורות" בפנל התוצאות. כפתור ברוחב מלא — כותרת,
+   שורת-משנה (מה בפנים) וחץ שמסתובב. המגירה נפתחת ב-grid-template-rows 0fr↔1fr (גובה אמיתי, בלי מספר קבוע). */
+.moreBar{display:flex;align-items:center;gap:.5rem;width:100%;margin:.35rem 0;padding:.45rem .75rem;border:1px dashed var(--ln);border-radius:10px;background:var(--pn2);color:var(--tx);text-align:start;cursor:pointer;transition:background .15s,border-color .15s}
+.moreBar:hover{background:var(--acs);border-color:var(--ac)}
+.moreBar .mbT{flex:none;font-weight:700;font-size:.82rem;color:var(--ac)}
+.moreBar .mbS{flex:1;min-width:0;font-size:.72rem;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moreBar .mbC{flex:none;display:inline-grid;place-content:center;width:1.4rem;height:1.4rem;border-radius:50%;background:var(--pn);border:1px solid var(--ln2);color:var(--ac);font-size:.75rem;transition:transform .26s ease}
+.moreBar.open{border-style:solid;border-color:var(--ac);background:var(--acs)}
+.moreBar.open .mbC{transform:rotate(180deg)}
+.moreDrw{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .26s ease,opacity .2s ease}
+.moreDrw.open{grid-template-rows:1fr;opacity:1}
+.moreIn{min-height:0;overflow:hidden}
+.moreDrw:not(.open) .moreIn{visibility:hidden;transition:visibility 0s .26s}
+#stage .simpleCard+.moreBar{margin-top:.6rem}
+/* +תיבות ונוטריקון בתוך המגירה: מלבן אחד, 5 עמודות */
+.gr5{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+/* פס "חיפוש במקורות" בפנל התוצאות — מוצג רק במצב פשוט */
+.srcMore{flex:none;padding:0 .8rem;border-bottom:1px solid var(--ln2)}
+body:not(.simple) .srcMore{display:none}
+.srcMore .moreBar{margin:.4rem 0}
+.sxHint{font-size:.72rem;color:var(--mu);margin:.1rem 0 .35rem}
+.sxChips{display:flex;flex-wrap:wrap;gap:.35rem;padding-bottom:.55rem}
+.sxChip{padding:.2rem .65rem;border-radius:99px;border:1px solid var(--ln);background:var(--pn);color:var(--mu);font-size:.76rem;font-weight:600}
+.sxChip.on{border-color:var(--ac);background:var(--acs);color:var(--ac)}
