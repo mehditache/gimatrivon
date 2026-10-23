@@ -57,4 +57,4 @@
 החיפוש מחשב חלונות רצופים של תיבות **בתוך יחידה אחת בלבד** (two-pointer, כל השיטות תוספתיות) — לעולם לא חוצה פסוק/משנה/פרק/ספר. ההשוואה בודקת כל שיטה בצד א׳ מול כל שיטה בצד ב׳; כל התאמה מקבלת מספר, צבע ותווית.
 
 ## אימות ובדיקות
-`node scripts/validate-corpus.js` · `node tests/run-tests.js` · `node tests/reader-ui.e2e.js` (בדיקת דפדפן לכפתורי התצוגה בכל הספרים; דורש Playwright).
+`node scripts/validate-corpus.js` · `node tests/run-tests.js` · `node tests/reader-ui.e2e.js` (בדיקת דפדפן לכפתורי התצוגה בכל הספרים; דורש Playwright) · `node tests/tour.e2e.js` (שני הסיורים המודרכים; דורש Playwright).

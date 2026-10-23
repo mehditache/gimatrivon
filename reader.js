@@ -2421,7 +2421,53 @@
     save();
     return true;
   }
-  G.GimReader = { canOpen, openUnit };
+  /* ---------- סיור מודרך של מסך הקריאה (v3.31.0) ----------
+     נפרד מהסיור של מסך הגימטריה (app.js: startTour), עם אותן הגדרות driver.js ואותו עיצוב (APP.tourBase, .gtTourPopover).
+     מופעל מ"סיור מודרך" בתפריט ⋮ כשמסך הקריאה פתוח. לא משנה את המקום ולא את ההגדרות: שני צעדים פותחים לרגע את חלון
+     המעבר ואת חלון "תצוגה" (היעד הוא פונקציה, ש-driver.js קורא לה כשהוא מגיע לצעד), והם נסגרים במעבר לצעד הבא ובסוף.
+     צעד שהיעד שלו מוסתר במסך הזה (למשל סוג התצוגה במשנה, או החצים לפרק בחלון צר) לא נכנס לסיור. */
+  function tour() {
+    if (!G.driverjs || !APP.tourBase || !built) return;
+    const en = isEn(), tal = isTal(), tur = isTur();
+    closePops(); closeDrop();
+    const shown = sel => { const e = typeof sel === 'string' ? $r(sel) : sel; if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+    const pop = id => () => { if (openPop !== id) openPopover(id); return $r(id === 'jump' ? '#rdJump' : '#rdSet'); };
+    const st = (element, he, heD, enT, enD, side, align, extra) => Object.assign({ element, popover: { title: en ? enT : he, description: en ? enD : heD, side: side || 'bottom', align: align || 'center' } }, extra || {});
+    const bookTip = tal
+      ? ['לחיצה על קטע בגמרא (או על פירוש) פותחת חלון עם הקטע ועם רש״י ותוספות עליו.', 'Clicking a passage of Gemara (or a commentary) opens a window with the passage and its Rashi and Tosafot.']
+      : tur
+        ? ['לחיצה על סימן בטור, (א) או [א], פותחת את הדיבור בבית יוסף או בב״ח.', 'Clicking a marker in the Tur, (א) or [א], opens that comment in the Beit Yosef or the Bach.']
+        : ['המפרשים והתרגום מוצגים לצד הטקסט, לפי ההגדרות בחלון "תצוגה".', 'The commentaries and the translation appear beside the text, according to the "Display" settings.'];
+    const steps = [
+      st(null, 'מסך הקריאה', 'כאן קוראים את המקורות עצמם, כמו בספר: תנ״ך עם תרגומים ורש״י, משנה, רמב״ם, ש״ס וטור, עם המפרשים. סיור קצר, אפשר לדלג או לצאת בכל רגע.',
+        'The reading screen', 'Here you read the sources themselves, like a book: Tanakh with translations and Rashi, Mishnah, Rambam, Talmud and Tur, with their commentaries. A short tour; skip or exit any time.'),
+      st('#modeSw', 'גימטריה / קריאה', 'המתג הזה עובר בין מסך הגימטריה למסך הקריאה. כשחוזרים לכאן, הספר נפתח במקום שבו הפסקתם.',
+        'Gematria / Reading', 'This switch moves between the gematria screen and the reading screen. When you come back here, the book opens where you stopped.'),
+      st('#rdWhere', 'המקום בספר', 'הספר והפרק שפתוחים עכשיו. החצים משני הצדדים עוברים לפרק הקודם ולפרק הבא.',
+        'Where you are', 'The book and chapter open now. The arrows on either side go to the previous and next chapter.'),
+      st(pop('jump'), 'מעבר לפרק ופסוק', 'לחיצה על המקום (או Ctrl G) פותחת את החלון הזה: בוחרים אוסף, ספר, פרק ופסוק, ועוברים ישר לשם. פתחנו אותו בשבילכם, והוא ייסגר בצעד הבא.',
+        'Go to chapter and verse', 'Clicking the location (or Ctrl G) opens this window: choose a collection, a book, a chapter and a verse, and go straight there. We opened it for you; it closes at the next step.', 'bottom', 'center', { onDeselected: () => closePops() }),
+      st('#rdSearch', 'חיפוש וקפיצה', 'מקלידים מילים כדי לחפש בספר הפתוח (או בכל האוסף), או מקום כדי לקפוץ אליו: "שמות יב ב", "ב״מ נט:", "או״ח ס", גם בראשי תיבות. הצעות מופיעות תוך כדי הקלדה. קיצור: Ctrl K.',
+        'Search and jump', 'Type words to search the open book (or the whole collection), or a place to jump to it: "Exodus 12 2", "BM 59b", "OC 60", abbreviations too. Suggestions appear as you type. Shortcut: Ctrl K.'),
+      st('#rdViewSeg', 'סוג התצוגה', 'מחליף את צורת הדף, לפי הספר: למשל "ספר" או "פסוק מול תרגום" בתנ״ך, "צורת הדף" או "גמרא ומפרשים" בש״ס.',
+        'View type', 'Switches the page layout, depending on the book: for example "Book" or "Verse and translation" in Tanakh, "Daf" or "Gemara and commentaries" in the Talmud.'),
+      st(pop('set'), 'הגדרות תצוגה (אָ)', 'הכפתור אָ פותח את החלון הזה: גודל אותיות, אילו מפרשים ותרגום מוצגים, כתב הפירוש, ניקוד ברמב״ם ועוד. ההגדרות נשמרות לפעם הבאה. פתחנו אותו בשבילכם, והוא ייסגר בצעד הבא.',
+        'Display settings (אָ)', 'The אָ button opens this window: letter size, which commentaries and translation are shown, the commentary font, vowels in the Rambam and more. Settings are saved for next time. We opened it for you; it closes at the next step.', 'bottom', 'center', { onDeselected: () => closePops() }),
+      st('#rdPrintBtn', 'הדפסה / PDF', 'בוחרים מה להדפיס, ברקע נייר וצבעים או ברקע לבן לחיסכון בדיו, ומדפיסים או שומרים כ-PDF. קיצור: Ctrl P.',
+        'Print / PDF', 'Choose what to print, with a paper background and colours or a white background to save ink, then print or save as PDF. Shortcut: Ctrl P.'),
+      st('#rdBook', 'הדף', bookTip[0] + ' דפדוף: החצים בצדי הדף, מקשי החצים במקלדת, או החלקה בטלפון.',
+        'The page', bookTip[1] + ' Turning pages: the arrows beside the page, the arrow keys, or a swipe on a phone.', 'top', 'center'),
+      st('.rdFoot', 'מיקום בפרק', 'כאן רואים באיזה עמוד אתם מתוך כמה בפרק, ופס התקדמות. הכפתורים בצדדים מדפדפים גם הם.',
+        'Position in the chapter', 'Shows which page you are on out of how many in the chapter, with a progress bar. The buttons at the sides turn pages too.', 'top', 'center'),
+      st('.themeSw', 'מראה', 'מעבר בין מראה בהיר ("גוויל") למראה כהה ("לילה").', 'Appearance', 'Switches between the light "parchment" look and the dark "night" look.', 'bottom', 'end'),
+      st('#mKebab', 'זהו, אפשר לקרוא!', 'בתפריט הזה: שיטות הגימטריה, אודות, צור קשר, והסיור הזה שוב. למסך הגימטריה יש סיור משלו, ומכל תוצאה שם כפתור הספר פותח אותה כאן, במקום המדויק.',
+        "That's it, happy reading!", 'This menu has the gematria methods, About, Contact, and this tour again. The gematria screen has its own tour, and from any result there the book button opens it here, at the exact place.', 'bottom', 'end'),
+    ].filter(x => !x.element || typeof x.element === 'function' || shown(x.element));
+    const d = G.driverjs.driver(Object.assign(APP.tourBase(), { steps, onDestroyed: () => closePops() }));
+    d.drive();
+    return d;
+  }
+  G.GimReader = { canOpen, openUnit, tour };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;
@@ -2437,8 +2483,6 @@
   function init() {
     const sw = $r('#modeSw');
     if (sw) sw.onclick = e => { const b = e.target.closest('button[data-mode]'); if (b) setMode(b.dataset.mode, true); };
-    // הסיור המודרך מצביע על מסך הגימטריה — חוזרים אליו לפני שהסיור מתחיל
-    ['#startTour', '#mmTour'].forEach(s => { const b = $r(s); if (b) b.addEventListener('click', () => { if (document.body.dataset.mode === 'read') setMode('gem', false, 'tour'); }, true); });
     const lb = $r('#langSw'); if (lb) lb.addEventListener('click', () => setTimeout(() => { labelModeSw(); rebuild(); }, 0));
     let rt = 0;
     window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 120); });
