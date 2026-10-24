@@ -1964,15 +1964,17 @@
     if (S.src === 'both' || (S.src === 'tr' && isMishnah(S.b))) S.src = 'all'; // ערך ישן / אין תרגום במשנה וברמב״ם
     const nq = norm(q), hits = [], all = S.src === 'all', txt = all || S.src === 'txt', cm = all || S.src === 'cm', tr = all || S.src === 'tr';
     if (nq.length < 2) return { hits, total: 0, q: nq };
+    // v3.31.0: ביטוי של כמה מילים נמצא גם כשהמילים לא צמודות (כל המילים באותו פסוק / פירוש) — בטלפון, ב-file:// ובנפילה מ-SQLite
+    const ws = nq.split(' '), has = t => t.includes(nq) || (ws.length > 1 && ws.every(w => t.includes(w)));
     for (const b of books) {
       const T1 = txt ? normBook(IX, b) : null, L = IX.links[b] || {}, C1 = cm ? (L.cms || []).map(m => ({ c: m.c, n: cmNorm(m.b) })) : [];
       const TR = tr ? ['onkelos', 'yonatan'].filter(k => L[k] != null).map(k => ({ k, n: normBook(IX, L[k]) })) : [];
       chaptersOf(IX, b).forEach(ch => {
         if (onlyCh && ch !== onlyCh) return;
         versesOf(IX, b, ch).forEach(v => {
-          if (T1 && ((T1[ch] || [])[v] || '').includes(nq)) hits.push({ b, ch, v });
-          TR.forEach(t => { if (((t.n[ch] || [])[v] || '').includes(nq)) hits.push({ b, ch, v, tr: t.k }); });
-          C1.forEach(m => ((m.n[ch] || [])[v] || []).forEach((t, k) => { if (t.includes(nq)) hits.push({ b, ch, v, cm: k, cs: m.c }); }));
+          if (T1 && has((T1[ch] || [])[v] || '')) hits.push({ b, ch, v });
+          TR.forEach(t => { if (has((t.n[ch] || [])[v] || '')) hits.push({ b, ch, v, tr: t.k }); });
+          C1.forEach(m => ((m.n[ch] || [])[v] || []).forEach((t, k) => { if (has(t)) hits.push({ b, ch, v, cm: k, cs: m.c }); }));
         });
       });
     }
@@ -2059,7 +2061,7 @@
      בטלפון, ב-file:// או בכשל — החיפוש הקודם. התוצאות: לפי דירוג, 50 בכל פעם (עוד 50 בגלילה), עם הסכום הכולל. */
   const SQ_N = 4, SQ_MAX = 8 << 20; // 4 Workers; כל אחד עד כ-8MB של עמודים בזיכרון
   let SQE = null, SQ_FAIL = false, sqP = null, SQ = null, SQHL = null;
-  const sqPhone = () => G.matchMedia && G.matchMedia('(hover: none) and (pointer: coarse), (max-width: 600px)').matches;
+  const sqPhone = () => G.matchMedia && G.matchMedia('(hover: none) and (pointer: coarse)').matches; // טלפון / טאבלט (מסך מגע בלי עכבר)
   const sqOn = () => !SQ_FAIL && !!G.GimSq && /^https?:$/.test(location.protocol) && IX.books[S.b].cat === 0 && !sqPhone() && typeof Worker !== 'undefined';
   const sqScript = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
   const sqAbs = p => new URL(p, location.href).href;
@@ -2117,15 +2119,43 @@
     return { q, test };
   }
   // טקסט מוצג + המילים לסימון (Set של מספרי מילים, או test על המילה) → HTML; בטקסט ארוך — מתחילים קצת לפני ההתאמה הראשונה
-  function sqMarkHtml(t, marks, test, cut) {
+  function sqMarkHtml(t, marks, test) {
     const W = G.GimSq.words(t), on = W.parts.map((p, i) => W.wi[i] >= 0 && (marks ? marks.has(W.wi[i]) : test(W.ws[W.wi[i]])));
-    let from = 0;
-    if (cut) { const f = on.indexOf(true); if (f > 0 && W.wi.slice(0, f).filter(x => x >= 0).length >= 14) { from = f; for (let n = 0; from > 0 && n < 8; ) { from--; if (W.wi[from] >= 0) n++; } } }
-    return (from ? '… ' : '') + W.parts.slice(from).map((p, k) => {
-      if (!on[from + k]) return h(p);
-      const m = /^([^א-ת]*)(.*?)([^א-ת֑-ׇ]*)$/.exec(p); // סימני פיסוק מחוץ לסימון
+    return W.parts.map((p, k) => {
+      if (!on[k]) return h(p);
+      const m = /^([^א-ת]*)(.*?)([^א-ת\u0591-\u05C7]*)$/.exec(p); // סימני פיסוק מחוץ לסימון
       return h(m[1]) + '<mark class="rdHl">' + h(m[2]) + '</mark>' + h(m[3]);
     }).join('');
+  }
+  /* שורת תוצאה (שורה אחת ברשימה): כל המילים שנמצאו תמיד נראות. units = [{t, marks}] (בקטע — כמה פסוקים). אם הכל לא נכנס
+     בשורה (SQ_FIT תווים, בלי ניקוד), מציגים רק את סביבת המילים שנמצאו — קודם 3 מילים מכל צד, ואם צריך פחות — עם ״…״ בין הקטעים */
+  const SQ_FIT = 64;
+  function sqSnippet(units, sep) {
+    const P = []; // {p, w (מספר המילה הרץ או -1), on}
+    let nw = 0;
+    units.forEach((x, k) => {
+      if (k) P.push({ p: sep, w: -1, sep: true });
+      const W = G.GimSq.words(x.t);
+      W.parts.forEach((p, i) => { if (!p) return; const wi = W.wi[i]; P.push({ p, w: wi >= 0 ? nw + wi : -1, on: wi >= 0 && x.marks.has(wi) }); });
+      nw += W.ws.length;
+    });
+    const len = p => G.GimSq.letters(p).length + 1, total = P.reduce((a, x) => a + (x.w >= 0 ? len(x.p) : 0), 0);
+    const hits = P.filter(x => x.on).map(x => x.w);
+    let keep = null;
+    if (total > SQ_FIT && hits.length) for (const r of [3, 2, 1, 0]) {
+      keep = new Set(); hits.forEach(w => { for (let k = w - r; k <= w + r; k++) keep.add(k); });
+      if (P.reduce((a, x) => a + (x.w >= 0 && keep.has(x.w) ? len(x.p) : 0), 0) + 3 * hits.length <= SQ_FIT) break;
+    }
+    const mark = p => { const m = /^([^א-ת]*)(.*?)([^א-ת\u0591-\u05C7]*)$/.exec(p); return h(m[1]) + '<mark class="rdHl">' + h(m[2]) + '</mark>' + h(m[3]); };
+    if (!keep) return P.map(x => x.sep ? x.p : x.on ? mark(x.p) : h(x.p)).join('');
+    let out = '', last = -2, open = false;
+    P.forEach((x, i) => {
+      if (x.w < 0) { if (open && P[i + 1] && keep.has(P[i + 1].w)) out += x.sep ? x.p : h(x.p); return; }
+      if (!keep.has(x.w)) { open = false; return; }
+      if (x.w !== last + 1 || !open) out += x.w > 0 || last >= 0 ? (out ? ' … ' : '… ') : '';
+      out += x.on ? mark(x.p) : h(x.p); last = x.w; open = true;
+    });
+    return out + (last < nw - 1 ? ' …' : '');
   }
   const SQ_SRCS = { txt: [0], cm: [1], tr: [2, 3], all: [0, 1, 2, 3] };
   function sqOpt() {
@@ -2140,9 +2170,8 @@
     const x = { b: M.ob[ord], ch: M.oc[ord], v: M.ov[ord], sq: true, sc: r.sc };
     if (r.src === 1) { x.cm = G.GimSq.rK(u0); x.cs = 2; } else if (r.src >= 2) x.tr = r.src === 2 ? 'onkelos' : 'yonatan';
     if (r.e > r.s) { const e = r.src === 1 ? G.GimSq.rOrd(us[us.length - 1]) : r.e; if (e > ord) x.ref = refLabel(x) + '–' + (M.oc[e] === x.ch ? num(M.ov[e]) : num(M.oc[e]) + ', ' + num(M.ov[e])); }
-    const one = us.length === 1;
     x.pt = us.map(u => tx.get(u)).join(' ');
-    x.html = us.map(u => sqMarkHtml(tx.get(u), r.marks.get(u) || new Set(), null, one && r.src === 1)).join(r.src === 1 ? ' <span class="rdCont">…</span> ' : ' ');
+    x.html = sqSnippet(us.map(u => ({ t: tx.get(u), marks: r.marks.get(u) || new Set() })), r.src === 1 ? ' <span class="rdCont">…</span> ' : ' ');
     return x;
   }
   async function sqMore(me, k, pri) {

@@ -43,13 +43,13 @@ const ok = (name, cond, info) => { if (cond) pass++; else fail++; console.log((c
     await p.waitForFunction(() => { const b = document.querySelector('#rdBook'); return b && !b.querySelector('.rdLoading,.rdSkel') && b.innerHTML.length > 500; }, null, { timeout: 60000 });
   };
   await open(pg, '#read/Genesis/1');
-  // הטעינה ברקע (sqWarm): ה-Workers והמסד מוכנים לפני החיפוש הראשון
+  // הטעינה ברקע (sqWarm): ה-Workers והמסד מוכנים לפני החיפוש הראשון (4 Workers, כ-400KB לכל אחד)
   const t0 = Date.now();
   await pg.waitForFunction(() => !!document.querySelector('#rdQ'), null, { timeout: 10000 });
   await pg.waitForTimeout(4000);
   const warmBytes = LOG.reduce((a, x) => a + x.bytes, 0);
   if (process.env.SQDBG) console.log(LOG.map(x => x.a + '+' + x.bytes).join(' '));
-  ok('טעינה ברקע: קראה מעט מהמסד', warmBytes > 0 && warmBytes < 1500000, Math.round(warmBytes / 1024) + 'KB ב-' + LOG.length + ' בקשות');
+  ok('טעינה ברקע: קראה מעט מהמסד', warmBytes > 0 && warmBytes < 4 * 600000, Math.round(warmBytes / 1024) + 'KB ב-' + LOG.length + ' בקשות');
 
   async function search(q, { scope, src } = {}) {
     await pg.evaluate(() => { const i = document.querySelector('#rdQ'); i.value = ''; i.dispatchEvent(new Event('input')); });
@@ -103,6 +103,28 @@ const ok = (name, cond, info) => { if (cond) pass++; else fail++; console.log((c
   const loc = await pg.evaluate(() => ({ hash: location.hash, marks: [...document.querySelectorAll('.rdPage mark')].map(m => m.textContent) }));
   ok('מעבר לבראשית לג, יח עם סימון', /\/Gen\/33\/18$/.test(loc.hash) && loc.marks.length >= 3, loc.hash + ' ' + loc.marks.slice(0, 4).join(','));
 
+  // כל המילים שנמצאו נראות בשורה (לא נחתכות ב-line-clamp), בכל סוג תוצאה
+  const visible = p => p.evaluate(() => [...document.querySelectorAll('#rdResBox .rdDI.hit')].map(b => {
+    const sn = b.querySelector('.sn').getBoundingClientRect(), ms = [...b.querySelectorAll('.sn mark')];
+    return { ref: b.querySelector('.rf').textContent, n: ms.length, ok: ms.length > 0 && ms.every(m => { const r = m.getBoundingClientRect(); return r.width > 0 && r.top >= sn.top - 1 && r.bottom <= sn.bottom + 1 && r.left >= sn.left - 1 && r.right <= sn.right + 1; }) };
+  }));
+  // כל התוצאות שנטענו (גלילה ברשימה הווירטואלית)
+  const allRefs = async (p, max) => { const seen = new Set(); await p.evaluate(() => { document.querySelector('#rdResBox').scrollTop = 0; });
+    for (let i = 0; i < 40 && seen.size < max; i++) { (await p.evaluate(() => [...document.querySelectorAll('#rdResBox .rdDI.hit .rf')].map(x => x.textContent))).forEach(x => seen.add(x));
+      const end = await p.evaluate(() => { const b = document.querySelector('#rdResBox'); const e = b.scrollTop + b.clientHeight >= b.scrollHeight - 2; b.scrollTop += b.clientHeight * 0.8; b.dispatchEvent(new Event('scroll')); return e; });
+      await p.waitForTimeout(end ? 600 : 120); if (end && (await p.evaluate(() => { const b = document.querySelector('#rdResBox'); return b.scrollTop + b.clientHeight >= b.scrollHeight - 2; }))) break; }
+    return [...seen]; };
+  for (const [q, src] of [['גר בארץ', 'txt'], ['בארץ גר', 'txt'], ['גר בארץ', 'all'], ['בארץ גר', 'all']]) {
+    const r = await search(q, { scope: 'all', src });
+    const refs = await allRefs(pg, 50);
+    ok('״' + q + '״ (' + src + '): בראשית טו, יג', refs.some(x => /^בראשית (15|טו), (13|יג)$/.test(x)), r.total + ' תוצאות, נבדקו ' + refs.length);
+  }
+  for (const [q, src] of [['ויאמר משה אל העם', 'txt'], ['גר בארץ', 'all'], ['ברא אלהים', 'cm'], ['ארעא', 'tr'], ['והארץ היתה', 'cm'], ['"יום הששי" ויכלו', 'txt'], ['משה פרעה', 'all']]) {
+    await search(q, { scope: 'all', src });
+    const v = await visible(pg), bad = v.filter(x => !x.ok);
+    ok('״' + q + '״ (' + src + '): המילים שנמצאו נראות בכל שורה', v.length > 0 && !bad.length, v.length + ' שורות' + (bad.length ? ', חסר ב: ' + bad.slice(0, 3).map(x => x.ref).join(' | ') : ''));
+  }
+
   const speed = [S1, S2, S3, S4, S6, S7, S9, S10];
   console.log('    זמן ממוצע לחיפוש: ' + Math.round(speed.reduce((a, x) => a + x.ms, 0) / speed.length) + 'ms (השהיה ' + LAT + 'ms לבקשה)');
   ok('אין שגיאות בדף', !errs.length, errs.join(' | '));
@@ -114,6 +136,12 @@ const ok = (name, cond, info) => { if (cond) pass++; else fail++; console.log((c
   await ph.evaluate(() => { const i = document.querySelector('#rdQ'); i.value = 'בראשית ברא'; i.dispatchEvent(new Event('input')); });
   await ph.waitForFunction(() => { const c = document.querySelector('#rdDrop .cnt'); return c && c.textContent && !/טוען/.test(c.textContent); }, null, { timeout: 60000 });
   ok('טלפון: החיפוש הקודם, בלי המסד', LOG.length === nPh, (await ph.evaluate(() => document.querySelector('#rdDrop .cnt').textContent)));
+  // החיפוש הקודם: מילים לא צמודות באותו פסוק
+  await ph.evaluate(() => { const i = document.querySelector('#rdQ'); i.value = 'בארץ גר'; i.dispatchEvent(new Event('input')); });
+  await ph.waitForTimeout(400);
+  await ph.waitForFunction(() => { const c = document.querySelector('#rdDrop .cnt'); return c && c.textContent && !/טוען/.test(c.textContent); }, null, { timeout: 60000 });
+  const phRefs = await allRefs(ph, 400);
+  ok('טלפון: ״בארץ גר״ מוצא את בראשית טו, יג', phRefs.some(x => /^בראשית (15|טו), (13|יג)$/.test(x)), phRefs.length + ' תוצאות');
   await ph.close();
 
   // שרת בלי Range → החיפוש הקודם
