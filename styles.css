@@ -73,21 +73,26 @@ select{appearance:none;padding-inline-end:1.7rem;background-image:linear-gradien
    ומיד אחריו, באותו כלל-CSS, קובע position:fixed/z-index/top/right משלו (קריטי למיקום/שכבת-התצוגה של
    הפופ-אובר מעל ה-overlay) — כלל *נפרד* ומאוחר-יותר עם all:unset היה "מאפס" את אלה שוב, בלי להגדירם
    מחדש, והפופ-אובר היה הופך ל-position:static לא-לחיץ מתחת ל-overlay. לכן כאן רק override נקודתי. */
-.driver-popover.gtTourPopover{box-sizing:border-box;direction:rtl;text-align:right;font:15px/1.5 var(--ui);background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 10px 30px -10px rgba(0,0,0,.35);padding:1rem 1.1rem;min-width:17rem;max-width:21rem}
-.gtTourPopover .driver-popover-title{font:700 1.05rem/1.4 var(--tf);color:var(--ac);margin:0 0 .3rem}
-.gtTourPopover .driver-popover-description{font-size:.88rem;line-height:1.6;color:var(--tx)}
+/* v3.31.0: בצבעי הבאנר החדש (--rdBar/--rdBarTx/--rdG*, כמו מסך הקריאה ומסך הגימטריה מאז v3.16), במקום הלבן הישן של --pn.
+   הכפתורים כמו כפתורי הבאנר; "הבא"/"סיום" בזהב, כמו המצב הפעיל במתג גימטריה / קריאה. */
+.driver-popover.gtTourPopover{box-sizing:border-box;direction:rtl;text-align:right;font:15px/1.5 var(--ui);background:var(--rdBar);color:var(--rdBarTx);border:1px solid var(--rdBarB);border-top:3px solid var(--gold);border-radius:12px;box-shadow:0 1px 2px rgba(80,55,20,.12),0 14px 34px -12px var(--rdShadow);padding:1rem 1.1rem;min-width:17rem;max-width:21rem}
+.gtTourPopover .driver-popover-title{font:700 1.08rem/1.4 "GimFrank",var(--tf);color:var(--rdBarTx);margin:0 0 .3rem}
+.gtTourPopover .driver-popover-description{font-size:.88rem;line-height:1.6;color:var(--rdBarTx)}
 .gtTourPopover .driver-popover-footer{margin-top:.9rem}
-.gtTourPopover .driver-popover-progress-text{font-size:.76rem;color:var(--mu)}
-.gtTourPopover .driver-popover-footer-btn{all:unset;box-sizing:border-box;background:var(--pn2);border:1px solid var(--ln);color:var(--tx);border-radius:8px;padding:.3rem .8rem;font-size:.82rem;cursor:pointer;transition:border-color .12s,background .12s}
-.gtTourPopover .driver-popover-footer-btn:hover,.gtTourPopover .driver-popover-footer-btn:focus{background:var(--acs);border-color:var(--ac);color:var(--ac)}
+.gtTourPopover .driver-popover-progress-text{font-size:.76rem;color:var(--rdBarMu)}
+.gtTourPopover .driver-popover-footer-btn{all:unset;box-sizing:border-box;height:30px;display:inline-flex;align-items:center;background:transparent;border:1px solid var(--rdG3);color:var(--rdBarTx);border-radius:9px;padding:0 .85rem;font-size:.82rem;font-weight:600;cursor:pointer;transition:border-color .12s,background .12s}
+.gtTourPopover .driver-popover-footer-btn:hover,.gtTourPopover .driver-popover-footer-btn:focus-visible{background:var(--rdG1);border-color:var(--rdOn)}
+.gtTourPopover .driver-popover-next-btn{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 1px 3px rgba(60,40,10,.3)}
+.gtTourPopover .driver-popover-next-btn:hover,.gtTourPopover .driver-popover-next-btn:focus-visible{background:var(--gold);border-color:var(--rdOn);filter:brightness(1.08)}
+:root[data-theme=dark] .gtTourPopover .driver-popover-next-btn{color:#1c160e}
 .gtTourPopover .driver-popover-navigation-btns button+button{margin-left:0;margin-inline-start:.4rem}
-.gtTourPopover .driver-popover-close-btn{all:unset;position:absolute;inset-inline-end:0;top:0;width:2rem;height:1.8rem;display:grid;place-content:center;color:var(--mu);cursor:pointer;font-size:1.05rem}
-.gtTourPopover .driver-popover-close-btn:hover{color:var(--tx)}
+.gtTourPopover .driver-popover-close-btn{all:unset;position:absolute;inset-inline-end:.2rem;top:.25rem;width:2rem;height:1.8rem;display:grid;place-content:center;color:var(--rdBarMu);cursor:pointer;font-size:1.05rem;border-radius:8px}
+.gtTourPopover .driver-popover-close-btn:hover{color:var(--rdBarTx);background:var(--rdG1)}
 .gtTourPopover .driver-popover-arrow{border-width:7px}
-.gtTourPopover .driver-popover-arrow-side-left{border-left-color:var(--pn)!important}
-.gtTourPopover .driver-popover-arrow-side-right{border-right-color:var(--pn)!important}
-.gtTourPopover .driver-popover-arrow-side-top{border-top-color:var(--pn)!important}
-.gtTourPopover .driver-popover-arrow-side-bottom{border-bottom-color:var(--pn)!important}
+.gtTourPopover .driver-popover-arrow-side-left{border-left-color:var(--rdBar)!important}
+.gtTourPopover .driver-popover-arrow-side-right{border-right-color:var(--rdBar)!important}
+.gtTourPopover .driver-popover-arrow-side-top{border-top-color:var(--rdBar)!important}
+.gtTourPopover .driver-popover-arrow-side-bottom{border-bottom-color:var(--gold)!important}
 .driver-active-element{border-radius:8px!important}
 /* workspace grid: 4 columns, שורה אחת, כל הפאנלים באותו גובה (פנל הסינון מוזג לתוך פנל התוצאות ומוחלף איתו בלחיצת כפתור) */
 .ws{flex:1;min-height:0;display:grid;gap:var(--g);padding:0 var(--g) var(--g);grid-template-columns:minmax(14rem,2.6fr) minmax(0,1.7fr) minmax(0,1.7fr) minmax(14rem,2.6fr);grid-template-rows:minmax(0,1fr)}
@@ -580,11 +585,11 @@ html[lang="en"] .dlg{direction:ltr}
 @keyframes bdgBlink{0%,100%{transform:scale(1.18);box-shadow:0 0 0 3px color-mix(in srgb,var(--c,var(--mc)) 40%,transparent);opacity:1}50%{transform:scale(.85);box-shadow:none;opacity:.25}}
 .bdg.blinkBdg,.ccBdg2.blinkBdg{animation:bdgBlink .8s ease-in-out infinite}
 /* חלון-הסבר שני בסיור (ראו tourExtraShow ב-app.js): אותו מראה כמו פופ-אובר של driver.js, מעל שכבת-ההחשכה */
-.gtTourWin{position:fixed;z-index:1000000;box-sizing:border-box;background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 10px 30px -10px rgba(0,0,0,.35);padding:.8rem 1rem;font:15px/1.5 var(--ui);text-align:start}
-.gtTourWin .t{font:700 1.02rem/1.4 var(--tf);color:var(--ac);margin:0 0 .3rem}
+.gtTourWin{position:fixed;z-index:1000000;box-sizing:border-box;background:var(--rdBar);color:var(--rdBarTx);border:1px solid var(--rdBarB);border-top:3px solid var(--gold);border-radius:12px;box-shadow:0 1px 2px rgba(80,55,20,.12),0 14px 34px -12px var(--rdShadow);padding:.8rem 1rem;font:15px/1.5 var(--ui);text-align:start}
+.gtTourWin .t{font:700 1.04rem/1.4 "GimFrank",var(--tf);color:var(--rdBarTx);margin:0 0 .3rem}
 .gtTourWin .d{font-size:.88rem;line-height:1.6}
-.gtTourRing{position:fixed;z-index:999999;box-sizing:border-box;border:3px solid var(--ac);border-radius:10px;pointer-events:none;background:color-mix(in srgb,var(--pn) 30%,transparent);animation:tourRing 1.2s ease-in-out infinite}
-@keyframes tourRing{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ac) 50%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+.gtTourRing{position:fixed;z-index:999999;box-sizing:border-box;border:3px solid var(--gold);border-radius:10px;pointer-events:none;background:color-mix(in srgb,var(--rdBar) 30%,transparent);animation:tourRing 1.2s ease-in-out infinite}
+@keyframes tourRing{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gold) 50%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
 /* מתג-נסתר "תצוגת סמארטפון" (setPhoneForced ב-app.js): #stage מצטמצם לרוחב טלפון. transform עליו (ולא על body — פופ-אובר/שכבת-ההחשכה
    של הסיור הם ילדי body וחייבים להישאר יחסית לחלון) יוצר containing-block ל-position:fixed של הגיליון התחתון, כך שהוא נשאר בתוך המסגרת. */
 html.forcePhone,html.forcePhone body{background:#1d1812}

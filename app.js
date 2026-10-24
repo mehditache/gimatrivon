@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.30.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.31.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -198,7 +198,7 @@ const GROUP_EN = {
 };
 const groupName = he => LANG === 'en' ? (GROUP_EN[he] || he) : he;
 // ממשק קטן למסך "קריאה ומפרשים" (reader.js), שרץ מחוץ ל-IIFE הזה ולכן לא רואה את LANG/bookName/groupName/trackEvent ישירות
-window.GimApp = { isEn: () => LANG === 'en', bookName: he => bookName(he), groupName: he => groupName(he), trackEvent: (n, p) => trackEvent(n, p) };
+window.GimApp = { isEn: () => LANG === 'en', bookName: he => bookName(he), groupName: he => groupName(he), trackEvent: (n, p) => trackEvent(n, p), tourBase: () => tourBase() };
 const PARSHA_EN = {
   'בראשית': 'Bereshit', 'נח': 'Noach', 'לך לך': 'Lech Lecha', 'וירא': 'Vayera', 'חיי שרה': 'Chayei Sarah', 'תולדות': 'Toldot',
   'ויצא': 'Vayetzei', 'וישלח': 'Vayishlach', 'וישב': 'Vayeshev', 'מקץ': 'Miketz', 'ויגש': 'Vayigash', 'ויחי': 'Vayechi',
@@ -1983,7 +1983,7 @@ function tourThemeDemo() {
 // מוסיף לכל צעד עם demo/undo: לפני מעבר "הבא"/"הקודם" מריצים את ה-undo של הצעד (למשל מבטלים מיקוד-התאמה/סינון/מיון) — *לפני*
 // ש-driver.js פותר את היעד של הצעד הבא, כך שהיעד הבא לא מוחלף ב-DOM אחרי שכבר סומן.
 // v3.6.0: תוצאה בודדת — צעד נפרד (עם פוקוס) לכל תווית בכותרת התוצאה הראשונה, עם הסבר על משמעותה. היעדים הם אלמנטים
-// בתוך .rs הראשון (ראו buildRowHtml: <b>ייחוס</b>, .tag קטגוריה, .tag.prs/.seder, .tag.meth, .tagArrow, .tag; ובתוך .cx: <mark> ו-.cpy בסוף הפסוק).
+// בתוך .rs הראשון (ראו buildRowHtml: <b>ייחוס</b>, .tag קטגוריה, .tag.prs/.seder, ⧉ (.cpy) וכפתור הספר (.goRd), .tag.meth, .tagArrow, .tag; ובתוך .cx: <mark>).
 function resultTourSteps(mobile) {
   const en = LANG === 'en', R = '.resList .rs ';
   const one = (sel, title, desc, side) => ({ element: R + sel, popover: { title, description: desc, side: side || 'bottom', align: 'start' } });
@@ -1993,11 +1993,13 @@ function resultTourSteps(mobile) {
     group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'Result: reference, category and parsha / order', 'The reference is the exact place of the match: book and chapter:verse (for Mishnah — tractate, chapter and mishnah). The category tag says which part of the corpus the text belongs to (Tanakh, Mishnah, Rashi or Targum), and next to it, where relevant, appears the parsha of the verse, or for Mishnah its order (seder). The whole box is one result.'),
     group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'Result: the two gematria methods', 'Two gematria tags joined by an arrow ↔: the first is the method by which the value of the verse (or of the matching part of it) was calculated, the second is the method of the word you searched, in which the match was found. The value is the same in both.'),
     one('.rf .cpy', 'Result: copy', 'Copies the whole verse (or mishnah) to the clipboard.'),
+    one('.rf .goRd', 'Result: open in the book', 'Opens the reading screen at the exact place of this result: the book, the chapter and the verse (or mishnah / halakhah), which blinks for a moment. A result in a commentary or a translation opens the book it comments on. Clicking the reference itself does the same. The reading screen has its own guided tour, in the ⋮ menu.'),
     one('.cx mark', 'Result: the highlighted words', 'The words that actually matched, highlighted inside the text of the verse.', 'top'),
   ] : [
     group(['.rf > b', '.rf > b + .tag', '.rf .tag.prs', '.rf .tag.seder'], 'תוצאה: ייחוס, קטגוריה ופרשה / סדר', 'הייחוס הוא המקום המדויק של ההתאמה: ספר ופרק:פסוק (במשנה — מסכת, פרק ומשנה). תגית הקטגוריה אומרת לאיזה חלק בקורפוס שייך הטקסט (תנ״ך, משנה, רש״י או תרגום), ולידה מופיעה, כשזה רלוונטי, הפרשה שאליה שייך הפסוק, ובמשנה — הסדר שבו היא נמצאת. כל התיבה היא תוצאה אחת: פסוק או משנה.'),
     group(['.rf .tag.meth', '.rf .tagArrow', '.rf .tagArrow + .tag'], 'תוצאה: שתי שיטות הגימטריה', 'שתי תגיות-גימטריה מחוברות בחץ ↔: הראשונה היא השיטה שלפיה חושב ערך הפסוק (או הקטע התואם בו), והשנייה היא שיטת מילת-החיפוש שלכם שבה נמצאה ההתאמה. הערך בשתיהן זהה.'),
     one('.rf .cpy', 'תוצאה: העתקה', 'מעתיקה את הפסוק (או המשנה) כולו ללוח.'),
+    one('.rf .goRd', 'תוצאה: פתיחה בספר', 'פותח את מסך הקריאה בדיוק במקום של התוצאה: הספר, הפרק והפסוק (או המשנה / ההלכה), שמהבהב לרגע. תוצאה בפירוש או בתרגום פותחת את הספר שעליו הם. גם לחיצה על הייחוס עצמו עושה את זה. למסך הקריאה יש סיור מודרך משלו, בתפריט ⋮.'),
     one('.cx mark', 'תוצאה: המילים המודגשות', 'המילים שתאמו בפועל, מודגשות בתוך טקסט הפסוק.', 'top'),
   ];
 }
@@ -2108,9 +2110,27 @@ function buildTourSteps() {
     { element: '#startTour', popover: { title: 'זהו, אפשר להתחיל!', description: 'אפשר להפעיל את הסיור הזה שוב בכל רגע מכאן.', side: 'bottom', align: 'end' } },
   ];
 }
+// הגדרות driver.js המשותפות לשני הסיורים (מסך הגימטריה כאן, מסך הקריאה ב-reader.js: GimReader.tour)
+function tourBase() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    showProgress: true,
+    progressText: LANG === 'en' ? '{{current}} of {{total}}' : '{{current}} מתוך {{total}}',
+    nextBtnText: LANG === 'en' ? 'Next' : 'הבא',
+    prevBtnText: LANG === 'en' ? 'Previous' : 'הקודם',
+    doneBtnText: LANG === 'en' ? 'Done' : 'סיום',
+    closeBtnText: L('סגור'),
+    allowClose: true,
+    overlayOpacity: dark ? 0.55 : 0.5,
+    stagePadding: 6,
+    stageRadius: 8,
+    animate: true,
+    smoothScroll: true,
+    popoverClass: 'gtTourPopover',
+  };
+}
 function startTour() {
   if (!window.driverjs) return;
-  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   // בנייד: לפני שמתחילים, מוודאים שצד א׳ מוצג (ה-switcher) ושהגיליון התחתון פתוח (לא מכווץ) — אחרת
   // צעדי-הסיור ש-מצביעים על #mgr/.resList-של-צד-א׳ יפנו לאלמנטים מוסתרים/בגובה-אפס. משתמשים ב-click
   // אמיתי (לא במניפולציית-class ישירה) כדי להפעיל את אותה לוגיקה בדיוק שהמשתמש היה מפעיל בעצמו.
@@ -2132,19 +2152,7 @@ function startTour() {
     onNextClick: (el, step, o) => { runUndo(); o.driver.moveNext(); },
     onPrevClick: (el, step, o) => { runUndo(); o.driver.movePrevious(); } } });
   const tour = window.driverjs.driver({
-    showProgress: true,
-    progressText: LANG === 'en' ? '{{current}} of {{total}}' : '{{current}} מתוך {{total}}',
-    nextBtnText: LANG === 'en' ? 'Next' : 'הבא',
-    prevBtnText: LANG === 'en' ? 'Previous' : 'הקודם',
-    doneBtnText: LANG === 'en' ? 'Done' : 'סיום',
-    closeBtnText: L('סגור'),
-    allowClose: true,
-    overlayOpacity: dark ? 0.55 : 0.5,
-    stagePadding: 6,
-    stageRadius: 8,
-    animate: true,
-    smoothScroll: true,
-    popoverClass: 'gtTourPopover',
+    ...tourBase(),
     skipMissingElement: true, // אם היעד של צעד מסוים לא קיים (למשל: למשתמש יש חיפוש-משלו בלי התאמה בין הצדדים) — מדלגים עליו בשקט, בלי פופ-אובר "תועה" במרכז המסך
     steps: wrapSteps(mobileActive ? buildMobileTourSteps() : buildTourSteps()), // v3.4.0: סט-צעדים נפרד לנייד (ראו buildMobileTourSteps)
     // v3.4.1: בנייד, יעדי-הצעדים מתחלקים בין תוכן *בתוך* הגיליון-התחתון (#tA/#mgrFirstFam/.ccHits/.ccBdg2
@@ -2176,7 +2184,12 @@ function startTour() {
   });
   tour.drive();
 }
-$('#startTour').onclick = () => { trackEvent('tour_start', { layout: mobileActive ? 'mobile' : 'desktop' }); startTour(); };
+// v3.31.0: במסך הקריאה הכפתור (דרך ⋮) מפעיל את הסיור של מסך הקריאה, ולא מעביר יותר לגימטריה
+$('#startTour').onclick = () => {
+  const rd = document.body.dataset.mode === 'read' && window.GimReader && window.GimReader.tour;
+  trackEvent('tour_start', { layout: mobileActive ? 'mobile' : 'desktop', screen: rd ? 'read' : 'gem' });
+  if (rd) window.GimReader.tour(); else startTour();
+};
 // משיכת-תשומת-לב עדינה לכפתור "סיור מודרך" ב-5 השניות הראשונות בלבד (לא חוזר, לא לולאה אינסופית) —
 // מניחה class שמפעיל אנימציה (ראו styles.css: .tourBtn.attract) ומסירה אותה אחרי 5 שניות; לחיצה על
 // הכפתור (או על כל מקום אחר) באמצע מפסיקה אותה מיידית (prefers-reduced-motion מכבד — ראו ה-CSS).
