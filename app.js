@@ -1,8 +1,10 @@
 (function () {
 'use strict';
-const VERSION = '3.32.0-search-sqlite'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
-const BRANCH = 'search-sqlite'; // שם הענף שממנו האתר מוגש — מוצג ליד הגרסה (ב-main לא מוצג); לעדכן כשעובדים בענף אחר
-const VER_TXT = 'v' + VERSION + (BRANCH && BRANCH !== 'main' ? ' · ' + BRANCH : '');
+const VERSION = '3.32.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const BRANCH = 'main'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
+const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
+let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
+let VER_TXT = 'v' + VERSION + (DEV ? ' · ' + BRANCH : '');
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -16,7 +18,11 @@ const RESULTS_WINDOW = 200;
 function getLimit() { return RESULTS_WINDOW; }
 // תקרת-בטיחות לכמות ההתאמות שנטענות לרשימה בחיפוש אחד (13 בתים לשורה, כ-65MB); מעליה ההתאמות רק נספרות
 const MAX_RESULTS_PER_SEARCH = 5000000;
-const verEl = document.getElementById('ver'); if (verEl) { verEl.textContent = VER_TXT; verEl.title = 'מספר גרסה' + (BRANCH ? ' · ענף: ' + BRANCH : ''); }
+const verEl = document.getElementById('ver');
+const verPaint = () => { VER_TXT = 'v' + VERSION + (DEV ? ' · ' + BRANCH : ''); if (verEl) { verEl.textContent = VER_TXT; verEl.title = 'מספר גרסה' + (DEV ? ' · מצב פיתוח · ענף: ' + BRANCH + ' · ' + BUILT : ''); } const m = document.getElementById('mMenuVer'); if (m) m.textContent = VER_TXT; };
+verPaint();
+// 5 לחיצות רצופות (עד 3 שניות) על מספר הגרסה — מצב פיתוח: מוצג שם הענף ופרטי הבנייה (ושוב — כיבוי)
+if (verEl) { let taps = 0, tt = 0; verEl.addEventListener('click', () => { taps++; clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 3000); if (taps < 5) return; taps = 0; DEV = !DEV; try { localStorage.setItem('gimatrivonDev', DEV ? '1' : '0'); } catch (e) {} verPaint(); document.dispatchEvent(new Event('gimDev')); }); }
 document.title = `גימטריבון - ${VERSION}`; // כותרת טאב הדפדפן — לא "סביבת עבודה"
 // --- ANALYTICS:START ---
 // Google Analytics 4 (gtag.js) — חריג-רשת מבודד שני (כמו בלוק EmailJS), נבדק ב-tests/run-tests.js.
@@ -1675,7 +1681,7 @@ function renderAbout() {
   $('#aboutDoc').innerHTML = `<div class="aboutBox">
     <div class="row"><span class="k">${en ? 'App name' : 'שם האפליקציה'}</span><span class="v"><b>גימטריבון</b> (Gimatrivon)</span></div>
     <div class="row"><span class="k">${en ? 'Version' : 'גרסה'}</span><span class="v">${esc(VERSION)}</span></div>
-    <div class="row"><span class="k">${en ? 'Branch' : 'ענף'}</span><span class="v">${esc(BRANCH)}</span></div>
+    ${DEV ? `<div class="row"><span class="k">${en ? 'Branch' : 'ענף'}</span><span class="v">${esc(BRANCH)}</span></div><div class="row"><span class="k">${en ? 'Built' : 'נבנה'}</span><span class="v">${esc(BUILT)}</span></div><div class="row"><span class="k">${en ? 'Dev mode' : 'מצב פיתוח'}</span><span class="v">${en ? 'on (5 taps on the version to turn off)' : 'פעיל (5 לחיצות על הגרסה לכיבוי)'}</span></div>` : ''}
     <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi, Targumim and the Rambam\'s Mishneh Torah.' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י, תרגומים ומשנה תורה לרמב״ם.'}</span></div>
     <div class="row"><span class="k">${en ? 'Corpus' : 'קורפוס'}</span><span class="v">${unitsCount ? fmt(unitsCount) + (en ? ' units (verses/mishnahs)' : ' יחידות (פסוקים/משניות)') : (en ? 'Loading…' : 'נטען…')}</span></div>
     <div class="row"><span class="k">${en ? 'Developer' : 'מפתח'}</span><span class="v">${esc(ABOUT_INFO.dev)}</span></div>

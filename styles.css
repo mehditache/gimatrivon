@@ -32,7 +32,7 @@ button,button *{-webkit-user-select:text;user-select:text}
 /* header */
 .top{flex:none;display:flex;align-items:center;gap:1rem;padding:.5rem var(--g);min-height:48px}
 .brand{display:flex;align-items:baseline;gap:.7rem}.brand h1{margin:0;font:700 1.35rem var(--tf);color:#5e4518}.brand span{color:var(--mu);font-size:.85rem}
-.ver{background:var(--pn2);border:1px solid var(--ln);border-radius:99px;padding:.05rem .55rem;font:600 .72rem var(--ui);color:var(--ac)!important;letter-spacing:.02em}
+.ver{background:var(--pn2);border:1px solid var(--ln);border-radius:99px;padding:.05rem .55rem;font:600 .72rem var(--ui);color:var(--ac)!important;letter-spacing:.02em;user-select:none;-webkit-user-select:none;cursor:default}
 .langSw{font:700 .72rem var(--ui);padding:.12rem .55rem;border-radius:99px;color:var(--ac);border-color:var(--ac);letter-spacing:.03em}
 .tools{margin-inline-start:auto;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}.inl{display:flex;align-items:center;gap:.4rem;color:var(--mu);font-size:.85rem}
 .status{color:var(--mu);font-size:.8rem;min-width:11rem;text-align:end}
