@@ -2404,8 +2404,8 @@
      כותרות), gh(x) = שם הקבוצה, tick(x)/tickName = סימון על פס הגלילה בתחילת כל חלק, bub(x) = הכותרת בבועה,
      row(x) = {tag, fc, ref, t} לשורה. */
   /* פסי צבע על פס הגלילה: לכל תוצאה צבע לפי המקור (טקסט, רש״י/מפרשים, תרגום…) ובחיפוש בכל הספרים — לפי התחום; רצף של אותו צבע הוא פס אחד */
-  function sqBands(me) {
-    const res = me.r ? me.r.res : [], n = res.length, DI = { tanakh: 0, mishnah: 1, rambam: 2, talmud: 3, tur: 4 };
+  function sqBands(me, a, b) {
+    const res = me.r ? me.r.res.slice(a || 0, b == null ? undefined : b) : [], n = res.length, DI = { tanakh: 0, mishnah: 1, rambam: 2, talmud: 3, tur: 4 };
     if (!n) return '';
     const cls = i => me.dom === 'glob' ? DI[res[i].d] : res[i].src, B = Math.min(n, 160); let out = '', prev = -1, from = 0;
     const put = (a, b, c) => { out += '<i class="rdFsBand b' + c + '" style="top:' + (100 * a / n).toFixed(2) + '%;height:' + (100 * (b - a) / n).toFixed(2) + '%"></i>'; };
@@ -2417,9 +2417,14 @@
     put(from, n, prev);
     return out;
   }
+  // עימוד: 100 תוצאות בדף (RPG = הדף הנוכחי; חוזר לראשון כשהחיפוש או התחום משתנים). כל האינדקסים נשארים מוחלטים (j = מקום התוצאה ברשימה המלאה)
+  const PGD = 100; let RPG = 0, RPK = '';
   function resList(hits, start, q, o) {
+    const N = hits.length, k0 = q + '|' + dropSig(); if (k0 !== RPK) { RPK = k0; RPG = LP && LP.q === q && LP.sig === dropSig() && LP.i >= start ? Math.floor((LP.i - start) / PGD) : 0; } // חיפוש חדש: דף ראשון; חזרה לאותו חיפוש: הדף של התוצאה האחרונה שנבחרה
+    const npg = Math.max(1, Math.ceil(N / PGD)); RPG = Math.max(0, Math.min(RPG, npg - 1));
+    const a = N > PGD ? RPG * PGD : 0, b = N > PGD ? Math.min(N, a + PGD) : N;
     const items = [], off = [], ticks = []; let y = 0, prevK = null, prevT = null, gi = -1;
-    hits.forEach((x, j) => {
+    hits.slice(a, b).forEach((x, jj) => { const j = a + jj;
       if (o.key && o.key(x) !== prevK) {
         const kx = o.key(x); let n = 0; for (let t = j; t < hits.length && o.key(hits[t]) === kx; t++) n++;
         if (o.tick) { const g = o.tick(x); if (g != null && g !== prevT) { ticks.push({ y, g }); prevT = g; } }
@@ -2429,14 +2434,21 @@
     });
     const pos = []; items.forEach((it, k) => { if (!it.gh) pos[it.i - start] = k; });
     const me = o.sq ? SQ : null; if (me) o.meta = i => sqMeta(me, i);
-    RS = { items, off, total: y, start, n: hits.length, pos, ticks, q, from: -1, to: -1, o, me };
-    return '<div class="rdRes"><div class="rdResBox" id="rdResBox"><div class="rdResIn" style="height:' + y + 'px"></div></div>' +
+    RS = { items, off, total: y, start, n: hits.length, pos, ticks, q, from: -1, to: -1, o, me, a, b, npg };
+    const pager = npg > 1 ? '<div class="rdPg" id="rdPg"><button type="button" data-pg="' + (RPG - 1) + '"' + (RPG ? '' : ' disabled') + '>' + T('הקודם') + '</button><span>' + T('תוצאות') + ' ' + cnt(a + 1) + '–' + cnt(b) + ' · ' + T('דף') + ' ' + cnt(RPG + 1) + ' ' + T('מתוך') + ' ' + cnt(npg) + '</span><button type="button" data-pg="' + (RPG + 1) + '"' + (RPG < npg - 1 ? '' : ' disabled') + '>' + T('הבא') + '</button></div>' : '';
+    return '<div class="rdResWrap"><div class="rdRes"><div class="rdResBox" id="rdResBox"><div class="rdResIn" style="height:' + y + 'px"></div></div>' +
       '<div class="rdResSticky" id="rdResSticky" aria-hidden="true"></div>' +
-      '<div class="rdFs" id="rdFs" aria-hidden="true">' + (me ? sqBands(me) : '') + ticks.map(t => '<i class="rdFsTick" style="top:' + (100 * t.y / y).toFixed(2) + '%" title="' + h(o.tickName ? o.tickName(t.g) : '') + '"></i>').join('') +
-      '<div class="rdFsThumb" id="rdFsThumb"><div class="rdFsBub" id="rdFsBub"></div></div></div></div>';
+      '<div class="rdFs" id="rdFs" aria-hidden="true">' + (me ? sqBands(me, a, b) : '') + ticks.map(t => '<i class="rdFsTick" style="top:' + (100 * t.y / y).toFixed(2) + '%" title="' + h(o.tickName ? o.tickName(t.g) : '') + '"></i>').join('') +
+      '<div class="rdFsThumb" id="rdFsThumb"><div class="rdFsBub" id="rdFsBub"></div></div></div></div>' + pager + '</div>';
   }
   const ghLabel = x => RS.o.gh(x);
-  function bindRes() { if (!RS) return; const box = $r('#rdResBox'); box.onscroll = () => resWin(); resWin(); }
+  function bindRes() {
+    if (!RS) return; const box = $r('#rdResBox'); box.onscroll = () => resWin(); resWin();
+    const pg = $r('#rdPg'); if (pg) pg.onclick = e => { const b = e.target.closest('button[data-pg]'); if (b && !b.disabled) { e.preventDefault(); dropPage(+b.dataset.pg); } };
+  }
+  // מעבר לדף אחר ברשימה הנפתחת; act = מקום (ב-dropItems) להפעיל בו אחרי המעבר
+  let noJump = false;
+  function dropPage(p, act) { RPG = Math.max(0, p); noJump = true; try { renderDrop(); } finally { noJump = false; } if (act != null) setAct(act); else if (RS) { $r('#rdResBox').scrollTop = 0; dropAct = RS.start + RS.a; setAct(dropAct); } }
   function firstAt(y) { // הפריט הראשון שתחתיתו מתחת ל-y (חיפוש בינארי ב-off)
     let lo = 0, hi = RS.items.length - 1;
     while (lo < hi) { const m = (lo + hi + 1) >> 1; if (RS.off[m] <= y) lo = m; else hi = m - 1; }
@@ -2463,7 +2475,7 @@
     st.hidden = !g || (f.gh && RS.off[firstAt(top)] >= top - 1);
     if (g && !st.hidden) st.innerHTML = '<span>' + h(ghLabel(g.x)) + '</span><span class="n">' + resN(g.n) + '</span>';
     fsLay();
-    if (RS.me) { RS.me.want = [from, to - 1]; sqLoad(RS.me, from - 4, to + 8, 1); }
+    if (RS.me) { RS.me.want = [RS.a + from, RS.a + to - 1]; sqLoad(RS.me, RS.a + from - 4, RS.a + to + 8, 1); }
   }
   // רשת ביטחון: שורות שלד בתוך הרשימה הנפתחת שלא נטענו (בקשה שנפלה או נתקעה) נדרשות שוב כל שנייה וחצי, כל עוד הרשימה פתוחה
   setInterval(() => { if (RS && RS.me && SQ === RS.me && !$r('#rdDrop').hidden && document.querySelector('#rdResBox .rdDI.ph')) resWin(true); }, 1500);
@@ -2496,6 +2508,7 @@
   }
   function setAct(i) {
     const n = dropItems.length; if (!n) return;
+    if (!noJump && RS && RS.npg > 1 && i >= RS.start && i < RS.start + RS.n && (i < RS.start + RS.a || i >= RS.start + RS.b)) return dropPage(Math.floor((i - RS.start) / PGD), i); // חץ/בחירה מחוץ לדף הנוכחי — עוברים דף
     const center = dropAct < 0 && i > 0; // פתיחה מחדש על התוצאה האחרונה: באמצע החלון
     dropAct = (i + n) % n;
     R.querySelectorAll('#rdDrop .rdDI').forEach(b => b.classList.toggle('act', Number(b.dataset.i) === dropAct));

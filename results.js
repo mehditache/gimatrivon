@@ -8,7 +8,7 @@
   const P = new URLSearchParams(location.search);
   const WID = P.get('wid') || '', Q0 = P.get('q') || '';
   let FS = {}; try { FS = JSON.parse(P.get('f') || '{}') || {}; } catch (e) {}
-  const CAP = 150000, RH = 82, GH = 32;
+  const CAP = 150000, RH = 82, GH = 32, PG = 100; // PG: תוצאות בדף
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const post = m => { try { parent.postMessage(Object.assign({ gtDesk: 'res', wid: WID }, m), '*'); } catch (e) {} };
 
@@ -16,16 +16,16 @@
   let R = null, me = null, idx = null, q = Q0, extra = FS.extra || '';
   const sel = new Set(FS.sel || []), srcOff = new Set(FS.srcOff || []);
   let sort = FS.sort === 'rel' ? 'rel' : 'books', exp = new Set(FS.exp || []);
-  let rows = [], off = null, order = null, shown = 0;
+  let rows = [], off = null, order = null, shown = 0, page = Math.max(0, +FS.pg || 0), wantPg = page, pages = 1;
 
   document.documentElement.classList.add('gtResults');
   const app = document.createElement('div'); app.id = 'rsApp'; app.dir = 'rtl';
-  app.innerHTML = '<aside class="rsSide" id="rsSide"></aside><div class="rsMain"><div class="rsTools"><label class="rsIn">⌕ <input type="search" id="rsIn" placeholder="חיפוש בתוך התוצאות…" autocomplete="off" spellcheck="false"></label><span class="rsSort" id="rsSort"><button data-s="books">לפי סדר הספרים</button><button data-s="rel">לפי רלוונטיות</button></span></div><div class="rsSel" id="rsSel"></div><div class="rsList" id="rsList"><div class="rsSp" id="rsSp"></div></div><div class="rsFoot" id="rsFoot"></div></div>';
+  app.innerHTML = '<aside class="rsSide" id="rsSide"></aside><div class="rsMain"><div class="rsTools"><label class="rsIn">⌕ <input type="search" id="rsIn" placeholder="חיפוש בתוך התוצאות…" autocomplete="off" spellcheck="false"></label><span class="rsSort" id="rsSort"><button data-s="books">לפי סדר הספרים</button><button data-s="rel">לפי רלוונטיות</button></span></div><div class="rsSel" id="rsSel"></div><div class="rsList" id="rsList"><div class="rsSp" id="rsSp"></div></div><div class="rsPg" id="rsPg" hidden></div><div class="rsFoot" id="rsFoot"></div></div>';
   document.body.appendChild(app);
   const $ = s => app.querySelector(s), list = $('#rsList'), sp = $('#rsSp');
   $('#rsIn').value = extra;
 
-  const state = () => post({ type: 'state', state: { sel: [...sel], srcOff: [...srcOff], sort, exp: [...exp], extra }, total: idx ? shown : 0, q });
+  const state = () => post({ type: 'state', state: { sel: [...sel], srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
 
   // ---- התחלה ----
   const boot = setInterval(() => {
@@ -50,7 +50,7 @@
       R.index(m, CAP, (i, n) => { if (!idx) $('#rsFoot').textContent = 'מסדר את התוצאות… ' + i.toLocaleString('he') + ' / ' + n.toLocaleString('he'); }, ix => {
         if (t !== idxTok || tok !== runTok) return;
         const st = idx ? list.scrollTop : 0; // עדכון חלקי לא מקפיץ את הרשימה לראש
-        me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter();
+        me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter(true);
         if (partial) { list.scrollTop = st; paint(true); $('#rsFoot').textContent += ' · תוצאות חלקיות — עדיין מחפש (' + (m.pend || 0) + ' תחומים נותרו)'; }
       });
     });
@@ -68,24 +68,43 @@
   }
   const gc = new Map(); const gOf = (d, bi) => { const k = d * 10000 + bi; let g = gc.get(k); if (g == null) { g = R.book(RES_D[d], bi).group; gc.set(k, g); } return g; };
 
-  function refilter() {
+  // keep=true: עדכון חלקי של אותה רשימה (נשארים באותו דף); אחרת (סינון, מיון) חוזרים לדף הראשון
+  function refilter(keep) {
     if (!idx) return;
     RES_D = R.DOMS;
     const arr = []; for (let i = 0; i < idx.n; i++) if (passes(i)) arr.push(i);
     if (sort === 'books') arr.sort((a, b) => idx.dom[a] - idx.dom[b] || idx.bk[a] - idx.bk[b] || idx.ord[a] - idx.ord[b] || a - b);
     order = arr; shown = arr.length;
-    // שורות: כותרת לכל ספר (בסדר הספרים) + תוצאה
+    pages = Math.max(1, Math.ceil(shown / PG)); if (!keep) wantPg = 0; page = Math.min(wantPg, pages - 1);
+    showPage(); chips(); side(); state();
+  }
+  // דף אחד: PG תוצאות בלבד (עם כותרת לכל ספר שמופיע בדף). הטקסט נטען רק לדף הנוכחי
+  function showPage() {
+    const arr = order, part = arr.slice(page * PG, (page + 1) * PG);
     rows = []; let last = -1;
     const cnt = new Map(); if (sort === 'books') arr.forEach(i => { const k = idx.dom[i] * 10000 + idx.bk[i]; cnt.set(k, (cnt.get(k) || 0) + 1); });
-    arr.forEach(i => {
+    part.forEach(i => {
       if (sort === 'books') { const k = idx.dom[i] * 10000 + idx.bk[i]; if (k !== last) { last = k; rows.push({ gh: 1, d: idx.dom[i], bi: idx.bk[i], n: cnt.get(k) }); } }
       rows.push({ i });
     });
     off = new Int32Array(rows.length + 1); rows.forEach((r, k) => { off[k + 1] = off[k] + (r.gh ? GH : RH); });
     sp.style.height = off[rows.length] + 'px'; list.scrollTop = 0; rt = 0;
+    const from = shown ? page * PG + 1 : 0, to = Math.min(shown, (page + 1) * PG);
     $('#rsFoot').textContent = (shown.toLocaleString('he')) + ' תוצאות' + (shown < idx.total && !sel.size && !srcOff.size && idx.total > idx.n ? ' (מוצגות ' + idx.n.toLocaleString('he') + ' הראשונות)' : '') + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '') + ' · לחיצה פותחת בחלון קריאה (Ctrl+לחיצה: בחלון חדש)';
-    chips(); side(); paint(true); state();
+    pager(from, to); paint(true);
   }
+  function pager(from, to) {
+    const pg = $('#rsPg'); pg.hidden = pages <= 1;
+    if (pages <= 1) return;
+    const b = (p, t, dis, title) => '<button type="button" data-pg="' + p + '"' + (dis ? ' disabled' : '') + ' title="' + title + '">' + t + '</button>';
+    pg.innerHTML = b(0, 'הראשון', page === 0, 'לדף הראשון') + b(page - 1, 'הקודם', page === 0, 'הדף הקודם') +
+      '<span class="rsPn">תוצאות ' + from.toLocaleString('he') + '–' + to.toLocaleString('he') + ' · דף <input type="number" id="rsPgIn" min="1" max="' + pages + '" value="' + (page + 1) + '"> מתוך ' + pages.toLocaleString('he') + '</span>' +
+      b(page + 1, 'הבא', page >= pages - 1, 'הדף הבא') + b(pages - 1, 'האחרון', page >= pages - 1, 'לדף האחרון');
+  }
+  function goPage(p) { p = Math.max(0, Math.min(pages - 1, p | 0)); if (p === page) return; page = wantPg = p; showPage(); state(); }
+  $('#rsPg').addEventListener('click', e => { const b = e.target.closest('button[data-pg]'); if (b && !b.disabled) goPage(+b.dataset.pg); });
+  $('#rsPg').addEventListener('change', e => { if (e.target.id === 'rsPgIn') goPage((+e.target.value || 1) - 1); });
+  $('#rsPg').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rsPgIn') goPage((+e.target.value || 1) - 1); });
 
   // ---- עץ סינון עם מונים ----
   function side() {
@@ -149,7 +168,7 @@
   $('#rsSort').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.s === sort));
   // חיפוש בתוך התוצאות: מצמצם את החיפוש (המילה הנוספת חייבת להופיע גם היא) ומריץ אותו מחדש; הסינון נשמר
   let it = 0;
-  $('#rsIn').addEventListener('input', () => { clearTimeout(it); it = setTimeout(() => { extra = $('#rsIn').value.trim(); run(); }, 450); });
+  $('#rsIn').addEventListener('input', () => { clearTimeout(it); it = setTimeout(() => { extra = $('#rsIn').value.trim(); wantPg = 0; run(); }, 450); });
 
   // ---- רשימה וירטואלית ----
   function firstAt(y) { let lo = 0, hi = rows.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (off[m] <= y) lo = m; else hi = m - 1; } return lo; }
