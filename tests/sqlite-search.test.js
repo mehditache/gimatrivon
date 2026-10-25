@@ -1,4 +1,4 @@
-/* בדיקות למנוע חיפוש SQLite (sqlite-search.js) מול המסד הבנוי (generated/sqlite/tanakh.sqlite3), דרך node:sqlite (Node 22.5+).
+/* בדיקות למנוע חיפוש SQLite (sqlite-search.js) מול המסד הבנוי (generated/sqlite/tanakh.sqlite3.*), דרך node:sqlite (Node 22.5+).
    ניתוח השאילתה, נרמול, ביטוי, תחילית, AND/OR/NOT, NEAR, ^, אותיות שימוש, כתיב חסר ומלא, קרבה עד 3 פסוקים (גם מעבר לסוף
    פרק, לא מעבר לסוף ספר), דירוג לפי מרחק, תחומים ומקורות, ודגימות אקראיות מול הטקסט עצמו. node tests/sqlite-search.test.js */
 process.removeAllListeners('warning');
@@ -8,7 +8,12 @@ const SQ = require('../sqlite-search.js');
 const root = path.join(__dirname, '..');
 const win = {}; vm.runInNewContext(fs.readFileSync(path.join(root, 'generated/corpus/index.js'), 'utf8'), { window: win });
 const books = win.GIM_CORPUS_INDEX.books, bookOf = he => books.findIndex(b => b.cat === 0 && b.heTitle === he);
-const db = new DatabaseSync(path.join(root, 'generated/sqlite/tanakh.sqlite3'), { readOnly: true });
+// המסד נשמר בחלקים (<תחום>.sqlite3.000…); מרכיבים אותו מחדש בקובץ זמני
+const openDb = name => { const dir = path.join(root, 'generated/sqlite'), m = (() => { const w = {}; vm.runInNewContext(fs.readFileSync(path.join(dir, name + '.js'), 'utf8'), { window: w }); return w.GIM_SQ_DBS[name]; })();
+  const f = path.join(require('os').tmpdir(), 'gim-' + name + '-' + m.hash + '.sqlite3');
+  if (!fs.existsSync(f) || fs.statSync(f).size !== m.bytes) fs.writeFileSync(f, Buffer.concat(Array.from({ length: m.parts }, (_, i) => fs.readFileSync(path.join(dir, name + '.sqlite3.' + String(i).padStart(3, '0'))))));
+  return new DatabaseSync(f, { readOnly: true }); };
+const db = openDb('tanakh');
 let nq = 0;
 const backend = { all(sql, args) { nq++; const st = db.prepare(sql); return st.all(...args).map(r => Object.values(r)); } };
 const E = SQ.create(backend, books), M = E.map;
@@ -36,7 +41,7 @@ t('norm', 'forms: שארית של אות אחת — בלי צורה', () => eq(S
 t('norm', 'rid: הלוך ושוב', () => { const r = SQ.rid(1, 12345, 7); return SQ.rSrc(r) === 1 && SQ.rOrd(r) === 12345 && SQ.rK(r) === 7; });
 t('norm', 'map: ord לכל פסוק ובחזרה', () => { const b = bookOf('שמות'), o = M.ord(b, 12, 2); return M.ob[o] === b && M.oc[o] === 12 && M.ov[o] === 2 && M.ord(b, 12, 99) === -1; });
 t('norm', 'map: כל פסוק במסד במקום משלו (בקורפוס חסרים 2 פסוקים ביהושע)', () => { const n = db.prepare('SELECT count(*) n FROM d WHERE id < ?').get(SQ.SB).n; return M.n - n === 2; });
-t('norm', 'מסד: הגודל וה-hash שב-tanakh.js', () => meta.bytes === fs.statSync(path.join(root, meta.file)).size && /^[0-9a-f]{10}$/.test(meta.hash));
+t('norm', 'מסד: הגודל וה-hash שב-tanakh.js', () => meta.bytes === Array.from({ length: meta.parts }, (_, i) => fs.statSync(path.join(root, meta.file + '.' + String(i).padStart(3, '0'))).size).reduce((a, b) => a + b, 0) && /^[0-9a-f]{10}$/.test(meta.hash));
 
 /* ---- ניתוח השאילתה ---- */
 const P = q => JSON.stringify(SQ.parse(q), (k, v) => k === 'key' || k === 'okey' || k === 'w' || k === 'of' || k === 'caret' && v === false || k === 'pre' && v === false ? undefined : v);
@@ -160,7 +165,7 @@ t('speed', '30 חיפושים שונים — כל אחד מתחת ל-300ms', asy
 });
 
 /* ---- משנה וברטנורא (מסד נפרד) ---- */
-const dbM = new DatabaseSync(path.join(root, 'generated/sqlite/mishnah.sqlite3'), { readOnly: true });
+const dbM = openDb('mishnah');
 const EM = SQ.create({ all(sql, args) { return dbM.prepare(sql).all(...args).map(r => Object.values(r)); } }, books, 1), MM = EM.map;
 const refM = r => { const o = r.u >= 0 ? SQ.rOrd(r.u) : r.s; return books[MM.ob[o]].heTitle + ' ' + MM.oc[o] + ':' + MM.ov[o]; };
 t('mishnah', 'משנה: ״מאימתי קורין את שמע״ = ברכות א:א', async () => { const r = await EM.search('"מאימתי קורין את שמע"', { srcs: [0] }); return r.res.length > 0 && refM(r.res[0]) === 'משנה ברכות 1:1'; });

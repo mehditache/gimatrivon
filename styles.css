@@ -893,7 +893,10 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .rdSrc{display:flex;gap:4px}
 .reader .rdSrc button{border-radius:6px}
 .rdDI.cm .rf i{font-style:normal;color:var(--rdMu)}
-.rdDScope .cnt{margin-inline-start:auto;font-size:11.5px;color:var(--rdMu)}
+.rdDScope .cnt{margin-inline-start:auto;font-size:11.5px;color:var(--rdMu);display:inline-flex;align-items:center}
+.rdSpin{width:13px;height:13px;border-radius:50%;border:2px solid var(--rdG3);border-top-color:var(--rdOn);animation:rdSpinR .7s linear infinite}
+@keyframes rdSpinR{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.rdSpin{animation-duration:1.6s}}
 
 /* תוצאות החיפוש בקריאה: רשימה וירטואלית (שורות במיקום מוחלט בגובה קבוע) + פס גלילה מותאם, כמו במסך הגימטריה */
 .rdDRefs{flex:none;max-height:30%;overflow:auto}

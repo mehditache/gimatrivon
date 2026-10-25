@@ -1,4 +1,4 @@
-/* sqlite-search.js — מנוע החיפוש בתנ״ך מעל SQLite FTS5 (v3.31.0-search-sqlite). בלי DOM ובלי רשת: מקבל backend
+/* sqlite-search.js — מנוע החיפוש (תנ״ך, משנה, רמב״ם, גמרא, טור) מעל SQLite FTS5 (v3.31.0-search-sqlite). בלי DOM ובלי רשת: מקבל backend
    שמריץ SQL (בדפדפן: מאגר Workers של sql.js-httpvfs שטוענים מהמסד רק את העמודים הדרושים; בבדיקות: node:sqlite).
    נחשף כ-window.GimSq (ו-module.exports ב-Node), ומשמש גם את scripts/build-sqlite.js — כך הנרמול בבנייה ובחיפוש זהה.
 
@@ -10,7 +10,7 @@
    - v0/v1/v2: fts5vocab(f0/f1/f2, instance) — לכל מילה: היחידה (doc), העמודה והמיקום. מכאן מחושבים ביטוי, מרחק, NEAR ודירוג.
      טבלה לכל סוג מקור (f0 פסוקים, f1 רש״י, f2 תרגומים), כך שחיפוש במקור אחד קורא רק את שלו, ו״הכל״ קורא את שלושתן במקביל.
    - d: הטקסט להצגה (עם ניקוד; בפסוקים בלי טעמים), לפי אותו מזהה.
-   מזהה יחידה (rowid) = src·2^21 + ord·64 + k: src 0 פסוק, 1 רש״י, 2 אונקלוס, 3 יונתן; ord = מספר הפסוק בתנ״ך (לפי סדר
+   מזהה יחידה (rowid) = src·2^29 + ord·256 + k: src (בתנ״ך) 0 פסוק, 1 רש״י, 2 אונקלוס, 3 יונתן (התחומים האחרים: DOMAINS); ord = מספר הפסוק בתנ״ך (לפי סדר
    הספרים ו-cv שב-generated/corpus/index.js); k = מספר הדיבור ברש״י באותו פסוק.
 
    תחביר: מילים = כולן, קרובות זו לזו (באותה יחידה, או עד 3 פסוקים זה מזה באותו ספר, גם מעבר לסוף פרק); "ביטוי מדויק";
@@ -45,15 +45,26 @@
   }
 
   /* ---- מזהים ---- */
-  /* תחומים: מסד לכל אחד. cat = קטגוריית הטקסט; srcOf = קטגוריית מפרש / תרגום → src; tabs = טבלאות FTS שבמסד; srcs = סוגי המקורות
-     (txt/cm/tr/all → src); cs = קטגוריית המפרש (לשם בתוצאה) */
+  /* תחומים: מסד לכל אחד. src = סוג המקור שביחידה (0 הטקסט, 1… מפרשים / תרגומים). cat = קטגוריית הטקסט; srcOf = קטגוריית מפרש / תרגום → src;
+     tab = הטבלה (f<n> / v<n>) של כל src; multi = ה-src שיש בו כמה יחידות לאותו מקום (דיבורים: k); csOf = קטגוריית המפרש לשם בתוצאה;
+     srcs = סוגי המקורות בממשק (txt/cm/tr/all → src); rank = סדר המקורות באותו מקום; ar = ה-src שבהם אותיות שימוש בארמית. */
   const DOMAINS = {
-    tanakh: { cat: 0, srcOf: { 0: 0, 2: 1, 3: 2, 4: 3 }, tabs: [0, 1, 2], srcs: { txt: [0], cm: [1], tr: [2, 3], all: [0, 1, 2, 3] }, cs: 2 },
-    mishnah: { cat: 1, srcOf: { 1: 0, 5: 1 }, tabs: [0, 1], srcs: { txt: [0], cm: [1], tr: [0, 1], all: [0, 1] }, cs: 5 }
+    tanakh: { cat: 0, srcOf: { 0: 0, 2: 1, 3: 2, 4: 3 }, tab: [0, 1, 2, 2], multi: [1], csOf: { 1: 2 }, rank: [0, 3, 1, 2], ar: [0, 0, 1, 1],
+      srcs: { txt: [0], cm: [1], tr: [2, 3], all: [0, 1, 2, 3] } },
+    mishnah: { cat: 1, srcOf: { 1: 0, 5: 1 }, tab: [0, 1], multi: [1], csOf: { 1: 5 }, rank: [0, 1], ar: [0, 0],
+      srcs: { txt: [0], cm: [1], tr: [0, 1], all: [0, 1] } },
+    rambam: { cat: 7, srcOf: { 7: 0, 8: 1, 9: 2, 10: 3 }, tab: [0, 1, 2, 3], multi: [1, 2, 3], csOf: { 1: 8, 2: 9, 3: 10 }, rank: [0, 1, 2, 3], ar: [0, 0, 0, 0],
+      srcs: { txt: [0], cm: [1, 2, 3], tr: [0, 1, 2, 3], all: [0, 1, 2, 3] } },
+    talmud: { cat: 100, tab: [0, 1, 2], multi: [1, 2], rank: [0, 1, 2], ar: [1, 0, 0],
+      srcs: { g: [0], r: [1], t: [2], all: [0, 1, 2] } },
+    tur: { cat: 101, tab: [0, 1, 2], multi: [], rank: [0, 1, 2], ar: [0, 0, 0],
+      srcs: { t: [0], y: [1], c: [2], all: [0, 1, 2] } }
   };
-  const SB = 2097152, SRC = { txt: 0, rashi: 1, onkelos: 2, yonatan: 3 };
-  const rid = (src, ord, k) => src * SB + ord * 64 + (k || 0);
-  const rSrc = r => Math.floor(r / SB), rOrd = r => Math.floor(r / 64) % 32768, rK = r => r % 64;
+  for (const d of Object.values(DOMAINS)) d.tabs = [...new Set(d.tab)].sort();
+  const KN = 256, ORDN = 2097152, SB = ORDN * KN, // ord < 2^21, k < 256 (דיבורים באותו מקום); src בראש המזהה
+     SRC = { txt: 0, rashi: 1, onkelos: 2, yonatan: 3 };
+  const rid = (src, ord, k) => src * SB + ord * KN + (k || 0);
+  const rSrc = r => Math.floor(r / SB), rOrd = r => Math.floor(r / KN) % ORDN, rK = r => r % KN;
   // books: רשימת הספרים (GIM_CORPUS_INDEX.books); ord לפי ספרי התנ״ך (cat 0) בסדר הרשימה, ו-cv של כל ספר
   function mapOf(books, cat) {
     cat = cat || 0;
@@ -182,7 +193,6 @@
   const COLS = "(CASE col WHEN 'o' THEN 0 WHEN 't' THEN 1 WHEN 'a' THEN 2 ELSE 3 END)";
   const nextStr = s => s.slice(0, -1) + String.fromCharCode(s.charCodeAt(s.length - 1) + 1);
   // טבלת אינדקס לכל סוג מקור (v0 פסוקים, v1 רש״י, v2 תרגומים): חיפוש בפסוקים לא קורא את ההתאמות שבמפרשים
-  const TAB = [0, 1, 2, 2];
   function lookupSql(L, tab) {
     const where = L.pre ? 'term >= ? AND term < ?' : 'term = ?', args = L.pre ? [L.kf, nextStr(L.kf)] : [L.kf];
     return { sql: 'SELECT doc, ' + COLS + ', offset FROM v' + tab + ' WHERE ' + where, args };
@@ -326,16 +336,15 @@
   function dropNeg(items, negs, C) {
     if (!negs || !negs.length) return items;
     const U = new Set(), V = new Set();
-    negs.forEach(ng => evalNode(ng, C).forEach(x => { for (let k = 0; k < x.mk.length; k += 2) { U.add(x.mk[k]); V.add(rSrc(x.mk[k]) * 32768 + rOrd(x.mk[k])); } }));
+    negs.forEach(ng => evalNode(ng, C).forEach(x => { for (let k = 0; k < x.mk.length; k += 2) { U.add(x.mk[k]); V.add(rSrc(x.mk[k]) * ORDN + rOrd(x.mk[k])); } }));
     return items.filter(x => {
       if (x.u >= 0) return !U.has(x.u);
-      for (let o = x.s; o <= x.e; o++) if (V.has(x.src * 32768 + o)) return false;
+      for (let o = x.s; o <= x.e; o++) if (V.has(x.src * ORDN + o)) return false;
       return true;
     });
   }
-  const SRC_RANK = [0, 3, 1, 2]; // באותו פסוק: הכתוב, אונקלוס, יונתן, רש״י
   // הפריטים → תוצאות: יחידה אחת (הציון הטוב ביותר בה, וכל הסימונים) או קטע של כמה פסוקים שאף פסוק בו אינו תוצאה בעצמו
-  function results(items) {
+  function results(items, RANK) {
     const units = new Map(), pass = [];
     items.forEach(x => {
       if (x.u >= 0) { const r = units.get(x.u); if (!r) units.set(x.u, { u: x.u, src: x.src, s: x.s, e: x.s, sc: x.sc, mk: x.mk.slice() }); else { if (x.sc > r.sc) r.sc = x.sc; r.mk.push(...x.mk); } }
@@ -346,17 +355,18 @@
     pass.forEach(x => {
       const us = []; for (let k = 0; k < x.mk.length; k += 2) us.push(x.mk[k]);
       if (us.some(u => full.has(u))) return;
-      for (let o = x.s; o <= x.e; o++) if (cov.has(x.src * 32768 + o)) return;
-      for (let o = x.s; o <= x.e; o++) cov.add(x.src * 32768 + o);
+      for (let o = x.s; o <= x.e; o++) if (cov.has(x.src * ORDN + o)) return;
+      for (let o = x.s; o <= x.e; o++) cov.add(x.src * ORDN + o);
       out.push({ u: -1, src: x.src, s: x.s, e: x.e, sc: x.sc, mk: x.mk.slice(), us: [...new Set(us)].sort((a, b) => a - b) });
     });
     out.forEach(r => { const m = new Map(); for (let k = 0; k < r.mk.length; k += 2) { let s = m.get(r.mk[k]); if (!s) m.set(r.mk[k], s = new Set()); s.add(r.mk[k + 1]); } r.marks = m; delete r.mk; });
-    return out.sort((a, b) => b.sc - a.sc || a.s - b.s || SRC_RANK[a.src] - SRC_RANK[b.src] || a.u - b.u);
+    return out.sort((a, b) => b.sc - a.sc || a.s - b.s || RANK[a.src] - RANK[b.src] || a.u - b.u);
   }
 
   /* ---- מנוע: backend.all(sql, args, opt) → Promise<[[...], …]> ---- */
-  function create(backend, books, cat) {
-    const map = mapOf(books, cat), cache = new Map(), MAXC = 80;
+  function create(backend, books, name) {
+    const dom = DOMAINS[name == null || typeof name === 'number' ? ['tanakh', 'mishnah'][name || 0] : name], cat = dom.cat;
+    const map = mapOf(books, cat), TABF = dom.tab, cache = new Map(), MAXC = 80;
     function occOf(L, tab) {
       const key = tab + (L.pre ? '*' : '=') + L.kf;
       if (cache.has(key)) { const v = cache.get(key); cache.delete(key); cache.set(key, v); return v; }
@@ -370,11 +380,11 @@
     async function search(q, opt) {
       const t0 = Date.now(), ast = parse(q), o = opt || {};
       if (!ast) return { total: 0, res: [], ast, ms: 0 };
-      const L = lookups(ast), occ = new Map(), srcs = new Set(o.srcs || [0, 1, 2, 3]), tabs = [...new Set([...srcs].map(x => TAB[x]))].sort();
+      const L = lookups(ast), occ = new Map(), srcs = new Set(o.srcs || dom.tab.map((_, i) => i)), tabs = [...new Set([...srcs].map(x => TABF[x]))].sort();
       await Promise.all([...L].map(([key, x]) => Promise.all(tabs.map(t => occOf(x, t))).then(v => occ.set(key, joinOcc(v)))));
       const lo = o.lo == null ? 0 : o.lo, hi = o.hi == null ? map.n - 1 : o.hi;
       const C = { occ, map, allow: u => { const ord = rOrd(u); return ord >= lo && ord <= hi && srcs.has(rSrc(u)); } };
-      const res = results(evalNode(ast, C));
+      const res = results(evalNode(ast, C), dom.rank);
       return { total: res.length, res, ast, ms: Date.now() - t0 };
     }
     /* הטקסט להצגה של יחידות: Map u → טקסט. כל קבוצה של יחידות סמוכות (כנראה באותו עמוד במסד) = שאילתה נפרדת, כדי שכל
@@ -388,11 +398,11 @@
       return new Map(us.map(u => [u, tcache.get(u)]));
     }
     // היחידות שתוצאה מציגה: יחידה אחת, או כל הפסוקים שבקטע (ברש״י — הדיבורים שבו)
-    const unitsOf = r => r.u >= 0 ? [r.u] : r.src === 1 ? r.us : Array.from({ length: r.e - r.s + 1 }, (_, k) => rid(r.src, r.s + k, 0));
+    const unitsOf = r => r.u >= 0 ? [r.u] : dom.multi.includes(r.src) ? r.us : Array.from({ length: r.e - r.s + 1 }, (_, k) => rid(r.src, r.s + k, 0));
     return { search, texts, unitsOf, map, parse };
   }
 
-  const API = { DOMAINS, words, letters, K, forms, parse, rid, rSrc, rOrd, rK, SRC, SB, TAB, mapOf, create, WIN, lookupSql, toOcc };
+  const API = { DOMAINS, words, letters, K, forms, parse, rid, rSrc, rOrd, rK, SRC, SB, mapOf, create, WIN, lookupSql, toOcc };
   G.GimSq = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })();
