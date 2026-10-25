@@ -71,3 +71,8 @@ body.dkGem .dkTools{display:none}
 .dkPeek{position:fixed;bottom:54px;z-index:50;width:280px;padding:10px 12px;background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font:13px var(--ui);pointer-events:none}
 .dkPeek .m{display:block;color:var(--mu);font-size:11px;margin:2px 0 6px}
 .dkPeek .pv{max-height:5.2em;overflow:hidden;font:15px/1.7 var(--tf);color:var(--tx)}
+
+/* מארח החיפוש: iframe שקוף מתחת לתיבת החיפוש; מוצג רק כשהרשימה הנפתחת פתוחה */
+.dkHost{position:fixed;z-index:60;border:0;background:transparent;color-scheme:normal}
+.dkHost[hidden]{display:none}
+.dkGemBtn.on{background:var(--acs);font-weight:600}

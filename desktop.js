@@ -136,7 +136,7 @@
     let fw, d; try { fw = fr.contentWindow; d = fr.contentDocument; } catch (e) { return; }
     if (!d || !fw || fw.location.href === 'about:blank') return;
     f.win = fw; f.doc = d; f.obs = []; f.first = true;
-    fw.addEventListener('pointerdown', () => focusWin(w.id), true);
+    fw.addEventListener('pointerdown', () => { closeSearch(); focusWin(w.id); }, true);
     fw.addEventListener('focus', () => focusWin(w.id));
     fw.addEventListener('keydown', e => keys(e, w.id), true);
     if (w.k === 'read') {
@@ -296,8 +296,10 @@
     });
     task.insertAdjacentHTML('beforeend', '<span class="dkCnt">' + T('חלונות קריאה', 'Reader windows') + ' ' + n + '/' + MAXR + '</span><span class="dkSp"></span>' +
       '<button type="button" class="dkAdd" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '">+ ' + T('חלון קריאה', 'Reader window') + '</button>' +
+      '<button type="button" class="dkAdd dkGemBtn' + (W(D.act) && W(D.act).k === 'gem' ? ' on' : '') + '" id="dkGemBtn" title="' + T('פתיחת חלון הגימטריה', 'Open the gematria window') + '">🔢 ' + T('גימטריבון', 'Gimatrivon') + '</button>' +
       '<button type="button" class="dkBtn" id="dkArrBtn">⊞ ' + T('סידור', 'Arrange') + ' ▾</button>');
     $('#dkAdd').onclick = () => { const l = W(D.last); openRead(l ? curHash(l) : '#read', true); };
+    $('#dkGemBtn').onclick = openGem;
     $('#dkArrBtn').onclick = e => { e.stopPropagation(); $('#dkArr').hidden = !$('#dkArr').hidden; };
   }
   $('#dkArr').addEventListener('click', e => { const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); } });
@@ -334,15 +336,15 @@
     cloneInto(tools, d && !gem && d.querySelector('#rdTop .rdTools'));
     nav.classList.toggle('dim', gem);
     nav.title = gem ? T('חלון הקריאה האחרון', 'Last reader window') : '';
-    const rq = d && d.getElementById('rdQ'); if (rq && document.activeElement !== q) q.value = rq.value;
     scopeLabel();
   }
+  let lastBtn = null; // כפתור הבנר שנלחץ אחרון — החלון הקופץ ייפתח מתחתיו
   function fwdClick(slot, srcSel, e) {
     const t = e.target.closest('button,label,input'); if (!t || !slot.contains(t)) return;
     const f = readerF(); if (!f || !f.doc) return;
     if (slot === nav && document.body.classList.contains('dkGem')) { focusWin(D.last); return; }
     const p = pathOf(t, slot), src = f.doc.querySelector(srcSel), o = p && src && byPath(src, p);
-    if (o) { e.preventDefault(); o.click(); setTimeout(banner, 60); }
+    if (o) { e.preventDefault(); lastBtn = t; o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
   }
   nav.addEventListener('click', e => fwdClick(nav, '#rdTop .rdNav', e));
   tools.addEventListener('click', e => fwdClick(tools, '#rdTop .rdTools', e));
@@ -350,51 +352,95 @@
     const b = e.target.closest('[data-fwd]'), f = F.get(gemW().id);
     if (b && f && f.doc) { const o = f.doc.querySelector(b.dataset.fwd); if (o) o.click(); }
   });
-  $('#dkKebab').onclick = () => { const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click(); };
+  $('#dkKebab').onclick = () => { lastBtn = $('#dkKebab'); const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click(); };
 
-  // תיבת החיפוש: ההקלדה מועברת ל-#rdQ של חלון הקריאה (גם הרשימה הנפתחת מוצגת בחלון)
-  function searchTarget() {
-    let w = W(D.act);
-    if (!w || w.k !== 'read') { w = W(D.last) || reads()[0]; if (!w) w = openRead('#read', true); else focusWin(w.id); }
-    const f = F.get(w.id); return f && f.doc && f.doc.getElementById('rdQ') ? f : null;
+  // תיבת החיפוש: ההקלדה מועברת ל-#rdQ של "מארח חיפוש" — iframe שקוף (index.html?embed=search) שמציג רק את הרשימה
+  // הנפתחת, מתחת לתיבה כמו במסך הרגיל. המארח נוצר רק כשמתחילים לחפש ולא פותח שום חלון; בחירת תוצאה פותחת אותה
+  // בחלון הקריאה הפעיל, ואם אין כזה — בחלון חדש. אחרי דקה בלי חיפוש המארח נמחק (שחרור זיכרון).
+  let H = null, hostBase = '', hostT = 0;
+  const hostHash = () => { const w = W(D.act); const r = w && w.k === 'read' ? w : (W(D.last) || reads()[0]); return r ? curHash(r) : '#read'; };
+  const dec = h => { try { return decodeURI(h || ''); } catch (e) { return h || ''; } };
+  function host() {
+    if (H) { clearTimeout(hostT); return H; }
+    const fr = document.createElement('iframe'); fr.className = 'dkHost'; fr.title = T('תוצאות חיפוש', 'Search results'); fr.hidden = true;
+    hostBase = hostHash(); H = { fr, doc: null, win: null, quiet: 0 };
+    fr.addEventListener('load', () => {
+      let fw, d; try { fw = fr.contentWindow; d = fr.contentDocument; } catch (e) { return; }
+      if (!fw || !d || fw.location.href === 'about:blank') return;
+      H.win = fw; H.doc = d; H.quiet = Date.now() + 2000;
+      const hs = fw.history, rep = hs.replaceState.bind(hs);
+      hs.replaceState = (...a) => { rep(...a); hostChanged(); };
+      fw.addEventListener('hashchange', hostChanged);
+      const drop = d.getElementById('rdDrop');
+      if (drop) new fw.MutationObserver(() => { fr.hidden = drop.hidden; if (!drop.hidden) placeHost(); scopeLabel(); if (drop.hidden) idleHost(); }).observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
+      themeTo(H);
+      if (q.value) { d.getElementById('rdQ').value = q.value; fire('input'); }
+    });
+    fr.src = 'index.html?embed=search' + hostBase;
+    document.body.appendChild(fr);
+    return H;
   }
-  const fire = (f, type, init) => { const rq = f.doc.getElementById('rdQ'); const C = type === 'keydown' ? f.win.KeyboardEvent : type === 'focus' ? f.win.FocusEvent : f.win.Event; rq.dispatchEvent(new C(type, Object.assign({ bubbles: type !== 'focus', cancelable: true }, init))); };
-  q.addEventListener('focus', () => { const f = searchTarget(); if (f) fire(f, 'focus'); });
-  q.addEventListener('input', () => {
-    const f = searchTarget(); if (!f) { setTimeout(() => q.dispatchEvent(new Event('input')), 500); return; }
-    f.doc.getElementById('rdQ').value = q.value; fire(f, 'input');
-  });
+  function placeHost() {
+    if (!H) return; const r = $('#dkSearch').getBoundingClientRect(), wd = Math.max(r.width, 480);
+    Object.assign(H.fr.style, { top: Math.round(r.bottom + 6) + 'px', right: Math.round(innerWidth - r.right) + 'px', width: Math.round(wd) + 'px', height: Math.round(Math.min(innerHeight * .74, 720)) + 'px' });
+  }
+  function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) { H.fr.src = 'about:blank'; H.fr.remove(); H = null; } }, 60000); }
+  function syncHost() { const h = hostHash(); if (H && H.win && dec(H.win.location.hash) !== h) { hostBase = h; H.quiet = Date.now() + 1000; H.win.location.hash = h; } }
+  const fire = (type, init) => { if (!H || !H.doc) return; const rq = H.doc.getElementById('rdQ'), fw = H.win; const C = type === 'keydown' ? fw.KeyboardEvent : type === 'focus' ? fw.FocusEvent : fw.Event; rq.dispatchEvent(new C(type, Object.assign({ bubbles: type !== 'focus', cancelable: true }, init))); };
+  // המארח "ניווט" לתוצאה שנבחרה → פותחים אותה בחלון (מה שלא שונה מאז הטעינה/הסנכרון הוא לא בחירה)
+  function hostChanged() {
+    if (!H || !H.win) return; const h = dec(H.win.location.hash);
+    if (!/^#read/i.test(h) || h === hostBase) return;
+    hostBase = h; if (Date.now() < H.quiet) return;
+    const qv = H.doc.getElementById('rdQ').value, a = W(D.act), l = W(D.last);
+    let t = a && !a.min && a.k === 'read' ? a : a && a.k === 'gem' && l && !l.min ? l : null;
+    if (t) { focusWin(t.id); navPush(t, h); } else t = openRead(h, true);
+    let n = 0; const tick = () => { const f = F.get(t.id); const gr = f && f.win && f.win.GimReader; if (gr && gr.highlight) setTimeout(() => gr.highlight(qv), 400); else if (++n < 30) setTimeout(tick, 300); }; tick();
+  }
+  function closeSearch() { if (H && H.doc && !H.doc.getElementById('rdDrop').hidden) fire('keydown', { key: 'Escape' }); }
+  document.addEventListener('pointerdown', e => { if (!e.target.closest('#dkSearch,.dkHost')) closeSearch(); }, true);
+  q.addEventListener('focus', () => { host(); syncHost(); fire('focus'); });
+  q.addEventListener('input', () => { host(); syncHost(); if (!H.doc) return; H.doc.getElementById('rdQ').value = q.value; fire('input'); });
   q.addEventListener('keydown', e => {
-    if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) return;
-    const f = searchTarget(); if (!f) return;
-    e.preventDefault(); f.doc.getElementById('rdQ').value = q.value; fire(f, 'keydown', { key: e.key });
-    if (e.key === 'Enter' || e.key === 'Escape') setTimeout(() => { q.value = f.doc.getElementById('rdQ').value; if (e.key === 'Enter') q.blur(); }, 80);
+    if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key) || !H || !H.doc) return;
+    e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
+    if (e.key === 'Enter') setTimeout(() => q.blur(), 80);
   });
-  // טווח החיפוש: התווית לפי הכפתור הפעיל ברשימה של החלון; לחיצה עוברת לטווח הבא
+  // טווח החיפוש: התווית לפי הכפתור הפעיל ברשימה של המארח; לחיצה עוברת לטווח הבא
   function scopeLabel() {
-    const f = readerF(), b = f && f.doc && f.doc.querySelector('#rdDrop .rdDScope button.on');
+    const b = H && H.doc && H.doc.querySelector('#rdDrop .rdDScope button.on');
     $('#dkScope').textContent = (b ? b.textContent.trim() : T('חיפוש בספר', 'In this book')) + ' ▾';
   }
   $('#dkScope').addEventListener('click', e => {
-    e.preventDefault();
-    const f = searchTarget(); if (!f) return;
-    const bs = [...f.doc.querySelectorAll('#rdDrop .rdDScope button')];
-    if (!bs.length || f.doc.getElementById('rdDrop').hidden) { q.focus(); return; }
+    e.preventDefault(); host(); syncHost();
+    const bs = H.doc ? [...H.doc.querySelectorAll('#rdDrop .rdDScope button')] : [];
+    if (!bs.length || H.doc.getElementById('rdDrop').hidden) { q.focus(); return; }
     const i = bs.findIndex(b => b.classList.contains('on')); bs[(i + 1) % bs.length].click(); setTimeout(scopeLabel, 80);
   });
+  addEventListener('resize', placeHost);
 
+  // חלונות קופצים שנפתחים מהבנר (מעבר לפרק, הגדרות תצוגה, הדפסה…) "נופלים" מתחת לכפתור שהפעיל אותם:
+  // אותו קצה אופקי של הכפתור, בתוך גבולות החלון, עם אנימציית ירידה (styles.css: gtEmbed .rdPop)
+  function placePops(f) {
+    if (!f || !f.doc || !f.fr || !lastBtn) return;
+    const fr = f.fr.getBoundingClientRect(), br = lastBtn.getBoundingClientRect();
+    f.doc.querySelectorAll('.rdPop:not([hidden])').forEach(p => {
+      const w = p.offsetWidth, W0 = fr.width;
+      const right = Math.max(8, Math.min(W0 - w - 8, W0 - (br.right - fr.left)));
+      if (p.dataset.dkR !== String(right)) { p.dataset.dkR = String(right); p.style.insetInlineStart = 'auto'; p.style.insetInlineEnd = 'auto'; p.style.left = 'auto'; p.style.right = right + 'px'; p.style.top = '8px'; }
+    });
+  }
   function watchReader(w, f) {
     const d = f.doc, top = d.getElementById('rdTop'); if (!top) return;
     let t = 0; const later = () => { clearTimeout(t); t = setTimeout(() => { const a = W(D.act); if (a && (a.id === w.id || (a.k === 'gem' && D.last === w.id))) banner(); }, 40); };
     const o1 = new f.win.MutationObserver(later);
     [top.querySelector('.rdNav'), top.querySelector('.rdTools')].forEach(n => n && o1.observe(n, { subtree: true, childList: true, attributes: true, characterData: true }));
     const drop = d.getElementById('rdDrop');
-    const o2 = new f.win.MutationObserver(() => { scopeLabel(); if (drop.hidden && document.activeElement !== q && D.act === w.id) q.value = d.getElementById('rdQ').value; });
-    if (drop) o2.observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
+    const o2 = { disconnect() {} };
     // חלון "מעבר לפרק ופסוק": ☆ / ⧉ / 🔢
     const rd = d.getElementById('reader');
-    const o3 = new f.win.MutationObserver(() => jumpExtras(w, f));
-    if (rd) o3.observe(rd, { childList: true, subtree: true });
+    const o3 = new f.win.MutationObserver(() => { jumpExtras(w, f); placePops(f); });
+    if (rd) o3.observe(rd, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
     f.obs.push(o1, o2, o3);
   }
 
@@ -435,9 +481,6 @@
         setTimeout(() => { const h1 = decodeURI(f.win.location.hash); if (chKey(h1) !== chKey(h0)) { if (w.hi > 0 && w.hist[w.hi] === h1) { w.hist.splice(w.hi, 1); w.hi--; } navTo(w, h0); paint(w); } openRead(h1, true); }, 60);
       }
     });
-    const gb = f.doc.createElement('button'); gb.type = 'button'; gb.className = 'dkJGem'; gb.textContent = '🔢 ' + T('גימטריבון', 'Gimatrivon'); gb.title = T('פתיחת חלון הגימטריה', 'Open the gematria window');
-    gb.onclick = () => { close(); openGem(); };
-    hd.insertBefore(gb, hd.lastElementChild);
     // רשימת הסימניות מתחת לכותרת
     const list = f.doc.createElement('div'); list.className = 'dkJMarks'; hd.after(list);
     function listMarks() {
@@ -463,7 +506,7 @@
     const on = $('#dkTheme').checked;
     if (on) document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
     try { localStorage.setItem('gimatrivonTheme', on ? 'dark' : 'light'); } catch (e) {}
-    F.forEach(themeTo);
+    F.forEach(themeTo); if (H) themeTo(H);
   });
   $('#dkLang').textContent = EN ? 'עב' : 'EN';
   $('#dkLang').onclick = () => { D.wins.forEach(snapshot); save(); try { localStorage.setItem('gimatrivonLang', EN ? 'he' : 'en'); } catch (e) {} location.reload(); };

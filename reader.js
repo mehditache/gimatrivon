@@ -2796,7 +2796,9 @@
     d.drive();
     return d;
   }
-  G.GimReader = { canOpen, openUnit, tour };
+  // הדגשת מילות החיפוש במקום שנפתח (שולחן העבודה: התוצאה נבחרה במארח החיפוש ונפתחת בחלון אחר)
+  function highlight(q) { if (!q || document.body.dataset.mode !== 'read') return; S.hl = q; SQHL = null; render(); }
+  G.GimReader = { canOpen, openUnit, tour, highlight };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;
