@@ -2080,8 +2080,11 @@
       // maxReadSpeed: קריאה מראש של עד 8 עמודים כשהקריאה רציפה (רשימת מופעים ארוכה); ראו הערה ב-vendor/sql.js-httpvfs/README.md
       // כתובת נפרדת לכל Worker (&w=): הדפדפן מעביר בקשות לאותה כתובת אחת-אחת (נעילת המטמון), וכך הן יוצאות במקביל
       const D = G.GIM_SQ_DBS[name], cfg = i => [{ from: 'inline', config: { serverMode: 'chunked', urlPrefix: sqAbs(D.file) + '.', suffixLength: 3, serverChunkSize: D.chunk, databaseLengthBytes: D.bytes, cacheBust: D.hash + '&w=' + i, requestChunkSize: D.page, maxReadSpeed: D.page * 8 } }];
-      const open = async i => {
+      const NW = D.bytes > 40 << 20 ? 2 : SQ_N; // מסד גדול (גמרא, טור): פחות Workers, כל אחד מוריד בעצמו את השורשים
+      const open = async (i, first) => {
         const w = await G.createDbWorker(cfg(i), sqAbs('vendor/sql.js-httpvfs/sqlite.worker.js'), sqAbs('vendor/sql.js-httpvfs/sql-wasm.wasm'));
+        // ה-WASM כבר במטמון — שאר ה-Workers נפתחים ומתחממים במקביל לראשון, ולא אחריו
+        if (first) for (let k = 1; k < NW; k++) open(k).then(x => { pool.push(x); pump(); }, () => {});
         // השורשים והעמודים הפנימיים של האינדקסים ושל הטקסטים — פעם אחת לכל Worker, כך שכל מילה בחיפוש היא בקשה אחת
         await w.db.exec(TB.map(k => 'SELECT count(*) FROM f' + k + '_idx; SELECT max(id) FROM f' + k + '_data; SELECT count(*) FROM v' + k + " WHERE term = 'אאא';").join(' ') + ' SELECT min(id) FROM d; SELECT max(id) FROM d;');
         const st = await w.worker.getStats(); if (st && st.totalFetchedBytes > 6 << 20) throw new Error('no range support'); // שרת בלי Range מחזיר את כל הקובץ
@@ -2113,15 +2116,14 @@
       };
       let n = 0;
       const backend = { all: (sql, args, o) => new Promise((ok, no) => { Q.push({ sql, args, ok, no, n: n++, pri: o && o.pri != null ? o.pri : 0, alive: o && o.alive }); pump(); }) };
-      pool.push(await open(0)); // הראשון לבד, כדי שה-WASM יירד פעם אחת ושאר ה-Workers יקבלו אותו מהמטמון
-      for (let i = 1; i < (D.bytes > 40 << 20 ? 2 : SQ_N); i++) open(i).then(x => { pool.push(x); pump(); }, () => {});
+      pool.push(await open(0, true)); // הראשון קודם, כדי שה-WASM יירד פעם אחת ושאר ה-Workers יקבלו אותו מהמטמון
       return st.E = G.GimSq.create(backend, D.bk ? D.bk.map(x => ({ cat: DM.cat, cv: x.cv })) : IX.books, name);
     });
     st.P.catch(() => { st.fail = true; });
     return st.P;
   }
   let sqWarmed = null;
-  function sqWarm() { const d = sqDomOf(); if (!d || !sqOn() || SQD[d] && SQD[d].P || sqWarmed === d) return; sqWarmed = d; setTimeout(() => sqReady(d).catch(() => {}), 800); } // אחרי שהספר מוצג
+  function sqWarm() { const d = sqDomOf(); if (!d || !sqOn() || SQD[d] && SQD[d].P || sqWarmed === d) return; sqWarmed = d; setTimeout(() => sqReady(d).catch(() => {}), 150); } // אחרי שהספר מוצג
   // מילה מוצגת → האם היא אחת ממילות השאילתה (לסימון בעמוד אחרי מעבר): בכל צורה שהאינדקס מכיר (כתיב, אותיות שימוש, תחילית)
   function sqHl(q) {
     const ws = []; (function walk(e) { if (!e) return; if (e.k === 'w') ws.push(e); else if (e.k === 'p') e.ws.forEach(x => ws.push(x)); else if (e.k === 'not') walk(e.a); else (e.c && e.k !== 'neg' ? e.c : []).forEach(walk); })(G.GimSq.parse(q));
@@ -2565,6 +2567,7 @@
       renderJump(); const nsc = $r('#rdJump .rdJBooks'); if (nsc) nsc.scrollTop = top;
     };
     const q = $r('#rdQ');
+    q.addEventListener('focus', () => { const d = sqDomOf(); if (d && sqOn()) sqReady(d).catch(() => {}); }); // מתחילים לטעון את המסד כשנכנסים לתיבת החיפוש, לפני ההקלדה
     q.addEventListener('input', () => { updClear(); clearTimeout(qTimer); qTimer = setTimeout(renderDrop, 140); busy(q.value.trim()); if (!q.value && S.hl) { S.hl = ''; render(); } });
     q.addEventListener('focus', () => { closePops(); if (q.value.trim()) renderDrop(); });
     q.addEventListener('keydown', e => {
