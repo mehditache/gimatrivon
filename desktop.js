@@ -37,9 +37,9 @@
   const F = new Map(); // id → { el, fr (iframe או null), doc, win }
 
   /* ---------- חלונות ---------- */
-  const ICON = { gem: '🔢', read: '📖' };
-  const curHash = w => w.k === 'gem' ? '#gim' : (w.hist[w.hi] || '#read');
-  const srcOf = w => 'index.html?embed=' + w.k + curHash(w);
+  const ICON = { gem: '🔢', read: '📖', search: '🔍' }, MAXS = 3;
+  const curHash = w => w.k === 'gem' ? '#gim' : w.k === 'search' ? '#find' : (w.hist[w.hi] || '#read');
+  const srcOf = w => w.k === 'search' ? 'index.html?embed=results&wid=' + w.id + '&q=' + encodeURIComponent(w.q) + '&f=' + encodeURIComponent(JSON.stringify(w.fs || {})) : 'index.html?embed=' + w.k + curHash(w);
   // מפתח "פרק" של כתובת: מעבר בתוך אותו פרק/דף מחליף את הרשומה הנוכחית בהיסטוריה, מעבר לפרק אחר מוסיף רשומה
   const chKey = h => String(h).split('/').slice(0, 4).join('/'); // #read/TN/Gen/2, #read/TB/<מסכת>/<דף>, #read/TUR/<חלק>/<סימן>
 
@@ -48,9 +48,9 @@
     el.className = 'dw'; el.dataset.id = w.id;
     el.innerHTML = '<div class="dwBar">' +
       (w.k === 'read' ? '<span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '">→</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '">←</button></span>' : '') +
-      '<span>' + ICON[w.k] + '</span><b class="dwT"></b><span class="dwTag">' + (w.k === 'gem' ? T('גימטריה', 'Gematria') : T('קריאה', 'Reader')) + '</span>' +
+      '<span>' + ICON[w.k] + '</span><b class="dwT"></b><span class="dwTag">' + (w.k === 'gem' ? T('גימטריה', 'Gematria') : w.k === 'search' ? T('תוצאות חיפוש', 'Search results') : T('קריאה', 'Reader')) + '</span>' +
       '<span class="dwCtl"><button type="button" data-a="min" title="' + T('מזעור', 'Minimize') + '">–</button><button type="button" data-a="max" title="' + T('הגדלה / שחזור', 'Maximize / restore') + '">□</button>' +
-      (w.k === 'read' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">✕</button>' : '') + '</span></div>' +
+      (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">✕</button>' : '') + '</span></div>' +
       '<div class="dwBody"></div><div class="dwRs l"></div><div class="dwRs r"></div>';
     desk.appendChild(el);
     F.set(w.id, { el, fr: null, doc: null, win: null });
@@ -97,6 +97,7 @@
     try { // קטע-טקסט קצר לתצוגה המקדימה בריחוף על השבב (בלי להחזיק DOM)
       if (f.doc) {
         if (w.k === 'read') { const t = f.doc.querySelector('.rdTxt'); w.snip = t ? t.textContent.replace(/\s+/g, ' ').trim().slice(0, 220) : ''; }
+        else if (w.k === 'search') { w.snip = (w.q || '') + (w.count != null ? ' · ' + w.count.toLocaleString('he') + ' ' + T('תוצאות', 'results') : ''); }
         else { const a = f.doc.getElementById('tA'), b = f.doc.getElementById('tB'); w.snip = [a && a.value, b && b.value].filter(Boolean).join('  ·  '); }
       }
     } catch (e) {}
@@ -218,6 +219,26 @@
     w = newRead(D, hash); D.wins.push(w); build(w); focusWin(w.id); return w;
   }
   function openGem() { focusWin(gemW().id); }
+  const searches = () => D.wins.filter(w => w.k === 'search');
+  function openResults(qv) {
+    let w = searches().find(x => x.q === qv);
+    if (!w) {
+      if (searches().length >= MAXS) closeWin(searches().sort((a, b) => a.z - b.z)[0].id);
+      w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: {}, t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
+      D.wins.push(w); build(w);
+    }
+    focusWin(w.id); return w;
+  }
+  // הודעות מחלון תוצאות החיפוש: פתיחת תוצאה בחלון קריאה, ושמירת מצב הסינון
+  function fromResults(m) {
+    const w = W(m.wid); if (!w) return;
+    if (m.type === 'state') { w.fs = m.state; w.count = m.total; saveSoon(); }
+    else if (m.type === 'open') {
+      const l = W(D.last), t = !m.fresh && l && !l.min ? l : null;
+      let r; if (t) { focusWin(t.id); navPush(t, m.hash); r = t; } else r = openRead(m.hash, true);
+      let n = 0; const tick = () => { const f = F.get(r.id), gr = f && f.win && f.win.GimReader; if (gr && gr.highlight) setTimeout(() => gr.highlight(m.q), 400); else if (++n < 30) setTimeout(tick, 300); }; tick();
+    }
+  }
 
   /* ---------- גרירה, שינוי גודל, הצמדה ---------- */
   function startDrag(e, id) {
@@ -284,7 +305,7 @@
       const c = document.createElement('button'); c.type = 'button';
       c.className = 'dkChip' + (w.min ? ' min' : '') + (D.act === w.id && !w.min ? ' on' : '');
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
-      c.innerHTML = '<span>' + ICON[w.k] + '</span><span class="t"></span>' + (w.min ? '<span class="z">💤 ' + T('מוקפא', 'frozen') + '</span>' : '');
+      c.innerHTML = '<span class="ic">' + ICON[w.k] + '</span><span class="t"></span>' + (w.min ? '<span class="z">💤</span>' : '');
       c.querySelector('.t').textContent = t;
       c.title = t + (w.min ? ' — ' + T('ממוזער, המקום נשמר', 'minimized, place kept') : '');
       c.onclick = () => { if (D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
@@ -294,10 +315,10 @@
       }
       task.appendChild(c);
     });
-    task.insertAdjacentHTML('beforeend', '<span class="dkCnt">' + T('חלונות קריאה', 'Reader windows') + ' ' + n + '/' + MAXR + '</span><span class="dkSp"></span>' +
-      '<button type="button" class="dkAdd" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '">+ ' + T('חלון קריאה', 'Reader window') + '</button>' +
-      '<button type="button" class="dkAdd dkGemBtn' + (W(D.act) && W(D.act).k === 'gem' ? ' on' : '') + '" id="dkGemBtn" title="' + T('פתיחת חלון הגימטריה', 'Open the gematria window') + '">🔢 ' + T('גימטריבון', 'Gimatrivon') + '</button>' +
-      '<button type="button" class="dkBtn" id="dkArrBtn">⊞ ' + T('סידור', 'Arrange') + ' ▾</button>');
+    task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXR + '</span>' +
+      '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">＋</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
+      '<button type="button" class="dkChip dkTool' + (W(D.act) && W(D.act).k === 'gem' ? ' on' : '') + '" id="dkGemBtn" title="' + T('פתיחת חלון הגימטריה', 'Open the gematria window') + '"><span class="ic">🔢</span><span class="t">' + T('גימטריבון', 'Gimatrivon') + '</span></button>' +
+      '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">⊞</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkAdd').onclick = () => { const l = W(D.last); openRead(l ? curHash(l) : '#read', true); };
     $('#dkGemBtn').onclick = openGem;
     $('#dkArrBtn').onclick = e => { e.stopPropagation(); $('#dkArr').hidden = !$('#dkArr').hidden; };
@@ -314,7 +335,8 @@
     el.querySelector('.pv').textContent = w.snip || T('לחיצה תחזיר את החלון', 'Click to restore');
     document.body.appendChild(el);
     const r = chip.getBoundingClientRect();
-    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left + r.width / 2 - el.offsetWidth / 2)) + 'px';
+    el.style.right = Math.round(innerWidth - r.left + 8) + 'px';
+    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, Math.round(r.top + r.height / 2 - el.offsetHeight / 2))) + 'px';
   }
   function unpeek() { if (peekEl) { peekEl.remove(); peekEl = null; } }
   let toastT = 0;
@@ -328,21 +350,21 @@
   const byPath = (root, p) => p.reduce((n, i) => n && n.children[i], root);
   function cloneInto(slot, src) { slot.textContent = ''; if (src) [...src.childNodes].forEach(n => slot.appendChild(document.importNode(n, true))); slot.querySelectorAll('[id]').forEach(x => { x.dataset.srcId = x.id; x.removeAttribute('id'); }); }
   function banner() {
-    const w = W(D.act), gem = !!w && w.k === 'gem';
-    document.body.classList.toggle('dkGem', gem);
+    const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
+    document.body.classList.toggle('dkGem', gem); document.body.classList.toggle('dkOther', other);
     $('#dkGemTools').hidden = !gem;
     const f = readerF(), d = f && f.doc;
     cloneInto(nav, d && d.querySelector('#rdTop .rdNav'));
-    cloneInto(tools, d && !gem && d.querySelector('#rdTop .rdTools'));
-    nav.classList.toggle('dim', gem);
-    nav.title = gem ? T('חלון הקריאה האחרון', 'Last reader window') : '';
+    cloneInto(tools, d && !other && d.querySelector('#rdTop .rdTools'));
+    nav.classList.toggle('dim', other);
+    nav.title = other ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();
   }
   let lastBtn = null; // כפתור הבנר שנלחץ אחרון — החלון הקופץ ייפתח מתחתיו
   function fwdClick(slot, srcSel, e) {
     const t = e.target.closest('button,label,input'); if (!t || !slot.contains(t)) return;
     const f = readerF(); if (!f || !f.doc) return;
-    if (slot === nav && document.body.classList.contains('dkGem')) { focusWin(D.last); return; }
+    if (slot === nav && document.body.classList.contains('dkOther')) { if (D.last && W(D.last)) focusWin(D.last); return; }
     const p = pathOf(t, slot), src = f.doc.querySelector(srcSel), o = p && src && byPath(src, p);
     if (o) { e.preventDefault(); lastBtn = t; o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
   }
@@ -401,7 +423,11 @@
   document.addEventListener('pointerdown', e => { if (!e.target.closest('#dkSearch,.dkHost')) closeSearch(); }, true);
   q.addEventListener('focus', () => { host(); syncHost(); fire('focus'); });
   q.addEventListener('input', () => { host(); syncHost(); if (!H.doc) return; H.doc.getElementById('rdQ').value = q.value; fire('input'); });
+  let arrowed = false; q.addEventListener('input', () => { arrowed = false; });
   q.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') arrowed = true;
+    // Enter אחרי מילות חיפוש (בלי לבחור תוצאה בחצים) פותח חלון "תוצאות חיפוש"; עם בחירה בחצים — פותח את התוצאה
+    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); closeSearch(); openResults(q.value.trim()); q.blur(); return; }
     if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key) || !H || !H.doc) return;
     e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
     if (e.key === 'Enter') setTimeout(() => q.blur(), 80);
@@ -515,6 +541,7 @@
   // הודעות מהחלונות (reader.js): תוצאת גימטריה → חלון קריאה; ניסיון לעבור לגימטריה מחלון קריאה → חלון הגימטריה
   addEventListener('message', e => {
     const m = e.data; if (!m || !m.gtDesk || e.origin !== location.origin) return;
+    if (m.gtDesk === 'res') return fromResults(m);
     if (m.gtDesk === 'open') openRead(m.hash);
     else if (m.gtDesk === 'gem') openGem();
   });

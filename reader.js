@@ -2148,6 +2148,9 @@
      נכנסות (עד 0), עם ״…״ בין הקטעים */
   let sqCtx = null;
   function sqFit() {
+    const cl = document.documentElement.classList; // שולחן העבודה: הכותרת מוסתרת, אז מודדים לפי רוחב המארח / חלון התוצאות (שתי שורות)
+    if (cl.contains('gtSearch')) return Math.max(300, innerWidth - 54);
+    if (cl.contains('gtResults')) return Math.max(300, (innerWidth - 330) * 1.8);
     const o = $r('.rdOmni'), w = o ? o.getBoundingClientRect().width : 0;
     return w ? w - 54 : 470; // ריפוד הפנל והשורה, פס הגלילה ומרווח ביטחון
   }
@@ -2264,9 +2267,11 @@
     idx.forEach(i => { const k = RS.pos[i]; if (k == null) return; RS.items[k].x = me.hits[i]; dropItems[RS.start + i] = sqItem(me.hits[i], me.dom); });
     resWin(true);
   }
-  async function sqLoad(me, lo, hi, pri) {
+  async function sqLoad(me, lo, hi, pri, only) {
     if (!me.r) return;
-    const want = [], v = me.v || 0; for (let i = Math.max(0, lo); i <= Math.min(hi, me.r.res.length - 1); i++) if (me.hits[i] && me.hits[i].ph && !me.ld.has(i)) { want.push(i); me.ld.add(i); }
+    const want = [], v = me.v || 0;
+    if (only) only.forEach(i => { if (me.hits[i] && me.hits[i].ph && !me.ld.has(i)) { want.push(i); me.ld.add(i); } });
+    else for (let i = Math.max(0, lo); i <= Math.min(hi, me.r.res.length - 1); i++) if (me.hits[i] && me.hits[i].ph && !me.ld.has(i)) { want.push(i); me.ld.add(i); }
     if (!want.length) return;
     let done = false; const by = {}, tx = {}, ok = () => SQ === me && (me.v || 0) === v;
     want.forEach(i => { const d = me.dom === 'glob' ? me.r.res[i].d : me.dom; (by[d] = by[d] || []).push(me.dom === 'glob' ? me.r.res[i].r : me.r.res[i]); });
@@ -2275,7 +2280,7 @@
       await Promise.all(Object.keys(by).map(async d => { const E = SQD[d].E; tx[d] = await E.texts([].concat(...by[d].map(E.unitsOf)), { pri, alive }); }));
       if (!ok()) return;
       want.forEach(i => { const e = me.r.res[i], d = me.dom === 'glob' ? e.d : me.dom, x = sqHit(me.dom === 'glob' ? e.r : e, tx[d], d); if (me.dom === 'glob') x.dom = d; me.hits[i] = x; });
-      sqPaint(me, want); me.rt = 0; done = true;
+      sqPaint(me, want); me.rt = 0; done = true; if (me.onLoad) me.onLoad(want);
     } catch (e) { /* שאילתה שהוחלפה בגלילה */ } finally {
       want.forEach(i => me.ld.delete(i));
       // בקשה שנפלה (הוחלפה בגלילה מהירה) — טוענים שוב את החלון הנוכחי, גם בלי אירוע גלילה נוסף
@@ -2796,6 +2801,55 @@
     d.drive();
     return d;
   }
+  /* ---------- חלון "תוצאות חיפוש" של שולחן העבודה (results.js): חיפוש בכל הספרים עם סינון לפי ספר / מקור ----------
+     אותו מנוע ואותן תוצאות כמו הרשימה הנפתחת של החיפוש; מכאן רק ממשק קטן: הרצת החיפוש, אינדקס (תחום, ספר, מקור, מקום)
+     לכל התוצאות בלי לטעון טקסט, טעינת טקסט לשורות שנראות, ושורה / כתובת של תוצאה שנטענה. */
+  const RES_DOMS = ['tanakh', 'mishnah', 'rambam', 'talmud', 'tur'], RES_DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור ושו״ע' };
+  const RES_SRC = { tanakh: ['פסוקים', 'רש״י', 'אונקלוס', 'יונתן'], mishnah: ['משנה', 'ברטנורא'], rambam: ['רמב״ם', 'כסף משנה', 'השגות', 'משנה למלך'], talmud: ['גמרא', 'רש״י', 'תוספות'], tur: ['טור', 'בית יוסף', 'ב״ח'] };
+  function resRow(x) { // כמו row ברשימה הנפתחת של "בכל הספרים"
+    if (x.dom === 'talmud') { const tt = TX.list[TX.byK[x.tk]], tag = x.src === 'g' ? '' : x.src === 'r' ? T('רש״י') : T('תוספות'); return { tag, ref: talName(tt) + ' ' + x.ref, html: x.html }; }
+    if (x.dom === 'tur') return { tag: x.x === 't' ? '' : turCmName(x.x) + ' ' + RL(x.x, x.i), ref: x.ref, html: x.html };
+    const cm = x.cm != null, tr = !!x.tr;
+    return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', ref: x.ref || refLabel(x), html: x.html };
+  }
+  G.GimResults = {
+    DOMS: RES_DOMS, DL: RES_DL, SRC: RES_SRC,
+    ready() { return !!(IX && G.GimSq); },
+    // מריץ חיפוש בכל הספרים; cb(me) כשכל התחומים סיימו (או null בכשל)
+    start(raw, cb) {
+      ensureIndex(); SQ = null; const r0 = sqSearchGlob(raw);
+      if (!r0.q) return cb(null);
+      const t = setInterval(() => { if (!SQ || SQ.q !== raw) { clearInterval(t); return cb(null); } if (!SQ.busy && SQ.pend === 0) { clearInterval(t); cb(SQ); } }, 250);
+    },
+    // אינדקס לכל התוצאות (עד cap), בחתיכות כדי לא לתקוע את הממשק: dom (אינדקס ב-DOMS), bk (ספר), src, ord (מקום)
+    index(me, cap, prog, cb) {
+      const res = me.r.res, n = Math.min(res.length, cap), dom = new Uint8Array(n), bk = new Int16Array(n), src = new Uint8Array(n), ord = new Int32Array(n);
+      let i = 0; const step = () => {
+        for (const end = Math.min(n, i + 15000); i < end; i++) {
+          const e = res[i], E = SQD[e.d].E, o = G.GimSq.rOrd(E.unitsOf(e.r)[0]);
+          dom[i] = RES_DOMS.indexOf(e.d); bk[i] = E.map.ob[o]; src[i] = e.r.src; ord[i] = o;
+        }
+        if (prog) prog(i, n);
+        if (i < n) setTimeout(step, 0); else cb({ n, total: res.length, dom, bk, src, ord });
+      };
+      step();
+    },
+    // שם ספר / קבוצה (תורה, סדר זרעים…) של תוצאה
+    book(d, bi) {
+      ensureIndex();
+      if (d === 'talmud') { const k = G.GIM_SQ_DBS.talmud.bk[bi].k, tt = TX.list[TX.byK[k]]; return { name: talName(tt), group: tt.g || '' }; }
+      if (d === 'tur') { const k = G.GIM_SQ_DBS.tur.bk[bi].k; return { name: turPartName(turTOf(k)), group: '' }; }
+      const b = IX.books[bi]; return { name: bkName(b.heTitle), group: b.g || '' };
+    },
+    load(me, idxs, pri) { return sqLoad(me, 0, 0, pri || 1, idxs); },
+    row: resRow,
+    hashOf(x) {
+      ensureIndex();
+      if (x.dom === 'talmud') return hashOfRef(IX, { kind: 'tal', k: x.tk, j: x.j, s: x.s });
+      if (x.dom === 'tur') return hashOfRef(IX, { kind: 'tur', k: x.k, s: x.s, x: x.x, i: x.i });
+      return hashOfRef(IX, { kind: 'ref', b: x.b, ch: x.ch, v: x.v });
+    }
+  };
   // הדגשת מילות החיפוש במקום שנפתח (שולחן העבודה: התוצאה נבחרה במארח החיפוש ונפתחת בחלון אחר)
   function highlight(q) { if (!q || document.body.dataset.mode !== 'read') return; S.hl = q; SQHL = null; render(); }
   G.GimReader = { canOpen, openUnit, tour, highlight };
