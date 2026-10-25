@@ -36,6 +36,12 @@
     const full = (q + ' ' + extra).trim();
     $('#rsFoot').textContent = 'מחפש בכל הספרים…'; sp.style.height = '0'; list.querySelectorAll('.rsRow,.rsGh').forEach(e => e.remove());
     const tok = ++runTok;
+    // אם אחרי 15 שניות עדיין אין שום תוצאה (תחום שנתקע בטעינה) — מציעים לנסות שוב במקום להשאיר "מחפש…" לנצח
+    setTimeout(() => {
+      if (tok !== runTok || idx) return;
+      const ft = $('#rsFoot'); ft.textContent = 'החיפוש מתעכב… '; const a = document.createElement('a'); a.href = '#'; a.textContent = 'לנסות שוב';
+      a.onclick = e => { e.preventDefault(); run(); }; ft.appendChild(a);
+    }, 15000);
     R.start(full, (m, partial) => {
       if (tok !== runTok) return;
       if (!m) { $('#rsFoot').textContent = 'אין תוצאות'; idx = null; side(); return; }
