@@ -1,0 +1,68 @@
+/* desktop.css — שולחן העבודה (v3.33.0): בנר קבוע, חלונות ושורת משימות. הצבעים מ-styles.css (--bg, --pn, --ln, --gold…). */
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.dkTop{flex:none;position:relative;z-index:20}
+
+/* בנר: בלי מתג גימטריה/קריאה; בחירת ספר ודף מחוץ לתיבת החיפוש; התיבה ברוחב המסגרת של היום */
+.dkRd{display:flex!important;align-items:center;gap:10px;flex:1 1 auto;min-width:0;width:auto!important;max-width:none!important}
+.dkNav{flex:none;display:flex;align-items:center;height:40px;padding:0 4px;border:1px solid var(--ln);border-radius:12px;background:var(--pn2)}
+.dkNav:empty{display:none}
+.dkNav.dim{opacity:.55}
+.dkOmni{flex:0 1 708px!important;width:708px;min-width:0!important;max-width:708px!important}
+.dkSearch{flex:1;min-width:0}
+.dkScope{flex:none;height:28px;padding:0 10px;margin-inline-start:4px;border:0;border-inline-start:1px solid var(--ln);background:none;color:var(--mu);font:12px var(--ui);white-space:nowrap;cursor:pointer}
+.dkScope:hover{color:var(--tx)}
+.dkTools:empty{display:none}
+.dkGemTools{display:flex;gap:6px;align-items:center}
+.dkGemTools[hidden]{display:none}
+.dkGemTools button{height:32px;padding:0 12px;border:1px solid var(--ln);border-radius:9px;background:var(--pn);color:var(--tx);font:13px var(--ui);white-space:nowrap;cursor:pointer}
+body.dkGem .dkTools{display:none}
+
+/* שולחן העבודה */
+.dkDesk{flex:1;position:relative;overflow:hidden;background:color-mix(in srgb,var(--bg) 86%,#000 14%)}
+:root[data-theme=dark] .dkDesk{background:#120d07}
+.dkDesk.drag iframe{pointer-events:none}
+.dkSnap{position:absolute;border:2px dashed var(--gold);border-radius:12px;background:color-mix(in srgb,var(--gold) 10%,transparent);pointer-events:none;z-index:9999}
+
+/* חלון */
+.dw{position:absolute;display:flex;flex-direction:column;background:var(--pn);border:1px solid var(--ln);border-radius:10px;box-shadow:0 10px 30px rgba(60,40,10,.22);overflow:hidden;min-width:360px;min-height:240px}
+:root[data-theme=dark] .dw{box-shadow:0 10px 30px rgba(0,0,0,.55)}
+.dw.act{border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb,var(--gold) 40%,transparent),0 14px 36px rgba(60,40,10,.25)}
+.dw.max{inset:0!important;width:auto!important;height:auto!important;border-radius:0;border-width:0;box-shadow:none}
+.dw[hidden]{display:none}
+.dwBar{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px;background:var(--pn2);border-bottom:1px solid var(--ln);color:var(--mu);font:13px var(--ui);cursor:default;user-select:none}
+.dw.act .dwBar{background:var(--acs);color:var(--tx)}
+.dwBar b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dwTag{font-size:11px;padding:0 7px;border-radius:999px;border:1px solid var(--ln);white-space:nowrap}
+.dwNav{display:flex;gap:2px}
+.dwNav button,.dwCtl button{width:26px;height:22px;display:grid;place-items:center;border-radius:6px;border:0;background:none;color:inherit;font-size:14px;cursor:pointer;padding:0}
+.dwNav button{border:1px solid var(--ln);background:var(--pn)}
+.dwNav button:disabled{opacity:.35;cursor:default}
+.dwCtl{margin-inline-start:auto;display:flex;gap:2px}
+.dwCtl button:hover,.dwNav button:not(:disabled):hover{background:var(--pn)}
+.dwCtl .x:hover{background:#c0392b;color:#fff}
+.dwBody{flex:1;position:relative;min-height:0}
+.dwBody iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
+.dwWake{position:absolute;inset:0;display:grid;place-content:center;gap:8px;text-align:center;border:0;background:var(--bg);color:var(--mu);font:15px var(--ui);cursor:pointer}
+.dwWake b{color:var(--tx);font:600 20px var(--tf)}
+.dwRs{position:absolute;bottom:0;width:14px;height:14px;z-index:2}
+.dwRs.l{left:0;cursor:nesw-resize}.dwRs.r{right:0;cursor:nwse-resize}
+.dw.max .dwRs{display:none}
+
+/* שורת משימות */
+.dkTask{height:46px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--pn);border-top:1px solid var(--ln);z-index:20;overflow-x:auto}
+.dkChip{display:flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid var(--ln);border-radius:9px;background:var(--pn);color:var(--tx);font:13px var(--ui);white-space:nowrap;cursor:pointer;max-width:240px}
+.dkChip span.t{overflow:hidden;text-overflow:ellipsis}
+.dkChip.on{background:var(--acs);border-color:var(--gold);font-weight:600}
+.dkChip.min{color:var(--mu);border-style:dashed}
+.dkChip .z{font-size:10px;padding:0 5px;border-radius:5px;background:var(--pn2);color:var(--mu)}
+.dkCnt{font-size:12px;color:var(--mu);padding:0 6px;white-space:nowrap}
+.dkSp{flex:1}
+.dkAdd{height:32px;padding:0 12px;border-radius:9px;border:1px dashed var(--gold);background:none;color:var(--gold);font:13px var(--ui);white-space:nowrap;cursor:pointer}
+.dkBtn{height:32px;padding:0 11px;border:1px solid var(--ln);border-radius:9px;background:var(--pn);color:var(--tx);font:13px var(--ui);white-space:nowrap;cursor:pointer}
+.dkMenu{position:fixed;bottom:52px;left:12px;z-index:30;display:flex;flex-direction:column;min-width:150px;padding:5px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.dkMenu[hidden]{display:none}
+.dkMenu button{text-align:right;padding:7px 10px;border:0;border-radius:6px;background:none;color:var(--tx);font:13px var(--ui);cursor:pointer}
+.dkMenu button:hover{background:var(--acs)}
+.dkToast{position:fixed;bottom:58px;left:50%;transform:translateX(-50%);z-index:40;padding:8px 14px;border-radius:9px;background:var(--tx);color:var(--pn);font:13px var(--ui)}
+.dkToast[hidden]{display:none}

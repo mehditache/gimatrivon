@@ -2704,6 +2704,13 @@
   let curMode = null; // המסך האחרון שדווח ל-GA — לחיצה על המסך שכבר פתוח לא נספרת שוב
   function setMode(m, user, via) {
     if (m !== 'read') m = 'gem';
+    // בתוך חלון של שולחן העבודה (desktop.js): חלון הגימטריה לא עובר למסך הקריאה — המקום נפתח בחלון קריאה;
+    // וחלון קריאה לא עובר לגימטריה — מביאים את חלון הגימטריה לפנים
+    if (G.GT_EMBED && m !== G.GT_EMBED && G.parent !== G) {
+      if (m === 'read') { ensureIndex(); G.parent.postMessage({ gtDesk: 'open', hash: hashOfRef(IX, curRef()) }, '*'); }
+      else G.parent.postMessage({ gtDesk: 'gem' }, '*');
+      return;
+    }
     if (m !== curMode && APP.trackEvent) APP.trackEvent('app_screen', { screen: m === 'read' ? 'reader' : 'gematria', via: via || (user ? 'switch' : 'load') });
     curMode = m;
     document.body.dataset.mode = m;
@@ -2825,6 +2832,7 @@
     labelModeSw();
     let start = 'gem';
     try { start = localStorage.getItem('gimatrivonMode') === 'read' ? 'read' : 'gem'; } catch (e) {}
+    if (G.GT_EMBED) start = G.GT_EMBED; // חלון בשולחן העבודה: תמיד המסך של החלון
     if (hashTarget()) { setMode('read', false, 'link'); openLinkSeg(); }
     else setMode(/^#gim$/i.test(location.hash) ? 'gem' : start, false, /^#gim$/i.test(location.hash) ? 'link' : undefined);
     window.addEventListener('hashchange', fromHash);
