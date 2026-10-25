@@ -82,6 +82,7 @@
   // טעינת ה-iframe של חלון (רק כשהוא גלוי ופעיל, או כשלוחצים עליו)
   function wake(w) {
     const f = F.get(w.id); if (!f || f.fr || w.min) return;
+    w.at = Date.now();
     const body = f.el.querySelector('.dwBody'); body.textContent = '';
     const fr = document.createElement('iframe');
     fr.title = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
@@ -109,6 +110,21 @@
     b.onclick = () => { focusWin(w.id); wake(w); };
     body.appendChild(b);
   }
+  /* ---------- שינה אוטומטית ---------- */
+  // חלון שלא היה פעיל D.sl דקות (ולא נוגעים בו) משחרר את ה-iframe ונשאר במקומו עם "לחיצה להמשך"; המצב נשמר כמו במזעור. חלון הגימטריה לבדו
+  // תופס כ-400MB (אינדקס האותיות), וכל חלון קריאה כ-90MB. החלון הפעיל וחלון הקריאה שהבנר משקף אף פעם לא ישנים.
+  const SL_OPTS = [0, 5, 10, 30], slMin = () => D.sl == null ? 10 : D.sl;
+  const slLabel = () => slMin() ? T('שינה אוטומטית: ' + slMin() + ' דק׳', 'Auto-sleep: ' + slMin() + ' min') : T('שינה אוטומטית: כבויה', 'Auto-sleep: off');
+  function autoSleep() {
+    const m = slMin(); if (!m) return; const now = Date.now();
+    D.wins.forEach(w => {
+      const f = F.get(w.id); if (!f || !f.fr || w.min || w.id === D.act || w.id === D.last) return;
+      if (document.activeElement === f.fr) { w.at = now; return; }
+      if (!w.at) w.at = now;
+      if (now - w.at > m * 60000) { sleepFrame(w); taskbar(); }
+    });
+  }
+  setInterval(autoSleep, 30000);
   // שדות הגימטריה (שני הצדדים, שיטות, מסננים): כל input/textarea/select עם id, ערך ומצב סימון
   function snapshot(w) {
     const f = F.get(w.id); if (!f || !f.doc || w.k !== 'gem') return;
@@ -188,7 +204,7 @@
     if (w.min) { w.min = false; }
     const changed = D.act !== id;
     if (changed || w.z < D.z) w.z = ++D.z;
-    D.act = id; if (w.k === 'read') D.last = id;
+    D.act = id; if (w.k === 'read') D.last = id; w.at = Date.now();
     D.wins.forEach(paint); wake(w);
     if (changed) { banner(); syncUrl(); }
     taskbar(); saveSoon();
@@ -330,9 +346,12 @@
       '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">＋</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
       '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">⊞</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkAdd').onclick = () => { const l = W(D.last); openRead(l ? curHash(l) : '#read', true); };
-    $('#dkArrBtn').onclick = e => { e.stopPropagation(); $('#dkArr').hidden = !$('#dkArr').hidden; };
+    $('#dkArrBtn').onclick = e => { e.stopPropagation(); const sl = $('#dkArr [data-sl]'); if (sl) sl.textContent = '💤 ' + slLabel(); $('#dkArr').hidden = !$('#dkArr').hidden; };
   }
-  $('#dkArr').addEventListener('click', e => { const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); } });
+  $('#dkArr').addEventListener('click', e => {
+    const s = e.target.closest('[data-sl]'); if (s) { D.sl = SL_OPTS[(SL_OPTS.indexOf(slMin()) + 1) % SL_OPTS.length]; s.textContent = '💤 ' + slLabel(); saveSoon(); return; }
+    const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); }
+  });
   document.addEventListener('click', e => { if (!e.target.closest('#dkArr,#dkArrBtn')) $('#dkArr').hidden = true; });
   // תצוגה מקדימה בריחוף על חלון ממוזער: הכותרת והקטע ששמרנו ב-State, בלי לטעון את החלון
   let toastT = 0;
@@ -443,6 +462,8 @@
     const i = bs.findIndex(b => b.classList.contains('on')); bs[(i + 1) % bs.length].click(); setTimeout(scopeLabel, 80);
   });
   addEventListener('resize', placeHost);
+  // מחממים את הגמרא והטור (המסדים הגדולים) זמן קצר אחרי שהשולחן נטען; שאר התחומים — כשמתמקדים בתיבת החיפוש
+  setTimeout(() => { const P = window.GimSqPool; if (P && /^https?:$/.test(location.protocol)) ['talmud', 'tur'].forEach((n, i) => setTimeout(() => P.engine(n).catch(() => {}), 1500 * i)); }, 6000);
   // חימום מטמון ה-HTTP: מנוע ה-SQLite (wasm ו-Worker) יורדים כבר כשהמשתמש מתחיל לחפש, כך שחלון התוצאות לא מחכה להם (בלי להפעיל Workers — זיכרון)
   let warmed = false;
   q.addEventListener('focus', () => { if (warmed) return; warmed = true; ['vendor/sql.js-httpvfs/sql-wasm.wasm', 'vendor/sql.js-httpvfs/sqlite.worker.js'].forEach(u => fetch(u).catch(() => {})); });

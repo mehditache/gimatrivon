@@ -5,7 +5,8 @@
    מנוע שלא היה בשימוש IDLE שניות משחרר את ה-Workers, והם נפתחים שוב לבד בבקשה הבאה (ה-engine עצמו נשאר תקף). */
 (() => {
   'use strict';
-  const G = window, SQ_MAX = 8 << 20, IDLE = 90000, ST = {};
+  const G = window, SQ_MAX = 8 << 20, IDLE = 180000, ST = {};
+  let RCS = 4; try { RCS = Math.max(1, Math.min(32, +localStorage.getItem('gimSqRcs') || 4)); } catch (e) {} // כפולה של עמוד מסד לכל בקשת Range: 4 (64KB) חוסכת כרבע מהזמן ברשת איטית (מדידה: 80ms השהיה, 413→273 בקשות); 16 כבר מוריד פי שלושה בתים בלי להאיץ
   const abs = p => new URL(p, location.href).href;
   const script = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
 
@@ -15,7 +16,7 @@
     if (st.P) return st.P;
     const DM = G.GimSq.DOMAINS[name], TB = DM.tabs;
     let D = null;
-    const cfg = i => [{ from: 'inline', config: { serverMode: 'chunked', urlPrefix: abs(D.file) + '.', suffixLength: 3, serverChunkSize: D.chunk, databaseLengthBytes: D.bytes, cacheBust: D.hash + '&w=' + i, requestChunkSize: D.page, maxReadSpeed: D.page * 8 } }];
+    const cfg = i => [{ from: 'inline', config: { serverMode: 'chunked', urlPrefix: abs(D.file) + '.', suffixLength: 3, serverChunkSize: D.chunk, databaseLengthBytes: D.bytes, cacheBust: D.hash + '&w=' + i, requestChunkSize: D.page * RCS, maxReadSpeed: D.page * 8 * Math.max(1, RCS / 2) } }];
     const open = async (i, first) => {
       const w = await G.createDbWorker(cfg(i), abs('vendor/sql.js-httpvfs/sqlite.worker.js'), abs('vendor/sql.js-httpvfs/sql-wasm.wasm'));
       const NW = D.bytes > 40 << 20 ? 2 : 3;
@@ -57,7 +58,17 @@
     return st.P = Promise.all([G.createDbWorker || script('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || script('generated/sqlite/' + name + '.js')]).then(async () => {
       D = G.GIM_SQ_DBS[name];
       await start();
-      return st.E = G.GimSq.create(backend, D.bk ? D.bk.map(x => ({ cat: DM.cat, cv: x.cv })) : books, name);
+      const E = G.GimSq.create(backend, D.bk ? D.bk.map(x => ({ cat: DM.cat, cv: x.cv })) : books, name);
+      // מטמון חיפושים אחרונים (8 לכל תחום): חזרה לאותה שאילתה, או חלון תוצאות שנפתח אחרי רשימה נפתחת שחיפשה אותה, מיידיים
+      const raw = E.search, memo = new Map();
+      E.search = (q, opt) => {
+        const k = q + '|' + JSON.stringify(opt || {});
+        if (memo.has(k)) { const v = memo.get(k); memo.delete(k); memo.set(k, v); return v; }
+        const p = raw(q, opt); memo.set(k, p); p.catch(() => memo.delete(k));
+        while (memo.size > 8) memo.delete(memo.keys().next().value);
+        return p;
+      };
+      return st.E = E;
     });
   }
   setInterval(() => { const t = Date.now(); Object.keys(ST).forEach(k => { const s = ST[k]; if (s.pool && s.pool.length && t - s.last > IDLE && !s.Q.length && !s.pool.some(x => x.busy)) s.stop(); }); }, 15000);

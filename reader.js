@@ -2690,7 +2690,7 @@
       renderJump(); const nsc = $r('#rdJump .rdJBooks'); if (nsc) nsc.scrollTop = top;
     };
     const q = $r('#rdQ');
-    q.addEventListener('focus', () => { const d = sqDomOf(); if (d && sqOn()) sqReady(d).catch(() => {}); }); // מתחילים לטעון את המסד כשנכנסים לתיבת החיפוש, לפני ההקלדה
+    q.addEventListener('focus', () => { const d = sqDomOf(); if (d && sqOn()) sqReady(d).catch(() => {}); if (sqShared() && sqOn()) ['tanakh', 'mishnah', 'rambam', 'talmud', 'tur'].forEach((n, i) => setTimeout(() => sqReady(n, true).catch(() => {}), 150 * (i + 1))); }); // בשולחן העבודה: מחממים את כל התחומים (חיפוש בכל הספרים), בהדרגה // מתחילים לטעון את המסד כשנכנסים לתיבת החיפוש, לפני ההקלדה
     q.addEventListener('input', () => { updClear(); clearTimeout(qTimer); qTimer = setTimeout(renderDrop, 140); busy(q.value.trim()); if (!q.value && S.hl) { S.hl = ''; render(); } });
     q.addEventListener('focus', () => { closePops(); if (q.value.trim()) renderDrop(); });
     q.addEventListener('keydown', e => {
