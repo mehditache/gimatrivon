@@ -1,4 +1,4 @@
-/* desktop.js — שולחן העבודה (v3.33.0).
+/* desktop.js — שולחן העבודה (v4.0.0).
    - חלון גימטריה אחד וחלונות קריאה (עד 5). כל חלון הוא index.html?embed=gem|read בתוך iframe, כך שמסכי
      הגימטריה והקריאה נשארים בדיוק כמו שהם; reader.js יודע (GT_EMBED) לא לעבור בין המסכים בתוך חלון.
    - הבנר העליון קבוע מחוץ לחלונות ומשקף את החלון הפעיל: בחירת הספר והכלים משוכפלים מהחלון (importNode)
@@ -94,6 +94,12 @@
   function sleepFrame(w) { // שמירת State ושחרור ה-iframe
     const f = F.get(w.id); if (!f) return;
     snapshot(w);
+    try { // קטע-טקסט קצר לתצוגה המקדימה בריחוף על השבב (בלי להחזיק DOM)
+      if (f.doc) {
+        if (w.k === 'read') { const t = f.doc.querySelector('.rdTxt'); w.snip = t ? t.textContent.replace(/\s+/g, ' ').trim().slice(0, 220) : ''; }
+        else { const a = f.doc.getElementById('tA'), b = f.doc.getElementById('tB'); w.snip = [a && a.value, b && b.value].filter(Boolean).join('  ·  '); }
+      }
+    } catch (e) {}
     if (f.obs) f.obs.forEach(o => o.disconnect());
     if (f.fr) { try { f.fr.src = 'about:blank'; } catch (e) {} f.fr.remove(); }
     f.fr = f.doc = f.win = null; f.obs = null;
@@ -282,6 +288,10 @@
       c.querySelector('.t').textContent = t;
       c.title = t + (w.min ? ' — ' + T('ממוזער, המקום נשמר', 'minimized, place kept') : '');
       c.onclick = () => { if (D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
+      if (w.min) {
+        c.addEventListener('mouseenter', () => peek(w, c));
+        c.addEventListener('mouseleave', unpeek);
+      }
       task.appendChild(c);
     });
     task.insertAdjacentHTML('beforeend', '<span class="dkCnt">' + T('חלונות קריאה', 'Reader windows') + ' ' + n + '/' + MAXR + '</span><span class="dkSp"></span>' +
@@ -292,6 +302,19 @@
   }
   $('#dkArr').addEventListener('click', e => { const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); } });
   document.addEventListener('click', e => { if (!e.target.closest('#dkArr,#dkArrBtn')) $('#dkArr').hidden = true; });
+  // תצוגה מקדימה בריחוף על חלון ממוזער: הכותרת והקטע ששמרנו ב-State, בלי לטעון את החלון
+  let peekEl = null;
+  function peek(w, chip) {
+    unpeek();
+    const el = peekEl = document.createElement('div'); el.className = 'dkPeek';
+    el.innerHTML = '<b></b><span class="m">' + T('ממוזער, המקום נשמר', 'Minimized, place kept') + '</span><div class="pv"></div>';
+    el.querySelector('b').textContent = ICON[w.k] + ' ' + (w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader')));
+    el.querySelector('.pv').textContent = w.snip || T('לחיצה תחזיר את החלון', 'Click to restore');
+    document.body.appendChild(el);
+    const r = chip.getBoundingClientRect();
+    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left + r.width / 2 - el.offsetWidth / 2)) + 'px';
+  }
+  function unpeek() { if (peekEl) { peekEl.remove(); peekEl = null; } }
   let toastT = 0;
   function toast(s) { const t = $('#dkToast'); t.textContent = s; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
 

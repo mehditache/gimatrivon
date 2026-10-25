@@ -1,4 +1,4 @@
-/* desktop.css — שולחן העבודה (v3.33.0): בנר קבוע, חלונות ושורת משימות. הצבעים מ-styles.css (--bg, --pn, --ln, --gold…). */
+/* desktop.css — שולחן העבודה (v4.0.0): בנר קבוע, חלונות ושורת משימות. הצבעים מ-styles.css (--bg, --pn, --ln, --gold…). */
 html,body{height:100%}
 body{margin:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .dkTop{flex:none;position:relative;z-index:20}
@@ -66,3 +66,8 @@ body.dkGem .dkTools{display:none}
 .dkMenu button:hover{background:var(--acs)}
 .dkToast{position:fixed;bottom:58px;left:50%;transform:translateX(-50%);z-index:40;padding:8px 14px;border-radius:9px;background:var(--tx);color:var(--pn);font:13px var(--ui)}
 .dkToast[hidden]{display:none}
+
+/* תצוגה מקדימה בריחוף מעל שבב של חלון ממוזער */
+.dkPeek{position:fixed;bottom:54px;z-index:50;width:280px;padding:10px 12px;background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font:13px var(--ui);pointer-events:none}
+.dkPeek .m{display:block;color:var(--mu);font-size:11px;margin:2px 0 6px}
+.dkPeek .pv{max-height:5.2em;overflow:hidden;font:15px/1.7 var(--tf);color:var(--tx)}
