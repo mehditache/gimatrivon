@@ -63,7 +63,7 @@ const ok = (name, cond, info) => { if (cond) pass++; else fail++; console.log((c
     await pg.waitForFunction(() => { const c = document.querySelector('#rdDrop .cnt'); return c && c.textContent && !/טוען|Loading/.test(c.textContent); }, null, { timeout: 30000 });
     const ms = Date.now() - s - 140; // בלי ההשהיה של ההקלדה (140ms)
     const reqs = LOG.slice(n0), bytes = reqs.reduce((a, x) => a + x.bytes, 0);
-    const r = await pg.evaluate(() => ({ cnt: document.querySelector('#rdDrop .cnt').textContent, rows: [...document.querySelectorAll('#rdResBox .rdDI.hit')].slice(0, 5).map(b => ({ ref: b.querySelector('.rf').textContent, t: b.querySelector('.sn').textContent, marks: [...b.querySelectorAll('mark')].map(m => m.textContent) })) }));
+    const r = await pg.evaluate(() => ({ cnt: document.querySelector('#rdDrop .cnt').textContent, rows: [...document.querySelectorAll('#rdResBox .rdDI.hit:not(.ph)')].slice(0, 5).map(b => ({ ref: b.querySelector('.rf').textContent, t: b.querySelector('.sn').textContent, marks: [...b.querySelectorAll('mark')].map(m => m.textContent) })) }));
     console.log('    ' + q + ' [' + (scope || '') + '/' + (src || '') + ']: ' + r.cnt + ', ' + ms + 'ms, ' + reqs.length + ' בקשות, ' + Math.round(bytes / 1024) + 'KB');
     return { ...r, ms, reqs: reqs.length, bytes, total: +(r.cnt.replace(/[^\d]/g, '') || 0) };
   }
@@ -89,28 +89,27 @@ const ok = (name, cond, info) => { if (cond) pass++; else fail++; console.log((c
   const S10 = await search('את', { scope: 'all', src: 'all' });
   ok('מילה נפוצה מאוד', S10.total > 5000, S10.ms + 'ms');
 
-  // גלילה: עוד 50
-  const before = await pg.evaluate(() => document.querySelector('#rdResBox .rdResIn').style.height);
+  // גלילה: הרשימה בגודל כל התוצאות, והשורות בסוף נטענות בגלילה
   await pg.evaluate(() => { const b = document.querySelector('#rdResBox'); b.scrollTop = b.scrollHeight; b.dispatchEvent(new Event('scroll')); });
-  await pg.waitForTimeout(1500);
-  const after = await pg.evaluate(() => document.querySelector('#rdResBox .rdResIn').style.height);
-  ok('גלילה טוענת עוד תוצאות', parseInt(after) > parseInt(before), before + ' → ' + after);
+  await pg.waitForFunction(() => document.querySelectorAll('#rdResBox .rdDI.hit:not(.ph)').length > 0, null, { timeout: 15000 }).catch(() => {});
+  const nEnd = await pg.evaluate(() => document.querySelectorAll('#rdResBox .rdDI.hit:not(.ph)').length);
+  ok('גלילה לסוף טוענת את השורות שם', nEnd > 0, nEnd + ' שורות'); await pg.evaluate(() => { document.querySelector('#rdResBox').scrollTop = 0; });
 
   // מעבר מתוצאה לספר
   await search('ויבא יעקב שלם', { scope: 'all', src: 'txt' });
-  await pg.click('#rdResBox .rdDI.hit');
+  await pg.click('#rdResBox .rdDI.hit:not(.ph)');
   await pg.waitForTimeout(1500);
   const loc = await pg.evaluate(() => ({ hash: location.hash, marks: [...document.querySelectorAll('.rdPage mark')].map(m => m.textContent) }));
   ok('מעבר לבראשית לג, יח עם סימון', /\/Gen\/33\/18$/.test(loc.hash) && loc.marks.length >= 3, loc.hash + ' ' + loc.marks.slice(0, 4).join(','));
 
   // כל המילים שנמצאו נראות בשורה (לא נחתכות ב-line-clamp), בכל סוג תוצאה
-  const visible = p => p.evaluate(() => [...document.querySelectorAll('#rdResBox .rdDI.hit')].map(b => {
+  const visible = p => p.evaluate(() => [...document.querySelectorAll('#rdResBox .rdDI.hit:not(.ph)')].map(b => {
     const sn = b.querySelector('.sn').getBoundingClientRect(), ms = [...b.querySelectorAll('.sn mark')];
     return { ref: b.querySelector('.rf').textContent, n: ms.length, ok: ms.length > 0 && ms.every(m => { const r = m.getBoundingClientRect(); return r.width > 0 && r.top >= sn.top - 1 && r.bottom <= sn.bottom + 1 && r.left >= sn.left - 1 && r.right <= sn.right + 1; }) };
   }));
   // כל התוצאות שנטענו (גלילה ברשימה הווירטואלית)
   const allRefs = async (p, max) => { const seen = new Set(); await p.evaluate(() => { document.querySelector('#rdResBox').scrollTop = 0; });
-    for (let i = 0; i < 40 && seen.size < max; i++) { (await p.evaluate(() => [...document.querySelectorAll('#rdResBox .rdDI.hit .rf')].map(x => x.textContent))).forEach(x => seen.add(x));
+    for (let i = 0; i < 40 && seen.size < max; i++) { (await p.evaluate(() => [...document.querySelectorAll('#rdResBox .rdDI.hit:not(.ph) .rf')].map(x => x.textContent))).forEach(x => seen.add(x));
       const end = await p.evaluate(() => { const b = document.querySelector('#rdResBox'); const e = b.scrollTop + b.clientHeight >= b.scrollHeight - 2; b.scrollTop += b.clientHeight * 0.8; b.dispatchEvent(new Event('scroll')); return e; });
       await p.waitForTimeout(end ? 600 : 120); if (end && (await p.evaluate(() => { const b = document.querySelector('#rdResBox'); return b.scrollTop + b.clientHeight >= b.scrollHeight - 2; }))) break; }
     return [...seen]; };

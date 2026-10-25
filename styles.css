@@ -914,6 +914,9 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .rdResSticky[hidden]{display:none}
 .rdFs{position:absolute;top:4px;bottom:4px;inset-inline-end:3px;width:6px;border-radius:4px;background:color-mix(in srgb,var(--rdLine) 70%,transparent);cursor:pointer;touch-action:none;z-index:3}
 .rdFs[hidden]{display:none}
+.rdFsBand{position:absolute;inset-inline:0;pointer-events:none;border-radius:2px}
+.rdFsBand.b0{background:#c9962b}.rdFsBand.b1{background:#3f7fbf}.rdFsBand.b2{background:#4e9a62}.rdFsBand.b3{background:#8a5cb5}.rdFsBand.b4{background:#c25a4a}
+.rdDI.ph{pointer-events:none;opacity:.55}.rdDI.ph .sn i{display:block;height:10px;margin-top:6px;width:70%;border-radius:5px;background:var(--rdLine)}
 .rdFsTick{position:absolute;inset-inline-start:-3px;width:12px;height:2px;border-radius:1px;background:var(--rdGold);opacity:.75;pointer-events:none}
 .rdFsThumb{position:absolute;inset-inline-start:-2px;width:10px;border-radius:6px;background:var(--rdMu);cursor:grab;box-shadow:0 0 0 2px var(--rdPaper);transition:background .1s}
 .rdFs:hover .rdFsThumb,.rdFs.drag .rdFsThumb{background:var(--rdGold)}

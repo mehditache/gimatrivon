@@ -2014,7 +2014,7 @@
     html += '<div class="rdDScope" role="group">' + (sq ? [['tr', 'במסכת'], ['all', 'בכל הש״ס']].map(([k, l]) => '<button type="button" data-tscope="' + k + '" class="' + (S.tscope === k ? 'on' : '') + '" aria-pressed="' + (S.tscope === k) + '">' + T(l) + '</button>').join('') + '<button type="button" data-glob="1" aria-pressed="false">' + T('בכל הספרים') + '</button><span class="sep" aria-hidden="true"></span>' : '') + '<span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-tsrc="' + k + '" class="' + (S.tsrc === k ? 'on' : '') + '" aria-pressed="' + (S.tsrc === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
     // כל ההתאמות במסכת, ברשימה הווירטואלית עם פס הגלילה המהיר: קבוצה לכל דף (עמוד), וסימון על הפס בכל עשרה דפים
     const start = dropItems.length, t0 = talT();
-    res.hits.forEach(x => dropItems.push({ kind: 'thit', x }));
+    res.hits.forEach(x => dropItems.push(sq ? sqItem(x, 'talmud') : { kind: 'thit', x }));
     if (n) html += resList(res.hits, start, q, {
       sq, key: sq ? null : x => x.j, gh: x => T('דף') + ' ' + dafTxt(x.j),
       tick: sq ? null : x => Math.floor((dafOf(x.j).d) / 10), tickName: g => T('דף') + ' ' + (isEn() ? Math.max(2, g * 10) : toHeb(Math.max(2, g * 10))),
@@ -2044,7 +2044,7 @@
     const scopes = [['s', 'בסימן'], ['all', 'בכל הטור']].concat(sq ? [['every', 'בכל הטורים']] : []), srcs = [['t', 'טור'], ['y', 'בית יוסף'], ['c', 'ב״ח'], ['all', 'הכל']];
     html += '<div class="rdDScope" role="group">' + scopes.map(([x, l]) => '<button type="button" data-rscope="' + x + '" class="' + (S.rscope === x ? 'on' : '') + '" aria-pressed="' + (S.rscope === x) + '">' + T(l) + '</button>').join('') + (sq ? '<button type="button" data-glob="1" aria-pressed="false">' + T('בכל הספרים') + '</button>' : '') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([x, l]) => '<button type="button" data-rsrc="' + x + '" class="' + (S.rsrc === x ? 'on' : '') + '" aria-pressed="' + (S.rsrc === x) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length, sLabel = s => s ? T('סימן') + ' ' + num(s) : T('הקדמה');
-    res.hits.forEach(x => dropItems.push({ kind: 'rhit', x }));
+    res.hits.forEach(x => dropItems.push(sq ? sqItem(x, 'tur') : { kind: 'rhit', x }));
     if (n) html += resList(res.hits, start, q, {
       sq, key: sq || S.rscope === 's' ? null : x => x.s, gh: x => sLabel(x.s) + (hilOf(t, x.s) ? ' · ' + hilOf(t, x.s) : ''),
       tick: sq || S.rscope === 's' ? null : x => hilOf(t, x.s) || null, tickName: g => g,
@@ -2249,22 +2249,45 @@
     x.html = sqSnippet(us.map(u => ({ t: tx.get(u), marks: r.marks.get(u) || new Set() })), DM.multi.includes(r.src) ? ' <span class="rdCont">…</span> ' : ' ');
     return x;
   }
-  async function sqMore(me, k, pri) {
-    const part = me.r.res.slice(me.hits.length, me.hits.length + k);
-    const E = SQD[me.dom].E, tx = await E.texts([].concat(...part.map(E.unitsOf)), { pri, alive: () => SQ === me });
-    if (SQ !== me) return;
-    part.forEach(r => me.hits.push(sqHit(r, tx, me.dom)));
+  /* הרשימה בגודל כל התוצאות (פס הגלילה המהיר מדויק מהרגע הראשון); שורות שעוד לא נטענו הן {ph:true}. הטקסטים נטענים לפי החלון
+     הנראה (sqLoad מ-resWin), והשורה מתעדכנת במקומה (sqPaint) בלי לבנות את הרשימה מחדש ובלי לאבד את מקום הגלילה. */
+  const sqItem = (x, dom) => x.ph ? { kind: 'ph' } : (x.dom || dom) === 'talmud' ? { kind: 'thit', x } : (x.dom || dom) === 'tur' ? { kind: 'rhit', x } : { kind: 'hit', r: x };
+  const sqPh = n => Array.from({ length: n }, (_, i) => ({ ph: true, i }));
+  function sqMeta(me, i) { // מקום התוצאה (לבועה) — מהמנוע, בלי הטקסט
+    const e = me.r && me.r.res[i]; if (!e) return {};
+    const d = me.dom === 'glob' ? e.d : me.dom, r = me.dom === 'glob' ? e.r : e, E = SQD[d].E, M = E.map, ord = G.GimSq.rOrd(E.unitsOf(r)[0]), bi = M.ob[ord], ch = M.oc[ord];
+    if (d === 'talmud' || d === 'tur') { const k = G.GIM_SQ_DBS[d].bk[bi].k; return d === 'talmud' ? { dom: d, tk: k, j: ch - 1 } : { dom: d, k, s: ch - 1 }; }
+    return { dom: d, b: bi, ch };
+  }
+  function sqPaint(me, idx) {
+    if (SQ !== me || !RS || RS.me !== me) return;
+    idx.forEach(i => { const k = RS.pos[i]; if (k == null) return; RS.items[k].x = me.hits[i]; dropItems[RS.start + i] = sqItem(me.hits[i], me.dom); });
+    resWin(true);
+  }
+  async function sqLoad(me, lo, hi, pri) {
+    if (!me.r) return;
+    const want = [], v = me.v || 0; for (let i = Math.max(0, lo); i <= Math.min(hi, me.r.res.length - 1); i++) if (me.hits[i] && me.hits[i].ph && !me.ld.has(i)) { want.push(i); me.ld.add(i); }
+    if (!want.length) return;
+    const by = {}, tx = {}, ok = () => SQ === me && (me.v || 0) === v;
+    want.forEach(i => { const d = me.dom === 'glob' ? me.r.res[i].d : me.dom; (by[d] = by[d] || []).push(me.dom === 'glob' ? me.r.res[i].r : me.r.res[i]); });
+    const alive = () => ok() && (pri < 2 || !me.want || (want[0] <= me.want[1] + 40 && want[want.length - 1] >= me.want[0] - 40));
+    try {
+      await Promise.all(Object.keys(by).map(async d => { const E = SQD[d].E; tx[d] = await E.texts([].concat(...by[d].map(E.unitsOf)), { pri, alive }); }));
+      if (!ok()) return;
+      want.forEach(i => { const e = me.r.res[i], d = me.dom === 'glob' ? e.d : me.dom, x = sqHit(me.dom === 'glob' ? e.r : e, tx[d], d); if (me.dom === 'glob') x.dom = d; me.hits[i] = x; });
+      sqPaint(me, want);
+    } catch (e) { /* שאילתה שהוחלפה בגלילה — תיטען שוב כשהשורה תיראה */ } finally { want.forEach(i => me.ld.delete(i)); }
   }
   function sqSearch(raw) {
     const nq = norm(raw);
     if (G.GimSq.letters(raw).length < 2) return { hits: [], total: 0, q: '' };
     const dom = sqDomOf(), sc = sqKey(dom);
     if (!SQ || SQ.q !== raw || SQ.sc !== sc) {
-      const me = SQ = { q: raw, sc, dom, hits: [], r: null, busy: true };
+      const me = SQ = { q: raw, sc, dom, hits: [], r: null, busy: true, ld: new Set() };
       const again = () => { if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); };
       // קודם הטקסטים של התוצאות הראשונות (מה שנראה בחלון) ומציגים; את השאר עד 50 — מיד אחר כך, ברקע
-      sqReady(dom).then(() => SQD[dom].E.search(raw, sqOpt(dom))).then(r => { if (SQ !== me) return; me.r = r; return sqMore(me, 12, 1); }).then(() => {
-        if (SQ !== me) return; me.busy = false; again(); sqNext(38);
+      sqReady(dom).then(() => SQD[dom].E.search(raw, sqOpt(dom))).then(r => { if (SQ !== me) return; me.r = r; me.hits = sqPh(r.res.length); return sqLoad(me, 0, 11, 1); }).then(() => {
+        if (SQ !== me) return; me.busy = false; again(); sqLoad(me, 12, 49, 2);
       }).catch(e => { if (SQ !== me) return; if (G.console) console.warn('sqlite search failed, falling back', e); SQD[dom].fail = true; SQ = null; again(); });
     }
     return { hits: SQ.busy ? [] : SQ.hits, total: SQ.r ? SQ.r.total : 0, q: nq, wait: SQ.busy };
@@ -2273,19 +2296,12 @@
   /* ---------- חיפוש בכל הספרים (תנ״ך, משנה, רמב״ם, גמרא, טור — עם כל המפרשים) ----------
      אותה שאילתה נשלחת במקביל לכל התחומים (כל תחום עם ה-Workers שלו), והתוצאות ממוזגות לפי הדירוג. כל תחום מצטרף ברגע שהוא מוכן —
      התוצאות הראשונות מופיעות מיד, והסכום והסדר מתעדכנים כשהאטיים (גמרא, טור) מסיימים. */
-  async function sqMoreGlob(me, k, pri) {
-    const v = me.v, part = me.r.res.slice(me.hits.length, me.hits.length + k), by = {}, tx = {};
-    part.forEach(p => (by[p.d] = by[p.d] || []).push(p));
-    await Promise.all(Object.keys(by).map(async d => { const E = SQD[d].E; tx[d] = await E.texts([].concat(...by[d].map(p => E.unitsOf(p.r))), { pri, alive: () => SQ === me && me.v === v }); }));
-    if (SQ !== me || me.v !== v) return;
-    part.forEach(p => { const x = sqHit(p.r, tx[p.d], p.d); x.dom = p.d; me.hits.push(x); });
-  }
   function sqSearchGlob(raw) {
     const nq = norm(raw);
     if (G.GimSq.letters(raw).length < 2) return { hits: [], total: 0, q: '' };
     if (!SQ || SQ.q !== raw || SQ.sc !== 'glob') {
       const DS = G.GimSq.DOMAINS, names = Object.keys(DS), got = {};
-      const me = SQ = { q: raw, sc: 'glob', dom: 'glob', hits: [], r: { total: 0, res: [] }, total: 0, busy: true, v: 0, pend: names.length };
+      const me = SQ = { q: raw, sc: 'glob', dom: 'glob', hits: [], r: { total: 0, res: [] }, total: 0, busy: true, v: 0, pend: names.length, ld: new Set() };
       const again = () => { if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); };
       let fails = 0;
       names.forEach(d => sqReady(d, true).then(() => SQD[d].E.search(raw, { srcs: DS[d].srcs.all })).then(r => { got[d] = r; }, () => { fails++; }).then(() => {
@@ -2294,11 +2310,11 @@
         if (fails === names.length) { S.glob = false; SQ = null; return again(); } // כשל בכולם — החיפוש הרגיל
         const res = []; names.forEach(n => got[n] && got[n].res.forEach(r => res.push({ d: n, r })));
         res.sort((a, b) => b.r.sc - a.r.sc);
-        me.r = { total: res.length, res }; me.total = res.length; me.v++; me.hits = []; me.more = false;
+        me.r = { total: res.length, res }; me.total = res.length; me.v++; me.hits = sqPh(res.length); me.ld = new Set();
         const v = me.v;
-        (res.length ? sqMoreGlob(me, 12, 1) : Promise.resolve()).then(() => {
+        (res.length ? sqLoad(me, 0, 11, 1) : Promise.resolve()).then(() => {
           if (SQ !== me || me.v !== v) return;
-          if (res.length || !me.pend) { me.busy = false; again(); if (res.length) sqNext(38); } else again();
+          if (res.length || !me.pend) { me.busy = false; again(); if (res.length) sqLoad(me, 12, 49, 2); } else again();
         }, () => {});
       }));
     }
@@ -2310,10 +2326,10 @@
     const res = sqSearchGlob(q), btn = (g, l, on) => '<button type="button" data-glob="' + g + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + on + '">' + T(l) + '</button>';
     let html = '<div class="rdDScope" role="group">' + btn(0, 'חיפוש בספר', false) + btn(1, 'בכל הספרים', true) + '<span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : res.total ? resN(res.total) + (res.part ? ' ' + spin() : '') : T('אין תוצאות')) + '</span></div>';
     const start = 0;
-    res.hits.forEach(x => dropItems.push(x.dom === 'talmud' ? { kind: 'thit', x } : x.dom === 'tur' ? { kind: 'rhit', x } : { kind: 'hit', r: x }));
+    res.hits.forEach(x => dropItems.push(sqItem(x, 'glob')));
     const DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור' };
     if (res.hits.length) html += resList(res.hits, start, q, {
-      sq: true, key: null, gh: () => '', bub: x => T(DL[x.dom]),
+      sq: true, key: null, gh: () => '', bub: x => T(DL[x.dom]) + ' · ' + (x.dom === 'talmud' ? talName(TX.list[TX.byK[x.tk]]) + ' ' + dafTxt(x.j) : x.dom === 'tur' ? turPartName(turTOf(x.k)) + ' · ' + (x.s ? T('סימן') + ' ' + num(x.s) : T('הקדמה')) : refLabel({ b: x.b, ch: x.ch, v: 0 })),
       row: x => {
         if (x.dom === 'talmud') {
           const tt = TX.list[TX.byK[x.tk]], tag = x.src === 'g' ? '' : x.src === 'r' ? T('רש״י') : T('תוספות');
@@ -2327,15 +2343,6 @@
     d.innerHTML = html; d.hidden = false; busy(res.wait);
     bindRes();
     if (dropItems.length) setAct(lastAct());
-  }
-  function sqNext(k) { // עוד תוצאות (50 בגלילה), בלי לאבד את מקום הגלילה
-    const me = SQ; if (!me || me.busy || me.more || !me.r || me.hits.length >= me.r.total) return;
-    me.more = true;
-    (me.dom === 'glob' ? sqMoreGlob : sqMore)(me, k || 50, 2).then(() => {
-      me.more = false; if (SQ !== me || $r('#rdDrop').hidden) return;
-      const top = $r('#rdResBox') ? $r('#rdResBox').scrollTop : 0;
-      renderDrop(); const box = $r('#rdResBox'); if (box) { box.scrollTop = top; resWin(true); }
-    }, () => { me.more = false; });
   }
   function renderDrop() {
     if (S.glob && sqOn()) return renderDropGlob();
@@ -2359,7 +2366,7 @@
     const srcs = [['txt', isRambam(S.b) ? 'הלכות' : isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isRambam(S.b) ? 'מפרשים' : isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
     html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + (sqOn() ? '<button type="button" data-glob="1" aria-pressed="false">' + T('בכל הספרים') + '</button>' : '') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait || res.wait ? spin() : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
-    res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
+    res.hits.forEach(x => dropItems.push(sq ? sqItem(x, sqDomOf()) : { kind: 'hit', r: x }));
     if (res.hits.length) {
       const byBook = S.scope === 'all' && !sq; // SQLite: לפי דירוג, בלי קבוצות
       html += resList(res.hits, start, q, {
@@ -2380,6 +2387,20 @@
   /* רשימת תוצאות וירטואלית — משותפת לכל הספרים (תנ״ך, משנה, רמב״ם, גמרא, טור). o: key(x) = מפתח קבוצה (null = בלי
      כותרות), gh(x) = שם הקבוצה, tick(x)/tickName = סימון על פס הגלילה בתחילת כל חלק, bub(x) = הכותרת בבועה,
      row(x) = {tag, fc, ref, t} לשורה. */
+  /* פסי צבע על פס הגלילה: לכל תוצאה צבע לפי המקור (טקסט, רש״י/מפרשים, תרגום…) ובחיפוש בכל הספרים — לפי התחום; רצף של אותו צבע הוא פס אחד */
+  function sqBands(me) {
+    const res = me.r ? me.r.res : [], n = res.length, DI = { tanakh: 0, mishnah: 1, rambam: 2, talmud: 3, tur: 4 };
+    if (!n) return '';
+    const cls = i => me.dom === 'glob' ? DI[res[i].d] : res[i].src, B = Math.min(n, 160); let out = '', prev = -1, from = 0;
+    const put = (a, b, c) => { out += '<i class="rdFsBand b' + c + '" style="top:' + (100 * a / n).toFixed(2) + '%;height:' + (100 * (b - a) / n).toFixed(2) + '%"></i>'; };
+    for (let b = 0; b < B; b++) {
+      const lo = Math.floor(b * n / B), hi = Math.floor((b + 1) * n / B), cnt = {}; let best = 0, bc = 0;
+      for (let i = lo; i < hi; i++) { const c = cls(i); cnt[c] = (cnt[c] || 0) + 1; if (cnt[c] > best) { best = cnt[c]; bc = c; } }
+      if (bc !== prev) { if (prev >= 0) put(from, lo, prev); prev = bc; from = lo; }
+    }
+    put(from, n, prev);
+    return out;
+  }
   function resList(hits, start, q, o) {
     const items = [], off = [], ticks = []; let y = 0, prevK = null, prevT = null, gi = -1;
     hits.forEach((x, j) => {
@@ -2391,10 +2412,11 @@
       items.push({ i: start + j, x, gi }); off.push(y); y += RH;
     });
     const pos = []; items.forEach((it, k) => { if (!it.gh) pos[it.i - start] = k; });
-    RS = { items, off, total: y, start, n: hits.length, pos, ticks, q, from: -1, to: -1, o };
+    const me = o.sq ? SQ : null; if (me) o.meta = i => sqMeta(me, i);
+    RS = { items, off, total: y, start, n: hits.length, pos, ticks, q, from: -1, to: -1, o, me };
     return '<div class="rdRes"><div class="rdResBox" id="rdResBox"><div class="rdResIn" style="height:' + y + 'px"></div></div>' +
       '<div class="rdResSticky" id="rdResSticky" aria-hidden="true"></div>' +
-      '<div class="rdFs" id="rdFs" aria-hidden="true">' + ticks.map(t => '<i class="rdFsTick" style="top:' + (100 * t.y / y).toFixed(2) + '%" title="' + h(o.tickName ? o.tickName(t.g) : '') + '"></i>').join('') +
+      '<div class="rdFs" id="rdFs" aria-hidden="true">' + (me ? sqBands(me) : '') + ticks.map(t => '<i class="rdFsTick" style="top:' + (100 * t.y / y).toFixed(2) + '%" title="' + h(o.tickName ? o.tickName(t.g) : '') + '"></i>').join('') +
       '<div class="rdFsThumb" id="rdFsThumb"><div class="rdFsBub" id="rdFsBub"></div></div></div></div>';
   }
   const ghLabel = x => RS.o.gh(x);
@@ -2414,6 +2436,7 @@
       box.firstChild.innerHTML = RS.items.slice(from, to).map((it, k) => {
         const y = RS.off[from + k], x = it.x;
         if (it.gh) return '<div class="rdGh" style="top:' + y + 'px"><span>' + h(ghLabel(x)) + '</span><span class="n">' + resN(it.n) + '</span></div>';
+        if (x.ph) return '<div class="rdDI hit ph" style="top:' + y + 'px" data-i="' + it.i + '" aria-hidden="true"><span class="rf">…</span><span class="sn"><i></i></span></div>';
         const { tag, fc, ref, t, html } = RS.o.row(x);
         return '<button type="button" class="rdDI hit' + (tag ? ' cm' : '') + (it.i === dropAct ? ' act' : '') + '" style="top:' + y + 'px" data-i="' + it.i + '" role="option"><span class="rf">' + (tag ? '<i>' + h(tag) + '</i> ' : '') + h(ref) + '</span><span class="sn' + (fc ? ' ' + (fc === 'rashi' ? 'fR' : 'fN') : '') + '">' + (html != null ? html : hlHtml(tag ? excerpt(t, RS.q) : t, RS.q)) + '</span></button>';
       }).join('');
@@ -2424,7 +2447,7 @@
     st.hidden = !g || (f.gh && RS.off[firstAt(top)] >= top - 1);
     if (g && !st.hidden) st.innerHTML = '<span>' + h(ghLabel(g.x)) + '</span><span class="n">' + resN(g.n) + '</span>';
     fsLay();
-    if (RS.o.sq && to >= RS.items.length - 6) sqNext();
+    if (RS.me) { RS.me.want = [from, to - 1]; sqLoad(RS.me, from - 4, to + 8, 1); }
   }
   function fsLay() {
     const box = $r('#rdResBox'), tr = $r('#rdFs'), th = $r('#rdFsThumb'); if (!box || !tr) return;
@@ -2434,7 +2457,8 @@
     th.style.height = t + 'px'; th.style.top = (box.scrollTop / max) * (H - t) + 'px';
     const k = Math.min(RS.items.length - 1, firstAt(box.scrollTop + box.clientHeight * (box.scrollTop / max)));
     const it = RS.items[k], hit = it.gh ? RS.items[k + 1] : it;
-    $r('#rdFsBub').innerHTML = '<b>' + h(RS.o.bub(hit.x)) + '</b><span>' + T('תוצאה') + ' ' + cnt(hit.i - RS.start + 1) + ' ' + T('מתוך') + ' ' + cnt(RS.n) + '</span>';
+    const bx = RS.o.meta ? RS.o.meta(hit.i - RS.start) : hit.x;
+    $r('#rdFsBub').innerHTML = '<b>' + h(RS.o.bub(bx)) + '</b><span>' + T('תוצאה') + ' ' + cnt(hit.i - RS.start + 1) + ' ' + T('מתוך') + ' ' + cnt(RS.n) + '</span>';
   }
   function fsBind() { // פעם אחת: גרירת הידית ולחיצה על הפס (האירועים מואצלים מ-#rdDrop כי התוכן נבנה מחדש)
     let drag = null, raf = 0, py = 0;
@@ -2476,7 +2500,7 @@
     return dropItems[0] && dropItems[0].sg && RS && RS.n ? RS.start : 0; // רק הצעות ספרים — Enter לתוצאה הראשונה
   }
   function pickDrop(i) {
-    const it = dropItems[i]; if (!it) return;
+    const it = dropItems[i]; if (!it || it.kind === 'ph') return;
     const q = $r('#rdQ').value;
     if (it.kind === 'hit' || it.kind === 'thit' || it.kind === 'rhit') { S.hl = q; SQHL = (it.kind === 'hit' ? it.r : it.x).sq ? sqHl(q) : null; LP = { q, sig: dropSig(), i, kind: it.kind }; if (it.r && it.r.tr && S.tr !== it.r.tr) S.tr = it.r.tr; } else { S.hl = ''; $r('#rdQ').value = ''; }
     $r('#rdQ').blur(); // כדי שהחצים ידפדפו מיד
