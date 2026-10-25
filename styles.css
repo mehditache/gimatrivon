@@ -825,6 +825,17 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .rdOmniSep{margin:0 6px}
 .rdOmni .rdSearch{max-width:none;height:38px;padding:0 6px;border:0;background:none}
 .rdOmni .rdSearch:focus-within{background:none}
+/* פנל התוצאות ברוחב כל מסגרת החיפוש (המיקום + החיפוש) */
+.rdOmni .rdSearch{position:static}
+.rdOmni .rdDrop{inset-inline:-1px;width:auto}
+/* עד שהתוצאות מוצגות: פס זוהר מסתובב סביב המסגרת */
+@property --rdSpin{syntax:'<angle>';inherits:false;initial-value:0deg}
+.rdOmni.rdBusy::before{content:'';position:absolute;inset:-2px;border-radius:13px;padding:2px;pointer-events:none;z-index:1;
+  background:conic-gradient(from var(--rdSpin),transparent 0 62%,color-mix(in srgb,var(--rdOn) 55%,transparent) 78%,var(--rdOn) 90%,#fff7d6 95%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  filter:drop-shadow(0 0 4px var(--rdOn));animation:rdSpin 1.1s linear infinite}
+@keyframes rdSpin{to{--rdSpin:360deg}}
+@media (prefers-reduced-motion:reduce){.rdOmni.rdBusy::before{animation:rdPulse 1.2s ease-in-out infinite alternate;background:var(--rdOn)}@keyframes rdPulse{from{opacity:.25}to{opacity:.9}}}
 .rdTools{flex:none;display:inline-flex;align-items:center;gap:2px;padding:2px;border-radius:11px;border:1px solid var(--rdG3)}
 .reader .rdTools .rdSeg{border:0;border-radius:8px}
 .reader .rdTools .rdSeg button{height:30px;padding:0 9px;border-radius:8px}
@@ -842,9 +853,8 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
   .reader .rdOmni .rdWhere{padding:0 8px;font-size:14px;gap:5px}
   .reader .rdOmni .rdWhere>svg:first-child{display:none}
   .rdOmniSep{margin:0 4px}
-  .rdOmni .rdSearch{position:static;padding:0 4px}
+  .rdOmni .rdSearch{padding:0 4px}
   .rdOmni .rdSearch input{font-size:14px}
-  .rdOmni .rdDrop{inset-inline:-1px;width:auto}
   .rdTools{height:42px;padding:4px}
   .reader .rdTools .rdSetBtn{height:32px}
 }

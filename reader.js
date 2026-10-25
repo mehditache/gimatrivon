@@ -1927,7 +1927,9 @@
 
   /* ---------- חיפוש מהיר ---------- */
   let dropItems = [], dropAct = -1, qTimer = 0, dropQ = null;
-  function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; PIN = []; }
+  function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; PIN = []; busy(false); }
+  // פס זוהר מסתובב סביב מסגרת החיפוש מההקלדה ועד שהתוצאות מוצגות
+  function busy(on) { const o = $r('.rdOmni'); if (o) o.classList.toggle('rdBusy', !!on); }
   function scopeBooks() { if (S.scope === 'all') return IX.base.filter(i => IX.books[i].cat === IX.books[S.b].cat); return [S.b]; }
   function refLabel(r) { return bkName(IX.books[r.b].heTitle) + ' ' + num(r.ch) + (r.v ? ', ' + num(r.v) : ''); }
   /* תוצאות החיפוש: כל ההתאמות (בלי תקרה) ברשימה וירטואלית, בדומה לרשימת התוצאות במסך הגימטריה.
@@ -1998,7 +2000,7 @@
   const refsHtml = () => dropItems.length ? '<div class="rdDRefs"><div class="rdDH">' + T('מעבר אל') + '</div>' + dropItems.map((it, i) => '<button type="button" class="rdDI ref" data-i="' + i + '" role="option">' + ICON.book + '<span>' + h(refItemLabel(it)) + '</span></button>').join('') + '</div>' : '';
   function renderDropTal() {
     const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
-    if (!q.trim()) { d.hidden = true; return; }
+    if (!q.trim()) { d.hidden = true; busy(false); return; }
     const tr = parseDafRef(TX, q), ref = parseRef(IX, q, null), rref = parseTurRef(RX, q);
     if (rref) dropItems.push({ kind: 'tur', k: rref.k, s: rref.s });
     if (tr) dropItems.push({ kind: 'tal', k: tr.k, j: tr.j });
@@ -2020,13 +2022,13 @@
         return { tag, fc: tag ? S.cmFont : '', ref: dafTxt(x.j) + ' · ' + T('קטע') + ' ' + num(x.s + 1), t: plainT(x.t) };
       }
     });
-    d.innerHTML = html; d.hidden = false;
+    d.innerHTML = html; d.hidden = false; busy(false);
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
   function renderDropTur() { // בטור: מעבר למקום (סימן, דף, פסוק) וחיפוש בטור ובמפרשיו
     const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
-    if (!q.trim()) { d.hidden = true; return; }
+    if (!q.trim()) { d.hidden = true; busy(false); return; }
     const rr = parseTurRef(RX, q), tr = parseDafRef(TX, q), ref = parseRef(IX, q, null);
     if (rr) dropItems.push({ kind: 'tur', k: rr.k, s: rr.s });
     else { const n = parseNum(turClean(q)); if (n >= 1 && n < turT().n && /^[א-ת\d]{1,4}$/.test(turClean(q))) dropItems.push({ kind: 'tur', k: S.rk, s: n }); }
@@ -2048,7 +2050,7 @@
       row: x => ({ tag: x.x === 't' ? '' : turCmName(x.x) + ' ' + RL(x.x, x.i), fc: x.x === 't' ? '' : 'rashi', ref: sLabel(x.s), t: turHitText(x) })
     });
     else if (!res.wait) html += '<p class="rdNote rdDNote">' + T(res.q.length < 2 ? 'בטור מקלידים מקום: ״או״ח ס״, ״יו״ד קצג״, או מספר סימן.' : 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.') + '</p>';
-    d.innerHTML = html; d.hidden = false;
+    d.innerHTML = html; d.hidden = false; busy(res.wait);
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
@@ -2207,7 +2209,7 @@
     if (isTur()) return renderDropTur();
     if (isTal()) return renderDropTal();
     const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
-    if (!q.trim()) { d.hidden = true; return; }
+    if (!q.trim()) { d.hidden = true; busy(false); return; }
     let html = '';
     const ref = parseRef(IX, q, S.b), tref = parseDafRef(TX, q), rref = parseTurRef(RX, q);
     if (rref) dropItems.push({ kind: 'tur', k: rref.k, s: rref.s });
@@ -2238,7 +2240,7 @@
         }
       });
     }
-    d.innerHTML = html; d.hidden = false;
+    d.innerHTML = html; d.hidden = false; busy(sq ? res.wait : wait);
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
@@ -2496,7 +2498,7 @@
       renderJump(); const nsc = $r('#rdJump .rdJBooks'); if (nsc) nsc.scrollTop = top;
     };
     const q = $r('#rdQ');
-    q.addEventListener('input', () => { updClear(); clearTimeout(qTimer); qTimer = setTimeout(renderDrop, 140); if (!q.value && S.hl) { S.hl = ''; render(); } });
+    q.addEventListener('input', () => { updClear(); clearTimeout(qTimer); qTimer = setTimeout(renderDrop, 140); busy(q.value.trim()); if (!q.value && S.hl) { S.hl = ''; render(); } });
     q.addEventListener('focus', () => { closePops(); if (q.value.trim()) renderDrop(); });
     q.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown') { e.preventDefault(); setAct(dropAct + 1); }
