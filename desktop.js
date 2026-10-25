@@ -279,11 +279,26 @@
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); desk.classList.remove('drag'); saveSoon(); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up);
   }
+  // חלון אישור בעיצוב האפליקציה (במקום confirm של הדפדפן): מחזיר Promise<boolean>; Esc / לחיצה על הרקע = ביטול, Enter = אישור
+  function ask(title, msg, okLbl, noLbl) {
+    return new Promise(res => {
+      const el = document.createElement('div'); el.className = 'dkAsk'; el.dir = EN ? 'ltr' : 'rtl';
+      el.innerHTML = '<div class="dkAskBox" role="alertdialog" aria-modal="true"><h3></h3><p></p><div class="dkAskBtns"><button type="button" class="ok"></button><button type="button" class="no"></button></div></div>';
+      el.querySelector('h3').textContent = title; el.querySelector('p').textContent = msg;
+      el.querySelector('.ok').textContent = okLbl; el.querySelector('.no').textContent = noLbl;
+      const done = v => { document.removeEventListener('keydown', kd, true); el.remove(); res(v); };
+      const kd = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); } };
+      el.addEventListener('mousedown', e => { if (e.target === el) done(false); });
+      el.querySelector('.ok').onclick = () => done(true); el.querySelector('.no').onclick = () => done(false);
+      document.addEventListener('keydown', kd, true); document.body.appendChild(el); el.querySelector('.no').focus();
+    });
+  }
   function arrange(kind) {
     const vis = D.wins.filter(w => !w.min).sort((a, b) => a.z - b.z), W0 = desk.clientWidth, H0 = desk.clientHeight;
     if (kind === 'clean') {
-      if (!confirm(T('לסגור את כל חלונות הקריאה ולהתחיל שולחן נקי?', 'Close all reader windows and start a clean desktop?'))) return;
-      reads().forEach(w => closeWin(w.id)); const g = gemW(); g.max = true; focusWin(g.id); return;
+      ask(T('שולחן נקי', 'Clean desktop'), T('לסגור את כל חלונות הקריאה והתוצאות ולהתחיל שולחן נקי? חלון הגימטריה יישאר.', 'Close all reader and results windows and start a clean desktop? The gematria window stays.'), T('סגירה', 'Close all'), T('ביטול', 'Cancel'))
+        .then(ok => { if (!ok) return; D.wins.filter(w => w.k !== 'gem').forEach(w => closeWin(w.id)); const g = gemW(); g.max = true; focusWin(g.id); });
+      return;
     }
     vis.forEach((w, i) => {
       w.max = false;

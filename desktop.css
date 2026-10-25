@@ -83,3 +83,16 @@ body.dkGem .dkTools{display:none}
 .dkMenu{z-index:200}
 .dkPeek{z-index:210}
 .dkToast{z-index:220}
+
+/* חלון אישור בעיצוב האפליקציה (במקום confirm של הדפדפן) */
+.dkAsk{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:rgba(20,14,6,.45);animation:dkAskIn .15s ease-out}
+.dkAskBox{width:min(420px,calc(100vw - 32px));padding:20px 22px 16px;background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-top:3px solid var(--gold);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.45);animation:dkAskBox .18s ease-out}
+.dkAskBox h3{margin:0 0 8px;font:700 17px var(--ui);color:var(--gold)}
+.dkAskBox p{margin:0 0 18px;font:14px/1.6 var(--ui);color:var(--tx)}
+.dkAskBtns{display:flex;gap:8px;justify-content:flex-start}
+.dkAskBtns button{height:34px;padding:0 18px;border-radius:10px;border:1px solid var(--ln);background:var(--pn2);color:var(--tx);font:600 13px var(--ui);cursor:pointer}
+.dkAskBtns .ok{background:var(--gold);border-color:var(--gold);color:#fff}
+:root[data-theme=dark] .dkAskBtns .ok{color:#1c160e}
+.dkAskBtns button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@keyframes dkAskIn{from{opacity:0}}
+@keyframes dkAskBox{from{opacity:0;transform:translateY(-14px)}}
