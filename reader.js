@@ -2310,20 +2310,21 @@
     if (G.GimSq.letters(raw).length < 2) return { hits: [], total: 0, q: '' };
     if (!SQ || SQ.q !== raw || SQ.sc !== 'glob') {
       const DS = G.GimSq.DOMAINS, names = Object.keys(DS), got = {};
-      const me = SQ = { q: raw, sc: 'glob', dom: 'glob', hits: [], r: { total: 0, res: [] }, total: 0, busy: true, v: 0, pend: names.length, ld: new Set() };
+      let me = SQ = { q: raw, sc: 'glob', dom: 'glob', hits: [], r: { total: 0, res: [] }, total: 0, busy: true, v: 0, pend: names.length, ld: new Set() };
       const again = () => { if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); };
       let fails = 0;
       names.forEach(d => sqReady(d, true).then(() => SQD[d].E.search(raw, { srcs: DS[d].srcs.all })).then(r => { got[d] = r; }, () => { fails++; }).then(() => {
-        if (SQ !== me) return;
-        me.pend--;
+        if (SQ === null || SQ.q !== raw || SQ.sc !== 'glob') return;
+        me = SQ; me.pend--;
         if (fails === names.length) { S.glob = false; SQ = null; return again(); } // כשל בכולם — החיפוש הרגיל
         const res = []; names.forEach(n => got[n] && got[n].res.forEach(r => res.push({ d: n, r })));
         res.sort((a, b) => b.r.sc - a.r.sc);
-        me.r = { total: res.length, res }; me.total = res.length; me.v++; me.hits = sqPh(res.length); me.ld = new Set();
-        const v = me.v;
-        (res.length ? sqLoad(me, 0, 11, 1) : Promise.resolve()).then(() => {
-          if (SQ !== me || me.v !== v) return;
-          if (res.length || !me.pend) { me.busy = false; again(); if (res.length) sqLoad(me, 12, 49, 2); } else again();
+        // כל גרסה היא אובייקט חדש: חלון התוצאות מחזיק אינדקס של הגרסה הקודמת, ושינוי הסדר במקום היה מערבב לו שורות וטעינות
+        me = SQ = Object.assign({}, me, { r: { total: res.length, res }, total: res.length, v: me.v + 1, hits: sqPh(res.length), ld: new Set(), onLoad: null });
+        const v = me.v, mine = me;
+        (res.length ? sqLoad(mine, 0, 11, 1) : Promise.resolve()).then(() => {
+          if (SQ !== mine || mine.v !== v) return;
+          if (res.length || !mine.pend) { mine.busy = false; again(); if (res.length) sqLoad(mine, 12, 49, 2); } else again();
         }, () => {});
       }));
     }

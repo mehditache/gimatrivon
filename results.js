@@ -45,12 +45,11 @@
     R.start(full, (m, partial) => {
       if (tok !== runTok) return;
       if (!m) { $('#rsFoot').textContent = 'אין תוצאות'; idx = null; side(); return; }
-      me = m; me.onLoad = () => paint(true);
       // תוצאות חלקיות (תחומים שכבר סיימו) מוצגות מיד; הסכום והסדר מתעדכנים כשהאטיים מסיימים
       const t = ++idxTok;
-      R.index(me, CAP, (i, n) => { if (!idx) $('#rsFoot').textContent = 'מסדר את התוצאות… ' + i.toLocaleString('he') + ' / ' + n.toLocaleString('he'); }, ix => {
+      R.index(m, CAP, (i, n) => { if (!idx) $('#rsFoot').textContent = 'מסדר את התוצאות… ' + i.toLocaleString('he') + ' / ' + n.toLocaleString('he'); }, ix => {
         if (t !== idxTok || tok !== runTok) return;
-        idx = ix; side(); refilter(); if (partial) $('#rsFoot').textContent += ' · עדיין מחפש…';
+        me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter(); if (partial) $('#rsFoot').textContent += ' · עדיין מחפש…';
       });
     });
   }

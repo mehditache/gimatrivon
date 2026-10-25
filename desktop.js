@@ -312,7 +312,6 @@
 
   /* ---------- שורת משימות ---------- */
   function taskbar() {
-    unpeek(); // השבב נבנה מחדש — התצוגה המקדימה של הריחוף נסגרת איתו (אחרת mouseleave לא מגיע והיא נתקעת)
     const n = reads().length;
     task.innerHTML = '';
     D.wins.slice().sort((a, b) => (a.k === 'gem' ? -1 : b.k === 'gem' ? 1 : 0)).forEach(w => {
@@ -324,8 +323,6 @@
       c.title = t + (w.min ? ' — ' + T('ממוזער, המקום נשמר', 'minimized, place kept') : '');
       c.onclick = () => { if (D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
       if (w.min) {
-        c.addEventListener('mouseenter', () => peek(w, c));
-        c.addEventListener('mouseleave', unpeek);
       }
       task.appendChild(c);
     });
@@ -338,21 +335,6 @@
   $('#dkArr').addEventListener('click', e => { const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); } });
   document.addEventListener('click', e => { if (!e.target.closest('#dkArr,#dkArrBtn')) $('#dkArr').hidden = true; });
   // תצוגה מקדימה בריחוף על חלון ממוזער: הכותרת והקטע ששמרנו ב-State, בלי לטעון את החלון
-  let peekEl = null;
-  function peek(w, chip) {
-    unpeek();
-    const el = peekEl = document.createElement('div'); el.className = 'dkPeek';
-    el.innerHTML = '<b></b><span class="m">' + T('ממוזער, המקום נשמר', 'Minimized, place kept') + '</span><div class="pv"></div>';
-    el.querySelector('b').textContent = ICON[w.k] + ' ' + (w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader')));
-    el.querySelector('.pv').textContent = w.snip || T('לחיצה תחזיר את החלון', 'Click to restore');
-    document.body.appendChild(el);
-    const r = chip.getBoundingClientRect();
-    el.style.right = Math.round(innerWidth - r.left + 8) + 'px';
-    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, Math.round(r.top + r.height / 2 - el.offsetHeight / 2))) + 'px';
-  }
-  document.addEventListener('pointerdown', () => unpeek(), true);
-  task.addEventListener('mouseleave', () => unpeek());
-  function unpeek() { if (peekEl) { peekEl.remove(); peekEl = null; } }
   let toastT = 0;
   function toast(s) { const t = $('#dkToast'); t.textContent = s; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
 
