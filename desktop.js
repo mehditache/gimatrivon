@@ -297,6 +297,7 @@
 
   /* ---------- שורת משימות ---------- */
   function taskbar() {
+    unpeek(); // השבב נבנה מחדש — התצוגה המקדימה של הריחוף נסגרת איתו (אחרת mouseleave לא מגיע והיא נתקעת)
     const n = reads().length;
     task.innerHTML = '';
     D.wins.slice().sort((a, b) => (a.k === 'gem' ? -1 : b.k === 'gem' ? 1 : 0)).forEach(w => {
@@ -334,6 +335,8 @@
     el.style.right = Math.round(innerWidth - r.left + 8) + 'px';
     el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, Math.round(r.top + r.height / 2 - el.offsetHeight / 2))) + 'px';
   }
+  document.addEventListener('pointerdown', () => unpeek(), true);
+  task.addEventListener('mouseleave', () => unpeek());
   function unpeek() { if (peekEl) { peekEl.remove(); peekEl = null; } }
   let toastT = 0;
   function toast(s) { const t = $('#dkToast'); t.textContent = s; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
