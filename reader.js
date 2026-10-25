@@ -2075,9 +2075,13 @@
   const sqOn = () => { const d = sqDomOf(); return !!d && !(SQD[d] && SQD[d].fail) && !!G.GimSq && /^https?:$/.test(location.protocol) && !sqPhone() && typeof Worker !== 'undefined'; };
   const sqScript = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
   const sqAbs = p => new URL(p, location.href).href;
+  const sqShared = () => { try { return G.GT_EMBED && G.parent && G.parent !== G && G.parent.GimSqPool || null; } catch (e) { return null; } };
   function sqReady(name, glob) {
     const st = SQD[name] || (SQD[name] = { P: null, E: null, fail: false });
     if (st.P) return st.P;
+    // בשולחן העבודה: המנוע והמאגר משותפים לכל החלונות (sqpool.js בדף השולחן), בלי Workers משלנו
+    const sh = sqShared();
+    if (sh) { st.stop = () => {}; st.P = sh.engine(name, IX.books).then(E => { G.GIM_SQ_DBS = Object.assign(G.GIM_SQ_DBS || {}, G.parent.GIM_SQ_DBS); return (st.E = E); }); st.P.catch(() => { st.fail = true; }); return st.P; }
     const DM = G.GimSq.DOMAINS[name], TB = DM.tabs;
     if (!glob) Object.keys(SQD).forEach(o => { if (o !== name && SQD[o].P) SQD[o].stop(); }); // תחום אחד פעיל בכל רגע, כדי שהזיכרון לא יצטבר (בחיפוש בכל הספרים — כולם פעילים, 2 Workers לכל אחד)
     st.P = Promise.all([G.createDbWorker || sqScript('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || sqScript('generated/sqlite/' + name + '.js')]).then(async () => {
