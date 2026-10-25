@@ -8,7 +8,8 @@
 <!-- שולחן העבודה (v4.0.0): במחשב האפליקציה נפתחת בתוך desktop.html, וכל חלון שם הוא index.html?embed=gem|read.
      לא עוברים: בתוך חלון (embed), במסך מגע/צר, בבדיקות אוטומטיות (navigator.webdriver), או עם ‎?classic=1. -->
 <script>(function(){var m=location.search.match(/[?&]embed=(gem|read|search)/);if(m){window.GT_EMBED=m[1]==='search'?'read':m[1];document.documentElement.classList.add('gtEmbed');if(m[1]==='search')document.documentElement.classList.add('gtSearch');return}
-if(window.top!==window||navigator.webdriver||/[?&]classic=1/.test(location.search))return;
+addEventListener('hashchange',function(){if(location.hash==='#desktop'&&window.top===window&&!/[?&]embed=/.test(location.search)&&!navigator.webdriver&&innerWidth>=1000)location.replace('desktop.html')});
+if(window.top!==window||navigator.webdriver||/[?&]classic=1/.test(location.search)||location.hash==='#phone')return;
 try{if(matchMedia('(pointer:coarse)').matches||innerWidth<1000)return}catch(e){return}
 location.replace('desktop.html'+location.hash)})();</script>
 <link rel="stylesheet" href="vendor/driver.css">

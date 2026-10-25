@@ -529,6 +529,22 @@
     else if (/^#read/i.test(h)) { const w = reads().find(x => chKey(curHash(x)) === chKey(h)); if (w) focusWin(w.id); else if (!W(D.act) || curHash(W(D.act)) !== h) openRead(h, true); }
   }
 
+  /* ---------- מצב פיתוח ומצב טלפון ---------- */
+  // 5 לחיצות על מספר הגרסה: מצב פיתוח (ענף ופרטי בנייה) — מועבר לספר הגרסה של אחד החלונות (app.js), והטקסט מועתק לבנר
+  { let taps = 0, tt = 0;
+    $('#dkVer').addEventListener('click', () => {
+      taps++; clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 3000); if (taps < 5) return; taps = 0;
+      const f = [...F.values()].find(x => x.doc && x.doc.getElementById('ver')); if (!f) return;
+      const v = f.doc.getElementById('ver'); for (let i = 0; i < 5; i++) v.click();
+      $('#dkVer').textContent = v.textContent;
+      toast(T('מצב פיתוח הוחלף. פרטי הבנייה בחלון "אודות"', 'Dev mode toggled. Build details are in About'));
+    });
+    // 5 לחיצות מהירות על "גימטריבון": מצב טלפון — עוברים למסך הרגיל במצב טלפון (וחוזרים עם #desktop)
+    let n = 0, t = 0;
+    document.querySelector('.brand h1').addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; D.wins.forEach(snapshot); save(); location.href = 'index.html?classic=1#phone'; } });
+  }
+  if (location.hash === '#phone') location.replace('index.html?classic=1#phone');
+
   /* ---------- התחלה ---------- */
   D.wins.forEach(w => { if (w.k === 'read' && (!Array.isArray(w.hist) || !w.hist.length)) { w.hist = ['#read']; w.hi = 0; } w.navTo = null; });
   D.wins.forEach(build);
