@@ -2086,9 +2086,13 @@
         // ה-WASM כבר במטמון — שאר ה-Workers נפתחים ומתחממים במקביל לראשון, ולא אחריו
         if (first) for (let k = 1; k < NW; k++) open(k).then(x => { pool.push(x); pump(); }, () => {});
         // השורשים והעמודים הפנימיים של האינדקסים ושל הטקסטים — פעם אחת לכל Worker, כך שכל מילה בחיפוש היא בקשה אחת
-        await w.db.exec(TB.map(k => 'SELECT count(*) FROM f' + k + '_idx; SELECT max(id) FROM f' + k + '_data; SELECT count(*) FROM v' + k + " WHERE term = 'אאא';").join(' ') + ' SELECT min(id) FROM d; SELECT max(id) FROM d;');
+        // Worker נכנס לתור אחרי שחימם טבלה אחת בלבד (בסדר מסובב לפי מספרו); שאר הטבלאות מתחממות ברקע בזמן שהוא פנוי לשאילתות על הטבלה הראשונה
+        const wq = k => 'SELECT count(*) FROM f' + k + '_idx; SELECT max(id) FROM f' + k + '_data; SELECT count(*) FROM v' + k + " WHERE term = 'אאא';", TR = TB.map((_, n) => TB[(n + i) % TB.length]);
+        await w.db.exec(wq(TR[0]) + ' SELECT min(id) FROM d; SELECT max(id) FROM d;');
         const st = await w.worker.getStats(); if (st && st.totalFetchedBytes > 6 << 20) throw new Error('no range support'); // שרת בלי Range מחזיר את כל הקובץ
-        return { w, i, busy: 0, jobs: 0 };
+        const x = { w, i, busy: 0, jobs: 0 };
+        if (TR.length > 1) { x.busy = 1; w.db.exec(TR.slice(1).map(wq).join(' ')).catch(() => {}).then(() => { x.busy = 0; pump(); }); }
+        return x;
       };
       /* תור משותף לכל ה-Workers: Worker פנוי לוקח את השאילתה בעדיפות הגבוהה ביותר (0 מילים, 1 טקסטים שבחלון, 2 השאר).
          שאילתה של חיפוש שכבר הוחלף (alive() = false) לא נשלחת בכלל — כך הקלדה מהירה לא מעכבת את החיפוש האחרון. */
