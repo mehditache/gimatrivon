@@ -2054,29 +2054,33 @@
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
-  /* ---------- חיפוש בתנ״ך עם SQLite FTS5 (v3.31.0-search-sqlite) ----------
-     המנוע: sqlite-search.js (GimSq). המסד: generated/sqlite/tanakh.sqlite3, שנקרא בטווחים (HTTP Range) דרך sql.js-httpvfs
+  /* ---------- חיפוש בתנ״ך ובמשנה עם SQLite FTS5 (v3.31.0-search-sqlite) ----------
+     המנוע: sqlite-search.js (GimSq). המסד לכל תחום (תנ״ך, משנה): generated/sqlite/<תחום>.sqlite3, שנקרא בטווחים (HTTP Range) דרך sql.js-httpvfs
      (vendor/sql.js-httpvfs, Apache-2.0) — הדפדפן מוריד רק את עמודי המסד שהחיפוש צריך, ולא טוענים לזיכרון את ספרי התנ״ך.
      כמה Workers במקביל (SQ_N), כל אחד עם עותק של המסד: המילים של שאילתה והטקסטים של התוצאות נקראים בו-זמנית, כך
      שההשהיה של הרשת לא מצטברת. הכל נטען ברקע כשנפתח ספר תנ״ך, לפני החיפוש הראשון.
      פועל בתנ״ך, בכל התחומים (פרק, ספר, כל התנ״ך) ובכל המקורות (פסוקים, רש״י, תרגום, הכל), ב-http/https ובמחשב.
      בטלפון, ב-file:// או בכשל — החיפוש הקודם. התוצאות: לפי דירוג, 50 בכל פעם (עוד 50 בגלילה), עם הסכום הכולל. */
   const SQ_N = 4, SQ_MAX = 8 << 20; // 4 Workers; כל אחד עד כ-8MB של עמודים בזיכרון
-  let SQE = null, SQ_FAIL = false, sqP = null, SQ = null, SQHL = null;
+  const SQD = {}; // תחום ('tanakh' / 'mishnah') → {P: הבטחה, E: המנוע, fail}
+  let SQ = null, SQHL = null;
+  const sqDomOf = () => { const c = IX.books[S.b].cat; return c === 0 ? 'tanakh' : c === 1 ? 'mishnah' : null; };
   const sqPhone = () => G.matchMedia && G.matchMedia('(hover: none) and (pointer: coarse)').matches; // טלפון / טאבלט (מסך מגע בלי עכבר)
-  const sqOn = () => !SQ_FAIL && !!G.GimSq && /^https?:$/.test(location.protocol) && IX.books[S.b].cat === 0 && !sqPhone() && typeof Worker !== 'undefined';
+  const sqOn = () => { const d = sqDomOf(); return !!d && !(SQD[d] && SQD[d].fail) && !!G.GimSq && /^https?:$/.test(location.protocol) && !sqPhone() && typeof Worker !== 'undefined'; };
   const sqScript = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
   const sqAbs = p => new URL(p, location.href).href;
-  function sqReady() {
-    if (sqP) return sqP;
-    sqP = Promise.all([G.createDbWorker || sqScript('vendor/sql.js-httpvfs/index.js'), G.GIM_SQ_DB || sqScript('generated/sqlite/tanakh.js')]).then(async () => {
+  function sqReady(name) {
+    const st = SQD[name] || (SQD[name] = { P: null, E: null, fail: false });
+    if (st.P) return st.P;
+    const DM = G.GimSq.DOMAINS[name], TB = DM.tabs;
+    st.P = Promise.all([G.createDbWorker || sqScript('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || sqScript('generated/sqlite/' + name + '.js')]).then(async () => {
       // maxReadSpeed: קריאה מראש של עד 8 עמודים כשהקריאה רציפה (רשימת מופעים ארוכה); ראו הערה ב-vendor/sql.js-httpvfs/README.md
       // כתובת נפרדת לכל Worker (&w=): הדפדפן מעביר בקשות לאותה כתובת אחת-אחת (נעילת המטמון), וכך הן יוצאות במקביל
-      const D = G.GIM_SQ_DB, cfg = i => [{ from: 'inline', config: { serverMode: 'chunked', urlPrefix: sqAbs(D.file) + '?h=' + D.hash + '&w=' + i + '&c=', suffixLength: 1, serverChunkSize: D.bytes, databaseLengthBytes: D.bytes, requestChunkSize: D.page, maxReadSpeed: D.page * 8 } }];
+      const D = G.GIM_SQ_DBS[name], cfg = i => [{ from: 'inline', config: { serverMode: 'chunked', urlPrefix: sqAbs(D.file) + '?h=' + D.hash + '&w=' + i + '&c=', suffixLength: 1, serverChunkSize: D.bytes, databaseLengthBytes: D.bytes, requestChunkSize: D.page, maxReadSpeed: D.page * 8 } }];
       const open = async i => {
         const w = await G.createDbWorker(cfg(i), sqAbs('vendor/sql.js-httpvfs/sqlite.worker.js'), sqAbs('vendor/sql.js-httpvfs/sql-wasm.wasm'));
         // השורשים והעמודים הפנימיים של האינדקסים ושל הטקסטים — פעם אחת לכל Worker, כך שכל מילה בחיפוש היא בקשה אחת
-        await w.db.exec(['f0', 'f1', 'f2'].map((f, k) => 'SELECT count(*) FROM ' + f + '_idx; SELECT max(id) FROM ' + f + '_data; SELECT count(*) FROM v' + k + " WHERE term = 'אאא';").join(' ') + ' SELECT min(id) FROM d; SELECT max(id) FROM d;');
+        await w.db.exec(TB.map(k => 'SELECT count(*) FROM f' + k + '_idx; SELECT max(id) FROM f' + k + '_data; SELECT count(*) FROM v' + k + " WHERE term = 'אאא';").join(' ') + ' SELECT min(id) FROM d; SELECT max(id) FROM d;');
         const st = await w.worker.getStats(); if (st && st.totalFetchedBytes > 1 << 20) throw new Error('no range support'); // שרת בלי Range מחזיר את כל הקובץ
         return { w, i, busy: 0, jobs: 0 };
       };
@@ -2107,13 +2111,13 @@
       const backend = { all: (sql, args, o) => new Promise((ok, no) => { Q.push({ sql, args, ok, no, n: n++, pri: o && o.pri != null ? o.pri : 0, alive: o && o.alive }); pump(); }) };
       pool.push(await open(0)); // הראשון לבד, כדי שה-WASM יירד פעם אחת ושאר ה-Workers יקבלו אותו מהמטמון
       for (let i = 1; i < SQ_N; i++) open(i).then(x => { pool.push(x); pump(); }, () => {});
-      return SQE = G.GimSq.create(backend, IX.books);
+      return st.E = G.GimSq.create(backend, IX.books, DM.cat);
     });
-    sqP.catch(() => { SQ_FAIL = true; });
-    return sqP;
+    st.P.catch(() => { st.fail = true; });
+    return st.P;
   }
-  let sqWarmed = false;
-  function sqWarm() { if (sqWarmed || !sqOn()) return; sqWarmed = true; setTimeout(() => sqReady().catch(() => {}), 800); } // אחרי שהספר מוצג
+  let sqWarmed = null;
+  function sqWarm() { const d = sqDomOf(); if (!d || !sqOn() || SQD[d] && SQD[d].P || sqWarmed === d) return; sqWarmed = d; setTimeout(() => sqReady(d).catch(() => {}), 800); } // אחרי שהספר מוצג
   // מילה מוצגת → האם היא אחת ממילות השאילתה (לסימון בעמוד אחרי מעבר): בכל צורה שהאינדקס מכיר (כתיב, אותיות שימוש, תחילית)
   function sqHl(q) {
     const ws = []; (function walk(e) { if (!e) return; if (e.k === 'w') ws.push(e); else if (e.k === 'p') e.ws.forEach(x => ws.push(x)); else if (e.k === 'not') walk(e.a); else (e.c && e.k !== 'neg' ? e.c : []).forEach(walk); })(G.GimSq.parse(q));
@@ -2177,18 +2181,17 @@
     }
     return best.html;
   }
-  const SQ_SRCS = { txt: [0], cm: [1], tr: [2, 3], all: [0, 1, 2, 3] };
-  function sqOpt() {
-    const E = SQE, M = E.map, o = { srcs: SQ_SRCS[S.src] || SQ_SRCS.all };
+  function sqOpt(dom) {
+    const E = SQD[dom].E, M = E.map, SR = G.GimSq.DOMAINS[dom].srcs, o = { srcs: SR[S.src] || SR.all };
     if (S.scope === 'ch') { o.lo = M.ord(S.b, S.ch, 1); o.hi = o.lo + (IX.books[S.b].cv[S.ch] || 1) - 1; }
     else if (S.scope === 'book') { o.lo = M.first[S.b]; o.hi = M.first[S.b] + IX.books[S.b].cv.reduce((a, b) => a + (b || 0), 0) - 1; }
     return o;
   }
   // תוצאת המנוע → תוצאה ברשימה: {b, ch, v, cm/cs או tr, pt (הטקסט), html (עם הסימון), ref (בקטע של כמה פסוקים)}
-  function sqHit(r, tx) {
-    const E = SQE, M = E.map, us = E.unitsOf(r).filter(u => tx.get(u) != null), u0 = us[0] != null ? us[0] : E.unitsOf(r)[0], ord = G.GimSq.rOrd(u0);
+  function sqHit(r, tx, dom) {
+    const E = SQD[dom].E, M = E.map, us = E.unitsOf(r).filter(u => tx.get(u) != null), u0 = us[0] != null ? us[0] : E.unitsOf(r)[0], ord = G.GimSq.rOrd(u0);
     const x = { b: M.ob[ord], ch: M.oc[ord], v: M.ov[ord], sq: true, sc: r.sc };
-    if (r.src === 1) { x.cm = G.GimSq.rK(u0); x.cs = 2; } else if (r.src >= 2) x.tr = r.src === 2 ? 'onkelos' : 'yonatan';
+    if (r.src === 1) { x.cm = G.GimSq.rK(u0); x.cs = G.GimSq.DOMAINS[dom].cs; } else if (r.src >= 2) x.tr = r.src === 2 ? 'onkelos' : 'yonatan';
     if (r.e > r.s) { const e = r.src === 1 ? G.GimSq.rOrd(us[us.length - 1]) : r.e; if (e > ord) x.ref = refLabel(x) + '–' + (M.oc[e] === x.ch ? num(M.ov[e]) : num(M.oc[e]) + ', ' + num(M.ov[e])); }
     x.pt = us.map(u => tx.get(u)).join(' ');
     x.html = sqSnippet(us.map(u => ({ t: tx.get(u), marks: r.marks.get(u) || new Set() })), r.src === 1 ? ' <span class="rdCont">…</span> ' : ' ');
@@ -2196,21 +2199,21 @@
   }
   async function sqMore(me, k, pri) {
     const part = me.r.res.slice(me.hits.length, me.hits.length + k);
-    const tx = await SQE.texts([].concat(...part.map(SQE.unitsOf)), { pri, alive: () => SQ === me });
+    const E = SQD[me.dom].E, tx = await E.texts([].concat(...part.map(E.unitsOf)), { pri, alive: () => SQ === me });
     if (SQ !== me) return;
-    part.forEach(r => me.hits.push(sqHit(r, tx)));
+    part.forEach(r => me.hits.push(sqHit(r, tx, me.dom)));
   }
   function sqSearch(raw) {
     const nq = norm(raw);
     if (G.GimSq.letters(raw).length < 2) return { hits: [], total: 0, q: '' };
-    const sc = S.src + '|' + (S.scope === 'all' ? '' : S.scope === 'book' ? S.b : S.b + ':' + S.ch);
+    const dom = sqDomOf(), sc = dom + '|' + S.src + '|' + (S.scope === 'all' ? '' : S.scope === 'book' ? S.b : S.b + ':' + S.ch);
     if (!SQ || SQ.q !== raw || SQ.sc !== sc) {
-      const me = SQ = { q: raw, sc, hits: [], r: null, busy: true };
+      const me = SQ = { q: raw, sc, dom, hits: [], r: null, busy: true };
       const again = () => { if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); };
       // קודם הטקסטים של התוצאות הראשונות (מה שנראה בחלון) ומציגים; את השאר עד 50 — מיד אחר כך, ברקע
-      sqReady().then(() => SQE.search(raw, sqOpt())).then(r => { if (SQ !== me) return; me.r = r; return sqMore(me, 12, 1); }).then(() => {
+      sqReady(dom).then(() => SQD[dom].E.search(raw, sqOpt(dom))).then(r => { if (SQ !== me) return; me.r = r; return sqMore(me, 12, 1); }).then(() => {
         if (SQ !== me) return; me.busy = false; again(); sqNext(38);
-      }).catch(e => { if (SQ !== me) return; if (G.console) console.warn('sqlite search failed, falling back', e); SQ_FAIL = true; SQ = null; again(); });
+      }).catch(e => { if (SQ !== me) return; if (G.console) console.warn('sqlite search failed, falling back', e); SQD[dom].fail = true; SQ = null; again(); });
     }
     return { hits: SQ.busy ? [] : SQ.hits, total: SQ.r ? SQ.r.total : 0, q: nq, wait: SQ.busy };
   }

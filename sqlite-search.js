@@ -45,15 +45,22 @@
   }
 
   /* ---- מזהים ---- */
+  /* תחומים: מסד לכל אחד. cat = קטגוריית הטקסט; srcOf = קטגוריית מפרש / תרגום → src; tabs = טבלאות FTS שבמסד; srcs = סוגי המקורות
+     (txt/cm/tr/all → src); cs = קטגוריית המפרש (לשם בתוצאה) */
+  const DOMAINS = {
+    tanakh: { cat: 0, srcOf: { 0: 0, 2: 1, 3: 2, 4: 3 }, tabs: [0, 1, 2], srcs: { txt: [0], cm: [1], tr: [2, 3], all: [0, 1, 2, 3] }, cs: 2 },
+    mishnah: { cat: 1, srcOf: { 1: 0, 5: 1 }, tabs: [0, 1], srcs: { txt: [0], cm: [1], tr: [0, 1], all: [0, 1] }, cs: 5 }
+  };
   const SB = 2097152, SRC = { txt: 0, rashi: 1, onkelos: 2, yonatan: 3 };
   const rid = (src, ord, k) => src * SB + ord * 64 + (k || 0);
   const rSrc = r => Math.floor(r / SB), rOrd = r => Math.floor(r / 64) % 32768, rK = r => r % 64;
   // books: רשימת הספרים (GIM_CORPUS_INDEX.books); ord לפי ספרי התנ״ך (cat 0) בסדר הרשימה, ו-cv של כל ספר
-  function mapOf(books) {
+  function mapOf(books, cat) {
+    cat = cat || 0;
     const bs = [], first = [], chStart = [];
     let n = 0;
     books.forEach((bk, i) => {
-      if (bk.cat !== 0) return;
+      if (bk.cat !== cat) return;
       const cs = []; first[i] = n; bs.push(i);
       (bk.cv || []).forEach((c, ch) => { if (ch > 0) { cs[ch] = n; n += c || 0; } });
       chStart[i] = cs;
@@ -348,8 +355,8 @@
   }
 
   /* ---- מנוע: backend.all(sql, args, opt) → Promise<[[...], …]> ---- */
-  function create(backend, books) {
-    const map = mapOf(books), cache = new Map(), MAXC = 80;
+  function create(backend, books, cat) {
+    const map = mapOf(books, cat), cache = new Map(), MAXC = 80;
     function occOf(L, tab) {
       const key = tab + (L.pre ? '*' : '=') + L.kf;
       if (cache.has(key)) { const v = cache.get(key); cache.delete(key); cache.set(key, v); return v; }
@@ -385,7 +392,7 @@
     return { search, texts, unitsOf, map, parse };
   }
 
-  const API = { words, letters, K, forms, parse, rid, rSrc, rOrd, rK, SRC, SB, TAB, mapOf, create, WIN, lookupSql, toOcc };
+  const API = { DOMAINS, words, letters, K, forms, parse, rid, rSrc, rOrd, rK, SRC, SB, TAB, mapOf, create, WIN, lookupSql, toOcc };
   G.GimSq = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })();

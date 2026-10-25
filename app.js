@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.31.0-search-sqlite'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.32.0-search-sqlite'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'search-sqlite'; // שם הענף שממנו האתר מוגש — מוצג ליד הגרסה (ב-main לא מוצג); לעדכן כשעובדים בענף אחר
 const VER_TXT = 'v' + VERSION + (BRANCH && BRANCH !== 'main' ? ' · ' + BRANCH : '');
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.

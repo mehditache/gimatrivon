@@ -12,7 +12,7 @@ const db = new DatabaseSync(path.join(root, 'generated/sqlite/tanakh.sqlite3'), 
 let nq = 0;
 const backend = { all(sql, args) { nq++; const st = db.prepare(sql); return st.all(...args).map(r => Object.values(r)); } };
 const E = SQ.create(backend, books), M = E.map;
-const meta = (() => { const w = {}; vm.runInNewContext(fs.readFileSync(path.join(root, 'generated/sqlite/tanakh.js'), 'utf8'), { window: w }); return w.GIM_SQ_DB; })();
+const meta = (() => { const w = {}; vm.runInNewContext(fs.readFileSync(path.join(root, 'generated/sqlite/tanakh.js'), 'utf8'), { window: w }); return w.GIM_SQ_DBS.tanakh; })();
 
 let pass = 0, fail = 0; const grp = {};
 const T = [];
@@ -158,6 +158,16 @@ t('speed', '30 חיפושים שונים — כל אחד מתחת ל-300ms', asy
   for (const q of qs) { const t0 = Date.now(); const r = await E.search(q, { srcs: [0, 1, 2, 3] }); const ms = Date.now() - t0; if (ms > 300) slow.push(q + ' ' + ms + 'ms/' + r.total); }
   if (slow.length) throw new Error(slow.join(', '));
 });
+
+/* ---- משנה וברטנורא (מסד נפרד) ---- */
+const dbM = new DatabaseSync(path.join(root, 'generated/sqlite/mishnah.sqlite3'), { readOnly: true });
+const EM = SQ.create({ all(sql, args) { return dbM.prepare(sql).all(...args).map(r => Object.values(r)); } }, books, 1), MM = EM.map;
+const refM = r => { const o = r.u >= 0 ? SQ.rOrd(r.u) : r.s; return books[MM.ob[o]].heTitle + ' ' + MM.oc[o] + ':' + MM.ov[o]; };
+t('mishnah', 'משנה: ״מאימתי קורין את שמע״ = ברכות א:א', async () => { const r = await EM.search('"מאימתי קורין את שמע"', { srcs: [0] }); return r.res.length > 0 && refM(r.res[0]) === 'משנה ברכות 1:1'; });
+t('mishnah', 'ברטנורא: נמצא רק במפרש', async () => { const r = await EM.search('מאימתי קורין', { srcs: [1] }); return r.total > 0 && r.res.every(x => x.src === 1); });
+t('mishnah', 'משנה: תחום פרק וספר', async () => { const b = books.findIndex(x => x.cat === 1 && x.heTitle === 'משנה ברכות'), lo = MM.ord(b, 1, 1), r = await EM.search('קורין', { srcs: [0], lo, hi: lo + books[b].cv[1] - 1 }); return r.total > 0 && r.res.every(x => MM.ob[SQ.rOrd(x.u >= 0 ? x.u : rOrdOf(x))] === b); });
+const rOrdOf = x => x.s;
+t('mishnah', 'משנה: בכל התחום מוצא ממסכתות שונות', async () => { const r = await EM.search('שבת', { srcs: [0] }); return new Set(r.res.map(x => MM.ob[x.u >= 0 ? SQ.rOrd(x.u) : x.s])).size > 5; });
 
 (async () => {
   for (const [g, name, fn] of T) {
