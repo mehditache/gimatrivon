@@ -31,13 +31,21 @@
   const boot = setInterval(() => {
     R = window.GimResults; if (!R || !R.ready()) return; clearInterval(boot); run();
   }, 150);
+  let runTok = 0, idxTok = 0;
   function run() {
     const full = (q + ' ' + extra).trim();
     $('#rsFoot').textContent = 'מחפש בכל הספרים…'; sp.style.height = '0'; list.querySelectorAll('.rsRow,.rsGh').forEach(e => e.remove());
-    R.start(full, m => {
+    const tok = ++runTok;
+    R.start(full, (m, partial) => {
+      if (tok !== runTok) return;
       if (!m) { $('#rsFoot').textContent = 'אין תוצאות'; idx = null; side(); return; }
       me = m; me.onLoad = () => paint(true);
-      R.index(me, CAP, (i, n) => { $('#rsFoot').textContent = 'מסדר את התוצאות… ' + i.toLocaleString('he') + ' / ' + n.toLocaleString('he'); }, ix => { idx = ix; side(); refilter(); });
+      // תוצאות חלקיות (תחומים שכבר סיימו) מוצגות מיד; הסכום והסדר מתעדכנים כשהאטיים מסיימים
+      const t = ++idxTok;
+      R.index(me, CAP, (i, n) => { if (!idx) $('#rsFoot').textContent = 'מסדר את התוצאות… ' + i.toLocaleString('he') + ' / ' + n.toLocaleString('he'); }, ix => {
+        if (t !== idxTok || tok !== runTok) return;
+        idx = ix; side(); refilter(); if (partial) $('#rsFoot').textContent += ' · עדיין מחפש…';
+      });
     });
   }
 

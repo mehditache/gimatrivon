@@ -462,7 +462,12 @@
   // חלונות קופצים שנפתחים מהבנר (מעבר לפרק, הגדרות תצוגה, הדפסה…) "נופלים" מתחת לכפתור שהפעיל אותם:
   // אותו קצה אופקי של הכפתור, בתוך גבולות החלון, עם אנימציית ירידה (styles.css: gtEmbed .rdPop)
   function placePops(f) {
-    if (!f || !f.doc || !f.fr || !lastBtn) return;
+    if (!f || !f.doc || !f.fr) return;
+    // חלון שאינו מוגדל: הפופ-אפ לא יכול לצאת מגבולות החלון, אז החלון מוגדל זמנית כל עוד הוא פתוח — כך הוא נופל ישר מתחת לבנר
+    const w = D.wins.find(x => F.get(x.id) === f), open = f.doc.querySelector('.rdPop:not([hidden])');
+    if (w && open && !w.max && lastBtn) { w.max = true; w.tmpMax = true; paint(w); }
+    else if (w && !open && w.tmpMax) { w.max = false; w.tmpMax = false; paint(w); }
+    if (!lastBtn) return;
     const fr = f.fr.getBoundingClientRect(), br = lastBtn.getBoundingClientRect();
     f.doc.querySelectorAll('.rdPop:not([hidden])').forEach(p => {
       const w = p.offsetWidth, W0 = fr.width;
