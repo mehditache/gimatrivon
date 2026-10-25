@@ -382,7 +382,11 @@
   if (typeof document === 'undefined' || !G.GimCorpus) return;
 
   /* ================= (2) ממשק ================= */
-  const $r = s => document.querySelector(s);
+  // שולחן העבודה מרים את חלונות הבחירה (#rdJump, #rdSet, #rdPrintPop) אל מחוץ ל-iframe, מתחת לבנר: G.GT_POPS מפנה אליהם
+  const $r = s => {
+    const P = G.GT_POPS, m = P && /^(#rd\w+)(?:\s+(.+))?$/.exec(s), el = m && P[m[1]];
+    return el ? (m[2] ? el.querySelector(m[2]) : el) : document.querySelector(s);
+  };
   const h = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const APP = G.GimApp || {}; // מ-app.js: שפה, שמות ספרים וסדרים באנגלית, מדידת שימוש
   const isEn = () => APP.isEn ? APP.isEn() : document.documentElement.lang === 'en';

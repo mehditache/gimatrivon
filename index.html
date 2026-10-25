@@ -7,7 +7,7 @@
 <script>try{if(localStorage.getItem('gimatrivonTheme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
 <!-- שולחן העבודה (v4.0.0): במחשב האפליקציה נפתחת בתוך desktop.html, וכל חלון שם הוא index.html?embed=gem|read.
      לא עוברים: בתוך חלון (embed), במסך מגע/צר, בבדיקות אוטומטיות (navigator.webdriver), או עם ‎?classic=1. -->
-<script>(function(){var m=location.search.match(/[?&]embed=(gem|read|search|results)/);if(m){window.GT_EMBED=m[1]==='search'||m[1]==='results'?'read':m[1];document.documentElement.classList.add('gtEmbed');if(m[1]==='search')document.documentElement.classList.add('gtSearch');if(m[1]==='results')window.GT_RESULTS=true;return}
+<script>(function(){var m=location.search.match(/[?&]embed=(gem|read|search|results)/);if(m){window.GT_EMBED=m[1]==='search'||m[1]==='results'?'read':m[1];document.documentElement.classList.add('gtEmbed');if(m[1]==='search')document.documentElement.classList.add('gtSearch');if(m[1]==='results'){window.GT_RESULTS=true;document.documentElement.classList.add('gtResults')}return}
 addEventListener('hashchange',function(){if(location.hash==='#desktop'&&window.top===window&&!/[?&]embed=/.test(location.search)&&!navigator.webdriver&&innerWidth>=1000)location.replace('desktop.html')});
 if(window.top!==window||navigator.webdriver||/[?&]classic=1/.test(location.search)||location.hash==='#phone')return;
 try{if(matchMedia('(pointer:coarse)').matches||innerWidth<1000)return}catch(e){return}

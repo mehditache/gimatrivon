@@ -92,3 +92,10 @@ body.dkGem .dkTools{display:none}
 .dkAskBtns button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @keyframes dkAskIn{from{opacity:0}}
 @keyframes dkAskBox{from{opacity:0;transform:translateY(-14px)}}
+
+/* חלונות הבחירה של הקורא (מעבר לפרק, הגדרות, הדפסה): שכבה קבועה מתחת לבנר, מימין (משמאל לשורת המשימות) */
+.dkPopLayer{position:fixed;top:64px;right:70px;left:8px;height:0;z-index:150;pointer-events:none;container-type:inline-size;direction:rtl}
+.dkPopLayer .rdPop{pointer-events:auto;position:absolute;top:0;right:0;left:auto;max-height:calc(100vh - 150px);animation:dkDrop .18s ease-out}
+.dkPopLayer .rdPop[hidden]{display:none}
+/* השכבה נושאת גם את המחלקה reader כדי שכללי העיצוב של חלונות הבחירה (.reader …) יחולו, בלי הרקע והפריסה של מסך הקורא */
+.dkPopLayer.reader{display:block!important;position:fixed!important;flex:none;background:none!important;min-height:0;overflow:visible}

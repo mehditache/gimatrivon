@@ -49,7 +49,9 @@
       const t = ++idxTok;
       R.index(m, CAP, (i, n) => { if (!idx) $('#rsFoot').textContent = 'מסדר את התוצאות… ' + i.toLocaleString('he') + ' / ' + n.toLocaleString('he'); }, ix => {
         if (t !== idxTok || tok !== runTok) return;
-        me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter(); if (partial) $('#rsFoot').textContent += ' · עדיין מחפש…';
+        const st = idx ? list.scrollTop : 0; // עדכון חלקי לא מקפיץ את הרשימה לראש
+        me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter();
+        if (partial) { list.scrollTop = st; paint(true); $('#rsFoot').textContent += ' · תוצאות חלקיות — עדיין מחפש (' + (m.pend || 0) + ' תחומים נותרו)'; }
       });
     });
   }
@@ -80,7 +82,7 @@
       rows.push({ i });
     });
     off = new Int32Array(rows.length + 1); rows.forEach((r, k) => { off[k + 1] = off[k] + (r.gh ? GH : RH); });
-    sp.style.height = off[rows.length] + 'px'; list.scrollTop = 0;
+    sp.style.height = off[rows.length] + 'px'; list.scrollTop = 0; rt = 0;
     $('#rsFoot').textContent = (shown.toLocaleString('he')) + ' תוצאות' + (shown < idx.total && !sel.size && !srcOff.size && idx.total > idx.n ? ' (מוצגות ' + idx.n.toLocaleString('he') + ' הראשונות)' : '') + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '') + ' · לחיצה פותחת בחלון קריאה (Ctrl+לחיצה: בחלון חדש)';
     chips(); side(); paint(true); state();
   }
@@ -151,13 +153,18 @@
 
   // ---- רשימה וירטואלית ----
   function firstAt(y) { let lo = 0, hi = rows.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (off[m] <= y) lo = m; else hi = m - 1; } return lo; }
-  let rf = 0; list.addEventListener('scroll', () => { cancelAnimationFrame(rf); rf = requestAnimationFrame(() => paint(false)); });
+  let rf = 0; list.addEventListener('scroll', () => { rt = 0; cancelAnimationFrame(rf); rf = requestAnimationFrame(() => paint(false)); });
   let pf = null;
+  let rt = 0; // ניסיונות טעינה חוזרים לשורות שלד
   function paint(force) {
     if (!idx || !rows.length) { if (idx && !rows.length) list.querySelectorAll('.rsRow,.rsGh').forEach(e => e.remove()); return; }
     const top = list.scrollTop, hgt = list.clientHeight || 500, a = Math.max(0, firstAt(top) - 6), z = Math.min(rows.length, firstAt(top + hgt) + 8);
     const need = []; for (let k = a; k < z; k++) { const r = rows[k]; if (r.i != null && me.hits[r.i] && me.hits[r.i].ph) need.push(r.i); }
-    if (need.length) R.load(me, need, 1).catch(() => {});
+    if (need.length) {
+      // טעינה שנפלה (למשל הוחלפה בגרסה חדשה) משאירה שלד — מנסים שוב בהשהיה גוברת, עד 6 פעמים
+      const m0 = me, t = rt;
+      R.load(m0, need, 1).catch(() => {}).then(() => { if (m0 === me && t === rt && ++rt <= 6) setTimeout(() => { if (m0 === me && list.querySelector('.rsRow.ph')) paint(true); }, 250 * rt); });
+    }
     const sig = a + ':' + z + ':' + need.length;
     if (!force && sig === pf) return; pf = sig;
     let h = '';

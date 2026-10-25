@@ -444,6 +444,33 @@
 
   // חלונות קופצים שנפתחים מהבנר (מעבר לפרק, הגדרות תצוגה, הדפסה…) "נופלים" מתחת לכפתור שהפעיל אותם:
   // אותו קצה אופקי של הכפתור, בתוך גבולות החלון, עם אנימציית ירידה (styles.css: gtEmbed .rdPop)
+  // חלונות הבחירה של הקורא (מעבר לפרק, הגדרות, הדפסה) נפתחים תמיד מתחת לבנר, מימין — בלי קשר למיקום או לגודל החלון.
+  // האלמנט מועבר מה-iframe לשכבה קבועה בשולחן (adoptNode) וחוזר למקומו כשהוא נסגר; G.GT_POPS גורם לקוד הקורא למצוא אותו.
+  const popLayer = document.createElement('div'); popLayer.className = 'dkPopLayer reader'; document.body.appendChild(popLayer);
+  const POPS = ['rdJump', 'rdSet', 'rdPrintPop'];
+  function syncPops(w, f) {
+    if (!f || !f.doc || !f.win) return;
+    f.pops = f.pops || {}; f.home = f.home || {};
+    POPS.forEach(id => {
+      const lifted = f.pops[id], el = lifted || f.doc.getElementById(id); if (!el) return;
+      if (!lifted && !el.hidden) {
+        f.home[id] = { p: el.parentNode, n: el.nextSibling };
+        popLayer.style.top = ($('#dkBan').getBoundingClientRect().bottom + 4) + 'px';
+        popLayer.appendChild(document.adoptNode(el)); popLayer.dataset.w = w.id;
+        f.pops[id] = el; f.win.GT_POPS = Object.fromEntries(Object.keys(f.pops).map(k => ['#' + k, f.pops[k]]));
+        if (!el._dk) { el._dk = new MutationObserver(() => syncPops(w, f)); el._dk.observe(el, { attributes: true, attributeFilter: ['hidden'], childList: true }); }
+        if (id === 'rdJump') jumpExtras(w, f);
+      } else if (lifted && lifted.hidden) {
+        const h = f.home[id]; delete f.pops[id];
+        f.win.GT_POPS = Object.fromEntries(Object.keys(f.pops).map(k => ['#' + k, f.pops[k]]));
+        if (h && h.p && h.p.isConnected) h.p.insertBefore(f.doc.adoptNode(lifted), h.n && h.n.parentNode === h.p ? h.n : null);
+      } else if (lifted && id === 'rdJump') jumpExtras(w, f);
+    });
+  }
+  // לחיצה בשולחן מחוץ לחלון הבחירה (ולא על הבנר, שמחליף אותו בעצמו) סוגרת אותו; כך גם Esc
+  const closeLifted = () => { const f = F.get(popLayer.dataset.w); if (f && f.pops && Object.keys(f.pops).length) { const sc = f.doc.getElementById('rdScrim'); if (sc) sc.click(); } };
+  document.addEventListener('pointerdown', e => { if (!popLayer.contains(e.target) && !e.target.closest('#dkBan')) closeLifted(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && popLayer.querySelector('.rdPop:not([hidden])')) closeLifted(); }, true);
   function placePops(f) {
     if (!f || !f.doc || !f.fr) return;
     if (!lastBtn) return;
@@ -463,7 +490,7 @@
     const o2 = { disconnect() {} };
     // חלון "מעבר לפרק ופסוק": ☆ / ⧉ / 🔢
     const rd = d.getElementById('reader');
-    const o3 = new f.win.MutationObserver(() => { jumpExtras(w, f); placePops(f); });
+    const o3 = new f.win.MutationObserver(() => { syncPops(w, f); placePops(f); });
     if (rd) o3.observe(rd, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
     f.obs.push(o1, o2, o3);
   }
@@ -472,18 +499,18 @@
   const marks = () => { try { return JSON.parse(localStorage.getItem(MARKS)) || []; } catch (e) { return []; } };
   const setMarks = m => { try { localStorage.setItem(MARKS, JSON.stringify(m)); } catch (e) {} };
   function jumpExtras(w, f) {
-    const j = f.doc.getElementById('rdJump'); if (!j) return;
+    const j = (f.pops && f.pops.rdJump) || f.doc.getElementById('rdJump'); if (!j) return;
     const foot = j.querySelector('.rdJFoot'), hd = j.querySelector('.rdPopHd'), go = foot && foot.querySelector('.rdGo');
     if (!foot || !hd || !go || foot.querySelector('.dkJ')) return;
-    if (!f.doc.getElementById('dkJStyle')) {
-      const st = f.doc.createElement('style'); st.id = 'dkJStyle';
+    if (!document.getElementById('dkJStyle')) {
+      const st = document.createElement('style'); st.id = 'dkJStyle';
       st.textContent = '.rdJFoot .dkJ{display:flex;gap:8px;align-items:center;margin-inline-start:auto}' +
         '.rdJFoot .dkJB{height:34px;padding:0 12px;border:1px solid var(--ln);border-radius:10px;background:var(--pn);color:var(--tx);font:600 13px var(--ui);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;cursor:pointer}' +
         '.rdJFoot .dkJB .s{color:var(--gold);font-size:15px}' +
         '.rdPopHd .dkJGem{height:30px;padding:0 12px;border:1px solid var(--gold);border-radius:999px;background:transparent;color:var(--gold);font:600 13px var(--ui);white-space:nowrap;margin-inline-start:auto;margin-inline-end:8px;cursor:pointer}' +
         '.dkJMarks{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 2px 8px;font:12px var(--ui);color:var(--mu)}' +
         '.dkJMarks button{height:26px;padding:0 10px;border:1px solid var(--ln);border-radius:999px;background:var(--pn2);color:var(--tx);font:12px var(--ui);cursor:pointer}';
-      f.doc.head.appendChild(st);
+      document.head.appendChild(st);
     }
     const hint = foot.querySelector('span'); if (hint) hint.innerHTML = '<b>← →</b> ' + T('דפדוף', 'page') + ' · <b>Ctrl G</b>';
     const g = f.doc.createElement('div'); g.className = 'dkJ';

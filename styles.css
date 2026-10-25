@@ -1247,6 +1247,8 @@ html.gtSearch header.top .rdDrop{top:0;inset-inline-start:0;width:100%;max-heigh
 
 /* חלון "תוצאות חיפוש" של שולחן העבודה (results.js): index.html?embed=results */
 html.gtResults #stage,html.gtResults .mMenuPanel,html.gtResults .mMenuScrim{display:none!important}
+html.gtResults,html.gtResults body{background:var(--pn)!important}
+html.gtResults body>*:not(#rsApp):not(script){display:none!important}
 #rsApp{position:fixed;inset:0;display:flex;background:var(--pn);color:var(--tx);font:14px var(--ui)}
 .rsSide{width:270px;flex:none;border-inline-end:1px solid var(--ln);background:var(--pn2);overflow:auto;padding:10px 12px}
 .rsSide h4{margin:0 0 8px;font:700 13px var(--ui);color:var(--mu);display:flex;justify-content:space-between}
