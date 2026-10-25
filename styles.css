@@ -1015,6 +1015,10 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .reader .rdSizes button{width:40px;height:34px;padding:0;background:none;border:1.5px solid var(--rdLine);border-radius:8px;color:var(--rdInk);font-family:"GimFrank",var(--tf)}
 .reader .rdSizes button.on{border-color:var(--rdGold);background:var(--rdRow)}
 .rdNote{margin:14px 0 0;font-size:11.5px;color:var(--rdMu)}
+/* הודעה קצרה בתחתית מסך הקריאה (קישור למקום שאין) */
+.rdToast{position:fixed;bottom:58px;left:50%;transform:translateX(-50%);z-index:60;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:10px 16px;border-radius:10px;border:1px solid var(--rdBarB);border-top:2px solid var(--rdOn);background:var(--rdBar);color:var(--rdBarTx);font-size:14px;line-height:1.5;text-align:center;box-shadow:0 6px 24px var(--rdShadow);cursor:pointer;animation:rdToastIn .25s ease-out}
+.rdToast[hidden]{display:none}
+@keyframes rdToastIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 .reader .rdJTabs{display:inline-flex;border:1px solid var(--rdLine);border-radius:8px;overflow:hidden;flex:none}
 .reader .rdJTabs button{border:0;border-radius:0;background:none;padding:3px 14px;font-size:13px;color:var(--rdInk)}
 .reader .rdJTabs button.on{background:var(--rdGold);color:#fff;font-weight:600}

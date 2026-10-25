@@ -37,7 +37,17 @@ const ok = (name, cond, info) => { if (cond) pass++; else { fail++; console.log(
   for (const [vpName, vp] of [['דסקטופ', { width: 1440, height: 900 }], ['טלפון', { width: 390, height: 844 }]]) {
     const ctx = await br.newContext({ viewport: vp }), p = await ctx.newPage(), errs = [];
     p.on('pageerror', e => errs.push(e.message));
-    const sig = () => p.evaluate(() => { let x = 0; for (const c of document.querySelector('#rdBook').innerHTML + getComputedStyle(document.querySelector('#reader')).getPropertyValue('--rdFs')) x = (x * 31 + c.charCodeAt(0)) | 0; return x; });
+    // החתימה בלי אפקט ההופעה (v3.27.0: מחלקה fxA ומשתני --fxD/--fxT על האזורים שהשתנו, עד סוף האנימציה) — הוא לא חלק מהדף
+    const sig = () => p.evaluate(() => {
+      const bk = document.querySelector('#rdBook').cloneNode(true);
+      bk.querySelectorAll('.fxA').forEach(e => { e.classList.remove('fxA'); e.style.removeProperty('--fxD'); e.style.removeProperty('--fxT'); });
+      // ניקוי האפקט כותב מחדש את style ו-class (סדר, רווחים, מאפיין ריק) — משווים בצורה אחידה שלהם
+      bk.querySelectorAll('[style],[class]').forEach(e => {
+        if (e.hasAttribute('style')) { const c = e.style.cssText; if (c) e.setAttribute('style', c); else e.removeAttribute('style'); }
+        if (e.hasAttribute('class')) { const c = [...e.classList].join(' '); if (c) e.setAttribute('class', c); else e.removeAttribute('class'); }
+      });
+      let x = 0; for (const c of bk.innerHTML + getComputedStyle(document.querySelector('#reader')).getPropertyValue('--rdFs')) x = (x * 31 + c.charCodeAt(0)) | 0; return x;
+    });
     const settle = async () => { await p.waitForFunction(() => { const b = document.querySelector('#rdBook'); return b && !b.querySelector('.rdLoading,.rdSkel') && b.innerHTML.length > 500; }, null, { timeout: 60000 }); await p.waitForTimeout(700); };
     const open = async (hash, st) => {
       await p.goto(base + '__blank__'); // מקור זהה, בלי האפליקציה — כדי שלא תשמור מצב ישן מעל מה שנקבע כאן
@@ -101,6 +111,20 @@ const ok = (name, cond, info) => { if (cond) pass++; else { fail++; console.log(
     ok(vpName + ' רמב״ם: בלי ניקוד בתצוגת הלכה הלכה', await p.$$eval('#rdBook .rdMsh p', a => a.length > 0 && !a.some(x => /[ְ-ּ]/.test(x.textContent))));
     await open('#read/Mishneh_Torah_Sabbath/1', { view: 'aligned' });
     ok(vpName + ' רמב״ם: "פסוק מול תרגום" בתנ״ך לא מחליף את עיצוב פרנקל', !!(await p.$('#rdBook .rdRamTx')));
+    // (5) קישור להלכה באמצע הפרק: ההלכה בעמוד המוצג (בשני עמודים — בימני), נשארת שם אחרי ציור חוזר, והכתובת שומרת אותה
+    const heads = () => p.$$eval('#rdBook .rdPage:not(.next) .rdHead', a => a.map(x => x.textContent).join(' | '));
+    const hasHal = () => p.$$eval('#rdBook .rdPage' + (desk2 ? '.right' : ':not(.next)') + ' [data-v="10"]', a => a.length > 0);
+    const desk2 = vp.width > 640;
+    await open('#read/MT/Sab/30/10', {});
+    ok(vpName + ' קישור MT/Sab/30/10: ההלכה בעמוד ' + (desk2 ? 'הימני' : 'המוצג'), await hasHal(), await heads());
+    ok(vpName + ' קישור MT/Sab/30/10: הכתובת שומרת את ההלכה', /\/30\/10$/.test(await p.evaluate(() => location.hash)), await p.evaluate(() => location.hash));
+    await p.setViewportSize({ width: vp.width, height: vp.height - 30 }); await p.waitForTimeout(600); await settle();
+    await p.setViewportSize(vp); await p.waitForTimeout(600); await settle();
+    ok(vpName + ' קישור MT/Sab/30/10: אחרי שינוי גודל עדיין באותו מקום', await hasHal(), await heads());
+    // (6) קישור למקום שאין: הפרק או הספר, עם הודעה
+    await open('#read/TN/Gen/51', {});
+    ok(vpName + ' קישור לפרק שאין: נפתח הספר', /^#read\/TN\/Gen\/1$/.test(await p.evaluate(() => location.hash)));
+    ok(vpName + ' קישור לפרק שאין: הודעה', await p.isVisible('#rdToast'));
     ok(vpName + ': בלי שגיאות JavaScript', !errs.length, errs.join(' | '));
     await ctx.close();
   }

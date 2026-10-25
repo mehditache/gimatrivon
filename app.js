@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '3.31.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '3.31.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -1085,6 +1085,10 @@ function setupMobileUX() {
   const setSheetOpen = open => { sheet.classList.toggle('collapsed', !open); scrim.classList.toggle('show', open); };
   $('#mSheetHandle').onclick = () => setSheetOpen(sheet.classList.contains('collapsed'));
   scrim.onclick = () => setSheetOpen(false);
+  // כותרת פנל התוצאות מורמת מעל ה-scrim (בשביל ⚙, ראו styles.css) — לחיצה עליה, לא על כפתור, סוגרת את הגיליון כמו לחיצה על ה-scrim
+  $('#mStage').addEventListener('click', e => {
+    if (scrim.classList.contains('show') && e.target.closest('.mResPane .hd') && !e.target.closest('button,input,label,a,select,textarea')) setSheetOpen(false);
+  });
   // v3.4.0: פנל-ההתאמות פתוח כברירת-מחדל בעת טעינת האפליקציה (לא מכווץ) — ב-HTML הסטטי הוא עדיין
   // מתחיל עם class="collapsed" (כדי שלא "יהבהב" פתוח רגע לפני ש-JS מתחבר), ו-setupMobileUX פותח אותו
   // מיידית כאן ברגע שה-handlers כבר מוכנים.

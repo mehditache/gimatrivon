@@ -387,6 +387,8 @@
   const APP = G.GimApp || {}; // מ-app.js: שפה, שמות ספרים וסדרים באנגלית, מדידת שימוש
   const isEn = () => APP.isEn ? APP.isEn() : document.documentElement.lang === 'en';
   const EN = {
+    'המקום שבקישור לא נמצא, ונפתח מה שמעליו (הפרק או הספר).': 'The place in the link was not found; its chapter or book was opened instead.',
+    'המקום שבקישור לא נמצא, ונשארנו במקום האחרון.': 'The place in the link was not found; staying where you were.',
     'גימטריה': 'Gematria', 'קריאה ומפרשים': 'Read & commentary', 'קריאה': 'Read', 'מצב עבודה': 'Mode', 'ספר': 'Book', 'פסוק מול תרגום': 'Verse & translation', 'משנה מול תרגום': 'Text & translation',
     'תצוגה': 'Display', 'הגדרות תצוגה': 'Display settings', 'סוג תצוגה': 'Layout', 'תרגום בצד שמאל': 'Translation on the left',
     'תרגום אונקלוס': 'Targum Onkelos', 'תרגום יונתן': 'Targum Yonatan', 'ללא תרגום': 'No translation', 'ברירת מחדל': 'default', 'אין בספר זה': 'not in this book',
@@ -451,7 +453,7 @@
   // rview = בטור: צורת הדף (daf) או טור ומפרשים (study); rOff = מפרשים מוסתרים בטור ('y' בית יוסף, 'c' ב״ח)
   const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [] };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
-  S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
+  S.p = 0; S.aw = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
   if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; if (S.ramView !== 'aligned') S.ramView = 'book';
   const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
@@ -460,7 +462,9 @@
   const setHash = x => { if (location.hash === x || (location.hash && !MODE_HASH.test(location.hash))) return; try { history.replaceState(history.state, '', x); } catch (e) {} };
   // חלון פתוח (קטע בגמרא, דיבור בטור) נכנס לכתובת, כדי שקישור שמועתק ממנו יפתח אותו שוב
   const curRef = () => isTur() ? Object.assign({ kind: 'tur', k: S.rk, s: S.rs }, S.rsel && S.rsel.x !== 't' ? { x: S.rsel.x, i: S.rsel.i, s: S.rsel.s } : {})
-    : isTal() ? Object.assign({ kind: 'tal', k: S.tk, j: S.tj }, S.sel ? { j: S.sel.j, s: S.sel.s } : {}) : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
+    : isTal() ? Object.assign({ kind: 'tal', k: S.tk, j: S.tj }, S.sel ? { j: S.sel.j, s: S.sel.s } : {}) : { kind: 'ref', b: S.b, ch: S.ch, v: litV() || S.anchor };
+  // הפסוק / ההלכה המודגשים (מקישור או מתוצאה), כל עוד הם בעמודים שמוצגים — הכתובת שומרת אותם, ולא את הפסוק שבראש העמוד
+  const litV = () => flashOn && flashOn.at === S.b + ':' + S.ch && flashEls(flashOn.v).length ? flashOn.v : 0;
   function syncHash() { if (IX && document.body.dataset.mode === 'read') setHash(hashOfRef(IX, curRef())); }
 
   let TX = null;
@@ -472,7 +476,7 @@
     if (S.rk && RX.byK[S.rk] == null) S.rk = '';
     if (S.rk) S.tk = '';
     IX = buildIndex({ books: G.GimCorpus.books });
-    if (!IX.base.includes(S.b) || !hasRef(IX, S.b, S.ch, 0)) { S.b = 0; S.ch = 1; S.anchor = 1; }
+    if (!IX.base.includes(S.b) || !hasRef(IX, S.b, S.ch, 0)) { S.b = 0; S.ch = 1; S.anchor = 1; S.aw = 0; }
   };
   /* טעינה לפי דרישה: need(b) = הספר, התרגום והמפרשים שמוצגים בו. ensure(ids, again) מחזיר true אם הכל כבר נטען;
      אחרת מתחיל לטעון, ו-again() נקרא כשהטעינה הסתיימה (כמו loadTract בגמרא). */
@@ -843,20 +847,22 @@
       return;
     }
     keepBooks([].concat(...nearBooks(S.b).map(need)));
+    // ציור חוזר (גודל, הגדרה) כשהפסוק / ההלכה המודגשים מקישור מוצגים: נשארים עליהם, ולא על ראש העמוד — אחרת כל עימוד מחדש מזיז קצת
+    if (S.lock == null && !flashV) { const lv = litV(); if (lv) { S.anchor = lv; S.aw = 0; } }
     // רק העמודים עד המקום המבוקש (והפריסה שלו); השאר מעומד ברקע, ואז render נקרא שוב
-    const want = S.lock != null ? pg => pg.length > S.lock + geo.per : pg => { const i = pg.findIndex(p => p.vs.includes(S.anchor)); return i >= 0 && pg.length >= i + geo.per; };
+    const want = S.lock != null ? pg => pg.length > S.lock + geo.per : pg => { const i = anchorPage(pg); return i >= 0 && pg.length >= i + geo.per; };
     const run = pagesRun(S.b, S.ch, want), pages = run.pages, all = run.done;
     // בשני עמודים הפריסה רציפה בין פרקים: אם בפרק מספר עמודים אי-זוגי, העמוד הראשון של הפרק הבא ממלא את הצד השמאלי
     // (במקום עמוד ריק). לכן S.p יכול להיות אי-זוגי; בקפיצה לפסוק שומרים על הזוגיות של הפריסה הנוכחית באותו פרק.
     const locked = S.lock != null;
-    let idx = locked ? S.lock : pages.findIndex(p => p.vs.includes(S.anchor));
+    let idx = locked ? S.lock : anchorPage(pages);
     S.lock = null; if (idx < 0 || idx >= pages.length) idx = 0;
     // קפיצה לפסוק / הלכה מסוימים (קישור, תוצאת גימטריה): העמוד שלהם הוא הימני בפריסה, ולא השמאלי אחרי עמוד קודם
     if (locked || geo.per === 1 || flashV) S.p = idx;
     else { const par = S.at === S.b + ':' + S.ch ? S.p % 2 : 0; S.p = idx < par ? 0 : idx - ((idx - par) % 2); }
     S.at = S.b + ':' + S.ch;
     const shown = pages.slice(S.p, S.p + geo.per);
-    S.anchor = shown[0].segs[0].v;
+    S.anchor = shown[0].segs[0].v; S.aw = shown[0].segs[0].from;
     const nx = geo.two && shown.length < 2 ? nextCh(S.b, S.ch, 1) : null, nxPg = nx && pagesRun(nx.b, nx.ch, pg => pg.length > 0).pages[0];
     const book = $r('#rdBook');
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
@@ -881,6 +887,12 @@
     fxAfter(book);
     save();
     prePaginate();
+  }
+  /* העמוד של מקום הקריאה: S.anchor = הפסוק / ההלכה שבראש העמוד, S.aw = המילה שבה העמוד מתחיל בתוכם (0 = מתחילתם).
+     עמוד שמתחיל באמצע הלכה ארוכה: בלי S.aw ציור חוזר (שינוי גודל, הגדרה, סוף העימוד ברקע) חזר לעמוד שבו ההלכה מתחילה */
+  function anchorPage(pages) {
+    const w = S.aw || 0, i = w ? pages.findIndex(p => p.segs.some(x => x.v === S.anchor && x.from <= w && w < x.to)) : -1;
+    return i >= 0 ? i : pages.findIndex(p => p.vs.includes(S.anchor));
   }
   // עימוד הפרק הבא מראש, בזמן מנוחה — כך שהדפדוף אליו מיידי
   function prePaginate() {
@@ -958,7 +970,7 @@
   let flashV = 0, flashKeep = false;
   function goTo(b, ch, v) {
     S.tk = ''; S.rk = ''; closeSeg();
-    S.b = b; S.ch = ch; S.anchor = v || versesOf(IX, b, ch)[0] || 1;
+    S.b = b; S.ch = ch; S.anchor = v || versesOf(IX, b, ch)[0] || 1; S.aw = 0;
     flashV = v || 0; flashKeep = false; render();
   }
   function turn(dir) {
@@ -1773,7 +1785,7 @@
     const saved = geo; geo = printGeo(); setVars(geo);
     const pages = pagesFor(S.b, S.ch);
     let from = 0, to = pages.length;
-    if (S.prScope === 'spread') { let i = pages.findIndex(p => p.vs.includes(S.anchor)); if (i < 0) i = 0; from = i - i % 2; to = Math.min(from + 2, pages.length); }
+    if (S.prScope === 'spread') { let i = anchorPage(pages); if (i < 0) i = 0; from = i - i % 2; to = Math.min(from + 2, pages.length); }
     const vars = R.getAttribute('style');
     geo = saved; if (geo) setVars(geo);
     let html = '';
@@ -2398,15 +2410,30 @@
   function hashTarget() {
     const m = location.hash.match(/^#read(?:[\/#]+(.*))?$/i); if (!m) return false;
     ensureIndex();
-    const x = m[1] ? parseHashRef(IX, TX, RX, m[1]) : null;
+    let x = m[1] ? parseHashRef(IX, TX, RX, m[1]) : null;
+    // מקום שאין (פרק או סימן מעבר לסוף, ספר לא מוכר): המקום הקרוב שקיים — מקצרים את הכתובת מהסוף (פרק → ספר);
+    // ואם גם הספר לא מוכר, נשארים במקום האחרון. בשני המקרים הודעה, במקום לעבור בשקט למקום אחר
+    if (m[1] && !x) {
+      const seg = m[1].split(/[\/#]+/).filter(Boolean);
+      for (let n = seg.length - 1; n >= 1 && !x; n--) x = parseHashRef(IX, TX, RX, seg.slice(0, n).join('/'));
+      showNote(T(x ? 'המקום שבקישור לא נמצא, ונפתח מה שמעליו (הפרק או הספר).' : 'המקום שבקישור לא נמצא, ונשארנו במקום האחרון.'));
+    }
     if (x) {
       closeSeg(); S.lock = null;
       // דיבור בטור: נפתח בחלון אחרי הציור (S.rgo, כמו תוצאת חיפוש); קטע בגמרא: goTal אחרי הציור (linkSeg)
       if (x.kind === 'tur') { S.tk = ''; S.rk = x.k; S.rs = x.s; S.rp = 0; S.rgo = x.x ? { k: x.k, s: x.s, x: x.x, i: x.i } : null; }
       else if (x.kind === 'tal') { S.rk = ''; S.tk = x.k; S.tj = x.j; S.tp = 0; linkSeg = x.s >= 0 ? x : null; }
-      else { S.tk = ''; S.rk = ''; S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; flashV = x.v || 0; flashKeep = !!x.v; }
+      else { S.tk = ''; S.rk = ''; S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; S.aw = 0; flashV = x.v || 0; flashKeep = !!x.v; }
     }
     return true;
+  }
+  // הודעה קצרה בתחתית מסך הקריאה (נעלמת מעצמה); אם המסך עוד לא נבנה — מחכים לו
+  let noteT = 0;
+  function showNote(msg, tries) {
+    if (!built || !R) { if ((tries || 0) < 60) setTimeout(() => showNote(msg, (tries || 0) + 1), 150); return; }
+    let n = $r('#rdToast');
+    if (!n) { n = document.createElement('div'); n.id = 'rdToast'; n.className = 'rdToast'; n.setAttribute('role', 'status'); n.onclick = () => { n.hidden = true; }; R.appendChild(n); }
+    n.textContent = msg; n.hidden = false; clearTimeout(noteT); noteT = setTimeout(() => { n.hidden = true; }, 6000);
   }
   let linkSeg = null;
   const openLinkSeg = () => { const x = linkSeg; linkSeg = null; if (x && isTal() && S.tk === x.k) goTal(x.k, x.j, x.s); };
@@ -2416,7 +2443,7 @@
     ensureIndex();
     const x = unitRef(IX, b, ch, v); if (!x) return false;
     S.lock = null;
-    if (document.body.dataset.mode !== 'read') { S.tk = ''; S.rk = ''; closeSeg(); S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; flashV = x.v; setMode('read', true, 'result'); }
+    if (document.body.dataset.mode !== 'read') { S.tk = ''; S.rk = ''; closeSeg(); S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; S.aw = 0; flashV = x.v; setMode('read', true, 'result'); }
     else goTo(x.b, x.ch, x.v);
     save();
     return true;
