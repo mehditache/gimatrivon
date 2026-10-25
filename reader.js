@@ -2130,8 +2130,19 @@
     }).join('');
   }
   /* שורת תוצאה (שורה אחת ברשימה): כל המילים שנמצאו תמיד נראות. units = [{t, marks}] (בקטע — כמה פסוקים). אם הכל לא נכנס
-     בשורה (SQ_FIT תווים, בלי ניקוד), מציגים רק את סביבת המילים שנמצאו — קודם 3 מילים מכל צד, ואם צריך פחות — עם ״…״ בין הקטעים */
-  const SQ_FIT = 64;
+     ברוחב השורה (נמדד בפיקסלים לפי רוחב מסגרת החיפוש והגופן), מציגים את סביבת המילים שנמצאו — כמה שיותר מילים מכל צד שעדיין
+     נכנסות (עד 0), עם ״…״ בין הקטעים */
+  let sqCtx = null;
+  function sqFit() {
+    const o = $r('.rdOmni'), w = o ? o.getBoundingClientRect().width : 0;
+    return w ? w - 54 : 470; // ריפוד הפנל והשורה, פס הגלילה ומרווח ביטחון
+  }
+  function sqWidth(t) {
+    if (!sqCtx) { try { sqCtx = document.createElement('canvas').getContext('2d'); } catch (e) { sqCtx = false; } }
+    if (!sqCtx) return t.length * 8;
+    sqCtx.font = '14.5px "GimFrank", serif';
+    return sqCtx.measureText(t).width;
+  }
   function sqSnippet(units, sep) {
     const P = []; // {p, w (מספר המילה הרץ או -1), on}
     let nw = 0;
@@ -2141,23 +2152,30 @@
       W.parts.forEach((p, i) => { if (!p) return; const wi = W.wi[i]; P.push({ p, w: wi >= 0 ? nw + wi : -1, on: wi >= 0 && x.marks.has(wi) }); });
       nw += W.ws.length;
     });
-    const len = p => G.GimSq.letters(p).length + 1, total = P.reduce((a, x) => a + (x.w >= 0 ? len(x.p) : 0), 0);
     const hits = P.filter(x => x.on).map(x => x.w);
-    let keep = null;
-    if (total > SQ_FIT && hits.length) for (const r of [3, 2, 1, 0]) {
-      keep = new Set(); hits.forEach(w => { for (let k = w - r; k <= w + r; k++) keep.add(k); });
-      if (P.reduce((a, x) => a + (x.w >= 0 && keep.has(x.w) ? len(x.p) : 0), 0) + 3 * hits.length <= SQ_FIT) break;
-    }
     const mark = p => { const m = /^([^א-ת]*)(.*?)([^א-ת\u0591-\u05C7]*)$/.exec(p); return h(m[1]) + '<mark class="rdHl">' + h(m[2]) + '</mark>' + h(m[3]); };
-    if (!keep) return P.map(x => x.sep ? x.p : x.on ? mark(x.p) : h(x.p)).join('');
-    let out = '', last = -2, open = false;
-    P.forEach((x, i) => {
-      if (x.w < 0) { if (open && P[i + 1] && keep.has(P[i + 1].w)) out += x.sep ? x.p : h(x.p); return; }
-      if (!keep.has(x.w)) { open = false; return; }
-      if (x.w !== last + 1 || !open) out += x.w > 0 || last >= 0 ? (out ? ' … ' : '… ') : '';
-      out += x.on ? mark(x.p) : h(x.p); last = x.w; open = true;
-    });
-    return out + (last < nw - 1 ? ' …' : '');
+    const plainSep = x => x.sep ? ' … ' : x.p;
+    const build = keep => {
+      if (!keep) return { html: P.map(x => x.sep ? x.p : x.on ? mark(x.p) : h(x.p)).join(''), txt: P.map(plainSep).join('') };
+      let html = '', txt = '', last = -2, open = false;
+      P.forEach((x, i) => {
+        if (x.w < 0) { if (open && P[i + 1] && keep.has(P[i + 1].w)) { html += x.sep ? x.p : h(x.p); txt += plainSep(x); } return; }
+        if (!keep.has(x.w)) { open = false; return; }
+        if (x.w !== last + 1 || !open) { const d = x.w > 0 || last >= 0 ? (html ? ' … ' : '… ') : ''; html += d; txt += d; }
+        html += x.on ? mark(x.p) : h(x.p); txt += x.p; last = x.w; open = true;
+      });
+      const end = last < nw - 1 ? ' …' : '';
+      return { html: html + end, txt: txt + end };
+    };
+    const fit = sqFit();
+    let best = build(null);
+    if (!hits.length || sqWidth(best.txt) <= fit) return best.html;
+    for (const r of [16, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1, 0]) {
+      const keep = new Set(); hits.forEach(w => { for (let k = w - r; k <= w + r; k++) keep.add(k); });
+      best = build(keep);
+      if (sqWidth(best.txt) <= fit) break;
+    }
+    return best.html;
   }
   const SQ_SRCS = { txt: [0], cm: [1], tr: [2, 3], all: [0, 1, 2, 3] };
   function sqOpt() {
