@@ -2268,15 +2268,19 @@
     if (!me.r) return;
     const want = [], v = me.v || 0; for (let i = Math.max(0, lo); i <= Math.min(hi, me.r.res.length - 1); i++) if (me.hits[i] && me.hits[i].ph && !me.ld.has(i)) { want.push(i); me.ld.add(i); }
     if (!want.length) return;
-    const by = {}, tx = {}, ok = () => SQ === me && (me.v || 0) === v;
+    let done = false; const by = {}, tx = {}, ok = () => SQ === me && (me.v || 0) === v;
     want.forEach(i => { const d = me.dom === 'glob' ? me.r.res[i].d : me.dom; (by[d] = by[d] || []).push(me.dom === 'glob' ? me.r.res[i].r : me.r.res[i]); });
     const alive = () => ok() && (pri < 2 || !me.want || (want[0] <= me.want[1] + 40 && want[want.length - 1] >= me.want[0] - 40));
     try {
       await Promise.all(Object.keys(by).map(async d => { const E = SQD[d].E; tx[d] = await E.texts([].concat(...by[d].map(E.unitsOf)), { pri, alive }); }));
       if (!ok()) return;
       want.forEach(i => { const e = me.r.res[i], d = me.dom === 'glob' ? e.d : me.dom, x = sqHit(me.dom === 'glob' ? e.r : e, tx[d], d); if (me.dom === 'glob') x.dom = d; me.hits[i] = x; });
-      sqPaint(me, want);
-    } catch (e) { /* שאילתה שהוחלפה בגלילה — תיטען שוב כשהשורה תיראה */ } finally { want.forEach(i => me.ld.delete(i)); }
+      sqPaint(me, want); me.rt = 0; done = true;
+    } catch (e) { /* שאילתה שהוחלפה בגלילה */ } finally {
+      want.forEach(i => me.ld.delete(i));
+      // בקשה שנפלה (הוחלפה בגלילה מהירה) — טוענים שוב את החלון הנוכחי, גם בלי אירוע גלילה נוסף
+      if (!done && SQ === me && me.want && (me.rt = (me.rt || 0) + 1) <= 8) setTimeout(() => { if (SQ === me && me.want) sqLoad(me, me.want[0] - 4, me.want[1] + 8, 1); }, 60 * me.rt);
+    }
   }
   function sqSearch(raw) {
     const nq = norm(raw);
