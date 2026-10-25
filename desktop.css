@@ -76,3 +76,9 @@ body.dkGem .dkTools{display:none}
 .dkHost{position:fixed;z-index:60;border:0;background:transparent;color-scheme:normal}
 .dkHost[hidden]{display:none}
 .dkGemBtn.on{background:var(--acs);font-weight:600}
+
+/* החלונות בהקשר-שכבות משלהם (z-index שלהם גדל בלי הגבלה) — בנר, שורת משימות, תפריט הסידור והתצוגה המקדימה תמיד מעליהם */
+.dkDesk{isolation:isolate;z-index:0}
+.dkMenu{z-index:200}
+.dkPeek{z-index:210}
+.dkToast{z-index:220}
