@@ -1,6 +1,8 @@
 (function () {
 'use strict';
 const VERSION = '3.31.0-search-sqlite'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const BRANCH = 'search-sqlite'; // שם הענף שממנו האתר מוגש — מוצג ליד הגרסה (ב-main לא מוצג); לעדכן כשעובדים בענף אחר
+const VER_TXT = 'v' + VERSION + (BRANCH && BRANCH !== 'main' ? ' · ' + BRANCH : '');
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
 // נמדד בפועל שהגישה הזו (סכומי קידומת + טבלת חיפוש) לא מהירה יותר — ולעיתים אף איטית יותר — מהרצת
 // מסלול "שני מצביעים" הרגיל בנפרד לכל ערך, כי צוואר הבקבוק האמיתי הוא נפח החישוב האריתמטי עצמו
@@ -14,7 +16,7 @@ const RESULTS_WINDOW = 200;
 function getLimit() { return RESULTS_WINDOW; }
 // תקרת-בטיחות לכמות ההתאמות שנטענות לרשימה בחיפוש אחד (13 בתים לשורה, כ-65MB); מעליה ההתאמות רק נספרות
 const MAX_RESULTS_PER_SEARCH = 5000000;
-const verEl = document.getElementById('ver'); if (verEl) verEl.textContent = 'v' + VERSION;
+const verEl = document.getElementById('ver'); if (verEl) { verEl.textContent = VER_TXT; verEl.title = 'מספר גרסה' + (BRANCH ? ' · ענף: ' + BRANCH : ''); }
 document.title = `גימטריבון - ${VERSION}`; // כותרת טאב הדפדפן — לא "סביבת עבודה"
 // --- ANALYTICS:START ---
 // Google Analytics 4 (gtag.js) — חריג-רשת מבודד שני (כמו בלוק EmailJS), נבדק ב-tests/run-tests.js.
@@ -1064,7 +1066,7 @@ function applyMobileLangStatic() {
   $('#mmMethodsTxt').textContent = L('שיטות גימטריה');
   $('#mmAboutTxt').textContent = L('אודות');
   $('#mmContactTxt').textContent = L('צור קשר');
-  $('#mMenuVer').textContent = 'v' + VERSION;
+  $('#mMenuVer').textContent = VER_TXT;
 }
 // mSide: הצד המוצג כרגע בפנל-התוצאות של הנייד — נשלט ע״י #mSummaryBar (למעלה, מתחת לכותרת; גם בורר-צד
 // וגם מציג קטע-מהקלט+ערך-גימטרי של כל צד — ראו renderCenter/index.html).
@@ -1673,6 +1675,7 @@ function renderAbout() {
   $('#aboutDoc').innerHTML = `<div class="aboutBox">
     <div class="row"><span class="k">${en ? 'App name' : 'שם האפליקציה'}</span><span class="v"><b>גימטריבון</b> (Gimatrivon)</span></div>
     <div class="row"><span class="k">${en ? 'Version' : 'גרסה'}</span><span class="v">${esc(VERSION)}</span></div>
+    <div class="row"><span class="k">${en ? 'Branch' : 'ענף'}</span><span class="v">${esc(BRANCH)}</span></div>
     <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi, Targumim and the Rambam\'s Mishneh Torah.' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י, תרגומים ומשנה תורה לרמב״ם.'}</span></div>
     <div class="row"><span class="k">${en ? 'Corpus' : 'קורפוס'}</span><span class="v">${unitsCount ? fmt(unitsCount) + (en ? ' units (verses/mishnahs)' : ' יחידות (פסוקים/משניות)') : (en ? 'Loading…' : 'נטען…')}</span></div>
     <div class="row"><span class="k">${en ? 'Developer' : 'מפתח'}</span><span class="v">${esc(ABOUT_INFO.dev)}</span></div>

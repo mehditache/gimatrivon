@@ -828,14 +828,10 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 /* פנל התוצאות ברוחב כל מסגרת החיפוש (המיקום + החיפוש) */
 .rdOmni .rdSearch{position:static}
 .rdOmni .rdDrop{inset-inline:-1px;width:auto}
-/* עד שהתוצאות מוצגות: פס זוהר מסתובב סביב המסגרת */
-@property --rdSpin{syntax:'<angle>';inherits:false;initial-value:0deg}
-.rdOmni.rdBusy::before{content:'';position:absolute;inset:-2px;border-radius:13px;padding:2px;pointer-events:none;z-index:1;
-  background:conic-gradient(from var(--rdSpin),transparent 0 62%,color-mix(in srgb,var(--rdOn) 55%,transparent) 78%,var(--rdOn) 90%,#fff7d6 95%,transparent 100%);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
-  filter:drop-shadow(0 0 4px var(--rdOn));animation:rdSpin 1.1s linear infinite}
-@keyframes rdSpin{to{--rdSpin:360deg}}
-@media (prefers-reduced-motion:reduce){.rdOmni.rdBusy::before{animation:rdPulse 1.2s ease-in-out infinite alternate;background:var(--rdOn)}@keyframes rdPulse{from{opacity:.25}to{opacity:.9}}}
+/* עד שהתוצאות מוצגות: כל המסגרת מהבהבת */
+.rdOmni.rdBusy{animation:rdBlink .9s ease-in-out infinite}
+@keyframes rdBlink{0%,100%{border-color:var(--rdG3);box-shadow:0 0 0 0 transparent}50%{border-color:var(--rdOn);box-shadow:0 0 0 2px var(--rdOn),0 0 10px 1px var(--rdOn)}}
+@media (prefers-reduced-motion:reduce){.rdOmni.rdBusy{animation-duration:1.8s}}
 .rdTools{flex:none;display:inline-flex;align-items:center;gap:2px;padding:2px;border-radius:11px;border:1px solid var(--rdG3)}
 .reader .rdTools .rdSeg{border:0;border-radius:8px}
 .reader .rdTools .rdSeg button{height:30px;padding:0 9px;border-radius:8px}
