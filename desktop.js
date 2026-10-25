@@ -356,13 +356,14 @@
     nav.title = other ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();
   }
+  let lastR = 0; // הקצה הימני של הכפתור בזמן הלחיצה (הכפתור עצמו נבנה מחדש עם הבנר)
   let lastBtn = null; // כפתור הבנר שנלחץ אחרון — החלון הקופץ ייפתח מתחתיו
   function fwdClick(slot, srcSel, e) {
     const t = e.target.closest('button,label,input'); if (!t || !slot.contains(t)) return;
     const f = readerF(); if (!f || !f.doc) return;
     if (slot === nav && document.body.classList.contains('dkOther')) { if (D.last && W(D.last)) focusWin(D.last); return; }
     const p = pathOf(t, slot), src = f.doc.querySelector(srcSel), o = p && src && byPath(src, p);
-    if (o) { e.preventDefault(); lastBtn = t; o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
+    if (o) { e.preventDefault(); lastBtn = t; lastR = t.getBoundingClientRect().right; o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
   }
   nav.addEventListener('click', e => fwdClick(nav, '#rdTop .rdNav', e));
   tools.addEventListener('click', e => fwdClick(tools, '#rdTop .rdTools', e));
@@ -370,7 +371,7 @@
     const b = e.target.closest('[data-fwd]'), f = F.get(gemW().id);
     if (b && f && f.doc) { const o = f.doc.querySelector(b.dataset.fwd); if (o) o.click(); }
   });
-  $('#dkKebab').onclick = () => { lastBtn = $('#dkKebab'); const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click(); };
+  $('#dkKebab').onclick = () => { lastBtn = $('#dkKebab'); lastR = lastBtn.getBoundingClientRect().right; const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click(); };
 
   // תיבת החיפוש: ההקלדה מועברת ל-#rdQ של "מארח חיפוש" — iframe שקוף (index.html?embed=search) שמציג רק את הרשימה
   // הנפתחת, מתחת לתיבה כמו במסך הרגיל. המארח נוצר רק כשמתחילים לחפש ולא פותח שום חלון; בחירת תוצאה פותחת אותה
@@ -447,14 +448,14 @@
     if (!f || !f.doc || !f.fr) return;
     // חלון שאינו מוגדל: הפופ-אפ לא יכול לצאת מגבולות החלון, אז החלון מוגדל זמנית כל עוד הוא פתוח — כך הוא נופל ישר מתחת לבנר
     const w = D.wins.find(x => F.get(x.id) === f), open = f.doc.querySelector('.rdPop:not([hidden])');
-    if (w && open && !w.max && lastBtn) { w.max = true; w.tmpMax = true; paint(w); }
+    if (w && open && !w.max && lastBtn) { w.max = true; w.tmpMax = true; paint(w); setTimeout(() => placePops(f), 30); setTimeout(() => placePops(f), 150); }
     else if (w && !open && w.tmpMax) { w.max = false; w.tmpMax = false; paint(w); }
     if (!lastBtn) return;
-    const fr = f.fr.getBoundingClientRect(), br = lastBtn.getBoundingClientRect();
+    const fr = f.fr.getBoundingClientRect(), br = { right: lastR };
     f.doc.querySelectorAll('.rdPop:not([hidden])').forEach(p => {
       const w = p.offsetWidth, W0 = fr.width;
       const right = Math.max(8, Math.min(W0 - w - 8, W0 - (br.right - fr.left)));
-      if (p.dataset.dkR !== String(right)) { p.dataset.dkR = String(right); p.style.insetInlineStart = 'auto'; p.style.insetInlineEnd = 'auto'; p.style.left = 'auto'; p.style.right = right + 'px'; p.style.top = '8px'; }
+      if (p.dataset.dkR !== right + ':' + W0) { p.dataset.dkR = right + ':' + W0; p.style.insetInlineStart = 'auto'; p.style.insetInlineEnd = 'auto'; p.style.left = 'auto'; p.style.right = right + 'px'; p.style.top = '8px'; }
     });
   }
   function watchReader(w, f) {
