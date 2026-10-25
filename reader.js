@@ -2011,7 +2011,7 @@
     let html = refsHtml();
     const sq = sqOn(), res = sq ? sqSearch(q) : searchTal(q), n = sq ? res.total : res.hits.length;
     const srcs = [['g', 'גמרא'], ['r', 'רש״י'], ['t', 'תוספות'], ['all', 'הכל']];
-    html += '<div class="rdDScope" role="group">' + (sq ? [['tr', 'במסכת'], ['all', 'בכל הש״ס']].map(([k, l]) => '<button type="button" data-tscope="' + k + '" class="' + (S.tscope === k ? 'on' : '') + '" aria-pressed="' + (S.tscope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span>' : '') + '<span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-tsrc="' + k + '" class="' + (S.tsrc === k ? 'on' : '') + '" aria-pressed="' + (S.tsrc === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
+    html += '<div class="rdDScope" role="group">' + (sq ? [['tr', 'במסכת'], ['all', 'בכל הש״ס']].map(([k, l]) => '<button type="button" data-tscope="' + k + '" class="' + (S.tscope === k ? 'on' : '') + '" aria-pressed="' + (S.tscope === k) + '">' + T(l) + '</button>').join('') + '<button type="button" data-glob="1" aria-pressed="false">' + T('בכל הספרים') + '</button><span class="sep" aria-hidden="true"></span>' : '') + '<span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-tsrc="' + k + '" class="' + (S.tsrc === k ? 'on' : '') + '" aria-pressed="' + (S.tsrc === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
     // כל ההתאמות במסכת, ברשימה הווירטואלית עם פס הגלילה המהיר: קבוצה לכל דף (עמוד), וסימון על הפס בכל עשרה דפים
     const start = dropItems.length, t0 = talT();
     res.hits.forEach(x => dropItems.push({ kind: 'thit', x }));
@@ -2042,7 +2042,7 @@
     // בכל הטור צריך את כל החלקים שלו (כ-2MB כל אחד); עד שהם נטענים — "טוען…" במקום מספר התוצאות
     if (res.wait && !sq) loadTur(k, turAll(t), ok => { if (ok && S.rk === k && dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
     const scopes = [['s', 'בסימן'], ['all', 'בכל הטור']].concat(sq ? [['every', 'בכל הטורים']] : []), srcs = [['t', 'טור'], ['y', 'בית יוסף'], ['c', 'ב״ח'], ['all', 'הכל']];
-    html += '<div class="rdDScope" role="group">' + scopes.map(([x, l]) => '<button type="button" data-rscope="' + x + '" class="' + (S.rscope === x ? 'on' : '') + '" aria-pressed="' + (S.rscope === x) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([x, l]) => '<button type="button" data-rsrc="' + x + '" class="' + (S.rsrc === x ? 'on' : '') + '" aria-pressed="' + (S.rsrc === x) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
+    html += '<div class="rdDScope" role="group">' + scopes.map(([x, l]) => '<button type="button" data-rscope="' + x + '" class="' + (S.rscope === x ? 'on' : '') + '" aria-pressed="' + (S.rscope === x) + '">' + T(l) + '</button>').join('') + (sq ? '<button type="button" data-glob="1" aria-pressed="false">' + T('בכל הספרים') + '</button>' : '') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([x, l]) => '<button type="button" data-rsrc="' + x + '" class="' + (S.rsrc === x ? 'on' : '') + '" aria-pressed="' + (S.rsrc === x) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length, sLabel = s => s ? T('סימן') + ' ' + num(s) : T('הקדמה');
     res.hits.forEach(x => dropItems.push({ kind: 'rhit', x }));
     if (n) html += resList(res.hits, start, q, {
@@ -2071,16 +2071,16 @@
   const sqOn = () => { const d = sqDomOf(); return !!d && !(SQD[d] && SQD[d].fail) && !!G.GimSq && /^https?:$/.test(location.protocol) && !sqPhone() && typeof Worker !== 'undefined'; };
   const sqScript = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
   const sqAbs = p => new URL(p, location.href).href;
-  function sqReady(name) {
+  function sqReady(name, glob) {
     const st = SQD[name] || (SQD[name] = { P: null, E: null, fail: false });
     if (st.P) return st.P;
     const DM = G.GimSq.DOMAINS[name], TB = DM.tabs;
-    Object.keys(SQD).forEach(o => { if (o !== name && SQD[o].P) SQD[o].stop(); }); // תחום אחד פעיל בכל רגע, כדי שהזיכרון לא יצטבר
+    if (!glob) Object.keys(SQD).forEach(o => { if (o !== name && SQD[o].P) SQD[o].stop(); }); // תחום אחד פעיל בכל רגע, כדי שהזיכרון לא יצטבר (בחיפוש בכל הספרים — כולם פעילים, 2 Workers לכל אחד)
     st.P = Promise.all([G.createDbWorker || sqScript('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || sqScript('generated/sqlite/' + name + '.js')]).then(async () => {
       // maxReadSpeed: קריאה מראש של עד 8 עמודים כשהקריאה רציפה (רשימת מופעים ארוכה); ראו הערה ב-vendor/sql.js-httpvfs/README.md
       // כתובת נפרדת לכל Worker (&w=): הדפדפן מעביר בקשות לאותה כתובת אחת-אחת (נעילת המטמון), וכך הן יוצאות במקביל
       const D = G.GIM_SQ_DBS[name], cfg = i => [{ from: 'inline', config: { serverMode: 'chunked', urlPrefix: sqAbs(D.file) + '.', suffixLength: 3, serverChunkSize: D.chunk, databaseLengthBytes: D.bytes, cacheBust: D.hash + '&w=' + i, requestChunkSize: D.page, maxReadSpeed: D.page * 8 } }];
-      const NW = D.bytes > 40 << 20 ? 2 : SQ_N; // מסד גדול (גמרא, טור): פחות Workers, כל אחד מוריד בעצמו את השורשים
+      const NW = glob || D.bytes > 40 << 20 ? 2 : SQ_N; // מסד גדול (גמרא, טור): פחות Workers, כל אחד מוריד בעצמו את השורשים
       const open = async (i, first) => {
         const w = await G.createDbWorker(cfg(i), sqAbs('vendor/sql.js-httpvfs/sqlite.worker.js'), sqAbs('vendor/sql.js-httpvfs/sql-wasm.wasm'));
         // ה-WASM כבר במטמון — שאר ה-Workers נפתחים ומתחממים במקביל לראשון, ולא אחריו
@@ -2269,16 +2269,76 @@
     }
     return { hits: SQ.busy ? [] : SQ.hits, total: SQ.r ? SQ.r.total : 0, q: nq, wait: SQ.busy };
   }
+
+  /* ---------- חיפוש בכל הספרים (תנ״ך, משנה, רמב״ם, גמרא, טור — עם כל המפרשים) ----------
+     אותה שאילתה נשלחת במקביל לכל התחומים (כל תחום עם ה-Workers שלו), והתוצאות ממוזגות לפי הדירוג. כל תחום מצטרף ברגע שהוא מוכן —
+     התוצאות הראשונות מופיעות מיד, והסכום והסדר מתעדכנים כשהאטיים (גמרא, טור) מסיימים. */
+  async function sqMoreGlob(me, k, pri) {
+    const v = me.v, part = me.r.res.slice(me.hits.length, me.hits.length + k), by = {}, tx = {};
+    part.forEach(p => (by[p.d] = by[p.d] || []).push(p));
+    await Promise.all(Object.keys(by).map(async d => { const E = SQD[d].E; tx[d] = await E.texts([].concat(...by[d].map(p => E.unitsOf(p.r))), { pri, alive: () => SQ === me && me.v === v }); }));
+    if (SQ !== me || me.v !== v) return;
+    part.forEach(p => { const x = sqHit(p.r, tx[p.d], p.d); x.dom = p.d; me.hits.push(x); });
+  }
+  function sqSearchGlob(raw) {
+    const nq = norm(raw);
+    if (G.GimSq.letters(raw).length < 2) return { hits: [], total: 0, q: '' };
+    if (!SQ || SQ.q !== raw || SQ.sc !== 'glob') {
+      const DS = G.GimSq.DOMAINS, names = Object.keys(DS), got = {};
+      const me = SQ = { q: raw, sc: 'glob', dom: 'glob', hits: [], r: { total: 0, res: [] }, total: 0, busy: true, v: 0, pend: names.length };
+      const again = () => { if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); };
+      let fails = 0;
+      names.forEach(d => sqReady(d, true).then(() => SQD[d].E.search(raw, { srcs: DS[d].srcs.all })).then(r => { got[d] = r; }, () => { fails++; }).then(() => {
+        if (SQ !== me) return;
+        me.pend--;
+        if (fails === names.length) { S.glob = false; SQ = null; return again(); } // כשל בכולם — החיפוש הרגיל
+        const res = []; names.forEach(n => got[n] && got[n].res.forEach(r => res.push({ d: n, r })));
+        res.sort((a, b) => b.r.sc - a.r.sc);
+        me.r = { total: res.length, res }; me.total = res.length; me.v++; me.hits = []; me.more = false;
+        const v = me.v;
+        (res.length ? sqMoreGlob(me, 12, 1) : Promise.resolve()).then(() => {
+          if (SQ !== me || me.v !== v) return;
+          if (res.length || !me.pend) { me.busy = false; again(); if (res.length) sqNext(38); } else again();
+        }, () => {});
+      }));
+    }
+    return { hits: SQ.busy ? [] : SQ.hits, total: SQ.total, q: nq, wait: SQ.busy, part: SQ.pend > 0 };
+  }
+  function renderDropGlob() {
+    const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
+    if (!q.trim()) { d.hidden = true; busy(false); return; }
+    const res = sqSearchGlob(q), btn = (g, l, on) => '<button type="button" data-glob="' + g + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + on + '">' + T(l) + '</button>';
+    let html = '<div class="rdDScope" role="group">' + btn(0, 'חיפוש בספר', false) + btn(1, 'בכל הספרים', true) + '<span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : res.total ? resN(res.total) + (res.part ? ' ' + spin() : '') : T('אין תוצאות')) + '</span></div>';
+    const start = 0;
+    res.hits.forEach(x => dropItems.push(x.dom === 'talmud' ? { kind: 'thit', x } : x.dom === 'tur' ? { kind: 'rhit', x } : { kind: 'hit', r: x }));
+    const DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור' };
+    if (res.hits.length) html += resList(res.hits, start, q, {
+      sq: true, key: null, gh: () => '', bub: x => T(DL[x.dom]),
+      row: x => {
+        if (x.dom === 'talmud') {
+          const tt = TX.list[TX.byK[x.tk]], tag = x.src === 'g' ? '' : x.src === 'r' ? T('רש״י') : T('תוספות');
+          return { tag, fc: tag ? S.cmFont : '', ref: talName(tt) + ' ' + x.ref, t: plainT(x.t), html: x.html };
+        }
+        if (x.dom === 'tur') return { tag: x.x === 't' ? '' : turCmName(x.x) + ' ' + RL(x.x, x.i), fc: x.x === 't' ? '' : 'rashi', ref: x.ref, t: x.pt, html: x.html };
+        const cm = x.cm != null, tr = !!x.tr;
+        return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', fc: cm ? S.cmFont : tr ? S.trFont : '', ref: x.ref || refLabel(x), t: x.pt, html: x.html };
+      }
+    });
+    d.innerHTML = html; d.hidden = false; busy(res.wait);
+    bindRes();
+    if (dropItems.length) setAct(lastAct());
+  }
   function sqNext(k) { // עוד תוצאות (50 בגלילה), בלי לאבד את מקום הגלילה
     const me = SQ; if (!me || me.busy || me.more || !me.r || me.hits.length >= me.r.total) return;
     me.more = true;
-    sqMore(me, k || 50, 2).then(() => {
+    (me.dom === 'glob' ? sqMoreGlob : sqMore)(me, k || 50, 2).then(() => {
       me.more = false; if (SQ !== me || $r('#rdDrop').hidden) return;
       const top = $r('#rdResBox') ? $r('#rdResBox').scrollTop : 0;
       renderDrop(); const box = $r('#rdResBox'); if (box) { box.scrollTop = top; resWin(true); }
     }, () => { me.more = false; });
   }
   function renderDrop() {
+    if (S.glob && sqOn()) return renderDropGlob();
     if (isTur()) return renderDropTur();
     if (isTal()) return renderDropTal();
     const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
@@ -2297,7 +2357,7 @@
     const wait = !sq && !ensure(PIN, () => { if (dropQ === q && !$r('#rdDrop').hidden) renderDrop(); });
     const res = sq ? sqSearch(q) : wait ? { hits: [], total: 0, q: norm(q) } : searchSrc(q, sBooks, S.scope === 'ch' ? S.ch : 0);
     const srcs = [['txt', isRambam(S.b) ? 'הלכות' : isMishnah(S.b) ? 'משניות' : 'פסוקים'], ['cm', isRambam(S.b) ? 'מפרשים' : isMishnah(S.b) ? 'ברטנורא' : 'רש״י']].concat(isMishnah(S.b) ? [] : [['tr', 'תרגום']], [['all', 'הכל']]);
-    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait || res.wait ? spin() : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
+    html += '<div class="rdDScope" role="group">' + scopes.map(([k, l]) => '<button type="button" data-scope="' + k + '" class="' + (S.scope === k ? 'on' : '') + '" aria-pressed="' + (S.scope === k) + '">' + T(l) + '</button>').join('') + (sqOn() ? '<button type="button" data-glob="1" aria-pressed="false">' + T('בכל הספרים') + '</button>' : '') + '<span class="sep" aria-hidden="true"></span><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + srcs.map(([k, l]) => '<button type="button" data-src="' + k + '" class="' + (S.src === k ? 'on' : '') + '" aria-pressed="' + (S.src === k) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + (res.q.length < 2 ? '' : wait || res.wait ? spin() : res.total ? resN(res.total) : T('אין תוצאות')) + '</span></div>';
     const start = dropItems.length;
     res.hits.forEach(x => dropItems.push({ kind: 'hit', r: x }));
     if (res.hits.length) {
@@ -2408,7 +2468,7 @@
   /* חזרה לרשימה: כשפותחים שוב את אותו חיפוש (אותה מילה, אותו תחום ומקורות), הרשימה נפתחת על התוצאה שנבחרה
      אחרונה — באמצע החלון — ולא בראש, כדי שאפשר יהיה להמשיך לתוצאה הבאה (חץ למטה + Enter). */
   let LP = null;
-  const dropSig = () => isTur() ? 'r' + S.rk + S.rsrc + (S.rscope === 's' ? ':' + S.rs : '') : isTal() ? 't' + S.tk + S.tsrc :
+  const dropSig = () => S.glob ? 'glob' : isTur() ? 'r' + S.rk + S.rsrc + (S.rscope === 's' ? ':' + S.rs : '') : isTal() ? 't' + S.tk + S.tsrc :
     'b' + S.src + S.scope + (S.scope === 'all' ? IX.books[S.b].cat : S.scope === 'book' ? S.b : S.b + ':' + S.ch);
   function lastAct() {
     const q = $r('#rdQ').value, it = LP && dropItems[LP.i];
@@ -2584,6 +2644,7 @@
     $r('#rdDrop').addEventListener('mousedown', e => e.preventDefault()); // שהפוקוס לא יברח מהתיבה
     fsBind();
     $r('#rdDrop').onclick = e => {
+      const gl = e.target.closest('[data-glob]'); if (gl) { S.glob = gl.dataset.glob === '1'; return renderDrop(); }
       const sc = e.target.closest('[data-scope]'); if (sc) { S.scope = sc.dataset.scope; save(); return renderDrop(); }
       const sr = e.target.closest('[data-src]'); if (sr) { S.src = sr.dataset.src; save(); return renderDrop(); }
       const ts = e.target.closest('[data-tsrc]'); if (ts) { S.tsrc = ts.dataset.tsrc; save(); return renderDrop(); }
