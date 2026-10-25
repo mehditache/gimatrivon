@@ -2281,7 +2281,9 @@
     want.forEach(i => { const d = me.dom === 'glob' ? me.r.res[i].d : me.dom; (by[d] = by[d] || []).push(me.dom === 'glob' ? me.r.res[i].r : me.r.res[i]); });
     const alive = () => ok() && (pri < 2 || !me.want || (want[0] <= me.want[1] + 40 && want[want.length - 1] >= me.want[0] - 40));
     try {
-      await Promise.all(Object.keys(by).map(async d => { const E = SQD[d].E; tx[d] = await E.texts([].concat(...by[d].map(E.unitsOf)), { pri, alive }); }));
+      // שאילתה שנתקעה (Worker שלא ענה) לא משאירה את השורות "בטעינה" לנצח: אחרי 12 שניות נכשלת, ובקשה חדשה תנסה שוב
+      let to; const stuck = new Promise((_, rej) => { to = setTimeout(() => rej(new Error('timeout')), 12000); });
+      try { await Promise.race([Promise.all(Object.keys(by).map(async d => { const E = SQD[d].E; tx[d] = await E.texts([].concat(...by[d].map(E.unitsOf)), { pri, alive }); })), stuck]); } finally { clearTimeout(to); }
       if (!ok()) return;
       want.forEach(i => { const e = me.r.res[i], d = me.dom === 'glob' ? e.d : me.dom, x = sqHit(me.dom === 'glob' ? e.r : e, tx[d], d); if (me.dom === 'glob') x.dom = d; me.hits[i] = x; });
       sqPaint(me, want); me.rt = 0; done = true; if (me.onLoad) me.onLoad(want);
@@ -2463,6 +2465,8 @@
     fsLay();
     if (RS.me) { RS.me.want = [from, to - 1]; sqLoad(RS.me, from - 4, to + 8, 1); }
   }
+  // רשת ביטחון: שורות שלד בתוך הרשימה הנפתחת שלא נטענו (בקשה שנפלה או נתקעה) נדרשות שוב כל שנייה וחצי, כל עוד הרשימה פתוחה
+  setInterval(() => { if (RS && RS.me && SQ === RS.me && !$r('#rdDrop').hidden && document.querySelector('#rdResBox .rdDI.ph')) resWin(true); }, 1500);
   function fsLay() {
     const box = $r('#rdResBox'), tr = $r('#rdFs'), th = $r('#rdFsThumb'); if (!box || !tr) return;
     const max = box.scrollHeight - box.clientHeight;

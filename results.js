@@ -184,5 +184,7 @@
     const x = me.hits[+b.dataset.i]; if (!x || x.ph) return;
     post({ type: 'open', hash: R.hashOf(x), q: (q + ' ' + extra).trim(), fresh: e.ctrlKey || e.metaKey || e.shiftKey });
   });
+  // רשת ביטחון: שורות שלד שנשארו (בקשה שנפלה או נתקעה) נדרשות שוב כל שנייה וחצי עד שהן נטענות
+  setInterval(() => { if (idx && me && list.querySelector('.rsRow.ph')) paint(true); }, 1500);
   addEventListener('resize', () => paint(true));
 })();
