@@ -77,7 +77,6 @@ body.dkGem .dkTools{display:none}
 /* מארח החיפוש: iframe שקוף מתחת לתיבת החיפוש; מוצג רק כשהרשימה הנפתחת פתוחה */
 .dkHost{position:fixed;z-index:60;border:0;background:transparent;color-scheme:normal}
 .dkHost[hidden]{display:none}
-.dkGemBtn.on{background:var(--acs);font-weight:600}
 
 /* החלונות בהקשר-שכבות משלהם (z-index שלהם גדל בלי הגבלה) — בנר, שורת משימות, תפריט הסידור והתצוגה המקדימה תמיד מעליהם */
 .dkDesk{isolation:isolate;z-index:0}

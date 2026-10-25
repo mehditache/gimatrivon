@@ -22,8 +22,6 @@
   const load = () => { try { const d = JSON.parse(localStorage.getItem(KEY)); return d && d.v === 1 && Array.isArray(d.wins) && d.wins.some(w => w.k === 'gem') ? d : null; } catch (e) { return null; } };
   const fresh = () => {
     const d = { v: 1, seq: 1, act: 'g', z: 1, last: '', wins: [{ id: 'g', k: 'gem', x: 0, y: 0, w: 900, h: 600, max: true, min: false, z: 1, t: '', form: null }] };
-    let m = 'gem'; try { m = localStorage.getItem('gimatrivonMode') || 'gem'; } catch (e) {}
-    if (m === 'read') { let h = '#read'; d.wins.push(newRead(d, h)); d.wins[1].max = true; d.act = d.wins[1].id; }
     return d;
   };
   function newRead(d, hash) {
@@ -317,10 +315,8 @@
     });
     task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXR + '</span>' +
       '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">＋</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
-      '<button type="button" class="dkChip dkTool' + (W(D.act) && W(D.act).k === 'gem' ? ' on' : '') + '" id="dkGemBtn" title="' + T('פתיחת חלון הגימטריה', 'Open the gematria window') + '"><span class="ic">🔢</span><span class="t">' + T('גימטריבון', 'Gimatrivon') + '</span></button>' +
       '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">⊞</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkAdd').onclick = () => { const l = W(D.last); openRead(l ? curHash(l) : '#read', true); };
-    $('#dkGemBtn').onclick = openGem;
     $('#dkArrBtn').onclick = e => { e.stopPropagation(); $('#dkArr').hidden = !$('#dkArr').hidden; };
   }
   $('#dkArr').addEventListener('click', e => { const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); } });
