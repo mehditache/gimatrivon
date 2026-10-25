@@ -403,7 +403,9 @@
     if (!H) return; const r = $('#dkSearch').getBoundingClientRect(), wd = Math.max(r.width, 480);
     Object.assign(H.fr.style, { top: Math.round(r.bottom + 6) + 'px', right: Math.round(innerWidth - r.right) + 'px', width: Math.round(wd) + 'px', height: Math.round(Math.min(innerHeight * .74, 720)) + 'px' });
   }
-  function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) { H.fr.src = 'about:blank'; H.fr.remove(); H = null; } }, 60000); }
+  function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) killHost(); }, 20000); }
+  // המארח (עותק מלא של האפליקציה עם Workers משלו) משוחרר מיד כשנפתח חלון תוצאות, ואחרי 20 שניות סרק
+  function killHost() { clearTimeout(hostT); if (H) { H.fr.src = 'about:blank'; H.fr.remove(); H = null; } }
   function syncHost() { const h = hostHash(); if (H && H.win && dec(H.win.location.hash) !== h) { hostBase = h; H.quiet = Date.now() + 1000; H.win.location.hash = h; } }
   const fire = (type, init) => { if (!H || !H.doc) return; const rq = H.doc.getElementById('rdQ'), fw = H.win; const C = type === 'keydown' ? fw.KeyboardEvent : type === 'focus' ? fw.FocusEvent : fw.Event; rq.dispatchEvent(new C(type, Object.assign({ bubbles: type !== 'focus', cancelable: true }, init))); };
   // המארח "ניווט" לתוצאה שנבחרה → פותחים אותה בחלון (מה שלא שונה מאז הטעינה/הסנכרון הוא לא בחירה)
@@ -424,7 +426,7 @@
   q.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') arrowed = true;
     // Enter אחרי מילות חיפוש (בלי לבחור תוצאה בחצים) פותח חלון "תוצאות חיפוש"; עם בחירה בחצים — פותח את התוצאה
-    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); closeSearch(); openResults(q.value.trim()); q.blur(); return; }
+    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); closeSearch(); killHost(); openResults(q.value.trim()); q.blur(); return; }
     if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key) || !H || !H.doc) return;
     e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
     if (e.key === 'Enter') setTimeout(() => q.blur(), 80);
@@ -441,6 +443,9 @@
     const i = bs.findIndex(b => b.classList.contains('on')); bs[(i + 1) % bs.length].click(); setTimeout(scopeLabel, 80);
   });
   addEventListener('resize', placeHost);
+  // חימום מטמון ה-HTTP: מנוע ה-SQLite (wasm ו-Worker) יורדים כבר כשהמשתמש מתחיל לחפש, כך שחלון התוצאות לא מחכה להם (בלי להפעיל Workers — זיכרון)
+  let warmed = false;
+  q.addEventListener('focus', () => { if (warmed) return; warmed = true; ['vendor/sql.js-httpvfs/sql-wasm.wasm', 'vendor/sql.js-httpvfs/sqlite.worker.js'].forEach(u => fetch(u).catch(() => {})); });
 
   // חלונות קופצים שנפתחים מהבנר (מעבר לפרק, הגדרות תצוגה, הדפסה…) "נופלים" מתחת לכפתור שהפעיל אותם:
   // אותו קצה אופקי של הכפתור, בתוך גבולות החלון, עם אנימציית ירידה (styles.css: gtEmbed .rdPop)

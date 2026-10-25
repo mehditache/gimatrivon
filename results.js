@@ -53,7 +53,7 @@
         me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter(true);
         if (partial) { list.scrollTop = st; paint(true); $('#rsFoot').textContent += ' · תוצאות חלקיות — עדיין מחפש (' + (m.pend || 0) + ' תחומים נותרו)'; }
       });
-    });
+    }, (dn, pend) => { if (!idx) $('#rsFoot').textContent = 'מחפש בכל הספרים… ' + R.DOMS.map(d => (dn.includes(d) ? '✓ ' : '… ') + R.DL[d]).join(' · '); });
   }
 
   // ---- סינון ----
@@ -203,6 +203,9 @@
     const x = me.hits[+b.dataset.i]; if (!x || x.ph) return;
     post({ type: 'open', hash: R.hashOf(x), q: (q + ' ' + extra).trim(), fresh: e.ctrlKey || e.metaKey || e.shiftKey });
   });
+  // אחרי 45 שניות בלי פעילות — משחררים את ה-Workers של מנוע החיפוש (מאות MB); הם חוזרים לבד כשמדפדפים או גוללים
+  let idleT = 0; const touch = () => { clearTimeout(idleT); idleT = setTimeout(() => { if (R && R.sleep) R.sleep(); }, 45000); };
+  ['pointerdown', 'keydown', 'wheel', 'scroll'].forEach(ev => addEventListener(ev, touch, true)); list.addEventListener('scroll', touch);
   // רשת ביטחון: שורות שלד שנשארו (בקשה שנפלה או נתקעה) נדרשות שוב כל שנייה וחצי עד שהן נטענות
   setInterval(() => { if (idx && me && list.querySelector('.rsRow.ph')) paint(true); }, 1500);
   addEventListener('resize', () => paint(true));
