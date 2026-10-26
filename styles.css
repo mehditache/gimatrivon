@@ -1300,3 +1300,42 @@ html.gtResults body>*:not(#rsApp):not(script){display:none!important}
 .rdPg button{height:26px;padding:0 12px;border:1px solid var(--rdLine);border-radius:8px;background:transparent;color:var(--rdInk);font:600 12px var(--ui);cursor:pointer}
 .rdPg button:disabled{opacity:.4;cursor:default}
 .rdPg button:not(:disabled):hover{border-color:var(--rdGold)}
+
+/* ===== חלון תוצאות החיפוש — מראה iOS (v4.4.0) ===== */
+html.gtResults #rsApp{background:var(--pn)}
+html.gtResults .rsSide{width:290px;padding:6px 0 0;background:color-mix(in srgb,var(--tx) 5%,var(--pn));border-inline-end:.5px solid color-mix(in srgb,var(--tx) 16%,transparent)}
+html.gtResults .rsSide h4{margin:0;padding:14px 18px 6px;font:600 12px var(--ui);letter-spacing:.2px}
+html.gtResults .rsSide h4 a{font-weight:600;font-size:12.5px}
+html.gtResults .rsFi{height:38px;padding:0 18px;gap:10px;border-radius:0;font-size:14.5px}
+html.gtResults .rsFi.l2{padding-inline-start:30px}html.gtResults .rsFi.l3{padding-inline-start:50px;font-size:13.5px}
+html.gtResults .rsFi:hover{background:color-mix(in srgb,var(--gold) 12%,transparent)}
+html.gtResults .rsTg{width:14px;height:14px;display:grid;place-items:center}
+html.gtResults .rsTg svg,html.gtResults .rsCb svg{width:100%;height:100%}
+html.gtResults .rsCb{width:21px;height:21px;border:1.5px solid var(--mu);border-radius:6px;background:none;padding:2px}
+html.gtResults .rsCb.on{background:var(--gold);border-color:var(--gold)}
+html.gtResults .rsCb.half{background:var(--gold);border-color:var(--gold)}
+:root[data-theme=dark] html.gtResults .rsCb.on,:root[data-theme=dark] html.gtResults .rsCb.half{color:#1c160e}
+html.gtResults .rsN{font-variant-numeric:tabular-nums}
+html.gtResults .rsHd{flex:none;padding:16px 20px 2px}
+html.gtResults .rsHd h2{margin:0;font:700 24px var(--ui);letter-spacing:-.3px}
+html.gtResults .rsSb{margin-top:2px;font-size:13px;color:var(--mu)}
+html.gtResults .rsTools{border:0;padding:12px 20px 8px;gap:12px}
+html.gtResults .rsIn{height:34px;border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);order:2;flex:0 1 250px}
+html.gtResults .rsSort{order:1;margin-inline-end:auto;background:color-mix(in srgb,var(--tx) 8%,transparent);border-radius:10px;padding:2px;gap:0;height:34px;box-sizing:border-box}
+html.gtResults .rsSort button{border:0;border-radius:8px;height:30px;padding:0 14px;background:none;font:500 14px var(--ui)}
+html.gtResults .rsSort button.on{background:var(--pn);color:var(--tx);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.06)}
+:root[data-theme=dark] html.gtResults .rsSort button.on{background:rgba(255,240,210,.18)}
+html.gtResults .rsChip{border:0;background:color-mix(in srgb,var(--gold) 15%,transparent);height:26px}
+html.gtResults .rsChip svg{width:11px;height:11px;margin-inline-start:5px}
+html.gtResults .rsList{padding:0 10px}
+html.gtResults .rsRow,html.gtResults .rsGh{inset-inline:10px}
+html.gtResults .rsRow{border:0;border-radius:16px;padding:10px 16px;height:82px}
+html.gtResults .rsRow:hover{background:color-mix(in srgb,var(--tx) 7%,transparent)}
+html.gtResults .rsGh{border:0;color:var(--gold);padding:0 16px 4px}
+html.gtResults .rsRf{align-items:center;font-size:13.5px;margin-bottom:3px}
+html.gtResults .rsRf i{font-size:11.5px;font-weight:600;background:color-mix(in srgb,var(--tx) 11%,transparent);border-radius:999px;padding:1px 9px;color:var(--mu)}
+html.gtResults .rsPg{border-top:.5px solid color-mix(in srgb,var(--tx) 16%,transparent);background:none;padding:10px 16px;justify-content:flex-start;gap:8px}
+html.gtResults .rsPg button{height:32px;border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);font:500 13.5px var(--ui)}
+html.gtResults .rsPg button:not(:disabled):hover{background:color-mix(in srgb,var(--tx) 14%,transparent)}
+html.gtResults .rsPg input{height:32px;border:0;border-radius:9px;background:color-mix(in srgb,var(--tx) 8%,transparent);font-weight:600}
+html.gtResults .rsFoot{border-top:.5px solid color-mix(in srgb,var(--tx) 16%,transparent);background:color-mix(in srgb,var(--tx) 5%,transparent);padding:7px 18px;font-size:12px}

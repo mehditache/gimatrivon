@@ -9,6 +9,8 @@
   const WID = P.get('wid') || '', Q0 = P.get('q') || '';
   let FS = {}; try { FS = JSON.parse(P.get('f') || '{}') || {}; } catch (e) {}
   const CAP = 150000, RH = 82, GH = 32, PG = 100; // PG: תוצאות בדף
+  const SVG = d => '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const I_CHK = SVG('<path d="m5 12.5 4.5 4.5L19 7.5"/>'), I_MIN = SVG('<path d="M6 12h12"/>'), I_X = SVG('<path d="m7 7 10 10M17 7 7 17"/>'), I_DN = SVG('<path d="m6 9 6 6 6-6"/>'), I_BK = SVG('<path d="m9 5 7 7-7 7"/>');
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const post = m => { try { parent.postMessage(Object.assign({ gtDesk: 'res', wid: WID }, m), '*'); } catch (e) {} };
 
@@ -20,10 +22,10 @@
 
   document.documentElement.classList.add('gtResults');
   const app = document.createElement('div'); app.id = 'rsApp'; app.dir = 'rtl';
-  app.innerHTML = '<aside class="rsSide" id="rsSide"></aside><div class="rsMain"><div class="rsTools"><label class="rsIn">⌕ <input type="search" id="rsIn" placeholder="חיפוש בתוך התוצאות…" autocomplete="off" spellcheck="false"></label><span class="rsSort" id="rsSort"><button data-s="books">לפי סדר הספרים</button><button data-s="rel">לפי רלוונטיות</button></span></div><div class="rsSel" id="rsSel"></div><div class="rsList" id="rsList"><div class="rsSp" id="rsSp"></div></div><div class="rsPg" id="rsPg" hidden></div><div class="rsFoot" id="rsFoot"></div></div>';
+  app.innerHTML = '<aside class="rsSide" id="rsSide"></aside><div class="rsMain"><div class="rsHd"><h2 id="rsTt"></h2><div class="rsSb" id="rsSb"></div></div><div class="rsTools"><label class="rsIn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" id="rsIn" placeholder="חיפוש בתוך התוצאות…" autocomplete="off" spellcheck="false"></label><span class="rsSort" id="rsSort"><button data-s="books">לפי סדר הספרים</button><button data-s="rel">לפי רלוונטיות</button></span></div><div class="rsSel" id="rsSel"></div><div class="rsList" id="rsList"><div class="rsSp" id="rsSp"></div></div><div class="rsPg" id="rsPg" hidden></div><div class="rsFoot" id="rsFoot"></div></div>';
   document.body.appendChild(app);
   const $ = s => app.querySelector(s), list = $('#rsList'), sp = $('#rsSp');
-  $('#rsIn').value = extra;
+  $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
 
   const state = () => post({ type: 'state', state: { sel: [...sel], srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
 
@@ -53,7 +55,7 @@
         me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter(true);
         if (partial) { list.scrollTop = st; paint(true); $('#rsFoot').textContent += ' · תוצאות חלקיות — עדיין מחפש (' + (m.pend || 0) + ' תחומים נותרו)'; }
       });
-    }, (dn, pend) => { if (!idx) $('#rsFoot').textContent = 'מחפש בכל הספרים… ' + R.DOMS.map(d => (dn.includes(d) ? '✓ ' : '… ') + R.DL[d]).join(' · '); });
+    }, (dn, pend) => { if (!idx) $('#rsFoot').textContent = 'מחפש בכל הספרים… ' + R.DOMS.map(d => R.DL[d] + (dn.includes(d) ? ' (נטען)' : ' …')).join(' · '); });
   }
 
   // ---- סינון ----
@@ -91,6 +93,7 @@
     sp.style.height = off[rows.length] + 'px'; list.scrollTop = 0; rt = 0;
     const from = shown ? page * PG + 1 : 0, to = Math.min(shown, (page + 1) * PG);
     $('#rsFoot').textContent = (shown.toLocaleString('he')) + ' תוצאות' + (shown < idx.total && !sel.size && !srcOff.size && idx.total > idx.n ? ' (מוצגות ' + idx.n.toLocaleString('he') + ' הראשונות)' : '') + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '') + ' · לחיצה פותחת בחלון קריאה (Ctrl+לחיצה: בחלון חדש)';
+    $('#rsSb').textContent = shown.toLocaleString('he') + ' תוצאות' + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '');
     pager(from, to); paint(true);
   }
   function pager(from, to) {
@@ -119,16 +122,16 @@
     }
     const tree = {}; // d → g → [bi]
     Object.keys(bc).forEach(k => { const [d, bi] = k.split(':').map(Number), g = gOf(d, bi); ((tree[d] = tree[d] || {})[g] = tree[d][g] || []).push(bi); });
-    const mark = (on, half) => '<span class="rsCb' + (on ? ' on' : half ? ' half' : '') + '">' + (on ? '✓' : half ? '–' : '') + '</span>';
+    const mark = (on, half) => '<span class="rsCb' + (on ? ' on' : half ? ' half' : '') + '">' + (on ? I_CHK : half ? I_MIN : '') + '</span>';
     let h = '<h4><span>סינון לפי ספר</span>' + (sel.size ? '<a data-clr="sel">נקה</a>' : '') + '</h4>';
     Object.keys(tree).map(Number).sort((a, b) => a - b).forEach(d => {
       const dk = 'd:' + d, dOn = sel.has(dk), dOpen = exp.has(dk), childSel = [...sel].some(x => x.startsWith('g:' + d + ':') || x.startsWith('b:' + d + ':'));
-      h += '<div class="rsFi l1' + (dOn ? ' on' : '') + '" data-k="' + dk + '"><span class="rsTg" data-t="' + dk + '">' + (dOpen ? '▾' : '◂') + '</span>' + mark(dOn, childSel) + '<span class="rsNm">' + esc(R.DL[R.DOMS[d]]) + '</span><span class="rsN">' + dc[d].toLocaleString('he') + '</span></div>';
+      h += '<div class="rsFi l1' + (dOn ? ' on' : '') + '" data-k="' + dk + '"><span class="rsTg" data-t="' + dk + '">' + (dOpen ? I_DN : I_BK) + '</span>' + mark(dOn, childSel) + '<span class="rsNm">' + esc(R.DL[R.DOMS[d]]) + '</span><span class="rsN">' + dc[d].toLocaleString('he') + '</span></div>';
       if (!dOpen) return;
       const groups = Object.keys(tree[d]);
       groups.forEach(g => {
         const gk = 'g:' + d + ':' + g, grp = !!g, gOn = sel.has(gk), gOpen = !grp || exp.has(gk), gChild = [...sel].some(x => tree[d][g].some(bi => x === 'b:' + d + ':' + bi));
-        if (grp) h += '<div class="rsFi l2' + (gOn ? ' on' : '') + '" data-k="' + gk + '"><span class="rsTg" data-t="' + gk + '">' + (gOpen ? '▾' : '◂') + '</span>' + mark(gOn, gChild) + '<span class="rsNm">' + esc(g) + '</span><span class="rsN">' + gcn[d + ':' + g].toLocaleString('he') + '</span></div>';
+        if (grp) h += '<div class="rsFi l2' + (gOn ? ' on' : '') + '" data-k="' + gk + '"><span class="rsTg" data-t="' + gk + '">' + (gOpen ? I_DN : I_BK) + '</span>' + mark(gOn, gChild) + '<span class="rsNm">' + esc(g) + '</span><span class="rsN">' + gcn[d + ':' + g].toLocaleString('he') + '</span></div>';
         if (!gOpen) return;
         tree[d][g].sort((a, b) => a - b).forEach(bi => {
           const bk = 'b:' + d + ':' + bi, on = sel.has(bk);
@@ -157,7 +160,7 @@
     const c = [];
     sel.forEach(k => { const [t, d, rest] = k.split(':'); const dn = R.DL[R.DOMS[+d]]; c.push([k, t === 'd' ? dn : t === 'g' ? dn + ' · ' + rest : R.book(R.DOMS[+d], +rest).name]); });
     if (extra) c.push(['extra', 'בתוך התוצאות: ' + extra]);
-    $('#rsSel').innerHTML = c.length ? 'מסונן: ' + c.map(([k, n]) => '<span class="rsChip" data-x="' + esc(k) + '">' + esc(n) + ' ✕</span>').join('') : '';
+    $('#rsSel').innerHTML = c.length ? 'מסונן: ' + c.map(([k, n]) => '<span class="rsChip" data-x="' + esc(k) + '">' + esc(n) + ' ' + I_X + '</span>').join('') : '';
   }
   $('#rsSel').addEventListener('click', e => {
     const c = e.target.closest('[data-x]'); if (!c) return; const k = c.dataset.x;

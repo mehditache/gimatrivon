@@ -6,7 +6,7 @@ body{margin:0;display:flex;flex-direction:column;overflow:hidden;background:var(
 /* בנר: בלי מתג גימטריה/קריאה; בחירת ספר ודף מחוץ לתיבת החיפוש; התיבה ברוחב המסגרת של היום */
 .dkRd{display:flex!important;align-items:center;gap:10px;flex:1 1 auto;min-width:0;width:auto!important;max-width:none!important}
 .dkNav{flex:none;display:flex;align-items:center;height:40px;padding:0 4px;border:1px solid var(--ln);border-radius:12px;background:var(--pn2)}
-.dkNav:empty{display:none}
+.dkNav:empty{visibility:hidden}
 .dkNav.dim{opacity:.55}
 .dkOmni{flex:0 1 708px!important;width:708px;min-width:0!important;max-width:708px!important}
 .dkSearch{flex:1;min-width:0}
@@ -125,9 +125,10 @@ body.dkGem .dkTools{display:none}
 .dwCtl button{width:14px;height:14px;border-radius:50%;padding:0;font-size:9px;color:transparent;background:color-mix(in srgb,var(--tx) 22%,transparent);transition:background .15s}
 .dwNoX{width:14px;height:14px}
 .dwCtl .gi{stroke-width:2.6;width:10px;height:10px}
-.dw.act .dwCtl .x{background:#ff5f57}.dw.act .dwCtl .m{background:#febc2e}.dw.act .dwCtl .z{background:#28c840}
+.dwCtl{--tq:#3d9fe0;--gd:#c9962b;--sv:#a9b1ba}:root[data-theme=dark] .dwCtl{--tq:#6cc3f5;--gd:#e2b252;--sv:#9aa3ad}
+.dw.act .dwCtl .x{background:var(--sv)}.dw.act .dwCtl .m{background:var(--gd)}.dw.act .dwCtl .z{background:var(--tq)}
 .dwCtl:hover button{color:rgba(0,0,0,.6)}
-.dwCtl .x:hover{background:#ff5f57;color:rgba(0,0,0,.6)}
+.dwCtl .x:hover{color:rgba(0,0,0,.6)}
 .dwCtl button:hover{background:inherit}
 .dwNav{margin-inline-start:auto;display:flex;gap:2px;z-index:1}
 .dwNav button{width:30px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--tx);font-size:18px}
@@ -149,7 +150,7 @@ body.dkGem .dkTools{display:none}
 .dkTool .ic{color:var(--gold)}
 .dkTool.on{box-shadow:none}
 .dkCnt{font-size:11px}
-.dkMenu{bottom:12px;right:148px;min-width:220px;padding:6px;border:0;border-radius:14px;background:color-mix(in srgb,var(--pn) 80%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 0 0 .5px rgba(0,0,0,.2),0 16px 40px rgba(0,0,0,.28)}
+.dkMenu{bottom:94px;right:14px;min-width:220px;padding:6px;border:0;border-radius:14px;background:color-mix(in srgb,var(--pn) 80%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 0 0 .5px rgba(0,0,0,.2),0 16px 40px rgba(0,0,0,.28)}
 .dkMenu button{padding:10px 12px;border-radius:8px;font:15px var(--ui)}
 .dkMenu button+button{border-top:.5px solid color-mix(in srgb,var(--tx) 14%,transparent);border-radius:0}
 .dkMenu button:hover{background:color-mix(in srgb,var(--gold) 16%,transparent);border-radius:8px}
@@ -174,3 +175,34 @@ body.dkGem .dkTools{display:none}
 .thC .mg{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .thC u{display:block;border-radius:5px;background:color-mix(in srgb,var(--gold) 22%,transparent)}
 .dkChip.th .z{top:5px;inset-inline-start:auto;inset-inline-end:7px;z-index:1}
+
+/* בנר: מקומות קבועים — פקד שמשמש כמה סוגי חלונות נשאר באותו מקום; מה שלא רלוונטי נעלם והמקום נשמר ריק */
+.dkTop{gap:10px;padding-inline:16px}
+.dkTop .brand{width:150px;flex:none;gap:8px}
+.dkTop .brand h1{font:700 20px var(--ui);color:var(--gold)}
+.dkRd{gap:10px!important}
+.dkNav{width:256px;flex:none;justify-content:flex-start;gap:4px}
+.dkNav.dim{visibility:hidden;opacity:1}
+.dkOmni{flex:none!important;width:440px!important;max-width:none!important;min-width:0;transition:width .2s ease}
+.dkOmni:focus-within{width:600px!important}
+.dkTools,.dkGemTools{margin-inline-start:auto}
+.dkTop .tools{margin:0;gap:10px;flex-wrap:nowrap}
+.dkTop .themeSw{width:34px;height:34px;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);justify-content:center;color:var(--tx)}
+.dkTop .themeSw .trk{display:none}
+.dkTop .themeSw::before{content:"";width:18px;height:18px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z'/%3E%3C/svg%3E") center/contain no-repeat}
+.dkTop .themeSw:has(input:checked)::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4'/%3E%3C/svg%3E")}
+.dkTop .langSw{width:40px;height:34px;padding:0;border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);color:var(--tx);font:700 13px var(--ui)}
+#dkKebab{width:34px;height:34px;padding:0;color:var(--tx)}
+/* חץ החלון הקופץ: במרכז הכפתור שפתח אותו */
+.dkPopLayer .rdPop::after,body>#mMenuPanel::after{content:"";position:absolute;top:-6px;left:calc(var(--ax,24px) - 6px);width:12px;height:12px;background:var(--pn);border-top:.5px solid color-mix(in srgb,var(--tx) 22%,transparent);border-left:.5px solid color-mix(in srgb,var(--tx) 22%,transparent);transform:rotate(45deg);border-top-left-radius:3px;pointer-events:none}
+.dkNav{background:none!important;padding:0!important}
+.dkPopLayer .rdPop{overflow:visible!important}
+
+.dkMenu button{display:flex;align-items:center;gap:12px}
+.dkMenu button svg{flex:none;color:var(--gold)}
+.dkMenu button.dg,.dkMenu button.dg svg{color:#b3392f}
+:root[data-theme=dark] .dkMenu button.dg,:root[data-theme=dark] .dkMenu button.dg svg{color:#ff8a80}
+.dkMenu button.cur{color:var(--gold);font-weight:600}
+.dkMenu button.cur::after{content:"";margin-inline-start:auto;width:16px;height:16px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat}
+.dkMenu::after{content:"";position:absolute;bottom:-6px;right:64px;width:12px;height:12px;background:var(--pn);border-bottom:.5px solid color-mix(in srgb,var(--tx) 22%,transparent);border-right:.5px solid color-mix(in srgb,var(--tx) 22%,transparent);transform:rotate(45deg);border-bottom-right-radius:3px}
+.dkOmni{margin:0!important}

@@ -364,11 +364,12 @@
     task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXR + '</span>' +
       '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">' + SV(GI.plus) + '</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
       '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">' + SV(GI.arr) + '</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
+    $('#dkArr [data-arr="stage"]').classList.toggle('cur', stageOn()); ['cascade', 'side', 'grid'].forEach(k => $('#dkArr [data-arr="' + k + '"]').classList.remove('cur'));
     $('#dkAdd').onclick = () => { const l = W(D.last); openRead(l ? curHash(l) : '#read', true); };
-    $('#dkArrBtn').onclick = e => { e.stopPropagation(); const sl = $('#dkArr [data-sl]'); if (sl) sl.textContent = slLabel(); $('#dkArr').hidden = !$('#dkArr').hidden; };
+    $('#dkArrBtn').onclick = e => { e.stopPropagation(); const sl = $('#dkArr [data-sl]'); if (sl) sl.lastChild.textContent = slLabel(); $('#dkArr').hidden = !$('#dkArr').hidden; };
   }
   $('#dkArr').addEventListener('click', e => {
-    const s = e.target.closest('[data-sl]'); if (s) { D.sl = SL_OPTS[(SL_OPTS.indexOf(slMin()) + 1) % SL_OPTS.length]; s.textContent = slLabel(); saveSoon(); return; }
+    const s = e.target.closest('[data-sl]'); if (s) { D.sl = SL_OPTS[(SL_OPTS.indexOf(slMin()) + 1) % SL_OPTS.length]; s.lastChild.textContent = slLabel(); saveSoon(); return; }
     const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); }
   });
   document.addEventListener('click', e => { if (!e.target.closest('#dkArr,#dkArrBtn')) $('#dkArr').hidden = true; });
@@ -395,13 +396,14 @@
     scopeLabel();
   }
   let lastR = 0; // הקצה הימני של הכפתור בזמן הלחיצה (הכפתור עצמו נבנה מחדש עם הבנר)
+  let lastRc = null; // המלבן המלא של הכפתור שנלחץ — מיקום הפופאפ נגזר ממנו
   let lastBtn = null; // כפתור הבנר שנלחץ אחרון — החלון הקופץ ייפתח מתחתיו
   function fwdClick(slot, srcSel, e) {
     const t = e.target.closest('button,label,input'); if (!t || !slot.contains(t)) return;
     const f = readerF(); if (!f || !f.doc) return;
     if (slot === nav && document.body.classList.contains('dkOther')) { if (D.last && W(D.last)) focusWin(D.last); return; }
     const p = pathOf(t, slot), src = f.doc.querySelector(srcSel), o = p && src && byPath(src, p);
-    if (o) { e.preventDefault(); lastBtn = t; lastR = t.getBoundingClientRect().right; o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
+    if (o) { e.preventDefault(); lastBtn = t; lastR = t.getBoundingClientRect().right; lastRc = rectOf(t); o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
   }
   nav.addEventListener('click', e => fwdClick(nav, '#rdTop .rdNav', e));
   tools.addEventListener('click', e => fwdClick(tools, '#rdTop .rdTools', e));
@@ -409,7 +411,7 @@
     const b = e.target.closest('[data-fwd]'), f = F.get(gemW().id);
     if (b && f && f.doc) { const o = f.doc.querySelector(b.dataset.fwd); if (o) o.click(); }
   });
-  $('#dkKebab').onclick = () => { lastBtn = $('#dkKebab'); lastR = lastBtn.getBoundingClientRect().right; const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click(); };
+  $('#dkKebab').onclick = () => { lastBtn = $('#dkKebab'); lastR = lastBtn.getBoundingClientRect().right; lastRc = rectOf(lastBtn); const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click(); };
 
   // תיבת החיפוש: ההקלדה מועברת ל-#rdQ של "מארח חיפוש" — iframe שקוף (index.html?embed=search) שמציג רק את הרשימה
   // הנפתחת, מתחת לתיבה כמו במסך הרגיל. המארח נוצר רק כשמתחילים לחפש ולא פותח שום חלון; בחירת תוצאה פותחת אותה
@@ -481,6 +483,7 @@
     const i = bs.findIndex(b => b.classList.contains('on')); bs[(i + 1) % bs.length].click(); setTimeout(scopeLabel, 80);
   });
   addEventListener('resize', placeHost);
+  $('#dkSearch').parentNode.addEventListener('transitionend', placeHost);
   // מחממים את הגמרא והטור (המסדים הגדולים) זמן קצר אחרי שהשולחן נטען; שאר התחומים — כשמתמקדים בתיבת החיפוש
   setTimeout(() => { const P = window.GimSqPool; if (P && /^https?:$/.test(location.protocol)) ['talmud', 'tur'].forEach((n, i) => setTimeout(() => P.engine(n).catch(() => {}), 1500 * i)); }, 6000);
   // חימום מטמון ה-HTTP: מנוע ה-SQLite (wasm ו-Worker) יורדים כבר כשהמשתמש מתחיל לחפש, כך שחלון התוצאות לא מחכה להם (בלי להפעיל Workers — זיכרון)
@@ -493,6 +496,19 @@
   // האלמנט מועבר מה-iframe לשכבה קבועה בשולחן (adoptNode) וחוזר למקומו כשהוא נסגר; G.GT_POPS גורם לקוד הקורא למצוא אותו.
   const popLayer = document.createElement('div'); popLayer.className = 'dkPopLayer reader'; document.body.appendChild(popLayer);
   const POPS = ['rdJump', 'rdSet', 'rdPrintPop'];
+  const rectOf = e => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+  // חלון קופץ נצמד מתחת לכפתור שפתח אותו: כפתור בחצי הימני — הקצה הימני שלו בקו הקצה הימני של הכפתור, בחצי השמאלי — הקצה השמאלי;
+  // הנקודה (--ax) במרכז הכפתור. בלי כפתור ידוע (קיצור מקלדת) — כפתור בחירת המקום בבנר.
+  function anchorRc() {
+    if (lastRc && lastBtn && lastBtn.isConnected !== false) { const b = lastBtn.isConnected ? rectOf(lastBtn) : lastRc; if (b.right > b.left) return b; }
+    const q = $('#dkNav button:not(:first-child):not(:last-child)') || $('#dkNav'); return rectOf(q);
+  }
+  function popX(el, rc, lay) {
+    const wd = el.offsetWidth, c = (rc.left + rc.right) / 2, left = c < innerWidth / 2 ? rc.left : rc.right - wd;
+    const x = Math.max(8, Math.min(innerWidth - 148 - wd, left));
+    el.style.right = 'auto'; el.style.left = (x - (lay ? lay.left : 0)) + 'px';
+    el.style.setProperty('--ax', Math.max(18, Math.min(wd - 18, c - x)) + 'px');
+  }
   function syncPops(w, f) {
     if (!f || !f.doc || !f.win) return;
     f.pops = f.pops || {}; f.home = f.home || {};
@@ -500,13 +516,9 @@
       const lifted = f.pops[id], el = lifted || f.doc.getElementById(id); if (!el) return;
       if (!lifted && !el.hidden) {
         f.home[id] = { p: el.parentNode, n: el.nextSibling };
-        popLayer.style.top = ($('#dkBan').getBoundingClientRect().bottom + 4) + 'px';
+        popLayer.style.top = ($('#dkBan').getBoundingClientRect().bottom + 6) + 'px';
         popLayer.appendChild(document.adoptNode(el)); popLayer.dataset.w = w.id;
-        // מעבר לפרק ופסוק: תמיד מימין מתחת לבנר; הגדרות תצוגה והדפסה: מתחת לכפתור שפתח אותם (קצה ימני מיושר אליו, בתוך המסך)
-        if (id === 'rdJump') { el.style.left = ''; el.style.right = ''; } else {
-          const lay = popLayer.getBoundingClientRect(), wd = el.offsetWidth, x = Math.max(8, Math.min(innerWidth - 100 - wd, lastR - wd));
-          el.style.right = 'auto'; el.style.left = (x - lay.left) + 'px';
-        }
+        popX(el, anchorRc(), popLayer.getBoundingClientRect());
         f.pops[id] = el; f.win.GT_POPS = Object.fromEntries(Object.keys(f.pops).map(k => ['#' + k, f.pops[k]]));
         if (!el._dk) { el._dk = new MutationObserver(() => syncPops(w, f)); el._dk.observe(el, { attributes: true, attributeFilter: ['hidden'], childList: true }); }
         if (id === 'rdJump') jumpExtras(w, f);
@@ -525,7 +537,7 @@
     if (shown && !f.menuEl) {
       f.menuHome = { p: mp.parentNode, n: mp.nextSibling };
       document.body.appendChild(document.adoptNode(mp)); mp.classList.add('show'); mp.dataset.w = w.id; f.menuEl = mp;
-      mp.style.zIndex = 160; mp.style.top = ($('#dkBan').getBoundingClientRect().bottom + 4) + 'px';
+      mp.style.zIndex = 160; mp.style.top = ($('#dkBan').getBoundingClientRect().bottom + 6) + 'px'; popX(mp, anchorRc(), null);
       new MutationObserver(() => syncMenu(w, f)).observe(mp, { attributes: true, attributeFilter: ['class'] });
     } else if (!shown && f.menuEl) {
       const home = f.menuHome; f.menuEl = null; // אחרי אנימציית הסגירה חוזר למקומו
