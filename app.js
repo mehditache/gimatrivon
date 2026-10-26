@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.4.6'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.4.7'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
@@ -1048,9 +1048,14 @@ function setPhoneForced(on) {
   applyMobileLayout();
   window.dispatchEvent(new Event('resize'));
 }
+// יציאה ממצב טלפון במסך רחב חוזרת לשולחן העבודה (אותם תנאים כמו ההפניה בראש index.html), לא לממשק הקלאסי
+function backToDesktop() {
+  try { if (window.top !== window || navigator.webdriver || /[?&]embed=/.test(location.search) || innerWidth < 1000 || matchMedia('(pointer:coarse)').matches) return; } catch (e) { return; }
+  location.href = 'desktop.html';
+}
 (() => {
   const h1 = document.querySelector('.brand h1'); let n = 0, t = 0;
-  if (h1) h1.addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; setPhoneForced(!phoneForced); } });
+  if (h1) h1.addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; setPhoneForced(!phoneForced); if (!phoneForced) backToDesktop(); } });
   const fromHash = () => { if (location.hash === '#phone') setPhoneForced(true); else if (location.hash === '#desktop') setPhoneForced(false); };
   window.addEventListener('hashchange', fromHash); setTimeout(fromHash, 0);
 })();
