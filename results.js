@@ -17,7 +17,7 @@
   // ---- State ----
   let R = null, me = null, idx = null, q = Q0, extra = FS.extra || '';
   const sel = new Set(FS.sel || []), srcOff = new Set(FS.srcOff || []);
-  let sort = FS.sort === 'rel' ? 'rel' : 'books', exp = new Set(FS.exp || []);
+  let sort = FS.sort === 'books' ? 'books' : 'rel', exp = new Set(FS.exp || []);
   let rows = [], off = null, order = null, shown = 0, page = Math.max(0, +FS.pg || 0), wantPg = page, pages = 1;
 
   document.documentElement.classList.add('gtResults');
@@ -30,9 +30,8 @@
   const state = () => post({ type: 'state', state: { sel: [...sel], srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
 
   // ---- התחלה ----
-  const boot = setInterval(() => {
-    R = window.GimResults; if (!R || !R.ready()) return; clearInterval(boot); run();
-  }, 150);
+  const bootTry = () => { R = window.GimResults; if (!R || !R.ready()) return false; clearInterval(boot); run(); return true; };
+  const boot = setInterval(bootTry, 30);
   let runTok = 0, idxTok = 0;
   function run() {
     const full = (q + ' ' + extra).trim();

@@ -2849,12 +2849,12 @@
       if (!r0.q) return cb(null);
       // cb(me, partial): כל תחום שמסיים מעדכן את התוצאות — מציגים אותן מיד, ובסיום כל התחומים קוראים שוב עם partial=false
       let seen = -1, dn = -1;
-      const t = setInterval(() => {
+      const tick = () => {
         if (!SQ || SQ.q !== raw) { clearInterval(t); return cb(null); }
         if (SQ.pend === 0 && !SQ.busy) { clearInterval(t); return cb(SQ, false); }
         if (onProg && SQ.dn && SQ.dn.length !== dn) { dn = SQ.dn.length; onProg(SQ.dn, SQ.pend); }
         if (SQ.v !== seen && SQ.r.res.length) { seen = SQ.v; cb(SQ, true); }
-      }, 80);
+      }, t = setInterval(tick, 25);
     },
     // אינדקס לכל התוצאות (עד cap), בחתיכות כדי לא לתקוע את הממשק: dom (אינדקס ב-DOMS), bk (ספר), src, ord (מקום)
     index(me, cap, prog, cb) {
