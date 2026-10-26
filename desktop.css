@@ -45,7 +45,7 @@ body.dkGem .dkTools{display:none}
 .dwBody iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
 .dwWake{position:absolute;inset:0;display:grid;place-content:center;gap:8px;text-align:center;border:0;background:var(--bg);color:var(--mu);font:15px var(--ui);cursor:pointer}
 .dwWake b{color:var(--tx);font:600 20px var(--tf)}
-.dwRs{position:absolute;bottom:0;width:14px;height:14px;z-index:2}
+.dwRs{position:absolute;bottom:0;width:20px;height:20px;z-index:2}
 .dwRs.l{left:0;cursor:nesw-resize}.dwRs.r{right:0;cursor:nwse-resize}
 .dw.max .dwRs{display:none}
 
@@ -160,7 +160,7 @@ body.dkGem .dkTools{display:none}
 .dkPopLayer{right:148px}
 
 /* מצב במה: חלון אחד במרכז, השאר אריחים מוטים בפס */
-.dw.stage .dwRs{display:none}
+
 .dw.stage{border-radius:22px}
 .dkChip.th{width:78px;min-height:0;padding:0;background:none;border:0;gap:7px;box-shadow:none;transform:none;opacity:1}
 .dkChip.th:hover{background:none}

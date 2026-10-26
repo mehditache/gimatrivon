@@ -274,15 +274,22 @@
   }
 
   /* ---------- גרירה, שינוי גודל, הצמדה ---------- */
+  // גרירה או שינוי גודל במצב "במה" יוצאים ממנו לסידור חופשי: החלון הפעיל נשאר בדיוק איפה שהוא, והשאר חוזרים למקומם השמור
+  function leaveStage(w) {
+    if (!stageOn()) return;
+    const el = F.get(w.id).el, r = desk.getBoundingClientRect(), b = el.getBoundingClientRect();
+    Object.assign(w, { x: Math.round(b.left - r.left), y: Math.round(b.top - r.top), w: Math.round(b.width), h: Math.round(b.height), max: false });
+    D.stage = false; D.wins.forEach(paint); taskbar(); saveSoon();
+  }
   function startDrag(e, id) {
-    if (stageOn()) return;
     const w = W(id); if (!w || e.button !== 0) return;
     focusWin(id);
     const r = desk.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
     if (w.max) { w.max = false; w.x = Math.max(0, Math.min(r.width - w.w, x0 - r.left - w.w / 2)); w.y = 0; paint(w); }
-    const sx = w.x, sy = w.y; let snap = null, ghost = null, moved = false;
+    let sx = w.x, sy = w.y, snap = null, ghost = null, moved = false;
     desk.classList.add('drag');
     const mv = ev => {
+      if (stageOn()) { if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) < 5) return; leaveStage(w); sx = w.x; sy = w.y; }
       moved = true;
       w.x = Math.round(sx + ev.clientX - x0); w.y = Math.max(0, Math.round(sy + ev.clientY - y0)); paint(w);
       const px = ev.clientX - r.left, py = ev.clientY - r.top;
@@ -307,6 +314,7 @@
     const x0 = e.clientX, y0 = e.clientY, s = { x: w.x, w: w.w, h: w.h };
     desk.classList.add('drag');
     const mv = ev => {
+      if (stageOn()) { if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) < 5) return; leaveStage(w); s.x = w.x; s.w = w.w; s.h = w.h; }
       const dx = ev.clientX - x0;
       w.h = Math.max(240, s.h + ev.clientY - y0);
       if (left) { w.w = Math.max(minW(w), s.w - dx); w.x = s.x + s.w - w.w; } else w.w = Math.max(minW(w), s.w + dx);
