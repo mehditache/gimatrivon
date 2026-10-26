@@ -99,3 +99,61 @@ body.dkGem .dkTools{display:none}
 .dkPopLayer .rdPop[hidden]{display:none}
 /* השכבה נושאת גם את המחלקה reader כדי שכללי העיצוב של חלונות הבחירה (.reader …) יחולו, בלי הרקע והפריסה של מסך הקורא */
 .dkPopLayer.reader{display:block!important;position:fixed!important;flex:none;background:none!important;min-height:0;overflow:visible}
+
+/* ===== מראה iOS (v4.4.0): זכוכית, פינות עגולות, אייקוני קו, פס צדדי של חלונות ===== */
+.gi{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+.dkTop{height:56px;box-sizing:border-box;padding-block:0;background:color-mix(in srgb,var(--pn) 70%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-bottom:.5px solid color-mix(in srgb,var(--tx) 18%,transparent);box-shadow:none}
+.dkNav{height:34px;border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);padding:2px}
+.dkSearch{border-radius:10px;border-color:transparent;background:color-mix(in srgb,var(--tx) 8%,transparent)}
+.dkScope{border-radius:8px;border-inline-start:0;background:color-mix(in srgb,var(--tx) 8%,transparent);height:26px}
+#dkKebab{display:grid;place-items:center;border-radius:10px;border:0;background:color-mix(in srgb,var(--tx) 8%,transparent)}
+.dkGemTools button{border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent)}
+
+.dkDesk{background:radial-gradient(1000px 700px at 85% 0,color-mix(in srgb,var(--gold) 16%,transparent),transparent 65%),color-mix(in srgb,var(--bg) 90%,#000 10%)}
+:root[data-theme=dark] .dkDesk{background:radial-gradient(1000px 700px at 85% 0,color-mix(in srgb,var(--gold) 12%,transparent),transparent 65%),#0e0b07}
+
+/* חלון */
+.dw{border:0;border-radius:20px;box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 8px 28px rgba(0,0,0,.14)}
+:root[data-theme=dark] .dw{box-shadow:0 0 0 .5px rgba(255,255,255,.16),0 8px 28px rgba(0,0,0,.5)}
+.dw.act{border:0;box-shadow:0 0 0 .5px rgba(0,0,0,.22),0 28px 70px rgba(0,0,0,.3)}
+:root[data-theme=dark] .dw.act{box-shadow:0 0 0 .5px rgba(255,255,255,.22),0 28px 70px rgba(0,0,0,.65)}
+.dw.max{border-radius:0;box-shadow:none}
+.dwBar{height:44px;position:relative;gap:10px;padding:0 14px;background:color-mix(in srgb,var(--pn) 78%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-bottom:.5px solid color-mix(in srgb,var(--tx) 16%,transparent);color:var(--mu);font:600 14px var(--ui)}
+.dw.act .dwBar{background:color-mix(in srgb,var(--pn) 78%,transparent);color:var(--tx)}
+.dwBar b{position:absolute;inset-inline:96px;text-align:center;pointer-events:none}
+.dwCtl{margin:0;gap:8px;display:flex;align-items:center;z-index:1}
+.dwCtl button{width:14px;height:14px;border-radius:50%;padding:0;font-size:9px;color:transparent;background:color-mix(in srgb,var(--tx) 22%,transparent);transition:background .15s}
+.dwNoX{width:14px;height:14px}
+.dwCtl .gi{stroke-width:2.6;width:10px;height:10px}
+.dw.act .dwCtl .x{background:#ff5f57}.dw.act .dwCtl .m{background:#febc2e}.dw.act .dwCtl .z{background:#28c840}
+.dwCtl:hover button{color:rgba(0,0,0,.6)}
+.dwCtl .x:hover{background:#ff5f57;color:rgba(0,0,0,.6)}
+.dwCtl button:hover{background:inherit}
+.dwNav{margin-inline-start:auto;display:flex;gap:2px;z-index:1}
+.dwNav button{width:30px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--tx);font-size:18px}
+.dwNav button:not(:disabled):hover{background:color-mix(in srgb,var(--tx) 10%,transparent)}
+.dwBody iframe{border-radius:0 0 20px 20px}
+.dw.max .dwBody iframe{border-radius:0}
+.dwSnap,.dkSnap{border-radius:20px}
+
+/* פס צדדי */
+.dkTask{width:92px;padding:16px 8px;gap:12px;align-items:center;background:color-mix(in srgb,var(--pn) 68%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-inline-end:.5px solid color-mix(in srgb,var(--tx) 16%,transparent)}
+.dkChip{width:76px;min-height:68px;gap:6px;padding:8px 4px 6px;border:0;border-radius:14px;background:color-mix(in srgb,var(--tx) 6%,transparent);color:var(--tx);font:500 11px/1.2 var(--ui);transition:transform .2s cubic-bezier(.3,1.4,.5,1),background .15s}
+.dkChip .ic{font-size:24px;display:grid;place-items:center;color:var(--mu)}
+.dkChip:hover{background:color-mix(in srgb,var(--tx) 11%,transparent)}
+.dkChip.on{background:var(--pn);box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 6px 16px rgba(0,0,0,.16);transform:translateX(-4px);font-weight:600}
+.dkChip.on .ic{color:var(--gold)}
+.dkChip.min{border:0;opacity:.7}
+.dkChip .z{top:6px;inset-inline-start:7px;font-size:12px;color:var(--mu)}
+.dkTool{border:0;color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,transparent)}
+.dkTool .ic{color:var(--gold)}
+.dkTool.on{box-shadow:none}
+.dkCnt{font-size:11px}
+.dkMenu{bottom:12px;right:100px;min-width:220px;padding:6px;border:0;border-radius:14px;background:color-mix(in srgb,var(--pn) 80%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 0 0 .5px rgba(0,0,0,.2),0 16px 40px rgba(0,0,0,.28)}
+.dkMenu button{padding:10px 12px;border-radius:8px;font:15px var(--ui)}
+.dkMenu button+button{border-top:.5px solid color-mix(in srgb,var(--tx) 14%,transparent);border-radius:0}
+.dkMenu button:hover{background:color-mix(in srgb,var(--gold) 16%,transparent);border-radius:8px}
+.dkToast{border-radius:14px;padding:10px 18px}
+.dkAskBox{border-top:0;border-radius:20px}
+.dkAskBtns button{border-radius:12px;border:0;height:40px;background:color-mix(in srgb,var(--tx) 10%,transparent)}
+.dkPopLayer{right:100px}

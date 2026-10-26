@@ -35,7 +35,12 @@
   const F = new Map(); // id → { el, fr (iframe או null), doc, win }
 
   /* ---------- חלונות ---------- */
-  const ICON = { gem: '🔢', read: '📖', search: '🔍' }, MAXS = 3;
+  const SV = d => '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+  const GI = { gem: '<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>', read: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5zM20 19v2H6.5"/>', search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>', arr: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    min: '<path d="M5 12h14"/>', max: '<path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"/>', res: '<path d="M9 5v4H5M15 5v4h4M9 19v-4H5M15 19v-4h4"/>', x: '<path d="m6 6 12 12M18 6 6 18"/>',
+    back: '<path d="m9 5 7 7-7 7"/>', fwd: '<path d="m15 5-7 7 7 7"/>', moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>', dn: '<path d="m6 9 6 6 6-6"/>', kb: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>', stage: '<rect x="7" y="5" width="13" height="14" rx="2"/><path d="M4 8v8"/>' };
+  const ICON = { gem: SV(GI.gem), read: SV(GI.read), search: SV(GI.search) }, MAXS = 3;
   const curHash = w => w.k === 'gem' ? '#gim' : w.k === 'search' ? '#find' : (w.hist[w.hi] || '#read');
   const srcOf = w => w.k === 'search' ? 'index.html?embed=results&wid=' + w.id + '&q=' + encodeURIComponent(w.q) + '&f=' + encodeURIComponent(JSON.stringify(w.fs || {})) : 'index.html?embed=' + w.k + curHash(w);
   // מפתח "פרק" של כתובת: מעבר בתוך אותו פרק/דף מחליף את הרשומה הנוכחית בהיסטוריה, מעבר לפרק אחר מוסיף רשומה
@@ -45,10 +50,10 @@
     const el = document.createElement('section');
     el.className = 'dw'; el.dataset.id = w.id;
     el.innerHTML = '<div class="dwBar">' +
-      (w.k === 'read' ? '<span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '">→</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '">←</button></span>' : '') +
-      '<span>' + ICON[w.k] + '</span><b class="dwT"></b><span class="dwTag">' + (w.k === 'gem' ? T('גימטריה', 'Gematria') : w.k === 'search' ? T('תוצאות חיפוש', 'Search results') : T('קריאה', 'Reader')) + '</span>' +
-      '<span class="dwCtl"><button type="button" data-a="min" title="' + T('מזעור', 'Minimize') + '">–</button><button type="button" data-a="max" title="' + T('הגדלה / שחזור', 'Maximize / restore') + '">□</button>' +
-      (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">✕</button>' : '') + '</span></div>' +
+      '<span class="dwCtl">' + (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">' + SV(GI.x) + '</button>' : '<span class="dwNoX"></span>') +
+      '<button type="button" class="m" data-a="min" title="' + T('מזעור', 'Minimize') + '">' + SV(GI.min) + '</button><button type="button" class="z" data-a="max" title="' + T('הגדלה / שחזור', 'Maximize / restore') + '">' + SV(GI.max) + '</button></span>' +
+      '<b class="dwT"></b>' +
+      (w.k === 'read' ? '<span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '">' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '">' + SV(GI.fwd) + '</button></span>' : '<span class="dwNav"></span>') + '</div>' +
       '<div class="dwBody"></div><div class="dwRs l"></div><div class="dwRs r"></div>';
     desk.appendChild(el);
     F.set(w.id, { el, fr: null, doc: null, win: null });
@@ -75,7 +80,7 @@
     if (!w.max) Object.assign(el.style, { left: w.x + 'px', top: w.y + 'px', width: w.w + 'px', height: w.h + 'px' });
     el.style.zIndex = w.z;
     el.querySelector('.dwT').textContent = w.k === 'gem' ? T('גימטריבון', 'Gimatrivon') : (w.t || T('קריאה', 'Reader'));
-    el.querySelector('[data-a="max"]').textContent = w.max ? '❐' : '□';
+    el.querySelector('[data-a="max"]').innerHTML = SV(w.max ? GI.res : GI.max);
     if (w.k === 'read') { el.querySelector('[data-a="back"]').disabled = w.hi <= 0; el.querySelector('[data-a="fwd"]').disabled = w.hi >= w.hist.length - 1; }
   }
 
@@ -319,6 +324,12 @@
         .then(ok => { if (!ok) return; D.wins.filter(w => w.k !== 'gem').forEach(w => closeWin(w.id)); const g = gemW(); g.max = true; focusWin(g.id); });
       return;
     }
+    if (kind === 'stage') {
+      const a = W(D.act) || vis[vis.length - 1];
+      D.wins.forEach(w => { if (w !== a && !w.min) minimize(w.id); });
+      if (a) { a.max = false; a.w = Math.min(W0 - 40, Math.round(W0 * .9)); a.h = H0 - 40; a.x = Math.round((W0 - a.w) / 2); a.y = 20; paint(a); }
+      saveSoon(); return;
+    }
     vis.forEach((w, i) => {
       w.max = false;
       if (kind === 'cascade') { w.w = Math.round(W0 * .62); w.h = Math.round(H0 * .78); w.x = W0 - w.w - 24 - i * 34; w.y = 16 + i * 30; }
@@ -337,7 +348,7 @@
       const c = document.createElement('button'); c.type = 'button';
       c.className = 'dkChip' + (w.min ? ' min' : '') + (D.act === w.id && !w.min ? ' on' : '');
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
-      c.innerHTML = '<span class="ic">' + ICON[w.k] + '</span><span class="t"></span>' + (w.min ? '<span class="z">💤</span>' : '');
+      c.innerHTML = '<span class="ic">' + ICON[w.k] + '</span><span class="t"></span>' + (w.min ? '<span class="z">' + SV(GI.moon) + '</span>' : '');
       c.querySelector('.t').textContent = t;
       c.title = t + (w.min ? ' — ' + T('ממוזער, המקום נשמר', 'minimized, place kept') : '');
       c.onclick = () => { if (D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
@@ -346,13 +357,13 @@
       task.appendChild(c);
     });
     task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXR + '</span>' +
-      '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">＋</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
-      '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">⊞</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
+      '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">' + SV(GI.plus) + '</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
+      '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">' + SV(GI.arr) + '</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkAdd').onclick = () => { const l = W(D.last); openRead(l ? curHash(l) : '#read', true); };
-    $('#dkArrBtn').onclick = e => { e.stopPropagation(); const sl = $('#dkArr [data-sl]'); if (sl) sl.textContent = '💤 ' + slLabel(); $('#dkArr').hidden = !$('#dkArr').hidden; };
+    $('#dkArrBtn').onclick = e => { e.stopPropagation(); const sl = $('#dkArr [data-sl]'); if (sl) sl.textContent = slLabel(); $('#dkArr').hidden = !$('#dkArr').hidden; };
   }
   $('#dkArr').addEventListener('click', e => {
-    const s = e.target.closest('[data-sl]'); if (s) { D.sl = SL_OPTS[(SL_OPTS.indexOf(slMin()) + 1) % SL_OPTS.length]; s.textContent = '💤 ' + slLabel(); saveSoon(); return; }
+    const s = e.target.closest('[data-sl]'); if (s) { D.sl = SL_OPTS[(SL_OPTS.indexOf(slMin()) + 1) % SL_OPTS.length]; s.textContent = slLabel(); saveSoon(); return; }
     const b = e.target.closest('[data-arr]'); if (b) { $('#dkArr').hidden = true; arrange(b.dataset.arr); }
   });
   document.addEventListener('click', e => { if (!e.target.closest('#dkArr,#dkArrBtn')) $('#dkArr').hidden = true; });
@@ -456,7 +467,7 @@
   // טווח החיפוש: התווית לפי הכפתור הפעיל ברשימה של המארח; לחיצה עוברת לטווח הבא
   function scopeLabel() {
     const b = H && H.doc && H.doc.querySelector('#rdDrop .rdDScope button.on');
-    $('#dkScope').textContent = (b ? b.textContent.trim() : T('חיפוש בספר', 'In this book')) + ' ▾';
+    $('#dkScope').textContent = (b ? b.textContent.trim() : T('חיפוש בספר', 'In this book'));
   }
   $('#dkScope').addEventListener('click', e => {
     e.preventDefault(); host(); syncHost();
@@ -488,7 +499,7 @@
         popLayer.appendChild(document.adoptNode(el)); popLayer.dataset.w = w.id;
         // מעבר לפרק ופסוק: תמיד מימין מתחת לבנר; הגדרות תצוגה והדפסה: מתחת לכפתור שפתח אותם (קצה ימני מיושר אליו, בתוך המסך)
         if (id === 'rdJump') { el.style.left = ''; el.style.right = ''; } else {
-          const lay = popLayer.getBoundingClientRect(), wd = el.offsetWidth, x = Math.max(8, Math.min(innerWidth - 70 - wd, lastR - wd));
+          const lay = popLayer.getBoundingClientRect(), wd = el.offsetWidth, x = Math.max(8, Math.min(innerWidth - 100 - wd, lastR - wd));
           el.style.right = 'auto'; el.style.left = (x - lay.left) + 'px';
         }
         f.pops[id] = el; f.win.GT_POPS = Object.fromEntries(Object.keys(f.pops).map(k => ['#' + k, f.pops[k]]));
@@ -566,12 +577,14 @@
         '.dkJMarks button{height:26px;padding:0 10px;border:1px solid var(--ln);border-radius:999px;background:var(--pn2);color:var(--tx);font:12px var(--ui);cursor:pointer}';
       document.head.appendChild(st);
     }
+    const gsv = (d, fill) => '<svg viewBox="0 0 24 24" width="14" height="14" fill="' + (fill ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px" aria-hidden="true">' + d + '</svg>';
+    const STAR = 'm12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9-4.3-4.1 5.9-.8z';
     const hint = foot.querySelector('span'); if (hint) hint.innerHTML = '<b>← →</b> ' + T('דפדוף', 'page') + ' · <b>Ctrl G</b>';
     const g = f.doc.createElement('div'); g.className = 'dkJ';
     const cur = () => curHash(w), isMarked = () => marks().some(m => m.h === cur());
     g.innerHTML = '<button type="button" class="dkJB" data-j="mark"><span class="s"></span> ' + T('סימניה', 'Bookmark') + '</button>' +
-      '<button type="button" class="dkJB" data-j="new" title="' + T('פתיחת המקום הנבחר בחלון קריאה חדש', 'Open the chosen place in a new reader window') + '">⧉ ' + T('בחלון חדש', 'New window') + '</button>';
-    const star = () => { const s = g.querySelector('.s'); s.textContent = isMarked() ? '★' : '☆'; s.parentNode.title = isMarked() ? T('הסרת הסימניה', 'Remove bookmark') : T('סימניה למקום הנוכחי', 'Bookmark this place'); };
+      '<button type="button" class="dkJB" data-j="new" title="' + T('פתיחת המקום הנבחר בחלון קריאה חדש', 'Open the chosen place in a new reader window') + '">' + gsv('<rect x="8" y="3" width="13" height="13" rx="2"/><path d="M16 20H5a2 2 0 0 1-2-2V8"/>') + ' ' + T('בחלון חדש', 'New window') + '</button>';
+    const star = () => { const s = g.querySelector('.s'); s.innerHTML = gsv('<path d="' + STAR + '"/>', isMarked()); s.parentNode.title = isMarked() ? T('הסרת הסימניה', 'Remove bookmark') : T('סימניה למקום הנוכחי', 'Bookmark this place'); };
     star();
     foot.insertBefore(g, go); g.appendChild(go);
     const close = () => { const x = hd.querySelector('[data-close],.rdX,button:last-child'); if (x) x.click(); };
@@ -592,7 +605,7 @@
       const m = marks(); list.hidden = !m.length; list.textContent = '';
       if (!m.length) return;
       list.append(T('סימניות:', 'Bookmarks:'));
-      m.forEach(x => { const b = f.doc.createElement('button'); b.type = 'button'; b.textContent = '★ ' + x.t; b.title = x.h; b.onclick = () => { close(); navPush(w, x.h); }; list.appendChild(b); });
+      m.forEach(x => { const b = f.doc.createElement('button'); b.type = 'button'; b.innerHTML = gsv('<path d="' + STAR + '"/>', true) + ' '; b.append(x.t); b.title = x.h; b.onclick = () => { close(); navPush(w, x.h); }; list.appendChild(b); });
     }
     listMarks();
   }

@@ -19,14 +19,14 @@
       <div class="rdSearch dkSearch" id="dkSearch">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input type="search" id="dkQ" dir="rtl" autocomplete="off" spellcheck="false" placeholder='חיפוש, או קפיצה: "שמות יב ב"'>
-        <kbd>Ctrl ⇧ K</kbd>
-        <button type="button" class="dkScope" id="dkScope" title="טווח החיפוש">בכל הספרים ▾</button>
+        <kbd>Ctrl Shift K</kbd>
+        <button type="button" class="dkScope" id="dkScope" title="טווח החיפוש">בכל הספרים</button>
       </div>
     </div>
     <div class="rdTools dkTools" id="dkTools"></div>
     <div class="dkGemTools" id="dkGemTools" hidden>
       <button type="button" data-fwd="#openMethods">שיטות גימטריה</button>
-      <button type="button" data-fwd="#startTour" title="סיור מודרך">?</button>
+      <button type="button" data-fwd="#startTour" title="סיור מודרך" aria-label="סיור מודרך">?</button>
     </div>
   </div>
   <div class="tools">
@@ -36,7 +36,7 @@
     </label>
     <button id="dkLang" class="langSw" type="button" title="Switch to English / החלף לעברית">EN</button>
   </div>
-  <button id="dkKebab" class="mKebabBtn" type="button" title="תפריט" aria-label="תפריט">⋮</button>
+  <button id="dkKebab" class="mKebabBtn" type="button" title="תפריט" aria-label="תפריט"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
 </header>
 <div class="dkMid">
 <!-- שורת המשימות: סרגל אנכי צר בצד ימין, מלמעלה למטה -->
@@ -45,10 +45,11 @@
 </div>
 <div class="dkMenu" id="dkArr" hidden>
   <button type="button" data-arr="cascade">מדורג</button>
+  <button type="button" data-arr="stage">במה (חלון אחד במרכז)</button>
   <button type="button" data-arr="side">זה לצד זה</button>
   <button type="button" data-arr="grid">רשת</button>
   <button type="button" data-arr="clean">שולחן נקי</button>
-  <button type="button" data-sl>💤 שינה אוטומטית</button>
+  <button type="button" data-sl>שינה אוטומטית</button>
 </div>
 <div class="dkToast" id="dkToast" hidden></div>
 <script src="sqlite-search.js"></script>
