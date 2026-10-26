@@ -72,7 +72,7 @@ body.dkGem .dkTools{display:none}
 /* תצוגה מקדימה בריחוף מעל שבב של חלון ממוזער */
 
 /* מארח החיפוש: iframe שקוף מתחת לתיבת החיפוש; מוצג רק כשהרשימה הנפתחת פתוחה */
-.dkHost{position:fixed;z-index:60;border:0;background:transparent;color-scheme:normal}
+.dkHost{position:fixed;z-index:60;border:0;background:transparent;color-scheme:normal;filter:drop-shadow(0 10px 18px rgba(0,0,0,.25))}
 .dkHost[hidden]{display:none}
 
 /* החלונות בהקשר-שכבות משלהם (z-index שלהם גדל בלי הגבלה) — בנר, שורת משימות, תפריט הסידור והתצוגה המקדימה תמיד מעליהם */
