@@ -46,6 +46,9 @@
   // מפתח "פרק" של כתובת: מעבר בתוך אותו פרק/דף מחליף את הרשומה הנוכחית בהיסטוריה, מעבר לפרק אחר מוסיף רשומה
   const chKey = h => String(h).split('/').slice(0, 4).join('/'); // #read/TN/Gen/2, #read/TB/<מסכת>/<דף>, #read/TUR/<חלק>/<סימן>
 
+  // מצב "במה" (ברירת מחדל): רק החלון הפעיל מוצג במרכז, האחרים אריחים בפס הצדדי; סידור אחר מכבה אותו
+  const stageOn = () => D.stage !== false;
+
   function build(w) {
     const el = document.createElement('section');
     el.className = 'dw'; el.dataset.id = w.id;
@@ -74,10 +77,13 @@
   function paint(w) {
     const f = F.get(w.id); if (!f) return;
     const el = f.el;
-    el.hidden = !!w.min;
+    const st = stageOn();
+    el.hidden = !!w.min || (stageOn() && D.act !== w.id);
     el.classList.toggle('max', !!w.max);
+    el.classList.toggle('stage', st && !w.max);
     el.classList.toggle('act', D.act === w.id);
-    if (!w.max) Object.assign(el.style, { left: w.x + 'px', top: w.y + 'px', width: w.w + 'px', height: w.h + 'px' });
+    if (st) { const W0 = desk.clientWidth, H0 = desk.clientHeight, sw = Math.min(1100, W0 - 60), sh = H0 - 36; Object.assign(el.style, { left: Math.round((W0 - sw) / 2) + 'px', top: '18px', width: sw + 'px', height: sh + 'px' }); }
+    else if (!w.max) Object.assign(el.style, { left: w.x + 'px', top: w.y + 'px', width: w.w + 'px', height: w.h + 'px' });
     el.style.zIndex = w.z;
     el.querySelector('.dwT').textContent = w.k === 'gem' ? T('גימטריבון', 'Gimatrivon') : (w.t || T('קריאה', 'Reader'));
     el.querySelector('[data-a="max"]').innerHTML = SV(w.max ? GI.res : GI.max);
@@ -211,6 +217,7 @@
     const w = W(id); if (!w) return;
     if (w.min) { w.min = false; }
     const changed = D.act !== id;
+    if (changed && stageOn()) { const o = W(D.act); if (o) { o.max = false; } w.max = false; }
     if (changed || w.z < D.z) w.z = ++D.z;
     D.act = id; if (w.k === 'read') D.last = id; w.at = Date.now();
     D.wins.forEach(paint); wake(w);
@@ -264,6 +271,7 @@
 
   /* ---------- גרירה, שינוי גודל, הצמדה ---------- */
   function startDrag(e, id) {
+    if (stageOn()) return;
     const w = W(id); if (!w || e.button !== 0) return;
     focusWin(id);
     const r = desk.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
@@ -324,12 +332,8 @@
         .then(ok => { if (!ok) return; D.wins.filter(w => w.k !== 'gem').forEach(w => closeWin(w.id)); const g = gemW(); g.max = true; focusWin(g.id); });
       return;
     }
-    if (kind === 'stage') {
-      const a = W(D.act) || vis[vis.length - 1];
-      D.wins.forEach(w => { if (w !== a && !w.min) minimize(w.id); });
-      if (a) { a.max = false; a.w = Math.min(W0 - 40, Math.round(W0 * .9)); a.h = H0 - 40; a.x = Math.round((W0 - a.w) / 2); a.y = 20; paint(a); }
-      saveSoon(); return;
-    }
+    if (kind === 'stage') { D.stage = true; D.wins.forEach(w => { w.max = false; paint(w); }); taskbar(); saveSoon(); return; }
+    D.stage = false;
     vis.forEach((w, i) => {
       w.max = false;
       if (kind === 'cascade') { w.w = Math.round(W0 * .62); w.h = Math.round(H0 * .78); w.x = W0 - w.w - 24 - i * 34; w.y = 16 + i * 30; }
@@ -337,23 +341,24 @@
       else { const n = vis.length, cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols), cw = Math.floor((W0 - 6) / cols), ch = Math.floor((H0 - 6) / rows); w.w = cw - 6; w.h = ch - 6; w.x = W0 - ((i % cols) + 1) * cw; w.y = 6 + Math.floor(i / cols) * ch; }
       paint(w);
     });
-    saveSoon();
+    D.wins.forEach(paint); taskbar(); saveSoon();
   }
 
   /* ---------- שורת משימות ---------- */
   function taskbar() {
     const n = reads().length;
     task.innerHTML = '';
+    const st = stageOn();
     D.wins.slice().sort((a, b) => (a.k === 'gem' ? -1 : b.k === 'gem' ? 1 : 0)).forEach(w => {
+      if (st && D.act === w.id) return; // במה: החלון הפעיל במרכז, לא בפס
       const c = document.createElement('button'); c.type = 'button';
-      c.className = 'dkChip' + (w.min ? ' min' : '') + (D.act === w.id && !w.min ? ' on' : '');
+      c.className = 'dkChip' + (st ? ' th' : '') + (w.min ? ' min' : '') + (!st && D.act === w.id && !w.min ? ' on' : '');
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
-      c.innerHTML = '<span class="ic">' + ICON[w.k] + '</span><span class="t"></span>' + (w.min ? '<span class="z">' + SV(GI.moon) + '</span>' : '');
+      const mini = w.k === 'gem' ? '<i class="mg"><u></u><u></u><u></u><u></u></i>' : w.k === 'search' ? '<i class="ml"><s></s><s></s><s></s><s></s></i>' : '<i class="mp"><em></em><s></s><s></s><s></s></i>';
+      c.innerHTML = (st ? '<span class="thC">' + mini + '</span>' : '<span class="ic">' + ICON[w.k] + '</span>') + '<span class="t"></span>' + (w.min ? '<span class="z">' + SV(GI.moon) + '</span>' : '');
       c.querySelector('.t').textContent = t;
       c.title = t + (w.min ? ' — ' + T('ממוזער, המקום נשמר', 'minimized, place kept') : '');
-      c.onclick = () => { if (D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
-      if (w.min) {
-      }
+      c.onclick = () => { if (!st && D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
       task.appendChild(c);
     });
     task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXR + '</span>' +
@@ -639,7 +644,7 @@
   });
   addEventListener('hashchange', () => fromUrl());
   addEventListener('pagehide', () => { D.wins.forEach(snapshot); save(); });
-  addEventListener('resize', () => D.wins.forEach(w => { if (!w.max) { w.x = Math.min(w.x, Math.max(0, desk.clientWidth - 120)); w.y = Math.min(w.y, Math.max(0, desk.clientHeight - 40)); paint(w); } }));
+  addEventListener('resize', () => D.wins.forEach(w => { if (stageOn()) paint(w); else if (!w.max) { w.x = Math.min(w.x, Math.max(0, desk.clientWidth - 120)); w.y = Math.min(w.y, Math.max(0, desk.clientHeight - 40)); paint(w); } }));
 
   // כתובת: #read/… פותח את המקום (בחלון שכבר מציג אותו, או בחלון חדש); #gim — חלון הגימטריה
   function fromUrl() {

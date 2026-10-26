@@ -137,7 +137,7 @@ body.dkGem .dkTools{display:none}
 .dwSnap,.dkSnap{border-radius:20px}
 
 /* פס צדדי */
-.dkTask{width:92px;padding:16px 8px;gap:12px;align-items:center;background:color-mix(in srgb,var(--pn) 68%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-inline-end:.5px solid color-mix(in srgb,var(--tx) 16%,transparent)}
+.dkTask{width:140px;padding:16px 8px;gap:12px;align-items:center;background:color-mix(in srgb,var(--pn) 68%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-inline-end:.5px solid color-mix(in srgb,var(--tx) 16%,transparent)}
 .dkChip{width:76px;min-height:68px;gap:6px;padding:8px 4px 6px;border:0;border-radius:14px;background:color-mix(in srgb,var(--tx) 6%,transparent);color:var(--tx);font:500 11px/1.2 var(--ui);transition:transform .2s cubic-bezier(.3,1.4,.5,1),background .15s}
 .dkChip .ic{font-size:24px;display:grid;place-items:center;color:var(--mu)}
 .dkChip:hover{background:color-mix(in srgb,var(--tx) 11%,transparent)}
@@ -149,11 +149,28 @@ body.dkGem .dkTools{display:none}
 .dkTool .ic{color:var(--gold)}
 .dkTool.on{box-shadow:none}
 .dkCnt{font-size:11px}
-.dkMenu{bottom:12px;right:100px;min-width:220px;padding:6px;border:0;border-radius:14px;background:color-mix(in srgb,var(--pn) 80%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 0 0 .5px rgba(0,0,0,.2),0 16px 40px rgba(0,0,0,.28)}
+.dkMenu{bottom:12px;right:148px;min-width:220px;padding:6px;border:0;border-radius:14px;background:color-mix(in srgb,var(--pn) 80%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 0 0 .5px rgba(0,0,0,.2),0 16px 40px rgba(0,0,0,.28)}
 .dkMenu button{padding:10px 12px;border-radius:8px;font:15px var(--ui)}
 .dkMenu button+button{border-top:.5px solid color-mix(in srgb,var(--tx) 14%,transparent);border-radius:0}
 .dkMenu button:hover{background:color-mix(in srgb,var(--gold) 16%,transparent);border-radius:8px}
 .dkToast{border-radius:14px;padding:10px 18px}
 .dkAskBox{border-top:0;border-radius:20px}
 .dkAskBtns button{border-radius:12px;border:0;height:40px;background:color-mix(in srgb,var(--tx) 10%,transparent)}
-.dkPopLayer{right:100px}
+.dkPopLayer{right:148px}
+
+/* מצב במה: חלון אחד במרכז, השאר אריחים מוטים בפס */
+.dw.stage .dwRs{display:none}
+.dw.stage{border-radius:22px}
+.dkChip.th{width:112px;min-height:0;padding:0;background:none;border:0;gap:7px;box-shadow:none;transform:none;opacity:1}
+.dkChip.th:hover{background:none}
+.dkChip.th .thC{display:block;width:112px;height:80px;border-radius:12px;background:var(--pn);box-shadow:0 0 0 .5px rgba(0,0,0,.2),0 6px 14px rgba(0,0,0,.16);transform:perspective(500px) rotateY(10deg);transform-origin:right center;overflow:hidden;position:relative;transition:transform .25s cubic-bezier(.3,1.3,.5,1)}
+.dkChip.th:hover .thC{transform:perspective(500px) rotateY(0) scale(1.05)}
+.dkChip.th.min .thC{opacity:.6}
+.dkChip.th .t{font:500 12px/1.2 var(--ui);color:var(--mu);-webkit-line-clamp:1}
+.thC i{position:absolute;inset:9px;display:flex;flex-direction:column;gap:5px}
+.thC s{display:block;height:5px;border-radius:3px;background:color-mix(in srgb,var(--tx) 18%,transparent)}
+.thC s:nth-child(odd){width:85%}
+.thC em{display:block;height:9px;width:46%;margin:0 auto 3px;border-radius:3px;background:var(--gold);opacity:.8}
+.thC .mg{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.thC u{display:block;border-radius:5px;background:color-mix(in srgb,var(--gold) 22%,transparent)}
+.dkChip.th .z{top:5px;inset-inline-start:auto;inset-inline-end:7px;z-index:1}
