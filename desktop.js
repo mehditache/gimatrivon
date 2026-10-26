@@ -251,11 +251,13 @@
   }
   function openGem() { focusWin(gemW().id); }
   const searches = () => D.wins.filter(w => w.k === 'search');
-  function openResults(qv) {
+  // ההיקף שנבחר ברשימה הנפתחת (מארח החיפוש): חלון התוצאות נפתח לפיו
+  function hostScope() { try { const gr = H && H.doc && H.doc.defaultView.GimReader; return (gr && gr.dropScope && gr.dropScope()) || null; } catch (e) { return null; } }
+  function openResults(qv, sc) {
     let w = searches().find(x => x.q === qv);
     if (!w) {
       if (searches().length >= MAXS) closeWin(searches().sort((a, b) => a.z - b.z)[0].id);
-      w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: {}, t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
+      w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: sc ? { sel: sc.sel, scope: sc } : {}, t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
       D.wins.push(w); build(w);
     }
     focusWin(w.id); return w;
@@ -477,7 +479,7 @@
   q.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') arrowed = true;
     // Enter אחרי מילות חיפוש (בלי לבחור תוצאה בחצים) פותח חלון "תוצאות חיפוש"; עם בחירה בחצים — פותח את התוצאה
-    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); closeSearch(); killHost(); openResults(q.value.trim()); q.blur(); return; }
+    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); const sc = hostScope(); closeSearch(); killHost(); openResults(q.value.trim(), sc); q.blur(); return; }
     if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key) || !H || !H.doc) return;
     e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
     if (e.key === 'Enter') setTimeout(() => q.blur(), 80);

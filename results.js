@@ -16,18 +16,19 @@
 
   // ---- State ----
   let R = null, me = null, idx = null, q = Q0, extra = FS.extra || '';
+  const SC = FS.scope && FS.scope.sel ? FS.scope : null; // ההיקף מהרשימה הנפתחת; null = כל הספרים
   const sel = new Set(FS.sel || []), srcOff = new Set(FS.srcOff || []);
   let sort = FS.sort === 'books' ? 'books' : 'rel', exp = new Set(FS.exp || []);
   let rows = [], off = null, order = null, shown = 0, page = Math.max(0, +FS.pg || 0), wantPg = page, pages = 1;
 
   document.documentElement.classList.add('gtResults');
   const app = document.createElement('div'); app.id = 'rsApp'; app.dir = 'rtl';
-  app.innerHTML = '<aside class="rsSide" id="rsSide"></aside><div class="rsMain"><div class="rsHd"><h2 id="rsTt"></h2><div class="rsSb" id="rsSb"></div></div><div class="rsTools"><label class="rsIn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" id="rsIn" placeholder="חיפוש בתוך התוצאות…" autocomplete="off" spellcheck="false"></label><span class="rsSort" id="rsSort"><button data-s="books">לפי סדר הספרים</button><button data-s="rel">לפי רלוונטיות</button></span></div><div class="rsSel" id="rsSel"></div><div class="rsList" id="rsList"><div class="rsSp" id="rsSp"></div></div><div class="rsPg" id="rsPg" hidden></div><div class="rsFoot" id="rsFoot"></div></div>';
+  app.innerHTML = '<aside class="rsSide" id="rsSide"></aside><div class="rsMain"><div class="rsHd"><h2 id="rsTt"></h2><div class="rsSb" id="rsSb"></div></div><div class="rsTools"><label class="rsIn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" id="rsIn" placeholder="חיפוש בתוך התוצאות…" autocomplete="off" spellcheck="false"></label><span class="rsSort rsScope" id="rsScope"></span><span class="rsSort" id="rsSort"><button data-s="books">לפי סדר הספרים</button><button data-s="rel">לפי רלוונטיות</button></span></div><div class="rsSel" id="rsSel"></div><div class="rsList" id="rsList"><div class="rsSp" id="rsSp"></div></div><div class="rsPg" id="rsPg" hidden></div><div class="rsFoot" id="rsFoot"></div></div>';
   document.body.appendChild(app);
   const $ = s => app.querySelector(s), list = $('#rsList'), sp = $('#rsSp');
   $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
 
-  const state = () => post({ type: 'state', state: { sel: [...sel], srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
+  const state = () => post({ type: 'state', state: { sel: [...sel], scope: SC, srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
 
   // ---- התחלה ----
   const bootTry = () => { R = window.GimResults; if (!R || !R.ready()) return false; clearInterval(boot); run(); return true; };
@@ -77,7 +78,7 @@
     if (sort === 'books') arr.sort((a, b) => idx.dom[a] - idx.dom[b] || idx.bk[a] - idx.bk[b] || idx.ord[a] - idx.ord[b] || a - b);
     order = arr; shown = arr.length;
     pages = Math.max(1, Math.ceil(shown / PG)); if (!keep) wantPg = 0; page = Math.min(wantPg, pages - 1);
-    showPage(); chips(); side(); state();
+    showPage(); chips(); side(); scopeBar(); state();
   }
   // דף אחד: PG תוצאות בלבד (עם כותרת לכל ספר שמופיע בדף). הטקסט נטען רק לדף הנוכחי
   function showPage() {
@@ -168,6 +169,19 @@
   });
   $('#rsSort').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (!b || b.dataset.s === sort) return; sort = b.dataset.s; $('#rsSort').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.s === sort)); refilter(); });
   $('#rsSort').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.s === sort));
+  // היקף: מה שנבחר ברשימה הנפתחת, או כל הספרים
+  function scopeBar() {
+    const el = $('#rsScope'); el.hidden = !SC;
+    if (!SC) return;
+    const same = sel.size === SC.sel.length && SC.sel.every(k => sel.has(k));
+    el.innerHTML = '<button data-sc="1" class="' + (same ? 'on' : '') + '">' + esc(SC.name) + '</button><button data-sc="0" class="' + (!sel.size ? 'on' : '') + '">בכל הספרים</button>';
+  }
+  $('#rsScope').addEventListener('click', e => {
+    const b = e.target.closest('[data-sc]'); if (!b) return;
+    sel.clear(); if (b.dataset.sc === '1') SC.sel.forEach(k => sel.add(k));
+    refilter();
+  });
+  scopeBar();
   // חיפוש בתוך התוצאות: מצמצם את החיפוש (המילה הנוספת חייבת להופיע גם היא) ומריץ אותו מחדש; הסינון נשמר
   let it = 0;
   $('#rsIn').addEventListener('input', () => { clearTimeout(it); it = setTimeout(() => { extra = $('#rsIn').value.trim(); wantPg = 0; run(); }, 450); });

@@ -2887,7 +2887,26 @@
   };
   // הדגשת מילות החיפוש במקום שנפתח (שולחן העבודה: התוצאה נבחרה במארח החיפוש ונפתחת בחלון אחר)
   function highlight(q) { if (!q || document.body.dataset.mode !== 'read') return; S.hl = q; SQHL = null; render(); }
-  G.GimReader = { canOpen, openUnit, tour, highlight };
+  // ההיקף שנבחר ברשימה הנפתחת של החיפוש (לשולחן העבודה: חלון התוצאות נפתח באותו היקף, עם אפשרות להרחיב לכל הספרים)
+  // sel — מפתחות סינון של חלון התוצאות: d:<תחום> או b:<תחום>:<ספר>; null = בכל הספרים
+  function dropScope() {
+    try {
+      if (S.glob || !sqOn()) return null;
+      const dom = sqDomOf(); if (!dom) return null;
+      const di = RES_DOMS.indexOf(dom), all = k => ({ sel: ['d:' + di], name: k });
+      if (dom === 'tur') {
+        if (S.rscope === 'every') return all(RES_DL.tur);
+        const bi = G.GIM_SQ_DBS.tur.bk.findIndex(x => x.k === S.rk); return bi < 0 ? null : { sel: ['b:' + di + ':' + bi], name: turPartName(turTOf(S.rk)) };
+      }
+      if (dom === 'talmud') {
+        if (S.tscope === 'all') return all(RES_DL.talmud);
+        const bi = G.GIM_SQ_DBS.talmud.bk.findIndex(x => x.k === S.tk); return bi < 0 ? null : { sel: ['b:' + di + ':' + bi], name: talName(TX.list[TX.byK[S.tk]]) };
+      }
+      if (S.scope === 'all') return all(isRambam(S.b) ? 'כל הרמב״ם' : isMishnah(S.b) ? 'כל המשנה' : 'כל התנ״ך');
+      return { sel: ['b:' + di + ':' + S.b], name: bkName(IX.books[S.b].heTitle) };
+    } catch (e) { return null; }
+  }
+  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;

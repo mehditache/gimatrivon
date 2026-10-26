@@ -1264,9 +1264,10 @@ html.gtResults body>*:not(#rsApp):not(script){display:none!important}
 .rsTools{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--ln)}
 .rsIn{flex:1;display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid var(--ln);border-radius:10px;background:var(--pn);color:var(--mu)}
 .rsIn input{flex:1;border:0;outline:0;background:none;color:var(--tx);font:14px var(--ui);min-width:0}
-.rsSort{display:flex;gap:6px}
-.rsSort button{height:30px;padding:0 12px;border:1px solid var(--ln);border-radius:999px;background:var(--pn);color:var(--tx);font:13px var(--ui);cursor:pointer}
-.rsSort button.on{background:var(--gold);border-color:var(--gold);color:#fff}:root[data-theme=dark] .rsSort button.on{color:#1c160e}
+.rsSort,.rsScope{display:flex;gap:6px}
+.rsScope[hidden]{display:none}
+.rsSort button,.rsScope button{height:30px;padding:0 12px;border:1px solid var(--ln);border-radius:999px;background:var(--pn);color:var(--tx);font:13px var(--ui);cursor:pointer}
+.rsSort button.on,.rsScope button.on{background:var(--gold);border-color:var(--gold);color:#fff}:root[data-theme=dark] .rsSort button.on,:root[data-theme=dark] .rsScope button.on{color:#1c160e}
 .rsSel{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px;align-items:center;color:var(--mu);font-size:12px}
 .rsSel:not(:empty){padding-top:8px}
 .rsChip{height:26px;padding:0 10px;border:1px solid var(--gold);border-radius:999px;background:var(--acs);color:var(--tx);display:inline-flex;align-items:center;cursor:pointer}
@@ -1321,8 +1322,8 @@ html.gtResults .rsHd h2{margin:0;font:700 24px var(--ui);letter-spacing:-.3px}
 html.gtResults .rsSb{margin-top:2px;font-size:13px;color:var(--mu)}
 html.gtResults .rsTools{border:0;padding:12px 20px 8px;gap:12px}
 html.gtResults .rsIn{height:34px;border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);order:2;flex:0 1 250px}
-html.gtResults .rsSort{order:1;margin-inline-end:auto;background:color-mix(in srgb,var(--tx) 8%,transparent);border-radius:10px;padding:2px;gap:0;height:34px;box-sizing:border-box}
-html.gtResults .rsSort button{border:0;border-radius:8px;height:30px;padding:0 14px;background:none;font:500 14px var(--ui)}
+html.gtResults .rsSort,html.gtResults .rsScope{order:1;margin-inline-end:auto;background:color-mix(in srgb,var(--tx) 8%,transparent);border-radius:10px;padding:2px;gap:0;height:34px;box-sizing:border-box}
+html.gtResults .rsSort button,html.gtResults .rsScope button{border:0;border-radius:8px;height:30px;padding:0 14px;background:none;font:500 14px var(--ui)}
 html.gtResults .rsSort button.on{background:var(--pn);color:var(--tx);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.06)}
 :root[data-theme=dark] html.gtResults .rsSort button.on{background:rgba(255,240,210,.18)}
 html.gtResults .rsChip{border:0;background:color-mix(in srgb,var(--gold) 15%,transparent);height:26px}
@@ -1339,3 +1340,4 @@ html.gtResults .rsPg button{height:32px;border:0;border-radius:10px;background:c
 html.gtResults .rsPg button:not(:disabled):hover{background:color-mix(in srgb,var(--tx) 14%,transparent)}
 html.gtResults .rsPg input{height:32px;border:0;border-radius:9px;background:color-mix(in srgb,var(--tx) 8%,transparent);font-weight:600}
 html.gtResults .rsFoot{border-top:.5px solid color-mix(in srgb,var(--tx) 16%,transparent);background:color-mix(in srgb,var(--tx) 5%,transparent);padding:7px 18px;font-size:12px}
+html.gtResults .rsScope{margin-inline-end:0}
