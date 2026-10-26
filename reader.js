@@ -2378,7 +2378,7 @@
       const DS = G.GimSq.DOMAINS, names = Object.keys(DS), got = {}, fin = new Set();
       let me = SQ = { q: raw, sc: 'glob', dom: 'glob', hits: [], r: { total: 0, res: [] }, total: 0, busy: true, v: 0, pend: names.length, ld: new Set() };
       const again = () => { if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); };
-      let fails = 0; const bad = new Set(); // תחומים שלא נטענו — חלון התוצאות מציג אותם עם "לנסות שוב"
+      let fails = 0; const bad = new Set(), err = {}; // תחומים שלא נטענו — חלון התוצאות מציג אותם עם "לנסות שוב"
       // pub: מפרסם גרסה חדשה של התוצאות. final=false — תוצאות ההיקף שנבחר (נשלפות מהמטמון של הרשימה הנפתחת), מוצגות לפני שהחיפוש בכל הספרים מסתיים
       const pub = (d, final) => {
         if (SQ === null || SQ.q !== raw || SQ.sc !== 'glob') return;
@@ -2388,7 +2388,7 @@
         const res = []; names.forEach(n => got[n] && got[n].res.forEach(r => res.push({ d: n, r })));
         res.sort((a, b) => b.r.sc - a.r.sc);
         // כל גרסה היא אובייקט חדש: חלון התוצאות מחזיק אינדקס של הגרסה הקודמת, ושינוי הסדר במקום היה מערבב לו שורות וטעינות
-        me = SQ = Object.assign({}, me, { r: { total: res.length, res }, total: res.length, v: me.v + 1, hits: sqPh(res.length), ld: new Set(), onLoad: null, dn: [...fin], bad: [...bad] });
+        me = SQ = Object.assign({}, me, { r: { total: res.length, res }, total: res.length, v: me.v + 1, hits: sqPh(res.length), ld: new Set(), onLoad: null, dn: [...fin], bad: [...bad], err });
         const v = me.v, mine = me;
         (res.length ? sqLoad(mine, 0, 11, 1) : Promise.resolve()).then(() => {
           if (SQ !== mine || mine.v !== v) return;
@@ -2396,7 +2396,13 @@
         }, () => {});
       };
       if (pre && pre.dom && names.includes(pre.dom)) sqReady(pre.dom, true).then(() => SQD[pre.dom].E.search(raw, pre.opt)).then(r => { if (!fin.has(pre.dom)) { got[pre.dom] = r; pub(pre.dom, false); } }, () => {});
-      names.forEach(d => sqReady(d, true).then(() => SQD[d].E.search(raw, { srcs: DS[d].srcs.all })).then(r => { got[d] = r; }, () => { fails++; bad.add(d); }).then(() => pub(d, true)));
+      // תחום שנכשל (רשת, Worker שלא עלה) מקבל ניסיון חוזר אחד אחרי שנייה וחצי, ורק אז נרשם כ"לא נטען" עם סיבת הכשל
+      const one = (d, k) => sqReady(d, true).then(() => SQD[d].E.search(raw, { srcs: DS[d].srcs.all })).catch(e => {
+        if (k || !SQ || SQ.q !== raw) throw e;
+        if (SQD[d] && SQD[d].fail) { SQD[d].P = null; SQD[d].fail = false; }
+        return new Promise(r => setTimeout(r, 1500)).then(() => one(d, 1));
+      });
+      names.forEach(d => one(d, 0).then(r => { got[d] = r; }, e => { fails++; bad.add(d); err[d] = String(e && e.message || e || '').slice(0, 160); try { console.warn('[GimSq] ' + d + ':', e); } catch (x) {} }).then(() => pub(d, true)));
     }
     return { hits: SQ.busy ? [] : SQ.hits, total: SQ.total, q: nq, wait: SQ.busy, part: SQ.pend > 0 };
   }

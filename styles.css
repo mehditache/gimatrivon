@@ -1351,3 +1351,4 @@ html.gtResults[data-theme=dark]{color-scheme:dark}
 html.gtResults .rsList,html.gtResults .rsSide{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--tx) 28%,transparent) transparent}
 html.gtResults .rsBad .rsN{color:var(--mu)}
 html.gtResults .rsBad a{color:var(--gold)}
+html.gtResults .rsBadWhy{padding:0 12px 6px;font:11px/1.4 var(--ui);color:var(--mu);direction:ltr;text-align:right;word-break:break-all}

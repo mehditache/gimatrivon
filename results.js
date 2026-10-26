@@ -161,7 +161,7 @@
     });
     // תחומים שלא נטענו: לא נעלמים בשקט
     const bad = (me && me.bad) || [];
-    if (bad.length) h = h.replace('</h4>', '</h4>' + bad.map(d => '<div class="rsFi l1 rsBad"><span class="rsNm">' + esc(R.DL[d] || d) + '</span><span class="rsN">לא נטען · <a href="#" data-retry>לנסות שוב</a></span></div>').join(''));
+    if (bad.length) h = h.replace('</h4>', '</h4>' + bad.map(d => '<div class="rsFi l1 rsBad"><span class="rsNm">' + esc(R.DL[d] || d) + '</span><span class="rsN">לא נטען · <a href="#" data-retry>לנסות שוב</a></span></div>' + (me.err && me.err[d] ? '<div class="rsBadWhy">' + esc(me.err[d]) + '</div>' : '')).join(''));
     S.innerHTML = h;
   }
   $('#rsSide').addEventListener('click', e => {
