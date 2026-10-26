@@ -180,7 +180,7 @@ body.dkGem .dkTools{display:none}
 .dkTop{gap:10px;padding-inline:16px}
 .dkTop .brand{width:150px;flex:none;gap:8px}
 .dkTop .brand h1{font:700 20px var(--ui);color:var(--gold)}
-.dkRd{gap:10px!important}
+.dkRd{gap:10px!important;justify-content:flex-start!important}
 .dkNav{width:256px;flex:none;justify-content:flex-start;gap:4px}
 .dkNav.dim{visibility:hidden;opacity:1}
 .dkOmni{flex:none!important;width:440px!important;max-width:none!important;min-width:0;transition:width .2s ease}
@@ -206,3 +206,25 @@ body.dkGem .dkTools{display:none}
 .dkMenu button.cur::after{content:"";margin-inline-start:auto;width:16px;height:16px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat}
 .dkMenu::after{content:"";position:absolute;bottom:-6px;right:64px;width:12px;height:12px;background:var(--pn);border-bottom:.5px solid color-mix(in srgb,var(--tx) 22%,transparent);border-right:.5px solid color-mix(in srgb,var(--tx) 22%,transparent);transform:rotate(45deg);border-bottom-right-radius:3px}
 .dkOmni{margin:0!important}
+
+/* v4.4.2: הבנר לפי הקנבס (לוח 08): גובה 56, פקדים 34px מלאים בלי מסגרת, רדיוס 10, חיפוש עם טבעת הדגשה */
+.dkTop{--fl:color-mix(in srgb,var(--tx) 9%,transparent);--fl2:color-mix(in srgb,var(--tx) 15%,transparent);height:56px;box-sizing:border-box;padding-inline:16px!important;gap:10px!important}
+.dkTop .brand .ver{display:inline-flex;align-items:center;height:19px;padding:0 8px;border:1px solid color-mix(in srgb,var(--tx) 18%,transparent);border-radius:999px;background:none;color:var(--mu);font:600 11px var(--ui)}
+.dkNav .rdIco{width:34px;height:34px;border:0;border-radius:10px;background:var(--fl)}
+.dkNav .rdWhere{height:34px;border:0;border-radius:10px;background:var(--fl)}
+.dkOmni{height:34px!important;padding:0 4px!important;border:0!important;border-radius:10px!important;background:var(--fl)!important;transition:width .2s ease,background .15s,box-shadow .15s}
+.dkOmni:focus-within{background:var(--pn)!important;box-shadow:0 0 0 2px var(--gold)}
+.dkOmni .dkSearch{height:34px!important;padding:0 6px}
+.dkOmni kbd{height:19px;padding:0 8px;display:inline-flex;align-items:center;border:1px solid color-mix(in srgb,var(--tx) 18%,transparent);border-radius:6px;background:var(--fl);font:600 11px var(--ui);color:var(--mu)}
+.dkOmni:focus-within kbd{display:none}
+.dkScope{width:96px;height:26px!important;padding:0!important;border:0!important;border-radius:8px;background:var(--fl2)!important;font:500 13px var(--ui)!important;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.dkScope::after{content:"";width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-1px) rotate(45deg)}
+.dkTop .dkTools{flex-direction:row-reverse;gap:10px;padding:0;border:0;border-radius:0;height:34px}
+.dkTop .dkTools .rdToolsSep{display:none}
+.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:var(--fl);justify-content:center}
+.dkTop .dkTools .rdSetBtn .aa{font-size:17px}
+.dkTop .dkTools .rdSeg{flex-direction:row-reverse;width:84px;height:34px;padding:2px;box-sizing:border-box;border:0;border-radius:10px;background:var(--fl);gap:0}
+.dkTop .dkTools .rdSeg button{width:40px;height:30px;padding:0;justify-content:center;border-radius:8px;background:none;color:var(--tx)}
+.dkTop .dkTools .rdSeg button.on{background:var(--pn);box-shadow:0 1px 2px rgba(0,0,0,.14);font-weight:600}
+.dkGemTools{gap:10px}
+.dkGemTools button{height:34px;border-radius:10px;background:var(--fl)}

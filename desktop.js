@@ -86,7 +86,9 @@
     else if (!w.max) Object.assign(el.style, { left: w.x + 'px', top: w.y + 'px', width: w.w + 'px', height: w.h + 'px' });
     el.style.zIndex = w.z;
     el.querySelector('.dwT').textContent = w.k === 'gem' ? T('גימטריבון', 'Gimatrivon') : (w.t || T('קריאה', 'Reader'));
-    el.querySelector('[data-a="max"]').innerHTML = SV(w.max ? GI.res : GI.max);
+    // מחליפים את האייקון רק כשהמצב השתנה: החלפה בכל paint מנתקת את ה-svg בין לחיצת העכבר לשחרור, והקליק אובד
+    const mb = el.querySelector('[data-a="max"]'), ms = w.max ? 'res' : 'max';
+    if (mb.dataset.st !== ms) { mb.dataset.st = ms; mb.innerHTML = SV(w.max ? GI.res : GI.max); }
     if (w.k === 'read') { el.querySelector('[data-a="back"]').disabled = w.hi <= 0; el.querySelector('[data-a="fwd"]').disabled = w.hi >= w.hist.length - 1; }
   }
 
@@ -474,7 +476,7 @@
   // טווח החיפוש: התווית לפי הכפתור הפעיל ברשימה של המארח; לחיצה עוברת לטווח הבא
   function scopeLabel() {
     const b = H && H.doc && H.doc.querySelector('#rdDrop .rdDScope button.on');
-    $('#dkScope').textContent = (b ? b.textContent.trim() : T('חיפוש בספר', 'In this book'));
+    $('#dkScope').textContent = (b ? b.textContent.trim() : (document.body.classList.contains('dkGem') ? T('בכל הספרים', 'All books') : T('בספר', 'In book')));
   }
   $('#dkScope').addEventListener('click', e => {
     e.preventDefault(); host(); syncHost();
