@@ -2371,7 +2371,7 @@
   /* ---------- חיפוש בכל הספרים (תנ״ך, משנה, רמב״ם, גמרא, טור — עם כל המפרשים) ----------
      אותה שאילתה נשלחת במקביל לכל התחומים (כל תחום עם ה-Workers שלו), והתוצאות ממוזגות לפי הדירוג. כל תחום מצטרף ברגע שהוא מוכן —
      התוצאות הראשונות מופיעות מיד, והסכום והסדר מתעדכנים כשהאטיים (גמרא, טור) מסיימים. */
-  function sqSearchGlob(raw) {
+  function sqSearchGlob(raw, pre) {
     const nq = norm(raw);
     if (G.GimSq.letters(raw).length < 2) return { hits: [], total: 0, q: '' };
     if (!SQ || SQ.q !== raw || SQ.sc !== 'glob') {
@@ -2379,9 +2379,11 @@
       let me = SQ = { q: raw, sc: 'glob', dom: 'glob', hits: [], r: { total: 0, res: [] }, total: 0, busy: true, v: 0, pend: names.length, ld: new Set() };
       const again = () => { if (dropQ === raw && !$r('#rdDrop').hidden) renderDrop(); };
       let fails = 0;
-      names.forEach(d => sqReady(d, true).then(() => SQD[d].E.search(raw, { srcs: DS[d].srcs.all })).then(r => { got[d] = r; }, () => { fails++; }).then(() => {
+      // pub: מפרסם גרסה חדשה של התוצאות. final=false — תוצאות ההיקף שנבחר (נשלפות מהמטמון של הרשימה הנפתחת), מוצגות לפני שהחיפוש בכל הספרים מסתיים
+      const pub = (d, final) => {
         if (SQ === null || SQ.q !== raw || SQ.sc !== 'glob') return;
-        me = SQ; me.pend--; fin.add(d);
+        me = SQ;
+        if (final) { me.pend--; fin.add(d); }
         if (fails === names.length) { S.glob = false; SQ = null; return again(); } // כשל בכולם — החיפוש הרגיל
         const res = []; names.forEach(n => got[n] && got[n].res.forEach(r => res.push({ d: n, r })));
         res.sort((a, b) => b.r.sc - a.r.sc);
@@ -2392,7 +2394,9 @@
           if (SQ !== mine || mine.v !== v) return;
           if (res.length || !mine.pend) { mine.busy = false; again(); if (res.length) sqLoad(mine, 12, 49, 2); } else again();
         }, () => {});
-      }));
+      };
+      if (pre && pre.dom && names.includes(pre.dom)) sqReady(pre.dom, true).then(() => SQD[pre.dom].E.search(raw, pre.opt)).then(r => { if (!fin.has(pre.dom)) { got[pre.dom] = r; pub(pre.dom, false); } }, () => {});
+      names.forEach(d => sqReady(d, true).then(() => SQD[d].E.search(raw, { srcs: DS[d].srcs.all })).then(r => { got[d] = r; }, () => { fails++; }).then(() => pub(d, true)));
     }
     return { hits: SQ.busy ? [] : SQ.hits, total: SQ.total, q: nq, wait: SQ.busy, part: SQ.pend > 0 };
   }
@@ -2931,8 +2935,8 @@
     // חלון תוצאות ממתין: משחררים את ה-Workers (זיכרון); הם נפתחים שוב לבד כשצריך לטעון טקסט (sqLoad)
     sleep() { Object.keys(SQD).forEach(d => { if (SQD[d].P && SQD[d].stop) SQD[d].stop(); }); },
     // מריץ חיפוש בכל הספרים; cb(me) כשכל התחומים סיימו (או null בכשל)
-    start(raw, cb, onProg) {
-      ensureIndex(); SQ = null; const r0 = sqSearchGlob(raw);
+    start(raw, cb, onProg, pre) {
+      ensureIndex(); SQ = null; const r0 = sqSearchGlob(raw, pre);
       if (!r0.q) return cb(null);
       // cb(me, partial): כל תחום שמסיים מעדכן את התוצאות — מציגים אותן מיד, ובסיום כל התחומים קוראים שוב עם partial=false
       let seen = -1, dn = -1;
@@ -2982,7 +2986,7 @@
       const dom = sqDomOf(); if (!dom) return null;
       const di = RES_DOMS.indexOf(dom), es = effScope(dom), set = srcSet(dom, S[srcProp(dom)]), SR = G.GimSq.DOMAINS[dom].srcs, srcOff = [];
       srcKeys(dom).forEach(k => { if (!set.has(k)) (SR[k] || []).forEach(i => srcOff.push(di + ':' + i)); });
-      const out = (sel, name) => ({ sel, name, srcOff });
+      const out = (sel, name) => ({ sel, name, srcOff, pre: { dom, opt: sqOpt(dom) } }); // pre: חיפוש ההיקף עצמו, לתצוגה מיידית בחלון התוצאות
       if (dom === 'tur') {
         if (es === 'every') return out(['d:' + di], RES_DL.tur);
         const bi = G.GIM_SQ_DBS.tur.bk.findIndex(x => x.k === S.rk); return bi < 0 ? null : out(['b:' + di + ':' + bi], turPartName(turTOf(S.rk)));
@@ -2995,7 +2999,10 @@
       }
       if (es === 'all') return out(['d:' + di], isRambam(S.b) ? 'כל הרמב״ם' : isMishnah(S.b) ? 'כל המשנה' : 'כל התנ״ך');
       if (es === 'grp') return out(grpBooks(S.b).map(i => 'b:' + di + ':' + i), IX.books[S.b].g);
-      return out(['b:' + di + ':' + S.b], bkName(IX.books[S.b].heTitle)); // פרק / פרשה: חלון התוצאות מסנן עד רמת הספר
+      if (es === 'ch' || es === 'par') {
+        const o = sqOpt(dom), r = out(['b:' + di + ':' + S.b], es === 'par' ? 'פרשת ' + parashaOf(S.b, S.ch).name : bkName(IX.books[S.b].heTitle) + ' ' + T('פרק') + ' ' + num(S.ch)); r.ord = [o.lo, o.hi]; return r;
+      }
+      return out(['b:' + di + ':' + S.b], bkName(IX.books[S.b].heTitle));
     } catch (e) { return null; }
   }
   G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault };

@@ -6,7 +6,8 @@
   'use strict';
   if (!window.GT_RESULTS) return;
   const P = new URLSearchParams(location.search);
-  const WID = P.get('wid') || '', Q0 = P.get('q') || '';
+  const SPARE = P.get('spare') === '1'; // חלון מחומם מראש: נטען ומוכן, ומקבל שאילתה בהודעת 'go' מהשולחן
+  let WID = P.get('wid') || '', Q0 = P.get('q') || '';
   let FS = {}; try { FS = JSON.parse(P.get('f') || '{}') || {}; } catch (e) {}
   const CAP = 150000, RH = 82, GH = 32, PG = 100; // PG: תוצאות בדף
   const SVG = d => '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
@@ -16,7 +17,7 @@
 
   // ---- State ----
   let R = null, me = null, idx = null, q = Q0, extra = FS.extra || '';
-  const SC = FS.scope && FS.scope.sel ? FS.scope : null; // ההיקף מהרשימה הנפתחת; null = כל הספרים
+  let SC = FS.scope && FS.scope.sel ? FS.scope : null; // ההיקף מהרשימה הנפתחת; null = כל הספרים
   const sel = new Set(FS.sel || []), srcOff = new Set(FS.srcOff || []);
   let sort = FS.sort === 'books' ? 'books' : 'rel', exp = new Set(FS.exp || []);
   let rows = [], off = null, order = null, shown = 0, page = Math.max(0, +FS.pg || 0), wantPg = page, pages = 1;
@@ -27,11 +28,21 @@
   document.body.appendChild(app);
   const $ = s => app.querySelector(s), list = $('#rsList'), sp = $('#rsSp');
   $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
+  const sameScope = () => !!SC && sel.size === SC.sel.length && SC.sel.every(k => sel.has(k));
+  let goSeen = !SPARE, pend = false;
+  function setCfg(m) {
+    WID = m.wid; Q0 = q = m.q || ''; FS = m.f || {}; extra = FS.extra || '';
+    SC = FS.scope && FS.scope.sel ? FS.scope : null;
+    sel.clear(); (FS.sel || []).forEach(k => sel.add(k)); srcOff.clear(); (FS.srcOff || []).forEach(k => srcOff.add(k));
+    sort = FS.sort === 'books' ? 'books' : 'rel'; exp = new Set(FS.exp || []); page = wantPg = Math.max(0, +FS.pg || 0);
+    $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
+  }
+  addEventListener('message', e => { const m = e.data; if (!SPARE || !m || m.gtDesk !== 'go' || e.source !== parent) return; setCfg(m); goSeen = true; if (pend) { pend = false; run(); } });
 
   const state = () => post({ type: 'state', state: { sel: [...sel], scope: SC, srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
 
   // ---- התחלה ----
-  const bootTry = () => { R = window.GimResults; if (!R || !R.ready()) return false; clearInterval(boot); run(); return true; };
+  const bootTry = () => { R = window.GimResults; if (!R || !R.ready()) return false; clearInterval(boot); if (goSeen) run(); else pend = true; return true; };
   const boot = setInterval(bootTry, 30);
   let runTok = 0, idxTok = 0;
   function run() {
@@ -55,7 +66,7 @@
         me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter(true);
         if (partial) { list.scrollTop = st; paint(true); $('#rsFoot').textContent += ' · תוצאות חלקיות — עדיין מחפש (' + (m.pend || 0) + ' תחומים נותרו)'; }
       });
-    }, (dn, pend) => { if (!idx) $('#rsFoot').textContent = 'מחפש בכל הספרים… ' + R.DOMS.map(d => R.DL[d] + (dn.includes(d) ? ' (נטען)' : ' …')).join(' · '); });
+    }, (dn, pend) => { if (!idx) $('#rsFoot').textContent = 'מחפש בכל הספרים… ' + R.DOMS.map(d => R.DL[d] + (dn.includes(d) ? ' (נטען)' : ' …')).join(' · '); }, SC && SC.pre && sameScope() ? SC.pre : null);
   }
 
   // ---- סינון ----
@@ -64,6 +75,7 @@
   let RES_D = null;
   function passes(i) {
     if (srcOff.has(idx.dom[i] + ':' + idx.src[i])) return false;
+    if (SC && SC.ord && sel.size === SC.sel.length && SC.sel.every(k => sel.has(k)) && (idx.ord[i] < SC.ord[0] || idx.ord[i] > SC.ord[1])) return false; // פרק / פרשה
     if (!sel.size) return true;
     const d = idx.dom[i], bi = idx.bk[i];
     return sel.has('d:' + d) || sel.has('b:' + d + ':' + bi) || (sel.size > 0 && sel.has('g:' + d + ':' + gOf(d, bi)));

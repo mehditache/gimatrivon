@@ -255,12 +255,28 @@
   const searches = () => D.wins.filter(w => w.k === 'search');
   // ההיקף שנבחר ברשימה הנפתחת (מארח החיפוש): חלון התוצאות נפתח לפיו
   function hostScope() { try { const gr = H && H.doc && H.doc.defaultView.GimReader; return (gr && gr.dropScope && gr.dropScope()) || null; } catch (e) { return null; } }
+  // חלון תוצאות מחומם מראש: נבנה מוסתר (ממוזער, לא ברשימת החלונות) כשמתחילים לחפש, כדי שה-Enter יציג תוצאות בלי להמתין לטעינת iframe
+  let spare = null;
+  function prewarm() {
+    if (spare || searches().length >= MAXS || !/^https?:$/.test(location.protocol)) return;
+    const w0 = { id: 's' + (D.seq++), k: 'search', x: 0, y: 0, w: 900, h: 600, max: false, min: true, z: 0, q: '', fs: {} };
+    build(w0); const f = F.get(w0.id), fr = document.createElement('iframe');
+    fr.title = T('תוצאות חיפוש', 'Search results'); fr.src = 'index.html?embed=results&spare=1&wid=' + w0.id;
+    fr.addEventListener('load', () => { if (spare && spare.w === w0) spare.ready = true; });
+    f.el.querySelector('.dwBody').appendChild(fr); f.fr = fr; spare = { w: w0, fr, ready: false };
+  }
+  function killSpare() { if (!spare) return; const f = F.get(spare.w.id); if (f) { f.el.remove(); F.delete(spare.w.id); } spare = null; }
   function openResults(qv, sc) {
     let w = searches().find(x => x.q === qv);
     if (!w) {
       if (searches().length >= MAXS) closeWin(searches().sort((a, b) => a.z - b.z)[0].id);
       w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: sc ? { sel: sc.sel, scope: sc } : {}, t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
-      D.wins.push(w); build(w);
+      if (spare && spare.ready) { // מאמצים את החלון המחומם
+        const s = spare; spare = null;
+        Object.assign(s.w, { x: w.x, y: w.y, w: w.w, h: w.h, min: false, z: w.z, q: qv, fs: w.fs, at: Date.now() });
+        w = s.w; D.wins.push(w); paint(w); attach(w, s.fr);
+        try { s.fr.contentWindow.postMessage({ gtDesk: 'go', wid: w.id, q: qv, f: w.fs }, location.origin); } catch (e) {}
+      } else { D.wins.push(w); build(w); }
     }
     focusWin(w.id); return w;
   }
@@ -466,7 +482,7 @@
     if (!H) return; const r = $('#dkSearch').getBoundingClientRect(), wd = Math.max(r.width, 480);
     Object.assign(H.fr.style, { top: Math.round(r.bottom + 6) + 'px', right: Math.round(innerWidth - r.right) + 'px', width: Math.round(wd) + 'px', height: Math.round(Math.min(innerHeight * .74, 720)) + 'px' });
   }
-  function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) killHost(); }, 20000); }
+  function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) { killHost(); killSpare(); } }, 20000); }
   // המארח (עותק מלא של האפליקציה עם Workers משלו) משוחרר מיד כשנפתח חלון תוצאות, ואחרי 20 שניות סרק
   function killHost() { clearTimeout(hostT); if (H) { H.fr.src = 'about:blank'; H.fr.remove(); H = null; } }
   function syncHost() { const h = hostHash(); if (H && H.win && dec(H.win.location.hash) !== h) { hostBase = h; H.quiet = Date.now() + 1000; H.win.location.hash = h; setTimeout(() => { ctxApply(); scopeLabel(); }, 350); } }
@@ -483,7 +499,7 @@
   }
   function closeSearch() { if (H && H.doc && !H.doc.getElementById('rdDrop').hidden) fire('keydown', { key: 'Escape' }); }
   document.addEventListener('pointerdown', e => { if (!e.target.closest('#dkSearch,.dkHost,#dkScMenu')) closeSearch(); }, true);
-  q.addEventListener('focus', () => { host(); syncHost(); ctxApply(); fire('focus'); });
+  q.addEventListener('focus', () => { host(); syncHost(); ctxApply(); fire('focus'); setTimeout(prewarm, 1200); });
   q.addEventListener('input', () => { host(); syncHost(); if (!H.doc) return; H.doc.getElementById('rdQ').value = q.value; fire('input'); });
   let arrowed = false; q.addEventListener('input', () => { arrowed = false; });
   q.addEventListener('keydown', e => {
@@ -509,7 +525,7 @@
     const a = W(D.act), g = gr(); if (!a || !g || (a.k !== 'gem' && a.k !== 'read') || ctxKey === a.id) return;
     ctxKey = a.id; g.applyDefault(a.k); scopeLabel();
   }
-  const scm = $('#dkScMenu');
+  const scm = $('#dkScMenu'); document.body.appendChild(scm);
   function scMenu() {
     const m = model(); if (!m) return;
     const row = (cls, k, ic, l, n) => '<button type="button" class="' + cls + '" data-' + k + '>' + ic + '<span>' + l + '</span>' + (n ? '<small>' + n + '</small>' : '') + '</button>';
