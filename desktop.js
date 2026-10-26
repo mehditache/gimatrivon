@@ -127,15 +127,17 @@
   /* ---------- שינה אוטומטית ---------- */
   // חלון שלא היה פעיל D.sl דקות (ולא נוגעים בו) משחרר את ה-iframe ונשאר במקומו עם "לחיצה להמשך"; המצב נשמר כמו במזעור. חלון הגימטריה לבדו
   // תופס כ-400MB (אינדקס האותיות), וכל חלון קריאה כ-90MB. החלון הפעיל וחלון הקריאה שהבנר משקף אף פעם לא ישנים.
-  const SL_OPTS = [0, 5, 10, 30], slMin = () => D.sl == null ? 10 : D.sl;
-  const slLabel = () => slMin() ? T('שינה אוטומטית: ' + slMin() + ' דק׳', 'Auto-sleep: ' + slMin() + ' min') : T('שינה אוטומטית: כבויה', 'Auto-sleep: off');
+  // הגימטריה (כבדה) ישנה אחרי slMin דקות, חלונות קריאה ותוצאות אחרי פי שניים (ברירת מחדל 10 ו-20). מזעור לא משחרר את החלון: הוא ממשיך להחזיק את מצבו
+  // ונפתח מיד, וסופר את אותו זמן מרגע המזעור.
+  const SL_OPTS = [0, 5, 10, 30], slMin = () => D.sl == null ? 10 : D.sl, slFor = w => slMin() * (w.k === 'gem' ? 1 : 2);
+  const slLabel = () => slMin() ? T('שינה אוטומטית: גימטריה ' + slMin() + ' · קריאה ' + slMin() * 2 + ' דק׳', 'Auto-sleep: gematria ' + slMin() + ' · reader ' + slMin() * 2 + ' min') : T('שינה אוטומטית: כבויה', 'Auto-sleep: off');
   function autoSleep() {
-    const m = slMin(); if (!m) return; const now = Date.now();
+    if (!slMin()) return; const now = Date.now();
     D.wins.forEach(w => {
-      const f = F.get(w.id); if (!f || !f.fr || w.min || w.id === D.act || w.id === D.last) return;
-      if (document.activeElement === f.fr) { w.at = now; return; }
+      const f = F.get(w.id); if (!f || !f.fr || w.id === D.act || w.id === D.last) return;
+      if (!w.min && document.activeElement === f.fr) { w.at = now; return; }
       if (!w.at) w.at = now;
-      if (now - w.at > m * 60000) { sleepFrame(w); taskbar(); }
+      if (now - w.at > slFor(w) * 60000) { sleepFrame(w); taskbar(); }
     });
   }
   setInterval(autoSleep, 30000);
@@ -229,7 +231,7 @@
   function topVisible(except) { return D.wins.filter(w => !w.min && w.id !== except).sort((a, b) => b.z - a.z)[0]; }
   function minimize(id) {
     const w = W(id); if (!w) return;
-    sleepFrame(w); w.min = true; paint(w);
+    w.min = true; w.at = Date.now(); paint(w);
     if (D.act === id) { const n = topVisible(id); D.act = n ? n.id : ''; if (n) { n.z = ++D.z; wake(n); } D.wins.forEach(paint); banner(); syncUrl(); }
     taskbar(); saveSoon();
   }
