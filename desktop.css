@@ -289,3 +289,6 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 .dkWg .dwNav{margin:0;gap:2px}
 .dkWg .dwNav button{width:28px;height:28px;font-size:17px;display:grid;place-items:center;cursor:pointer}
 .dkWg .dwNav button:disabled{opacity:.3;cursor:default}
+/* v4.5.4: בלי פס דק בין כותרת החלון לגוף — הקו נעשה צל פנימי והגוף עולה פיקסל מתחת לכותרת */
+.dwBar{border-bottom:0!important;box-shadow:var(--barhi),inset 0 -.5px 0 var(--barln)}
+.dwBody{margin-top:-1px}

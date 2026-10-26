@@ -37,7 +37,7 @@
     sort = FS.sort === 'books' ? 'books' : 'rel'; exp = new Set(FS.exp || []); page = wantPg = Math.max(0, +FS.pg || 0);
     $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
   }
-  addEventListener('message', e => { const m = e.data; if (!SPARE || !m || m.gtDesk !== 'go' || e.source !== parent) return; setCfg(m); goSeen = true; if (pend) { pend = false; run(); } });
+  addEventListener('message', e => { const m = e.data; if (!m || m.gtDesk !== 'go' || e.source !== parent) return; const was = goSeen; setCfg(m); goSeen = true; if (pend) { pend = false; run(); } else if (was && R && R.ready()) run(); });
 
   const state = () => post({ type: 'state', state: { sel: [...sel], scope: SC, srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
 
@@ -159,9 +159,13 @@
       const ks = byName[nm], off0 = ks.every(k => srcOff.has(k)), total = ks.reduce((a, k) => a + sc[k], 0);
       h += '<div class="rsFi l2' + (off0 ? '' : ' on') + '" data-s="' + ks.join(',') + '">' + mark(!off0, false) + '<span class="rsNm">' + esc(nm) + '</span><span class="rsN">' + total.toLocaleString('he') + '</span></div>';
     });
+    // תחומים שלא נטענו: לא נעלמים בשקט
+    const bad = (me && me.bad) || [];
+    if (bad.length) h = h.replace('</h4>', '</h4>' + bad.map(d => '<div class="rsFi l1 rsBad"><span class="rsNm">' + esc(R.DL[d] || d) + '</span><span class="rsN">לא נטען · <a href="#" data-retry>לנסות שוב</a></span></div>').join(''));
     S.innerHTML = h;
   }
   $('#rsSide').addEventListener('click', e => {
+    if (e.target.closest('[data-retry]')) { e.preventDefault(); return run(); }
     const clr = e.target.closest('[data-clr]'); if (clr) { if (clr.dataset.clr === 'sel') sel.clear(); else srcOff.clear(); return refilter(); }
     const t = e.target.closest('[data-t]'); if (t) { const k = t.dataset.t; exp.has(k) ? exp.delete(k) : exp.add(k); return side(), state(); }
     const f = e.target.closest('.rsFi'); if (!f) return;

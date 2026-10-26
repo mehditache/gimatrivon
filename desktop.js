@@ -287,11 +287,17 @@
     f.el.querySelector('.dwBody').appendChild(fr); f.fr = fr; spare = { w: w0, fr, ready: false };
   }
   function killSpare() { if (!spare) return; const f = F.get(spare.w.id); if (f) { f.el.remove(); F.delete(spare.w.id); } spare = null; }
+  // הקשר החיפוש של הפקד (היקף + מקורות) כמצב ההתחלתי של חלון התוצאות
+  const scFs = sc => sc ? { sel: sc.sel, scope: sc, srcOff: sc.srcOff || [] } : {};
   function openResults(qv, sc) {
     let w = searches().find(x => x.q === qv);
+    if (w) { // אותה מילה כבר פתוחה: החלון מקבל את ההקשר הנוכחי של הפקד
+      w.fs = scFs(sc); const f = F.get(w.id);
+      try { if (f && f.fr && f.fr.contentWindow) f.fr.contentWindow.postMessage({ gtDesk: 'go', wid: w.id, q: qv, f: w.fs }, location.origin); } catch (e) {}
+    }
     if (!w) {
       if (searches().length >= MAXS) closeWin(searches().sort((a, b) => a.z - b.z)[0].id);
-      w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: sc ? { sel: sc.sel, scope: sc } : {}, t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
+      w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: scFs(sc), t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
       if (spare && spare.ready) { // מאמצים את החלון המחומם
         const s = spare; spare = null;
         Object.assign(s.w, { x: w.x, y: w.y, w: w.w, h: w.h, min: false, z: w.z, q: qv, fs: w.fs, at: Date.now() });

@@ -1344,3 +1344,10 @@ html.gtResults .rsScope{margin-inline-end:0}
 
 /* שולחן העבודה: הבורר הוא התפריט שבתיבת החיפוש; ברשימה הנפתחת של המארח נשאר רק מספר התוצאות */
 html.gtSearch .rdDScope button,html.gtSearch .rdDScope .sep,html.gtSearch .rdDScope .rdSrc{display:none}
+/* v4.5.4: חלון התוצאות — כפתור נבחר קריא בשני המראות (הכלל הכהה הקודם לא חל: ‎:root html‎), פס גלילה בצבעי המראה */
+html.gtResults .rsSort button.on,html.gtResults .rsScope button.on{background:var(--pn);color:var(--tx);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.06)}
+html.gtResults[data-theme=dark] .rsSort button.on,html.gtResults[data-theme=dark] .rsScope button.on{background:rgba(255,240,210,.18);color:var(--tx)}
+html.gtResults[data-theme=dark]{color-scheme:dark}
+html.gtResults .rsList,html.gtResults .rsSide{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--tx) 28%,transparent) transparent}
+html.gtResults .rsBad .rsN{color:var(--mu)}
+html.gtResults .rsBad a{color:var(--gold)}

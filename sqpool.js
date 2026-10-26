@@ -55,7 +55,7 @@
       st.last = Date.now(); st.Q.push({ sql, args, ok, no, n: st.n++, pri: o && o.pri != null ? o.pri : 0, alive: o && o.alive });
       if (!st.pool.length) start().then(pump, e => { st.Q.splice(0).forEach(j => j.no(e)); }); else pump();
     }) };
-    return st.P = Promise.all([G.createDbWorker || script('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || script('generated/sqlite/' + name + '.js')]).then(async () => {
+    const P = st.P = Promise.all([G.createDbWorker || script('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || script('generated/sqlite/' + name + '.js')]).then(async () => {
       D = G.GIM_SQ_DBS[name];
       await start();
       const E = G.GimSq.create(backend, D.bk ? D.bk.map(x => ({ cat: DM.cat, cv: x.cv })) : books, name);
@@ -70,6 +70,8 @@
       };
       return st.E = E;
     });
+    P.catch(() => { if (st.P === P) st.P = null; }); // כשל (רשת, שרת בלי Range): הבקשה הבאה מנסה שוב
+    return P;
   }
   setInterval(() => { const t = Date.now(); Object.keys(ST).forEach(k => { const s = ST[k]; if (s.pool && s.pool.length && t - s.last > IDLE && !s.Q.length && !s.pool.some(x => x.busy)) s.stop(); }); }, 15000);
   G.GimSqPool = { engine, stats: () => Object.keys(ST).map(k => [k, ST[k].pool.length]) };
