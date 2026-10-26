@@ -483,6 +483,11 @@
         f.home[id] = { p: el.parentNode, n: el.nextSibling };
         popLayer.style.top = ($('#dkBan').getBoundingClientRect().bottom + 4) + 'px';
         popLayer.appendChild(document.adoptNode(el)); popLayer.dataset.w = w.id;
+        // מעבר לפרק ופסוק: תמיד מימין מתחת לבנר; הגדרות תצוגה והדפסה: מתחת לכפתור שפתח אותם (קצה ימני מיושר אליו, בתוך המסך)
+        if (id === 'rdJump') { el.style.left = ''; el.style.right = ''; } else {
+          const lay = popLayer.getBoundingClientRect(), wd = el.offsetWidth, x = Math.max(8, Math.min(innerWidth - 70 - wd, lastR - wd));
+          el.style.right = 'auto'; el.style.left = (x - lay.left) + 'px';
+        }
         f.pops[id] = el; f.win.GT_POPS = Object.fromEntries(Object.keys(f.pops).map(k => ['#' + k, f.pops[k]]));
         if (!el._dk) { el._dk = new MutationObserver(() => syncPops(w, f)); el._dk.observe(el, { attributes: true, attributeFilter: ['hidden'], childList: true }); }
         if (id === 'rdJump') jumpExtras(w, f);
