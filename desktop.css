@@ -256,3 +256,36 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 
 .dkScMenu button{justify-content:flex-start}
 .dkScMenu button>span{flex:none}
+/* v4.5.1 (קנבס, לוחות 16-17): זכוכית לבנה חצי שקופה אחת לבנר, לפס הצדדי ולכותרת החלון — לא תלויה בטפט */
+:root{--bar:rgba(255,255,255,.58);--barhi:inset 0 .5px 0 rgba(255,255,255,.75);--barln:rgba(60,40,10,.14);--barfx:blur(24px) saturate(170%)}
+:root[data-theme=dark]{--bar:rgba(22,18,13,.58);--barhi:inset 0 .5px 0 rgba(255,240,210,.10);--barln:rgba(255,240,210,.14)}
+.dkTop,.dkTask,.dwBar,.dw.act .dwBar{background:var(--bar)!important;-webkit-backdrop-filter:var(--barfx);backdrop-filter:var(--barfx);box-shadow:var(--barhi)}
+.dkTop{border-bottom:.5px solid var(--barln)}
+.dkTask{border-inline-end:.5px solid var(--barln)}
+.dwBar{border-bottom:.5px solid var(--barln)}
+/* החלון שקוף מאחורי הכותרת, כך שהכותרת מראה את הטפט כמו הבנר; הגוף נשאר ברקע האפליקציה */
+.dw{background:transparent}
+.dwBody{background:var(--bg)}
+/* פס צדדי: כפתורים בהירים על הזכוכית, החלון הפעיל במסגרת זהב */
+.dkChip:not(.th){background:rgba(255,255,255,.5);box-shadow:0 0 0 .5px var(--barln)}
+.dkChip:not(.th):hover{background:rgba(255,255,255,.75)}
+.dkTool{background:rgba(255,255,255,.55)!important}
+:root[data-theme=dark] .dkChip:not(.th){background:rgba(255,240,210,.08)}
+:root[data-theme=dark] .dkChip:not(.th):hover{background:rgba(255,240,210,.14)}
+:root[data-theme=dark] .dkTool{background:rgba(255,240,210,.08)!important}
+.dkChip.th .t{color:var(--tx);opacity:.72}
+.dkChip.th.on .t{opacity:1}
+
+/* חלון מוגדל: הפס שלו נעלם, הכפתורים וחיצי ההיסטוריה בקבוצה בבנר, משמאל לתיבת החיפוש */
+.dw.max .dwBar{display:none}
+.dkWg{flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px 0 6px;margin-inline-start:2px;border-radius:10px;background:var(--fl)}
+.dkWg[hidden]{display:none}
+.dkWg .dwCtl{gap:8px}
+.dkWg .dwCtl button{width:14px;height:14px;border:0;cursor:pointer}
+.dkWg .dwCtl .gi{width:9px;height:9px}
+.dkWg .dwNoX{width:14px;height:14px;border-radius:50%;background:color-mix(in srgb,var(--tx) 9%,transparent)}
+.dkWg .x{background:var(--sv)!important}.dkWg .m{background:var(--gd)!important}.dkWg .z{background:var(--tq)!important}
+.dkWg .dv{width:.5px;height:18px;background:color-mix(in srgb,var(--tx) 22%,transparent)}
+.dkWg .dwNav{margin:0;gap:2px}
+.dkWg .dwNav button{width:28px;height:28px;font-size:17px;display:grid;place-items:center;cursor:pointer}
+.dkWg .dwNav button:disabled{opacity:.3;cursor:default}

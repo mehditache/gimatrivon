@@ -90,7 +90,28 @@
     const mb = el.querySelector('[data-a="max"]'), ms = w.max ? 'res' : 'max';
     if (mb.dataset.st !== ms) { mb.dataset.st = ms; mb.innerHTML = SV(w.max ? GI.res : GI.max); }
     if (w.k === 'read') { el.querySelector('[data-a="back"]').disabled = w.hi <= 0; el.querySelector('[data-a="fwd"]').disabled = w.hi >= w.hist.length - 1; }
+    wgrp();
   }
+
+  // חלון מוגדל: פס החלון מוסתר, וכפתורי החלון וחיצי ההיסטוריה שלו עוברים לקבוצה בבנר (הבנר נשאר בגובה 56)
+  function wgrp() {
+    const wg = $('#dkWg');
+    const w = W(D.act), on = !!w && !!w.max && !w.min, key = on ? w.id + '|' + w.k + '|' + w.hi + '|' + (w.hist ? w.hist.length : 0) : '';
+    document.body.classList.toggle('dkMax', on);
+    if (wg.dataset.k === key) return; wg.dataset.k = key; wg.hidden = !on;
+    if (!on) { wg.textContent = ''; return; }
+    wg.innerHTML = '<span class="dwCtl">' + (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">' + SV(GI.x) + '</button>' : '<span class="dwNoX"></span>') +
+      '<button type="button" class="m" data-a="min" title="' + T('מזעור', 'Minimize') + '">' + SV(GI.min) + '</button><button type="button" class="z" data-a="max" title="' + T('שחזור גודל', 'Restore') + '">' + SV(GI.res) + '</button></span>' +
+      (w.k === 'read' ? '<i class="dv"></i><span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '"' + (w.hi <= 0 ? ' disabled' : '') + '>' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '"' + (w.hi >= w.hist.length - 1 ? ' disabled' : '') + '>' + SV(GI.fwd) + '</button></span>' : '');
+  }
+  $('#dkWg').addEventListener('click', e => {
+    const b = e.target.closest('button[data-a]'), w = W(D.act); if (!b || !w) return;
+    const a = b.dataset.a;
+    if (a === 'min') minimize(w.id); else if (a === 'max') toggleMax(w.id); else if (a === 'close') closeWin(w.id);
+    else if (a === 'back') go(w.id, -1); else if (a === 'fwd') go(w.id, 1);
+  });
+  // לחיצה כפולה על שטח ריק בבנר מחזירה חלון מוגדל לגודלו
+  $('#dkBan').addEventListener('dblclick', e => { const w = W(D.act); if (w && w.max && !e.target.closest('button,input,label,a,.dkOmni,.dkNav,.dkTools')) toggleMax(w.id); });
 
   // טעינת ה-iframe של חלון (רק כשהוא גלוי ופעיל, או כשלוחצים עליו)
   function wake(w) {
