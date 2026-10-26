@@ -253,3 +253,6 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 .dkScMenu .bx{width:20px;height:20px;flex:none;border-radius:6px;border:1.5px solid color-mix(in srgb,var(--tx) 30%,transparent);background:var(--pn);display:grid;place-items:center}
 .dkScMenu button.cb.on .bx{background:var(--gold);border-color:var(--gold)}
 .dkScMenu button.cb.on .bx::after{content:"";width:10px;height:6px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:translateY(-1px) rotate(-45deg)}
+
+.dkScMenu button{justify-content:flex-start}
+.dkScMenu button>span{flex:none}

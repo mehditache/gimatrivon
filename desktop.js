@@ -426,6 +426,7 @@
   function banner() {
     const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
     document.body.classList.toggle('dkGem', gem); document.body.classList.toggle('dkOther', other);
+    try { ctxSync(); } catch (e) {} // לפני אתחול המשתנים (טעינה ראשונה) — מדלגים
     $('#dkGemTools').hidden = !gem;
     const f = readerF(), d = f && f.doc;
     cloneInto(nav, d && d.querySelector('#rdTop .rdNav'));
@@ -514,16 +515,27 @@
   // המודל והפעולות של הקורא (GimReader) נשארים המקור היחיד; הבועות של הרשימה הנפתחת מוסתרות במארח.
   const gr = () => H && H.win && H.win.GimReader && H.win.GimReader.scopeModel ? H.win.GimReader : null;
   const model = () => { try { const g = gr(); return g && g.scopeModel(); } catch (e) { return null; } };
+  let lastLbl = null;
   function scopeLabel() {
     const m = model(), l = m && (m.glob ? { label: T('בכל הספרים', 'All books') } : m.levels.find(x => x.on));
-    $('#dkScope').textContent = l ? l.label : document.body.classList.contains('dkGem') ? T('בכל התנ״ך', 'All Tanakh') : T('בספר', 'In book');
+    const a = W(D.act);
+    $('#dkScope').textContent = l ? (lastLbl = { id: a && a.id, t: l.label }).t : lastLbl && a && lastLbl.id === a.id ? lastLbl.t : document.body.classList.contains('dkGem') ? T('בכל התנ״ך', 'All Tanakh') : T('בספר', 'In book');
     if (!$('#dkScMenu').hidden) scMenu();
   }
   // ברירת מחדל לפי החלון הפעיל: קריאה = כל הספר בלי מפרשים; גימטריה = כל התנ״ך עם מפרשים. נקבעת פעם אחת כשהחלון הפעיל מתחלף; בחירה ידנית נשארת עד המעבר הבא
   let ctxKey = '';
+  // החלון הפעיל התחלף (הבנר מתעדכן): ההקשר והתווית מתעדכנים מיד; בלי מארח חי — התווית של ברירת המחדל, וההקשר נקבע כשהמארח נוצר
+  function ctxSync() {
+    const a = W(D.act); if (!a || (a.k !== 'gem' && a.k !== 'read')) return;
+    if (H && H.win) {
+      syncHost();
+      if (ctxApply()) $('#dkScope').textContent = a.k === 'gem' ? T('בכל התנ״ך', 'All Tanakh') : T('בספר', 'In book'); // מיד; התווית המדויקת (לפי תחום הספר) אחרי שהמארח עבר לספר
+      setTimeout(scopeLabel, 450);
+    } else scopeLabel();
+  }
   function ctxApply() {
     const a = W(D.act), g = gr(); if (!a || !g || (a.k !== 'gem' && a.k !== 'read') || ctxKey === a.id) return;
-    ctxKey = a.id; g.applyDefault(a.k); scopeLabel();
+    ctxKey = a.id; g.applyDefault(a.k); return true;
   }
   const scm = $('#dkScMenu'); document.body.appendChild(scm);
   function scMenu() {
@@ -546,7 +558,13 @@
     if (b.dataset.sc) { g.setScope(b.dataset.sc); scm.hidden = true; } else if (b.dataset.tg) g.toggleSrc(b.dataset.tg);
     scopeLabel(); if (b.dataset.tg) scMenu();
   });
-  $('#dkScope').addEventListener('click', e => { e.preventDefault(); if (!scm.hidden) { scm.hidden = true; return; } openScMenu(); });
+  // תיבת החיפוש מכווצת כשאין בה פוקוס: לחיצה על הכפתור קודם מרחיבה אותה (בלי להעביר אליו פוקוס, כדי שהכפתור לא יזוז בין הלחיצה לשחרור) ורק אז נפתח התפריט
+  $('#dkScope').addEventListener('mousedown', e => e.preventDefault());
+  $('#dkScope').addEventListener('click', e => {
+    e.preventDefault(); if (!scm.hidden) { scm.hidden = true; return; }
+    if ($('.dkOmni').matches(':focus-within')) return openScMenu();
+    q.focus(); setTimeout(openScMenu, 280);
+  });
   document.addEventListener('pointerdown', e => { if (!scm.hidden && !e.target.closest('#dkScMenu,#dkScope')) scm.hidden = true; }, true);
   addEventListener('keydown', e => { if (e.key === 'Escape') scm.hidden = true; });
   addEventListener('resize', placeHost);
