@@ -100,6 +100,7 @@
         else { const a = f.doc.getElementById('tA'), b = f.doc.getElementById('tB'); w.snip = [a && a.value, b && b.value].filter(Boolean).join('  ·  '); }
       }
     } catch (e) {}
+    if (f.menuEl) { f.menuEl.remove(); f.menuEl = null; }
     if (f.obs) f.obs.forEach(o => o.disconnect());
     if (f.fr) { try { f.fr.src = 'about:blank'; } catch (e) {} f.fr.remove(); }
     f.fr = f.doc = f.win = null; f.obs = null;
@@ -163,6 +164,8 @@
       setTimeout(() => onHash(w.id), 50);
       watchReader(w, f);
     } else restoreForm(w, f);
+    const mp = d.getElementById('mMenuPanel'); // תפריט ה-⋮ של כל סוג חלון (גם גימטריה)
+    if (mp) { const o4 = new fw.MutationObserver(() => syncMenu(w, f)); o4.observe(mp, { attributes: true, attributeFilter: ['class'] }); f.obs.push(o4); }
     themeTo(f);
     if (!$('#dkVer').textContent) { const v = d.getElementById('ver'); if (v) $('#dkVer').textContent = v.textContent; }
     if (D.act === w.id) banner();
@@ -498,10 +501,30 @@
       } else if (lifted && id === 'rdJump') jumpExtras(w, f);
     });
   }
+  // תפריט ה-⋮ (#mMenuPanel): נפתח מתחת לכפתור בבנר (מצב fixed של דף השולחן), לא בתוך החלון
+  function syncMenu(w, f) {
+    if (!f || !f.doc) return;
+    const mp = f.menuEl || f.doc.getElementById('mMenuPanel'); if (!mp) return;
+    const shown = mp.classList.contains('show');
+    if (shown && !f.menuEl) {
+      f.menuHome = { p: mp.parentNode, n: mp.nextSibling };
+      document.body.appendChild(document.adoptNode(mp)); mp.classList.add('show'); mp.dataset.w = w.id; f.menuEl = mp;
+      mp.style.zIndex = 160; mp.style.top = ($('#dkBan').getBoundingClientRect().bottom + 4) + 'px';
+      new MutationObserver(() => syncMenu(w, f)).observe(mp, { attributes: true, attributeFilter: ['class'] });
+    } else if (!shown && f.menuEl) {
+      const home = f.menuHome; f.menuEl = null; // אחרי אנימציית הסגירה חוזר למקומו
+      setTimeout(() => { if (home && home.p && home.p.isConnected) home.p.insertBefore(f.doc.adoptNode(mp), home.n && home.n.parentNode === home.p ? home.n : null); mp.style.zIndex = ''; mp.style.top = ''; if (f.win) { const o = new f.win.MutationObserver(() => syncMenu(w, f)); o.observe(mp, { attributes: true, attributeFilter: ['class'] }); (f.obs = f.obs || []).push(o); } }, 300);
+    }
+  }
   // לחיצה בשולחן מחוץ לחלון הבחירה (ולא על הבנר, שמחליף אותו בעצמו) סוגרת אותו; כך גם Esc
-  const closeLifted = () => { const f = F.get(popLayer.dataset.w); if (f && f.pops && Object.keys(f.pops).length) { const sc = f.doc.getElementById('rdScrim'); if (sc) sc.click(); } };
-  document.addEventListener('pointerdown', e => { if (!popLayer.contains(e.target) && !e.target.closest('#dkBan')) closeLifted(); }, true);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && popLayer.querySelector('.rdPop:not([hidden])')) closeLifted(); }, true);
+  const closeLifted = () => {
+    const f = F.get(popLayer.dataset.w); if (f && f.pops && Object.keys(f.pops).length) { const sc = f.doc.getElementById('rdScrim'); if (sc) sc.click(); }
+    F.forEach(g => { if (g.menuEl && g.doc) { const sc = g.doc.getElementById('mMenuScrim'); if (sc) sc.click(); } });
+  };
+  document.addEventListener('pointerdown', e => { if (!popLayer.contains(e.target) && !e.target.closest('#dkBan,#mMenuPanel')) closeLifted(); }, true);
+  // לחיצה בתוך iframe של חלון אחר לא מגיעה לדף השולחן, אבל המיקוד עובר אליו — זה סוגר את החלון הקופץ
+  addEventListener('blur', () => setTimeout(() => { if (document.activeElement && document.activeElement.tagName === 'IFRAME') closeLifted(); }, 0));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && (popLayer.querySelector('.rdPop:not([hidden])') || document.querySelector('body > #mMenuPanel.show'))) closeLifted(); }, true);
   function placePops(f) {
     if (!f || !f.doc || !f.fr) return;
     if (!lastBtn) return;
