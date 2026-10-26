@@ -307,7 +307,7 @@
     const mv = ev => {
       const dx = ev.clientX - x0;
       w.h = Math.max(240, s.h + ev.clientY - y0);
-      if (left) { w.w = Math.max(360, s.w - dx); w.x = s.x + s.w - w.w; } else w.w = Math.max(360, s.w + dx);
+      if (left) { w.w = Math.max(minW(w), s.w - dx); w.x = s.x + s.w - w.w; } else w.w = Math.max(minW(w), s.w + dx);
       paint(w);
     };
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); desk.classList.remove('drag'); saveSoon(); };
@@ -339,12 +339,21 @@
     vis.forEach((w, i) => {
       w.max = false;
       if (kind === 'cascade') { w.w = Math.round(W0 * .62); w.h = Math.round(H0 * .78); w.x = W0 - w.w - 24 - i * 34; w.y = 16 + i * 30; }
-      else if (kind === 'side') { const n = vis.length, cw = Math.floor((W0 - 6) / n); w.w = cw - 6; w.h = H0 - 12; w.y = 6; w.x = W0 - (i + 1) * cw; }
+      else if (kind === 'side') { const n = vis.length, cw = Math.floor((W0 - 6) / n); const g = vis.find(v => v.k === 'gem'), oth = g && n > 1 ? Math.max(360, Math.floor((W0 - 6 - minW(g)) / (n - 1)) - 6) : cw - 6; w.w = w.k === 'gem' ? Math.max(cw - 6, minW(w)) : oth; w.h = H0 - 12; w.y = 6; w.x = W0 - (i + 1) * cw; }
       else { const n = vis.length, cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols), cw = Math.floor((W0 - 6) / cols), ch = Math.floor((H0 - 6) / rows); w.w = cw - 6; w.h = ch - 6; w.x = W0 - ((i % cols) + 1) * cw; w.y = 6 + Math.floor(i / cols) * ch; }
+      if (w.w < minW(w)) w.w = minW(w);
       paint(w);
     });
+    // כשהחלונות לא נכנסים זה לצד זה (חלון הגימטריה דורש רוחב מינימלי) — הם חופפים חלקית במקום להיחתך
+    if (kind === 'side' && vis.length > 1) {
+      const n = vis.length, last = vis[n - 1], step = Math.max(40, Math.min(...vis.map((w, i) => w.w + 6), Math.floor((W0 - 12 - last.w) / (n - 1))));
+      const fit = vis.reduce((a, w) => a + w.w + 6, 0) <= W0 - 6;
+      vis.forEach((w, i) => { if (fit) { w.x = W0 - 6 - w.w - vis.slice(0, i).reduce((a, v) => a + v.w + 6, 0); } else w.x = Math.max(6, W0 - 6 - w.w - i * step); paint(w); });
+    }
     D.wins.forEach(paint); taskbar(); saveSoon();
   }
+  // רוחב מינימלי: מתחת ל-860px חלון הגימטריה עובר לפריסת טלפון וחלק מהעמודות לא נראה
+  function minW(w) { return w.k === 'gem' ? Math.min(900, desk.clientWidth - 12) : 360; }
 
   /* ---------- שורת משימות ---------- */
   function taskbar() {
@@ -352,9 +361,9 @@
     task.innerHTML = '';
     const st = stageOn();
     D.wins.slice().sort((a, b) => (a.k === 'gem' ? -1 : b.k === 'gem' ? 1 : 0)).forEach(w => {
-      if (st && D.act === w.id) return; // במה: החלון הפעיל במרכז, לא בפס
+      if (st && D.act === w.id && w.k !== 'gem') return; // במה: החלון הפעיל במרכז, לא בפס; הגימטריה תמיד בפס
       const c = document.createElement('button'); c.type = 'button';
-      c.className = 'dkChip' + (st ? ' th' : '') + (w.min ? ' min' : '') + (!st && D.act === w.id && !w.min ? ' on' : '');
+      c.className = 'dkChip' + (st ? ' th' : '') + (w.min ? ' min' : '') + ((!st || w.k === 'gem') && D.act === w.id && !w.min ? ' on' : '');
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
       const mini = w.k === 'gem' ? '<i class="mg"><u></u><u></u><u></u><u></u></i>' : w.k === 'search' ? '<i class="ml"><s></s><s></s><s></s><s></s></i>' : '<i class="mp"><em></em><s></s><s></s><s></s></i>';
       c.innerHTML = (st ? '<span class="thC">' + mini + '</span>' : '<span class="ic">' + ICON[w.k] + '</span>') + '<span class="t"></span>' + (w.min ? '<span class="z">' + SV(GI.moon) + '</span>' : '');
@@ -507,7 +516,7 @@
   }
   function popX(el, rc, lay) {
     const wd = el.offsetWidth, c = (rc.left + rc.right) / 2, left = c < innerWidth / 2 ? rc.left : rc.right - wd;
-    const x = Math.max(8, Math.min(innerWidth - 148 - wd, left));
+    const x = Math.max(8, Math.min(innerWidth - 106 - wd, left));
     el.style.right = 'auto'; el.style.left = (x - (lay ? lay.left : 0)) + 'px';
     el.style.setProperty('--ax', Math.max(18, Math.min(wd - 18, c - x)) + 'px');
   }
