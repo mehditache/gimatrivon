@@ -50,11 +50,11 @@
      srcs = סוגי המקורות בממשק (txt/cm/tr/all → src); rank = סדר המקורות באותו מקום; ar = ה-src שבהם אותיות שימוש בארמית. */
   const DOMAINS = {
     tanakh: { cat: 0, srcOf: { 0: 0, 2: 1, 3: 2, 4: 3 }, tab: [0, 1, 2, 2], multi: [1], csOf: { 1: 2 }, rank: [0, 3, 1, 2], ar: [0, 0, 1, 1],
-      srcs: { txt: [0], cm: [1], tr: [2, 3], all: [0, 1, 2, 3] } },
+      srcs: { txt: [0], cm: [1], on: [2], yo: [3], tr: [2, 3], all: [0, 1, 2, 3] } },
     mishnah: { cat: 1, srcOf: { 1: 0, 5: 1 }, tab: [0, 1], multi: [1], csOf: { 1: 5 }, rank: [0, 1], ar: [0, 0],
       srcs: { txt: [0], cm: [1], tr: [0, 1], all: [0, 1] } },
     rambam: { cat: 7, srcOf: { 7: 0, 8: 1, 9: 2, 10: 3 }, tab: [0, 1, 2, 3], multi: [1, 2, 3], csOf: { 1: 8, 2: 9, 3: 10 }, rank: [0, 1, 2, 3], ar: [0, 0, 0, 0],
-      srcs: { txt: [0], cm: [1, 2, 3], tr: [0, 1, 2, 3], all: [0, 1, 2, 3] } },
+      srcs: { txt: [0], cm: [1, 2, 3], ks: [1], ra: [2], mm: [3], tr: [0, 1, 2, 3], all: [0, 1, 2, 3] } },
     talmud: { cat: 100, tab: [0, 1, 2], multi: [1, 2], rank: [0, 1, 2], ar: [1, 0, 0],
       srcs: { g: [0], r: [1], t: [2], all: [0, 1, 2] } },
     tur: { cat: 101, tab: [0, 1, 2], multi: [], rank: [0, 1, 2], ar: [0, 0, 0],

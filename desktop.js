@@ -440,7 +440,7 @@
   // הנפתחת, מתחת לתיבה כמו במסך הרגיל. המארח נוצר רק כשמתחילים לחפש ולא פותח שום חלון; בחירת תוצאה פותחת אותה
   // בחלון הקריאה הפעיל, ואם אין כזה — בחלון חדש. אחרי דקה בלי חיפוש המארח נמחק (שחרור זיכרון).
   let H = null, hostBase = '', hostT = 0;
-  const hostHash = () => { const w = W(D.act); const r = w && w.k === 'read' ? w : (W(D.last) || reads()[0]); return r ? curHash(r) : '#read'; };
+  const hostHash = () => { const w = W(D.act); if (w && w.k === 'gem') return '#read/TN/Gen/1'; const r = w && w.k === 'read' ? w : (W(D.last) || reads()[0]); return r ? curHash(r) : '#read'; };
   const dec = h => { try { return decodeURI(h || ''); } catch (e) { return h || ''; } };
   function host() {
     if (H) { clearTimeout(hostT); return H; }
@@ -455,7 +455,7 @@
       fw.addEventListener('hashchange', hostChanged);
       const drop = d.getElementById('rdDrop');
       if (drop) new fw.MutationObserver(() => { fr.hidden = drop.hidden; if (!drop.hidden) placeHost(); scopeLabel(); if (drop.hidden) idleHost(); }).observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
-      themeTo(H);
+      themeTo(H); ctxApply(); scopeLabel();
       if (q.value) { d.getElementById('rdQ').value = q.value; fire('input'); }
     });
     fr.src = 'index.html?embed=search' + hostBase;
@@ -469,7 +469,7 @@
   function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) killHost(); }, 20000); }
   // המארח (עותק מלא של האפליקציה עם Workers משלו) משוחרר מיד כשנפתח חלון תוצאות, ואחרי 20 שניות סרק
   function killHost() { clearTimeout(hostT); if (H) { H.fr.src = 'about:blank'; H.fr.remove(); H = null; } }
-  function syncHost() { const h = hostHash(); if (H && H.win && dec(H.win.location.hash) !== h) { hostBase = h; H.quiet = Date.now() + 1000; H.win.location.hash = h; } }
+  function syncHost() { const h = hostHash(); if (H && H.win && dec(H.win.location.hash) !== h) { hostBase = h; H.quiet = Date.now() + 1000; H.win.location.hash = h; setTimeout(() => { ctxApply(); scopeLabel(); }, 350); } }
   const fire = (type, init) => { if (!H || !H.doc) return; const rq = H.doc.getElementById('rdQ'), fw = H.win; const C = type === 'keydown' ? fw.KeyboardEvent : type === 'focus' ? fw.FocusEvent : fw.Event; rq.dispatchEvent(new C(type, Object.assign({ bubbles: type !== 'focus', cancelable: true }, init))); };
   // המארח "ניווט" לתוצאה שנבחרה → פותחים אותה בחלון (מה שלא שונה מאז הטעינה/הסנכרון הוא לא בחירה)
   function hostChanged() {
@@ -482,8 +482,8 @@
     let n = 0; const tick = () => { const f = F.get(t.id); const gr = f && f.win && f.win.GimReader; if (gr && gr.highlight) setTimeout(() => gr.highlight(qv), 400); else if (++n < 30) setTimeout(tick, 300); }; tick();
   }
   function closeSearch() { if (H && H.doc && !H.doc.getElementById('rdDrop').hidden) fire('keydown', { key: 'Escape' }); }
-  document.addEventListener('pointerdown', e => { if (!e.target.closest('#dkSearch,.dkHost')) closeSearch(); }, true);
-  q.addEventListener('focus', () => { host(); syncHost(); fire('focus'); });
+  document.addEventListener('pointerdown', e => { if (!e.target.closest('#dkSearch,.dkHost,#dkScMenu')) closeSearch(); }, true);
+  q.addEventListener('focus', () => { host(); syncHost(); ctxApply(); fire('focus'); });
   q.addEventListener('input', () => { host(); syncHost(); if (!H.doc) return; H.doc.getElementById('rdQ').value = q.value; fire('input'); });
   let arrowed = false; q.addEventListener('input', () => { arrowed = false; });
   q.addEventListener('keydown', e => {
@@ -494,17 +494,45 @@
     e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
     if (e.key === 'Enter') setTimeout(() => q.blur(), 80);
   });
-  // טווח החיפוש: התווית לפי הכפתור הפעיל ברשימה של המארח; לחיצה עוברת לטווח הבא
+  // טווח החיפוש (אפשרות א בקנבס): הכפתור שבתיבה מראה את ההיקף הנוכחי ופותח תפריט — איפה לחפש (בחירה אחת) ומה לכלול (סימון).
+  // המודל והפעולות של הקורא (GimReader) נשארים המקור היחיד; הבועות של הרשימה הנפתחת מוסתרות במארח.
+  const gr = () => H && H.win && H.win.GimReader && H.win.GimReader.scopeModel ? H.win.GimReader : null;
+  const model = () => { try { const g = gr(); return g && g.scopeModel(); } catch (e) { return null; } };
   function scopeLabel() {
-    const b = H && H.doc && H.doc.querySelector('#rdDrop .rdDScope button.on');
-    $('#dkScope').textContent = (b ? b.textContent.trim() : (document.body.classList.contains('dkGem') ? T('בכל הספרים', 'All books') : T('בספר', 'In book')));
+    const m = model(), l = m && (m.glob ? { label: T('בכל הספרים', 'All books') } : m.levels.find(x => x.on));
+    $('#dkScope').textContent = l ? l.label : document.body.classList.contains('dkGem') ? T('בכל התנ״ך', 'All Tanakh') : T('בספר', 'In book');
+    if (!$('#dkScMenu').hidden) scMenu();
   }
-  $('#dkScope').addEventListener('click', e => {
-    e.preventDefault(); host(); syncHost();
-    const bs = H.doc ? [...H.doc.querySelectorAll('#rdDrop .rdDScope button')] : [];
-    if (!bs.length || H.doc.getElementById('rdDrop').hidden) { q.focus(); return; }
-    const i = bs.findIndex(b => b.classList.contains('on')); bs[(i + 1) % bs.length].click(); setTimeout(scopeLabel, 80);
+  // ברירת מחדל לפי החלון הפעיל: קריאה = כל הספר בלי מפרשים; גימטריה = כל התנ״ך עם מפרשים. נקבעת פעם אחת כשהחלון הפעיל מתחלף; בחירה ידנית נשארת עד המעבר הבא
+  let ctxKey = '';
+  function ctxApply() {
+    const a = W(D.act), g = gr(); if (!a || !g || (a.k !== 'gem' && a.k !== 'read') || ctxKey === a.id) return;
+    ctxKey = a.id; g.applyDefault(a.k); scopeLabel();
+  }
+  const scm = $('#dkScMenu');
+  function scMenu() {
+    const m = model(); if (!m) return;
+    const row = (cls, k, ic, l, n) => '<button type="button" class="' + cls + '" data-' + k + '>' + ic + '<span>' + l + '</span>' + (n ? '<small>' + n + '</small>' : '') + '</button>';
+    const ck = '<i class="ck"></i>', bx = '<i class="bx"></i>';
+    scm.innerHTML = '<h5>' + T('איפה לחפש', 'Search in') + '</h5>' + m.levels.map(l => row(l.on ? 'on' : '', 'sc="' + l.k + '"', ck, l.label, l.name)).join('') +
+      row(m.glob ? 'on' : '', 'sc="glob"', ck, T('בכל הספרים', 'All books'), '') + '<hr><h5>' + T('מה לכלול', 'Include') + '</h5>' +
+      m.srcs.map(x => row('cb' + (x.on ? ' on' : ''), 'tg="' + x.k + '"', bx, x.label, '')).join('');
+  }
+  function openScMenu() {
+    host(); syncHost();
+    if (!gr()) { H.fr.addEventListener('load', () => setTimeout(openScMenu, 200), { once: true }); return; }
+    ctxApply(); scMenu(); setTimeout(() => { if (!scm.hidden) scMenu(); }, 400);
+    const r = $('#dkScope').getBoundingClientRect(); scm.hidden = false;
+    scm.style.top = Math.round(r.bottom + 6) + 'px'; scm.style.left = Math.max(8, Math.min(Math.round(r.left), innerWidth - scm.offsetWidth - 8)) + 'px';
+  }
+  scm.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !gr()) return; const g = gr();
+    if (b.dataset.sc) { g.setScope(b.dataset.sc); scm.hidden = true; } else if (b.dataset.tg) g.toggleSrc(b.dataset.tg);
+    scopeLabel(); if (b.dataset.tg) scMenu();
   });
+  $('#dkScope').addEventListener('click', e => { e.preventDefault(); if (!scm.hidden) { scm.hidden = true; return; } openScMenu(); });
+  document.addEventListener('pointerdown', e => { if (!scm.hidden && !e.target.closest('#dkScMenu,#dkScope')) scm.hidden = true; }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape') scm.hidden = true; });
   addEventListener('resize', placeHost);
   $('#dkSearch').parentNode.addEventListener('transitionend', placeHost);
   // מחממים את הגמרא והטור (המסדים הגדולים) זמן קצר אחרי שהשולחן נטען; שאר התחומים — כשמתמקדים בתיבת החיפוש

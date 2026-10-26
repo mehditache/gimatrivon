@@ -232,3 +232,24 @@ body.dkGem .dkTools{display:none}
 /* חלון הגימטריה תמיד בפס: כשהוא פעיל הוא מסומן במקום להיעלם */
 .dkChip.th.on .thC{box-shadow:0 0 0 2px var(--gold),0 6px 14px rgba(0,0,0,.16);transform:none}
 .dkChip.th.on .t{color:var(--tx);font-weight:600}
+
+/* v4.4.10: רקע השולחן מלוח 15 בקנבס (שני הילות על רקע חם), הבנר והפס הצדדי זכוכית מעליו */
+body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radial-gradient(900px 700px at 0 100%,#d8e2ee 0,transparent 60%),#e8e1d4;background:var(--wp) fixed}
+:root[data-theme=dark] body{--wp:radial-gradient(1100px 800px at 70% 0,#3a2c14 0,transparent 60%),radial-gradient(900px 700px at 0 100%,#1c2430 0,transparent 60%),#0f0c08}
+.dkDesk,:root[data-theme=dark] .dkDesk{background:transparent}
+.dkTop{background:color-mix(in srgb,var(--bg) 72%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
+
+/* בורר ההיקף (תפריט הכפתור שבתיבת החיפוש) */
+.dkScMenu{position:fixed;z-index:210;width:290px;padding:8px;border-radius:16px;background:var(--pn);box-shadow:0 0 0 .5px color-mix(in srgb,var(--tx) 22%,transparent),0 14px 40px rgba(0,0,0,.28);direction:rtl}
+.dkScMenu[hidden]{display:none}
+.dkScMenu h5{margin:0;padding:8px 10px 4px;font:700 12px var(--ui);color:var(--mu)}
+.dkScMenu hr{border:0;height:.5px;background:color-mix(in srgb,var(--tx) 18%,transparent);margin:6px 8px}
+.dkScMenu button{display:flex;align-items:center;gap:10px;width:100%;height:38px;padding:0 10px;border:0;border-radius:10px;background:none;color:var(--tx);font:15px var(--ui);text-align:right;cursor:pointer}
+.dkScMenu button:hover{background:color-mix(in srgb,var(--gold) 14%,transparent)}
+.dkScMenu button.on{background:color-mix(in srgb,var(--gold) 20%,transparent);font-weight:600}
+.dkScMenu small{margin-inline-start:auto;font:500 12.5px var(--ui);color:var(--mu)}
+.dkScMenu .ck{width:16px;height:16px;flex:none}
+.dkScMenu button.on .ck{background:var(--gold);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat}
+.dkScMenu .bx{width:20px;height:20px;flex:none;border-radius:6px;border:1.5px solid color-mix(in srgb,var(--tx) 30%,transparent);background:var(--pn);display:grid;place-items:center}
+.dkScMenu button.cb.on .bx{background:var(--gold);border-color:var(--gold)}
+.dkScMenu button.cb.on .bx::after{content:"";width:10px;height:6px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:translateY(-1px) rotate(-45deg)}
