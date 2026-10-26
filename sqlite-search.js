@@ -204,6 +204,7 @@
     return { doc, col, off, n };
   }
   function toOcc(rows) { // rows = [[doc, col, off], …]
+    if (!Array.isArray(rows)) return rows; // כבר ארוז וממוין (המסד בזיכרון, sqmem.js)
     const n = rows.length, ix = new Array(n);
     for (let i = 0; i < n; i++) ix[i] = i;
     let sorted = true; for (let i = 1; i < n; i++) { const a = rows[i - 1], b = rows[i]; if (a[0] > b[0] || (a[0] === b[0] && a[2] > b[2])) { sorted = false; break; } }
