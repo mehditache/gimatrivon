@@ -355,3 +355,60 @@ body{--wp:#fff}
 .wpAbout b{font-weight:700}
 .wpAbout .s{color:var(--wsoft)}
 @media (max-height:620px){.wpCard{display:none}}
+
+/* v4.6.24: הבנר העליון והחלונות שנפתחים ממנו (הגדרות תצוגה, הדפסה, היקף חיפוש, תפריט ⋯) בצבעי לבן וזהב כמו הרקע, צבעים בלבד (קנבס, לוח 21).
+   בורר הספר לא כלול כאן, הוא בלוחות 19-20 */
+/* בנר עליון בלוק החדש: רק צבעים — לבן וזהב כמו הרקע והבורר */
+.dkTop{--bk1:#e9cf86;--bk2:#c49a3c;--bk3:#8c6421;--bkG:linear-gradient(160deg,var(--bk1),var(--bk2) 45%,var(--bk3));--bkBg:rgba(255,255,255,.86);--bkInk:#4a3b22;--bkMu:#9a8763;--bkHair:#e3d3ad;--bkTint:#f8f0dc;--bkTint2:#f1e4c4;--fl:var(--bkTint);--fl2:var(--bkTint2)}
+:root[data-theme=dark] .dkTop{--bk1:#f6dd97;--bk2:#d6ab4f;--bk3:#a07a33;--bkBg:rgba(21,18,13,.86);--bkInk:#ecdfc4;--bkMu:#a8987a;--bkHair:#4a3b22;--bkTint:#241d12;--bkTint2:#2e2516}
+.dkTop{background:var(--bkBg)!important;box-shadow:none!important;border-bottom:0!important}
+.dkTop::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,var(--bk2) 20%,var(--bk1) 50%,var(--bk2) 80%,transparent);opacity:.8;pointer-events:none}
+.dkTop .brand h1{background:var(--bkG);-webkit-background-clip:text;background-clip:text;color:transparent!important;font-family:"GimFrank",var(--tf)!important;font-size:23px!important;line-height:1.5!important;padding-bottom:2px}
+.dkTop .brand .ver{border-color:var(--bkHair)!important;color:var(--bk3)!important;background:var(--bkBg)!important}
+:root[data-theme=dark] .dkTop .brand .ver{color:var(--bk1)!important}
+.dkTop button,.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab{color:var(--bkInk)!important}
+.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab,.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn,.dkTop .dkTools .rdSeg,.dkTop .dkGemTools button,.dkNav .rdWhere,.dkNav>button{background:var(--bkTint)!important}
+.dkNav{background:none!important}
+.dkTop .dkTools .rdSeg button.on{background:var(--bkBg)!important;box-shadow:0 0 0 .5px var(--bkHair),0 1px 3px rgba(140,100,33,.18)!important;color:var(--bk3)!important}
+:root[data-theme=dark] .dkTop .dkTools .rdSeg button.on{color:var(--bk1)!important}
+.dkNav .rdWhere{box-shadow:inset 0 0 0 .5px var(--bkHair)!important}
+.dkNav .rdWhere[aria-expanded=true]{background:var(--bkG)!important;color:#fff!important;box-shadow:none!important}
+:root[data-theme=dark] .dkNav .rdWhere[aria-expanded=true]{color:#1b150c!important}
+.dkTop .dkSearch,.dkOmni .dkSearch{background:var(--bkBg)!important;box-shadow:inset 0 0 0 1px var(--bkHair)!important;color:var(--bkInk)!important}
+.dkTop .dkSearch input::placeholder{color:var(--bkMu)!important}
+.dkTop .dkSearch .dkScope,.dkTop .dkScope{background:var(--bkTint)!important;color:var(--bk3)!important;font-weight:600}
+:root[data-theme=dark] .dkTop .dkScope{color:var(--bk1)!important}
+.dkTop kbd,.dkTop .kbd,.dkTop .rdKbd{background:var(--bkTint)!important;border-color:var(--bkHair)!important;color:var(--bkMu)!important}
+.dkTop button:not([aria-expanded=true]):hover,.dkTop .themeSw:hover,.dkTop .langSw:hover{background:var(--bkTint2)!important}
+.dkGemTools .tourBtn{box-shadow:inset 0 0 0 1px var(--bk2)!important;color:var(--bk3)!important}
+.dkTop .dkSearch .dkScope{background:var(--bkTint2)!important}
+/* חלונות שנפתחים מהבנר (הגדרות תצוגה, הדפסה, היקף חיפוש, תפריט ⋯): אותו זכוכית לבנה, בצבעי זהב כמו הבנר */
+:root{--pg1:#e9cf86;--pg2:#c49a3c;--pg3:#8c6421;--pgG:linear-gradient(160deg,#c99a3e,#8c6421);--pgTint:#f8f0dc;--pgTint2:#f1e4c4;--pgHair:#e3d3ad;--pgInk:#4a3b22}
+:root[data-theme=dark]{--pg1:#f6dd97;--pg2:#d6ab4f;--pg3:#a07a33;--pgG:linear-gradient(160deg,#f2d488,#c99a3e);--pgTint:#2a2214;--pgTint2:#352a18;--pgHair:#4a3b22;--pgInk:#ecdfc4}
+.dkPopLayer .rdPop:not(.rdJump),.dkScMenu,body>#mMenuPanel{--rdGold:var(--pg2);--gold:var(--pg2);box-shadow:0 0 0 .5px var(--pgHair),0 22px 56px rgba(120,90,30,.2)!important}
+:root[data-theme=dark] .dkPopLayer .rdPop:not(.rdJump),:root[data-theme=dark] .dkScMenu,:root[data-theme=dark] body>#mMenuPanel{box-shadow:0 0 0 .5px var(--pgHair),0 22px 56px rgba(0,0,0,.55)!important}
+.dkPopLayer .rdPop:not(.rdJump) .rdPopHd,.dkPopLayer .rdPop:not(.rdJump) .rdSetHd{border-bottom:.5px solid var(--pgHair)}
+.dkPopLayer .rdPop:not(.rdJump) .rdRowHd,.dkScMenu h5{color:var(--pg2)!important;font-weight:700;letter-spacing:.04em}
+.dkPopLayer .rdPop:not(.rdJump) .rdCard,.dkPopLayer .rdPop:not(.rdJump) .rdOpt{background:var(--pgTint)!important;border:0!important;box-shadow:none!important;color:var(--pgInk)!important}
+.dkPopLayer .rdPop:not(.rdJump) .rdCard.on,.dkPopLayer .rdPop:not(.rdJump) .rdOpt.on{background:var(--pgTint2)!important;box-shadow:inset 0 0 0 1.5px var(--pg2)!important;color:var(--pg3)!important;font-weight:700}
+:root[data-theme=dark] .dkPopLayer .rdPop:not(.rdJump) .rdCard.on,:root[data-theme=dark] .dkPopLayer .rdPop:not(.rdJump) .rdOpt.on{color:var(--pg1)!important}
+.dkPopLayer .rdPop:not(.rdJump) .rdCard:hover:not(.on),.dkPopLayer .rdPop:not(.rdJump) .rdOpt:hover:not(.on){background:var(--pgTint2)!important}
+.dkPopLayer .rdPop:not(.rdJump) .rdX{background:var(--pgTint)!important;color:var(--pgInk)}
+.dkPopLayer .rdPop .rdGo{background:var(--pgG)!important;border:0!important;color:#fff!important;font-weight:700;box-shadow:0 6px 16px rgba(160,120,40,.3)}
+:root[data-theme=dark] .dkPopLayer .rdPop .rdGo{color:#1b150c!important}
+.dkScMenu button:hover{background:var(--pgTint)!important}
+.dkScMenu button.on{background:var(--pgTint2)!important;color:var(--pg3)}
+:root[data-theme=dark] .dkScMenu button.on{color:var(--pg1)}
+.dkScMenu button.cb.on .bx{background:var(--pg2)!important;border-color:var(--pg2)!important}
+body>#mMenuPanel button:hover,body>#mMenuPanel .mMenuItem:hover{background:var(--pgTint)!important}
+/* v4.6.24: גם תפריט "סידור", רשימת ההצעות של החיפוש והסיור המודרך באותה זכוכית לבנה ובהדגשות זהב */
+.dkMenu,html body .driver-popover{background:color-mix(in srgb,var(--pgBg,#fff) 90%,transparent)!important;-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);color:var(--pgInk)!important;box-shadow:0 0 0 .5px var(--pgHair),0 22px 56px rgba(120,90,30,.2)!important;border:0!important}
+:root{--pgBg:#fff}
+:root[data-theme=dark]{--pgBg:#16120c}
+:root[data-theme=dark] .dkMenu,:root[data-theme=dark] html body .driver-popover{box-shadow:0 0 0 .5px var(--pgHair),0 22px 56px rgba(0,0,0,.55)!important}
+.dkMenu button:hover{background:var(--pgTint)!important}
+.driver-popover .driver-popover-title,.driver-popover .driver-popover-description{color:var(--pgInk)!important}
+html body .driver-popover button.driver-popover-next-btn{background:var(--pgG)!important;border:0!important;color:#fff!important;text-shadow:none!important;border-radius:10px!important}
+:root[data-theme=dark] html body .driver-popover button.driver-popover-next-btn{color:#1b150c!important}
+html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint)!important;border:0!important;color:var(--pgInk)!important;border-radius:10px!important;text-shadow:none!important}
+.driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow,.driver-popover .driver-popover-arrow-side-top.driver-popover-arrow{border-color:transparent}
