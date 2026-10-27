@@ -292,3 +292,14 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 /* v4.5.4: בלי פס דק בין כותרת החלון לגוף — הקו נעשה צל פנימי והגוף עולה פיקסל מתחת לכותרת */
 .dwBar{border-bottom:0!important;box-shadow:var(--barhi),inset 0 -.5px 0 var(--barln)}
 .dwBody{margin-top:-1px}
+/* v4.6.1: מצב פיתוח — מאיפה SQLite עונה (desktop.js, #dkSqDev) */
+#dkSqDev{position:fixed;left:10px;bottom:10px;z-index:99999;font:12px/1.45 system-ui,sans-serif;background:rgba(20,22,28,.88);color:#e8e8ee;border-radius:8px;padding:6px 8px;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+#dkSqDev table{border-collapse:collapse}
+#dkSqDev th{font-weight:500;opacity:.6;font-size:11px;text-align:start;padding:0 6px 2px}
+#dkSqDev td{padding:1px 6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+#dkSqDev td:nth-child(n+4){text-align:left}#dkSqDev td:nth-child(4){text-align:center}
+#dkSqDev td.n{font-weight:600}
+#dkSqDev i{display:block;width:8px;height:8px;border-radius:50%;background:#8a8f99}
+#dkSqDev .m i{background:#3ecf6e}#dkSqDev .l i{background:#f0a630}#dkSqDev .f i{background:#ef5350}
+#dkSqDev tr.x{opacity:.45}
+#dkSqDev tr{transition:background .6s}#dkSqDev tr.hit{background:rgba(240,166,48,.4);transition:none}

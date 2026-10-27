@@ -3,7 +3,7 @@
    בפעם הראשונה המסד יורד דחוס (<תחום>.sqlite3.gz.000…, נבנה ב-scripts/build-sqlite.js), נפרס ישר לזיכרון של SQLite WASM ונשמר
    ב-OPFS לפי ה-hash שלו; בביקור הבא הוא נקרא מ-OPFS בלי רשת. עד שהוא מוכן, ובכל כשל, sqpool.js ממשיך בקריאת טווחים (Range).
    הורדה אחת בכל פעם (Web Lock), לפי סדר הבקשות: התחומים הקטנים מתבקשים ראשונים.
-   הודעות: {t:'open', meta} → {t:'state', state: 'cached'|'fetch'|'ready'|'fail'|'gone', err}; {t:'q', id, sql, args, pack} → {id, r} / {id, p} (pack) או {id, e}.
+   הודעות: {t:'open', meta} → {t:'state', state: 'cached'|'fetch'|'ready'|'fail'|'gone', err}; {t:'q', id, sql, args, pack} → {id, r} / {id, p} (pack) או {id, e}; בזמן טעינה {t:'prog', k, n}.
    אחרי IDLE בלי שאילתות ה-Worker נסגר (זיכרון WASM לא מתכווץ, ורק סגירה משחררת אותו), אחרי הודעת 'gone' ללקוחות. */
 'use strict';
 const NAME = self.name.replace(/^gimsq-/, ''), IDLE = 15 * 60000, ports = new Set();
@@ -66,7 +66,8 @@ async function load() {
   try {
     const put = async rs => { // זרם → הזיכרון (את heap8u קוראים שוב בכל חתיכה: ה-heap יכול לגדול ולהתחלף)
       const rd = rs.getReader(); let k = 0;
-      for (;;) { const { done, value } = await rd.read(); if (done) break; if (k + value.length > n) throw new Error('size'); S3.wasm.heap8u().set(value, p + k); k += value.length; }
+      let pk = 0; // התקדמות (לתצוגת מצב פיתוח): כל 4MB
+      for (;;) { const { done, value } = await rd.read(); if (done) break; if (k + value.length > n) throw new Error('size'); S3.wasm.heap8u().set(value, p + k); k += value.length; if (k - pk >= 4 << 20) { pk = k; send({ t: 'prog', k, n }); } }
       if (k !== n) throw new Error('size ' + k + '/' + n);
     };
     if (file) await put(file.stream());

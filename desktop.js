@@ -793,6 +793,40 @@
   }
   if (location.hash === '#phone') location.replace('index.html?classic=1#phone');
 
+  /* ---------- מצב פיתוח: מאיפה SQLite עונה (v4.6.1) ----------
+     תג בפינה (שמאל למטה): לכל תחום — זיכרון (sqmem.js, ירוק), בטעינה לזיכרון (כתום, עם אחוזים) או טווחים מהשרת (אפור); מספר השאילתות מכל מקור,
+     והבקשות והבתים שנשלחו לשרת. שורה מהבהבת כששאילתה יוצאת לשרת. מצב הפיתוח נדלק ב-5 לחיצות על הגרסה (app.js, בתוך החלונות). */
+  {
+    const DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור' };
+    let el = null, tm = 0, NET = {}; const prev = {};
+    const on = () => { try { return localStorage.getItem('gimatrivonDev') === '1'; } catch (e) { return false; } };
+    const paint = () => {
+      if (!el || !window.GimSqPool) return;
+      const by = {}; window.GimSqPool.stats().forEach(x => { by[x[0]] = x; });
+      let h = '<table><tr><th colspan="2">SQLite</th><th>מצב</th><th>Workers</th><th title="שאילתות שנענו מהזיכרון">זיכרון</th><th title="שאילתות שנשלחו לשרת (Range)">שרת</th><th title="בקשות HTTP Range ובתים שירדו">בקשות</th><th>MB</th></tr>';
+      Object.keys(DL).forEach(k => {
+        const [, nw, mem, cm, cr, prog] = by[k] || [k, 0, 'none', 0, 0, null], nt = NET[k] || [0, 0];
+        const c = mem === 'none' ? 'x' : mem === 'ready' ? 'm' : mem === 'cached' || mem === 'fetch' ? 'l' : mem === 'fail' ? 'f' : 'r';
+        const lbl = c === 'x' ? 'לא נפתח' : c === 'm' ? 'בזיכרון' : c === 'l' ? (mem === 'cached' ? 'נטען מהדפדפן' : 'יורד לזיכרון') + (prog ? ' ' + Math.round(100 * prog[0] / prog[1]) + '%' : '') :
+          c === 'f' ? 'מהשרת · הזיכרון נכשל' : mem === 'off' ? 'מהשרת · זיכרון כבוי' : mem === 'gone' ? 'מהשרת · הזיכרון שוחרר' : 'מהשרת';
+        const hit = prev[k] != null && cr > prev[k]; prev[k] = cr;
+        h += '<tr class="' + c + (hit ? ' hit' : '') + '"><td><i></i></td><td class="n">' + DL[k] + '</td><td>' + lbl + '</td><td>' + (nw || '') + '</td><td>' + cm + '</td><td>' + cr + '</td><td>' + nt[0] + '</td><td>' + (nt[1] / 1048576).toFixed(1) + '</td></tr>';
+      });
+      el.innerHTML = h + '</table>';
+    };
+    const sync = () => {
+      const v = on();
+      if (v && !el) {
+        el = document.createElement('div'); el.id = 'dkSqDev'; el.dir = 'rtl'; document.body.appendChild(el);
+        addEventListener('gimsq', paint);
+        tm = setInterval(() => { if (window.GimSqPool) window.GimSqPool.net().then(n => { NET = n; paint(); }, () => {}); }, 1000);
+        paint();
+      } else if (!v && el) { el.remove(); el = null; clearInterval(tm); removeEventListener('gimsq', paint); }
+    };
+    addEventListener('storage', e => { if (e.key === 'gimatrivonDev') sync(); });
+    sync();
+  }
+
   /* ---------- התחלה ---------- */
   D.wins.forEach(w => { if (w.k === 'read' && (!Array.isArray(w.hist) || !w.hist.length)) { w.hist = ['#read']; w.hi = 0; } w.navTo = null; });
   D.wins.forEach(build);

@@ -17,7 +17,7 @@
   const script = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
 
   function engine(name, books) {
-    const st = ST[name] || (ST[name] = { P: null, E: null, pool: [], Q: [], starting: null, last: Date.now(), n: 0 });
+    const st = ST[name] || (ST[name] = { P: null, E: null, pool: [], Q: [], starting: null, last: Date.now(), n: 0, cm: 0, cr: 0, dead: [0, 0] }); // cm / cr: שאילתות מהזיכרון / בטווחים מהשרת (מצב פיתוח)
     st.last = Date.now();
     if (st.P) return st.P;
     const DM = G.GimSq.DOMAINS[name], TB = DM.tabs;
@@ -50,7 +50,7 @@
         if (!s || s.totalFetchedBytes < SQ_MAX || x.old || st.pool.length < 2) return;
         x.old = true; st.pool.splice(st.pool.indexOf(x), 1);
         open(x.i).then(y => { st.pool.push(y); pump(); }, () => {});
-        const end = () => x.busy ? setTimeout(end, 200) : x.w.raw && x.w.raw.terminate(); end();
+        const end = () => x.busy ? setTimeout(end, 200) : retire(st, x); end();
       }, () => {});
       pump();
     };
@@ -61,9 +61,15 @@
       let first; const m = st.m = { port: w.port, ready: false, n: 0, wait: new Map(), first: new Promise(r => { first = r; setTimeout(() => r('slow'), 1500); }) };
       m.port.onmessage = e => {
         const d = e.data || {};
+        if (d.t === 'prog') { st.prog = [d.k, d.n]; return note(); }
         if (d.t === 'state') {
-          first(d.state); st.mem = d.state;
-          if (d.state === 'ready') { m.ready = true; if (m.onReady) m.onReady(); st.stop(); } // Workers הטווחים כבר לא נחוצים
+          first(d.state); st.mem = d.state; st.prog = null; note();
+          if (d.state === 'ready') { // Workers הטווחים כבר לא נחוצים: מה שבתור עובר לזיכרון, ו-Worker באמצע שאילתה נסגר כשהוא מסיים
+            m.ready = true; if (m.onReady) m.onReady();
+            const q = st.Q.splice(0); st.starting = null;
+            st.pool.splice(0).forEach(x => { x.old = true; const end = () => x.busy ? setTimeout(end, 200) : retire(st, x); end(); });
+            q.forEach(j => memSend(m, j));
+          }
           else if (d.state === 'fail' || d.state === 'gone') {
             if (d.state === 'fail') { st.memOff = true; try { console.warn('[GimSqPool] ' + name + ' in memory:', d.err); } catch (x) {} }
             if (st.m === m) st.m = null; m.ready = false; if (m.onReady) m.onReady();
@@ -77,15 +83,18 @@
       m.port.start(); m.port.postMessage({ t: 'open', meta: D });
       return m;
     };
-    const viaRange = j => { st.Q.push(j); if (!st.pool.length) start().then(pump, e => { st.Q.splice(0).forEach(x => x.no(e)); }); else pump(); };
+    const memSend = (m, j) => { // רשימת מופעים (SELECT doc…) חוזרת כמערכים טיפוסיים (pack ב-sqmem.js)
+      if (j.alive && !j.alive()) return j.no(new Error('stale'));
+      st.cm++; st.src = 'mem'; note(); const id = ++m.n; m.wait.set(id, j); m.port.postMessage({ t: 'q', id, sql: j.sql, args: j.args, pack: /^SELECT doc, /.test(j.sql) });
+    };
+    const viaRange = j => { st.cr++; st.src = 'range'; note(); st.Q.push(j); if (!st.pool.length) start().then(pump, e => { st.Q.splice(0).forEach(x => x.no(e)); }); else pump(); };
     // פתיחת המאגר (גם אחרי שחרור סרק): הראשון קודם, כדי שה-WASM יירד פעם אחת ושאר ה-Workers יקבלו אותו מהמטמון
     const start = () => st.starting || (st.starting = open(0, true).then(x => { st.pool.push(x); pump(); }, e => { st.starting = null; throw e; }));
-    st.stop = () => { st.pool.splice(0).forEach(x => { x.old = true; x.w.raw && x.w.raw.terminate(); }); st.starting = null; };
+    st.stop = () => { st.pool.splice(0).forEach(x => { x.old = true; retire(st, x); }); st.starting = null; };
     const backend = { all: (sql, args, o) => new Promise((ok, no) => {
       st.last = Date.now();
       const j = { sql, args, ok, no, n: st.n++, pri: o && o.pri != null ? o.pri : 0, alive: o && o.alive }, m = st.m || memOpen();
-      if (m && m.ready) { const id = ++m.n; m.wait.set(id, j); m.port.postMessage({ t: 'q', id, sql, args, pack: /^SELECT doc, /.test(sql) }); } // רשימת מופעים: מערכים טיפוסיים (ראו pack ב-sqmem.js)
-      else viaRange(j);
+      if (m && m.ready) memSend(m, j); else viaRange(j);
     }) };
     const P = st.P = Promise.all([G.createDbWorker || script('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || script('generated/sqlite/' + name + '.js')]).then(async () => {
       D = G.GIM_SQ_DBS[name];
@@ -108,6 +117,22 @@
     P.catch(() => { if (st.P === P) st.P = null; }); // כשל (רשת, שרת בלי Range): הבקשה הבאה מנסה שוב
     return P;
   }
+  // בקשות ובתים שה-Workers של הטווחים שלחו לשרת (sql.js-httpvfs getStats; Worker שנסגר — לפי המדידה האחרונה שלו)
+  const retire = (st, x) => { // סגירת Worker: קודם המדידה האחרונה שלו (עד חצי שנייה), כדי שהמונים לא יאבדו
+    let t = 0; const fin = s => { if (t < 0) return; clearTimeout(t); t = -1; s = s || x.ls; if (s) { st.dead[0] += s.totalRequests || 0; st.dead[1] += s.totalFetchedBytes || 0; } x.ls = null; if (x.w.raw) x.w.raw.terminate(); };
+    t = setTimeout(() => fin(null), 500); x.w.worker.getStats().then(fin, () => fin(null));
+  };
+  async function net() {
+    const out = {};
+    await Promise.all(Object.keys(ST).map(async k => {
+      const st = ST[k]; await Promise.all(st.pool.map(x => x.w.worker.getStats().then(s => { if (s && !x.old) x.ls = s; }, () => {})));
+      out[k] = st.pool.reduce((a, x) => x.ls ? [a[0] + (x.ls.totalRequests || 0), a[1] + (x.ls.totalFetchedBytes || 0)] : a, st.dead.slice());
+    }));
+    return out;
+  }
+  // אירוע 'gimsq' על window אחרי כל שינוי (שאילתה, מצב, התקדמות), לכל היותר פעם במסגרת — לתצוגת מצב פיתוח ב-desktop.js
+  let noted = false; const note = () => { if (noted) return; noted = true; requestAnimationFrame(() => { noted = false; G.dispatchEvent(new Event('gimsq')); }); };
   setInterval(() => { const t = Date.now(); Object.keys(ST).forEach(k => { const s = ST[k]; if (s.pool && s.pool.length && t - s.last > IDLE && !s.Q.length && !s.pool.some(x => x.busy)) s.stop(); }); }, 15000);
-  G.GimSqPool = { engine, stats: () => Object.keys(ST).map(k => [k, ST[k].pool.length, ST[k].mem || '']) };
+  // stats: [תחום, Workers של טווחים, מצב הזיכרון (''|cached|fetch|ready|fail|gone), שאילתות מהזיכרון, שאילתות לשרת, [נטען, סה״כ] בזמן טעינה, מקור אחרון]
+  G.GimSqPool = { engine, net, stats: () => Object.keys(ST).map(k => { const s = ST[k]; return [k, s.pool.length, s.mem || (MEM && !s.memOff ? '' : 'off'), s.cm, s.cr, s.prog || null, s.src || '']; }) };
 })();
