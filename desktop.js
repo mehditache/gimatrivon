@@ -557,7 +557,7 @@
   const kb = document.createElement('div'); kb.className = 'dkScMenu dkKb'; kb.hidden = true; document.body.appendChild(kb);
   function kbMenu() {
     const row = (id, l, ic) => '<button type="button" data-kb="' + id + '"><i class="ic">' + ic + '</i><span>' + l + '</span></button>';
-    kb.innerHTML = row('theme', dark() ? T('מראה גוויל', 'Parchment look') : T('מראה לילה', 'Night look'), '☾') + row('lang', EN ? 'עברית' : 'English', 'EN') +
+    kb.innerHTML = row('theme', dark() ? T('מראה גוויל', 'Parchment look') : T('מראה לילה', 'Night look'), dark() ? '☀' : '☾') + row('lang', EN ? 'עברית' : 'English', 'EN') +
       '<hr>' + row('methods', T('שיטות גימטריה', 'Gematria methods'), 'Σ') + row('about', T('אודות', 'About'), 'ⓘ') + row('contact', T('צור קשר', 'Contact'), '✉') +
       '<hr><div class="kbV">' + ($('#dkVer').textContent || '') + '</div>';
   }
