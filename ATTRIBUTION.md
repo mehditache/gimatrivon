@@ -134,3 +134,8 @@ daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICEN
 
 - **Cormorant Garamond Bold** (© The Cormorant Project Authors), רק האותיות T O R A H N E והנקודה, בקובץ `vendor/fonts/CormorantGaramond-700-torahone.woff2`.
 - **רישיון: SIL Open Font License 1.1.** נוסח הרישיון: `vendor/fonts/CormorantGaramond-OFL.txt`.
+
+## ספר הזוהר (v4.7.0)
+
+- **Sefaria-Export**: Zohar — Vocalized Zohar, Israel 2013 (ארמית מנוקדת וחלוקת דפי וילנא), Zohar — Hebrew Translation, ו-Sulam on Zohar — Zohar with Sulam commentary, Jerusalem 1945. הנתונים נבנים על ידי `scripts/build-zohar.py`.
+- **רישיון: לא צוין (unknown)** במטא-דאטה של ספריא לגרסאות אלה; יש לאמת לפני הפצה רחבה.

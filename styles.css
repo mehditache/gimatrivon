@@ -1408,3 +1408,9 @@ html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rd
 .sumRow .tsCount{padding-inline-end:.8rem}
 .pn .sumRow{border-bottom-color:var(--deskLn)}
 .tsBar .tsClear[hidden]{display:inline-flex!important;visibility:hidden} /* מקום קבוע לכפתור "נקה": תיבת הסינון לא משנה גודל */
+
+/* הזוהר: דף ארמית מול תרגום / הסולם */
+.zHd{margin:0 0 6px}
+.zSide{font-size:.95em}
+.zSide .none,.rdTal .none{color:var(--rdMu);font-family:var(--ui);font-size:.8em}
+.zOne .zp{margin:0 0 .7em}

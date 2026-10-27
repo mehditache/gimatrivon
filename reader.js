@@ -213,13 +213,15 @@
 
 
   /* ---- ש״ס: generated/talmud/index.js (רשימת מסכתות) + חלקים לכל מסכת שנטענים לפי דרישה ----
-     amud j = דף (j>>1)+2, עמוד א (j זוגי) או ב. */
-  const dafOf = j => ({ d: (j >> 1) + 2, side: j & 1 });
-  const amudOf = (d, side) => (d - 2) * 2 + (side ? 1 : 0);
+     amud j = דף (j>>1)+2, עמוד א (j זוגי) או ב. ספר הזוהר (generated/zohar/index.js, scripts/build-zohar.py) באותו מבנה:
+     כל פרשה היא "מסכת" עם z:1, והדף הראשון שלה d0 (עמוד וילנא: j = 0 הוא עמוד א של דף d0); בגמרא d0 = 2. */
+  const dafOf = (j, d0) => ({ d: (j >> 1) + (d0 == null ? 2 : d0), side: j & 1 });
+  const amudOf = (d, side, d0) => (d - (d0 == null ? 2 : d0)) * 2 + (side ? 1 : 0);
   function talIndex(list) {
     const names = [], clean = s => String(s).toLowerCase().replace(/[׳״'"`.,:;()[\]]/g, ' ').replace(/[־-]/g, ' ').replace(/\s+/g, ' ').trim();
     const loose = s => s.replace(/[יו]/g, '').replace(/[םן](?=\s|$)/g, 'ם');
-    (list || []).forEach((t, i) => [t.he, t.k].forEach(n => { n = clean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n, l: loose(n) }); }));
+    // זוהר: "זוהר בראשית", "זהר נח", "Zohar Bereshit" (בלי "זוהר" שם פרשה לבדו שייך לתנ״ך)
+    (list || []).forEach((t, i) => (t.z ? ['זוהר ' + t.he, 'זהר ' + t.he, 'zohar ' + t.en] : [t.he, t.k]).forEach(n => { n = clean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n, l: loose(n) }); }));
     (list || []).forEach((t, i) => (TRACT_ABBR[t.he] || []).forEach(n => { n = clean(n); if (n && !names.some(x => x.n === n)) names.push({ i, n, l: '' }); }));
     return { list: list || [], names, clean, loose, byK: Object.fromEntries((list || []).map((t, i) => [t.k, i])) };
   }
@@ -239,14 +241,14 @@
     if (!f) return null;
     const ti = f.i, k = f.k, rest = toks.slice(k), t = TX.list[ti];
     if (rest.length > 2) return null;
-    const d = rest.length ? parseNum(rest[0]) : 2;
+    const d0 = t.z ? t.d0 : 2, d = rest.length ? parseNum(rest[0]) : d0 + (t.z ? t.j0 >> 1 : 0);
     const sd = rest.length > 1 ? ({ '@a': 0, '@b': 1, 'א': 0, 'ב': 1, a: 0, b: 1 })[rest[1]] : 0;
-    if (!(d >= 2) || sd == null) return null;
-    const j = amudOf(d, sd);
-    if (j >= t.n) return null;
-    return { i: ti, k: t.k, j, explicit };
+    if (!(d >= d0) || sd == null) return null;
+    const j = rest.length ? amudOf(d, sd, d0) : t.z ? t.j0 : 0;
+    if (j < 0 || j >= t.n) return null;
+    return { i: ti, k: t.k, j, explicit: explicit || !!t.z };
   }
-  const dafLabel = (j, en) => { const x = dafOf(j); return en ? x.d + (x.side ? 'b' : 'a') : toHeb(x.d) + (x.side ? ':' : '.'); };
+  const dafLabel = (j, en, d0) => { const x = dafOf(j, d0); return en ? x.d + (x.side ? 'b' : 'a') : toHeb(x.d) + (x.side ? ':' : '.'); };
 
   /* ---- טור, בית יוסף וב״ח: generated/tur/index.js (ארבעה טורים) + חלקים שנטענים לפי דרישה (scripts/build-tur.py) ----
      בטקסט: \u0003…\u0004 מודגש, \u0005…\u0006 בדק הבית, \n שורה חדשה, \u0010y3\u0011 / \u0010c3\u0011 = כאן מתחיל דיבור 3 (מ-0)
@@ -277,7 +279,8 @@
 
   /* קישור ישיר למסך הקריאה (v3.30.0): #read/<אוסף>/<ספר>/<פרק>/<סעיף>, בראשי תיבות באנגלית:
      #read/TN/Gen/1/5 (תנ״ך), #read/MS/Ber/2/3 (משנה), #read/MT/HD/7/4 (רמב״ם), #read/TB/Ber/2b/3 (גמרא: דף, ואם יש — קטע,
-     שחלון הפירוש שלו נפתח), #read/TUR/OC/60 (טור; /BY/3 או /BH/3 = דיבור בבית יוסף / ב״ח, שנפתח בחלון).
+     שחלון הפירוש שלו נפתח), #read/TUR/OC/60 (טור; /BY/3 או /BH/3 = דיבור בבית יוסף / ב״ח, שנפתח בחלון),
+     #read/ZH/Bereshit/15a/3 (זוהר: פרשה, דף ועמוד בדפוס וילנא, ואם יש — פסקה, שחלון הפירוש שלה נפתח).
      פסוק / הלכה / משנה בכתובת מודגשים בפתיחה. כתובות ישנות עדיין נקראות כמו שורת הקפיצה (עם / או _ במקום רווח):
      #read/Genesis/1/5, #read/Mishneh_Torah_Human_Dispositions/7/4, #read/Berakhot/2b, #read/OC/60, #read/בראשית/א/ה. */
   const bookSlug = t => String(t).replace(/,/g, '').trim().replace(/\s+/g, '_');
@@ -335,6 +338,15 @@
       if (n > 3) { const s = urlNum(seg[3]); if (!(s >= 1)) return null; x.s = s - 1; }
       return x;
     }
+    if (col === 'ZH') {
+      if (!TX || n < 2 || n > 4) return null;
+      const t = TX.list.find(x => x.z && x.k.slice(2).toUpperCase() === seg[1].toUpperCase()); if (!t) return null;
+      const m = n > 2 ? /^(\d+)([ab])?$/i.exec(seg[2]) : ['', String(t.d0 + (t.j0 >> 1)), t.j0 & 1 ? 'b' : 'a']; if (!m) return null;
+      const d = +m[1], j = amudOf(d, /b/i.test(m[2] || '') ? 1 : 0, t.d0); if (d < t.d0 || j < 0 || j >= t.n) return null;
+      const x = { kind: 'tal', k: t.k, j };
+      if (n > 3) { const s = urlNum(seg[3]); if (!(s >= 1)) return null; x.s = s - 1; }
+      return x;
+    }
     if (col === 'TUR') {
       if (!RX || n < 2 || n > 5 || n === 4) return null;
       const ti = RX.byK[seg[1].toUpperCase()], t = RX.list[ti]; if (!t) return null;
@@ -365,6 +377,7 @@
   // x.s (גמרא) / x.x + x.i (טור) = החלון הפתוח; x.v = הפסוק או ההלכה (כשאינו הראשון בפרק)
   function hashOfRef(IX, x) {
     if (x.kind === 'tur') return '#read/TUR/' + x.k + '/' + (x.s || 'intro') + ((x.x === 'y' || x.x === 'c') && x.i >= 0 ? '/' + (x.x === 'y' ? 'BY' : 'BH') + '/' + (x.i + 1) : '');
+    if (x.kind === 'tal' && x.z) return '#read/ZH/' + x.k.slice(2) + '/' + dafLabel(x.j, true, x.d0) + (x.s >= 0 ? '/' + (x.s + 1) : '');
     if (x.kind === 'tal') return '#read/TB/' + tractUrl(x.k) + '/' + dafLabel(x.j, true) + (x.s >= 0 ? '/' + (x.s + 1) : '');
     return '#read/' + urlOf(IX, x.b) + '/' + x.ch + (x.v && x.v !== versesOf(IX, x.b, x.ch)[0] ? '/' + x.v : '');
   }
@@ -430,6 +443,12 @@
     'קטן': 'small', 'רגיל': 'normal', 'גדול': 'large', 'גדול מאוד': 'extra large', 'טקסט הרמב״ם עם ניקוד': 'Rambam text with vowel points', 'טקסט הרמב״ם בלי ניקוד, כמו במהדורת פרנקל': 'Rambam text without vowel points, as in the Frankel edition',
     'הדפסת שני העמודים הפתוחים בלבד': 'Print only the two open pages', 'הדפסת הפרק כולו': 'Print the whole chapter', 'הדפסה בצבע, עם רקע נייר': 'Print in color, with the paper tone', 'הדפסה בשחור-לבן על רקע לבן': 'Print in black & white on white',
     'פתיחת חלון ההדפסה (שם אפשר גם לשמור כ-PDF)': 'Open the print dialog (you can also save as PDF there)', 'רשימת הספרים': 'Book list', 'בחירת': 'Choose',
+    'זוהר': 'Zohar', 'חלק': 'Volume', 'פסקה': 'Paragraph', 'הסולם': 'Sulam', 'דף מול תרגום': 'Page & translation', 'זוהר והסולם': 'Zohar & Sulam', 'בעמוד השמאלי': 'On the left page', 'מתחת לפסקאות': 'Below the paragraphs',
+    'ביאור הסולם': 'Sulam commentary', 'לחצו על פסקה בזוהר כדי לראות את התרגום והסולם שלה.': 'Click a paragraph of the Zohar to see its translation and Sulam commentary.', 'העמודים לפי דפוס וילנא.': 'Pages follow the Vilna edition.',
+    'המשך הפסקה מהעמוד הקודם': 'Continued from the previous page', 'הפרשה מתחילה בעמוד הבא': 'The portion begins on the next page', 'אין ביאור לפסקאות אלה': 'No commentary on these paragraphs', 'אין תרגום לפסקאות אלה': 'No translation for these paragraphs',
+    'אין תרגום או ביאור לפסקה זו': 'No translation or commentary on this paragraph', 'הפסקה הקודמת': 'Previous paragraph', 'הפסקה הבאה': 'Next paragraph', 'לא ניתן לטעון את הפרשה.': 'Could not load the portion.',
+    'דף מול תרגום: עמוד הזוהר בארמית מימין, והתרגום (או הסולם) מולו משמאל': 'Page & translation: the Zohar page in Aramaic on the right, its translation (or the Sulam) facing it on the left',
+    'זוהר והסולם: פסקאות הזוהר ברצף, ומתחת להן התרגום וביאור הסולם': 'Zohar & Sulam: the Zohar paragraphs as running text, with the translation and the Sulam commentary below them',
     'בסימן': 'Siman', 'בכל הטור': 'Whole Tur', 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.': 'You can also type a place: "OC 60", "YD 193".'
   };
   const T = he => isEn() ? (EN[he] || he) : he;
@@ -453,24 +472,24 @@
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
   // rview = בטור: צורת הדף (daf) או טור ומפרשים (study); rOff = מפרשים מוסתרים בטור ('y' בית יוסף, 'c' ב״ח)
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [] };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zoff: [] };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; if (S.ramView !== 'aligned') S.ramView = 'book';
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff })); } catch (e) {} syncHash(); };
+  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; if (S.zside !== 'r') S.zside = 't'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book';
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zoff: S.zoff })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
   const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
   const setHash = x => { if (location.hash === x || (location.hash && !MODE_HASH.test(location.hash))) return; try { history.replaceState(history.state, '', x); } catch (e) {} };
   // חלון פתוח (קטע בגמרא, דיבור בטור) נכנס לכתובת, כדי שקישור שמועתק ממנו יפתח אותו שוב
   const curRef = () => isTur() ? Object.assign({ kind: 'tur', k: S.rk, s: S.rs }, S.rsel && S.rsel.x !== 't' ? { x: S.rsel.x, i: S.rsel.i, s: S.rsel.s } : {})
-    : isTal() ? Object.assign({ kind: 'tal', k: S.tk, j: S.tj }, S.sel ? { j: S.sel.j, s: S.sel.s } : {}) : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
+    : isTal() ? Object.assign({ kind: 'tal', k: S.tk, j: S.tj }, talT().z ? { z: 1, d0: talT().d0 } : {}, S.sel ? { j: S.sel.j, s: S.sel.s } : {}) : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
   function syncHash() { if (IX && document.body.dataset.mode === 'read') setHash(hashOfRef(IX, curRef())); }
 
   let TX = null;
   const ensureIndex = () => {
     if (IX) return;
-    TX = talIndex(G.GIM_TALMUD_INDEX);
+    TX = talIndex((G.GIM_TALMUD_INDEX || []).concat(G.GIM_ZOHAR_INDEX || []));
     if (S.tk && TX.byK[S.tk] == null) S.tk = '';
     RX = turIndex(G.GIM_TUR_INDEX);
     if (S.rk && RX.byK[S.rk] == null) S.rk = '';
@@ -557,7 +576,7 @@
     const ph = Math.max(300, H - (narrow ? 8 : 30));
     const fs = Math.round(((narrow ? 18 : 20.5) + S.size * 1.5) * 10) / 10;
     const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
-    return { W, H, narrow, two, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik].join('|') };
+    return { W, H, narrow, two, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zoff.join('')].join('|') };
   }
 
   // מילים של פסוק/משנה (בלי טעמים) — לפיצול משנה ארוכה בין עמודים
@@ -822,7 +841,7 @@
 
   /* כפתור סוג התצוגה בסרגל: שמות, מצב לחוץ, הסבר בריחוף — לפי הספר הפתוח. מתעדכן לפני הטעינה, כך שגם בזמן שספר נטען
      הכפתור מראה את הסוג של הספר הזה ולא של הקודם (ש״ס / טור) */
-  const viewName = v => v === 'book' ? 'ספר' : v === 'aligned' ? alignedName(S.b) : v === 'daf' ? 'צורת הדף' : isTur() ? 'טור ומפרשים' : 'גמרא ומפרשים';
+  const viewName = v => v === 'book' ? 'ספר' : v === 'aligned' ? alignedName(S.b) : v === 'daf' ? (isZ() ? 'דף מול תרגום' : 'צורת הדף') : isTur() ? 'טור ומפרשים' : isZ() ? 'זוהר והסולם' : 'גמרא ומפרשים';
   function syncSeg() {
     const seg = $r('#rdViewSeg'), tal = isTal(), tur = isTur(), cur = tur ? S.rview : tal ? S.tview : vw(S.b);
     seg.hidden = !tal && !tur && !hasViews(S.b);
@@ -909,7 +928,7 @@
     tr: '.rdTr,.rdRowHd>.trh,.rdRow>.tr',
     cm: '.rdTxt>.rdRv,.rdCmHd,.rdCmBody>p,.trSide'
   };
-  const FX_KEY = { tr: ['tr'], trFont: ['tr'], cmFont: ['cm'], cm: ['cm'], rcm: ['cm'], ramNik: ['main'] }; // כל השאר (סוג תצוגה, גודל): הכל
+  const FX_KEY = { tr: ['tr'], trFont: ['tr'], cmFont: ['cm'], cm: ['cm'], rcm: ['cm'], ramNik: ['main'], zside: ['cm'], zoff: ['cm'] }; // כל השאר (סוג תצוגה, גודל): הכל
   const fxEls = (book, sel) => [...book.querySelectorAll('.rdPage:not(.blank)')].flatMap(pg => [...pg.querySelectorAll(sel)]);
   const fxSig = book => Object.fromEntries(Object.keys(FX_Z).map(z => [z, fxEls(book, FX_Z[z]).map(e => e.textContent).join('\u0001')]));
   // לפני שינוי הגדרה: לזכור אילו אזורים ההגדרה משנה ומה הכתב בכל אזור עכשיו. הציור הבא של הספר (fxAfter) משווה ומפעיל
@@ -994,8 +1013,17 @@
   const TD = {}, TLOAD = {};
   const isTal = () => !!S.tk && TX && TX.byK[S.tk] != null;
   const talT = () => TX.list[TX.byK[S.tk]];
-  const talName = t => isEn() ? t.k : t.he;
-  const dafTxt = j => isEn() ? dafLabel(j, true) : dafLabel(j);
+  const isZ = () => isTal() && !!talT().z; // ספר הזוהר: פרשה בתור "מסכת" (z:1), עמודי וילנא, תרגום והסולם במקום רש״י ותוספות
+  const tOf = k => TX.list[TX.byK[k == null ? S.tk : k]];
+  const talName = t => isEn() ? (t.z ? t.en : t.k) : t.he;
+  const talTitle = t => t.z ? T('זוהר') + ' · ' + talName(t) : T('מסכת') + ' ' + talName(t);
+  const dafTxt = (j, k) => {
+    const t = tOf(k);
+    if (t && t.z) { const x = dafOf(j, t.d0); return isEn() ? x.d + (x.side ? 'b' : 'a') : toHeb(x.d) + ' ע״' + (x.side ? 'ב' : 'א'); }
+    return isEn() ? dafLabel(j, true) : dafLabel(j);
+  };
+  // שמות המקורות בחלון הקטע ובעימוד: בגמרא רש״י ותוספות (או רשב״ם), בזוהר הסולם והתרגום
+  const srcLabel = (k, j, src) => { const t = tOf(k); return t && t.z ? T(src === 'r' ? 'הסולם' : 'תרגום') : src === 'r' ? innerLabel(k, j) : T('תוספות'); };
   const amudRow = (k, j) => (TD[k] || [])[j] || [[], [], []];
   const fmtT = s => h(s).replace(/\u0001/g, '<b class="big">').replace(/\u0002/g, '</b>').replace(/\u0003/g, '<b>').replace(/\u0004/g, '</b>');
   const plainT = s => String(s).replace(/[\u0001-\u0004]/g, '');
@@ -1007,7 +1035,7 @@
     const i = TKEEP.indexOf(k); if (i >= 0) TKEEP.splice(i, 1); TKEEP.push(k);
     while (TKEEP.length > TMAX) {
       const old = TKEEP.shift(), TP = G.GIM_TP || {}; if (old === S.tk) { TKEEP.push(old); continue; }
-      delete TD[old]; TX.list[TX.byK[old]].parts.forEach((p, i) => { delete TP[old + '.' + i]; });
+      delete TD[old]; TX.list[TX.byK[old]].parts.forEach((p, i) => { delete TP[old + '.' + i]; }); // (הזוהר: כל פרשה בנפרד, אותו מנגנון)
     }
   }
   /* מסך טעינה: שלד של הדף שהשורות שלו "נכתבות", ושם הספר בכתב חלול שמתמלא בזהב (מימין לשמאל) לפי אחוזי הטעינה.
@@ -1054,13 +1082,19 @@
     const partDone = (i, ok) => { if (!ok || !TP[k + '.' + i]) failed = true; got[i] = need[i]; report(); if (--left === 0) finish(); };
     t.parts.forEach((p, i) => {
       if (TP[k + '.' + i]) { partDone(i, true); return; }
-      const sc = document.createElement('script'); sc.src = 'generated/talmud/' + p.f;
+      const sc = document.createElement('script'); sc.src = (t.z ? 'generated/zohar/' : 'generated/talmud/') + p.f;
       sc.onload = () => partDone(i, true); sc.onerror = () => partDone(i, false);
       document.head.appendChild(sc);
     });
   }
   // פירושי עמוד: [{v: קטע, dh, body, src: 'r'|'t'}]
-  const talCm = (k, j) => { const a = amudRow(k, j); return a[1].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 'r' })).concat(a[2].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 't' }))); };
+  const zOf = k => { const t = tOf(k); return !!(t && t.z); };
+  const zEmpty = (t, j) => T(j < t.j0 ? 'הפרשה מתחילה בעמוד הבא' : 'המשך הפסקה מהעמוד הקודם'); // עמוד בלי פסקאות
+  const talCm = (k, j) => {
+    const a = amudRow(k, j), l = a[1].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 'r' })).concat(a[2].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 't' })));
+    // זוהר: r = הסולם, t = תרגום. בדף מול תרגום — רק המקור שבעמוד השמאלי; בהזוהר והסולם — מה שלא הוסתר בהגדרות
+    return !zOf(k) ? l : S.tview === 'daf' ? l.filter(e => e.src === S.zside) : l.filter(e => !S.zoff.includes(e.src));
+  };
 
   /* צורת הדף: daf-renderer מחשב את פריסת וילנא לפי שטח הטקסטים. ההגדרות שלו הן משתנים גלובליים אחד לכל הדף,
      ולכן כל עמוד נבנה בנפרד במקום נסתר ו"מוקפא" ל-HTML עם סגנונות קבועים (freezeDaf) — כך שני עמודים
@@ -1101,7 +1135,9 @@
     run(lo); out = freezeDaf(host.firstChild); host.innerHTML = '';
     measured(); DC.set(key, out); trimMap(DC, 40); return out;
   }
-  const talHead = (t, j) => '<header class="rdHead"><span>' + h(T('מסכת') + ' ' + talName(t)) + '</span><span class="mid">' + h(grpName(t.g)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(dafTxt(j)) + '</span></header>';
+  const talHead = (t, j) => t.z
+    ? '<header class="rdHead"><span>' + h(T('זוהר') + ' · ' + T('חלק') + ' ' + (isEn() ? t.v : ['', 'א׳', 'ב׳', 'ג׳'][t.v])) + '</span><span class="mid">' + h(talName(t)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(T('דף') + ' ' + dafTxt(j, t.k)) + '</span></header>'
+    : '<header class="rdHead"><span>' + h(T('מסכת') + ' ' + talName(t)) + '</span><span class="mid">' + h(grpName(t.g)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(dafTxt(j)) + '</span></header>';
   // מידות שטח הטקסט בעמוד (בלי כותרת ומספר), לפי עמוד-בדיקה עם אותן מחלקות
   function dafBox(g) {
     const probe = $r('#rdProbe'); probe.className = 'rdPage tal' + g.cls;
@@ -1125,25 +1161,47 @@
     return good;
   };
   function studyInner(k, j, pg, q) {
-    const t = TX.list[TX.byK[k]], a = amudRow(k, j), cmCls = S.cmFont === 'rashi' ? 'fR' : 'fN';
+    const t = TX.list[TX.byK[k]], a = amudRow(k, j), cmCls = t.z || S.cmFont !== 'rashi' ? 'fN' : 'fR';
     const chip = s => '<span class="vn">' + num(s + 1) + '</span>';
     let html = talHead(t, j);
-    if (pg.first) html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(T('מסכת') + ' ' + talName(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j)) + '</span></div>';
-    html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + pg.segs.map(s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>').join(' ') + '</p></div></div><div class="rdSp"></div>';
-    [['r', innerLabel(k, j)], ['t', T('תוספות')]].forEach(([src, label]) => {
+    if (pg.first) html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j, k)) + '</span></div>';
+    html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + (pg.segs.length || !t.z ? pg.segs.map(s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>').join(' ') : '<span class="rdCont">' + h(zEmpty(t, j)) + '</span>') + '</p></div></div><div class="rdSp"></div>';
+    (t.z ? [['t', T('תרגום')], ['r', T('הסולם')]] : [['r', innerLabel(k, j)], ['t', T('תוספות')]]).forEach(([src, label]) => {
       const list = pg.cm.filter(e => e.src === src); if (!list.length) return;
       html += '<section class="rdCm ' + cmCls + '" aria-label="' + h(label) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(label) + '</span></div><div class="rdCmBody">' +
         list.map(e => '<p class="tc ' + (src === 't' ? 'cT' : 'cR') + (e.cont ? ' cont' : '') + '" data-j="' + j + '" data-s="' + e.v + '"><span class="cv">' + num(e.v + 1) + '</span>' + (e.cont ? '<span class="rdCont">…</span> ' : '') + (e.dh ? '<b>' + talTxt(e.dh, q) + '</b> ' : '') + talTxt(e.body, q) + (e.cut ? ' <span class="rdCont">…</span>' : '') + '</p>').join('') + '</div></section>';
     });
-    return html + '<div class="rdNum">' + h(dafTxt(j)) + '</div>';
+    return html + '<div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+  }
+  /* זוהר, "דף מול תרגום": עמוד ימין = הארמית של העמוד בדפוס וילנא, עמוד שמאל = התרגום (או הסולם, לפי ההגדרה), פסקה מול פסקה.
+     side: 'a' = עמוד הארמית, 'b' = עמוד הצד, 's' = עמוד אחד (מסך צר): אחרי כל פסקה — התרגום שלה. pg = {segs, first, cm} כמו בגמרא ומפרשים. */
+  function zdInner(k, j, pg, q, side) {
+    const t = tOf(k), a = amudRow(k, j), chip = s => '<span class="vn">' + num(s + 1) + '</span>';
+    const ent = e => '<p class="tc ' + (e.src === 't' ? 'cT' : 'cR') + (e.cont ? ' cont' : '') + '" data-j="' + j + '" data-s="' + e.v + '"><span class="cv">' + num(e.v + 1) + '</span>' + (e.cont ? '<span class="rdCont">…</span> ' : '') + (e.dh ? '<b>' + talTxt(e.dh, q) + '</b> ' : '') + talTxt(e.body, q) + (e.cut ? ' <span class="rdCont">…</span>' : '') + '</p>';
+    const para = s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>';
+    const none = '<p class="none">' + T(S.zside === 'r' ? 'אין ביאור לפסקאות אלה' : 'אין תרגום לפסקאות אלה') + '</p>';
+    let html = talHead(t, j);
+    if (pg.first && side !== 'b') html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j, k)) + '</span></div>';
+    if (side === 'b') return html + '<div class="rdCmHd zHd"><span class="ln"></span><span>' + h(T(S.zside === 'r' ? 'הסולם' : 'תרגום')) + '</span></div><div class="rdBody"><div class="rdTxt rdTal zSide">' + (pg.cm.length ? pg.cm.map(ent).join('') : none) + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'a') return html + '<div class="rdBody"><div class="rdTxt rdTal"><p>' + (pg.segs.length ? pg.segs.map(para).join(' ') : '<span class="rdCont">' + h(zEmpty(t, j)) + '</span>') + '</p></div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    const rest = pg.cm.filter(e => !pg.segs.includes(e.v));
+    return html + '<div class="rdBody"><div class="rdTxt rdTal zOne">' + (pg.segs.length ? pg.segs.map(s => '<p class="zp">' + para(s) + '</p>' + pg.cm.filter(e => e.v === s).map(ent).join('')).join('') : '<p class="zp"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + rest.map(ent).join('') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
   }
   function studyPages(k, j, g) {
-    const key = 'T' + k + ':' + j + '|' + g.key; if (PC.has(key)) return PC.get(key);
+    const tt = tOf(k), zd = !!tt.z && S.tview === 'daf', two = zd && !!g.two;
+    const key = 'T' + k + ':' + j + '|' + g.key + (tt.z ? '|' + S.tview + S.zside + S.zoff.join('') : ''); if (PC.has(key)) return PC.get(key);
     const probe = $r('#rdProbe'), a = amudRow(k, j), ents = talCm(k, j), pages = [];
     probe.className = 'rdPage tal' + g.cls;
     let carry = [];
     const mk = (segs, cut) => { const all = carry.concat(...segs.map(s => ents.filter(e => e.v === s))); return { segs, first: !pages.length, cm: cut == null ? all : cutCm(all, cut)[0] }; };
-    const fits = (segs, cut) => { probe.innerHTML = studyInner(k, j, mk(segs, cut), ''); return !over(probe); };
+    const fits = (segs, cut) => {
+      const pg = mk(segs, cut);
+      if (!zd) { probe.innerHTML = studyInner(k, j, pg, ''); return !over(probe); }
+      if (!two) { probe.innerHTML = zdInner(k, j, pg, '', 's'); return !over(probe); }
+      probe.innerHTML = zdInner(k, j, pg, '', 'a'); if (over(probe)) return false;
+      probe.innerHTML = zdInner(k, j, pg, '', 'b'); return !over(probe);
+    };
+    if (tt.z && !a[0].length) { const pg = { segs: [], first: true, cm: [] }; PC.set(key, [pg]); return [pg]; } // עמוד בלי פסקאות (פסקה ארוכה שנמשכת מהעמוד הקודם)
     const queue = a[0].map((_, i) => i);
     if (!queue.length) queue.push(0);
     while (queue.length) {
@@ -1166,42 +1224,47 @@
   };
 
   function renderTal() {
-    const t = talT(), k = t.k, book = $r('#rdBook');
+    const t = talT(), k = t.k, book = $r('#rdBook'), zd = !!t.z && S.tview === 'daf';
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
     const setBar = () => {
-      $r('#rdWhereTxt').textContent = talName(t) + ' · ' + T('דף') + ' ' + dafTxt(S.tj);
+      $r('#rdWhereTxt').textContent = (t.z ? T('זוהר') + ' ' + talName(t) + ' · ' : talName(t) + ' · ' + T('דף') + ' ') + dafTxt(S.tj, k);
       $r('#rdPrevCh').setAttribute('aria-label', T('דף קודם')); $r('#rdNextCh').setAttribute('aria-label', T('דף הבא'));
       $r('#rdPrevCh').title = T('דף קודם'); $r('#rdNextCh').title = T('דף הבא');
-      $r('#rdChPos').textContent = T('מסכת') + ' ' + talName(t);
+      $r('#rdChPos').textContent = talTitle(t);
       $r('#rdProgBar').style.width = Math.max(2, Math.round(100 * (S.tj + 1) / t.n)) + '%';
       $r('#rdPrevCh').disabled = S.tj < 2; $r('#rdNextCh').disabled = (S.tj | 1) + 1 >= t.n;
     };
     if (!TD[k]) {
       setBar(); $r('#rdPos').textContent = '';
-      book.innerHTML = loadingHtml(k, T('מסכת') + ' ' + talName(t), geo);
-      loadTract(k, ok => { if (!ok) book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את המסכת.') + '</p></article>'; else if (S.tk !== k) return; else if (S.sel) goTal(k, S.sel.j, S.sel.s); else render(); });
+      book.innerHTML = loadingHtml(k, talTitle(t), geo);
+      loadTract(k, ok => { if (!ok) book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T(t.z ? 'לא ניתן לטעון את הפרשה.' : 'לא ניתן לטעון את המסכת.') + '</p></article>'; else if (S.tk !== k) return; else if (S.sel) goTal(k, S.sel.j, S.sel.s); else render(); });
       return;
     }
     S.tj = Math.max(0, Math.min(S.tj, t.n - 1));
     let html = '', from = S.tj, last = S.tj, lastPg = null;
-    if (S.tview === 'daf') {
+    if (S.tview === 'daf' && !t.z) {
       if (geo.two) { from = S.tj - (S.tj & 1); last = Math.min(from + 1, t.n - 1); html = dafPage(k, from, 'right', geo, S.hl) + dafPage(k, from + 1, 'left', geo, S.hl); }
       else html = dafPage(k, S.tj, 'single', geo, S.hl);
       $r('#rdPos').textContent = (from !== last ? T('עמודים') + ' ' + dafTxt(from) + '–' + dafTxt(last) : T('עמוד') + ' ' + dafTxt(from)) + ' ' + T('מתוך') + ' ' + dafTxt(t.n - 1);
     } else {
       const ps = studyPages(k, S.tj, geo); if (S.tp >= ps.length) S.tp = ps.length - 1;
-      const shown = [{ j: S.tj, p: S.tp }]; if (geo.two) { const n = stNext(k, S.tj, S.tp, 1, geo); if (n) shown.push(n); }
+      const shown = [{ j: S.tj, p: S.tp }]; if (geo.two && !zd) { const n = stNext(k, S.tj, S.tp, 1, geo); if (n) shown.push(n); }
       const side = i => geo.two ? (i ? 'left' : 'right') : 'single';
-      html = shown.map((x, i) => '<article class="rdPage tal ' + side(i) + geo.cls + '">' + studyInner(k, x.j, studyPages(k, x.j, geo)[x.p], S.hl) + '</article>').join('') + (geo.two && shown.length < 2 ? '<article class="rdPage left blank' + geo.cls + '" aria-hidden="true"></article>' : '');
+      if (zd) { // דף מול תרגום: מסך אחד = עמוד ארמית (ימין) ועמוד תרגום (שמאל)
+        const pg = ps[S.tp];
+        html = geo.two ? '<article class="rdPage tal right' + geo.cls + '" aria-label="' + h(T('דף') + ' ' + dafTxt(S.tj, k)) + '">' + zdInner(k, S.tj, pg, S.hl, 'a') + '</article><article class="rdPage tal left' + geo.cls + '">' + zdInner(k, S.tj, pg, S.hl, 'b') + '</article>'
+          : '<article class="rdPage tal single' + geo.cls + '">' + zdInner(k, S.tj, pg, S.hl, 's') + '</article>';
+      } else html = shown.map((x, i) => '<article class="rdPage tal ' + side(i) + geo.cls + '">' + studyInner(k, x.j, studyPages(k, x.j, geo)[x.p], S.hl) + '</article>').join('') + (geo.two && shown.length < 2 ? '<article class="rdPage left blank' + geo.cls + '" aria-hidden="true"></article>' : '');
       last = shown[shown.length - 1].j; lastPg = shown[shown.length - 1];
-      $r('#rdPos').textContent = T('עמוד') + ' ' + dafTxt(S.tj) + (last !== S.tj ? '–' + dafTxt(last) : '') + ' ' + T('מתוך') + ' ' + dafTxt(t.n - 1);
+      $r('#rdPos').textContent = T('עמוד') + ' ' + dafTxt(S.tj, k) + (last !== S.tj ? '–' + dafTxt(last, k) : '') + ' ' + T('מתוך') + ' ' + dafTxt(t.n - 1, k) + (t.z && ps.length > 1 ? ' · ' + num(S.tp + 1) + '/' + num(ps.length) : '');
     }
     book.innerHTML = html + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
     fxAfter(book);
     setBar();
-    const atStart = S.tview === 'daf' ? from === 0 : !stNext(k, S.tj, S.tp, -1, geo);
-    const atEnd = S.tview === 'daf' ? (geo.two ? from + 2 >= t.n : S.tj + 1 >= t.n) : !stNext(k, lastPg.j, lastPg.p, 1, geo);
+    const dafV = S.tview === 'daf' && !t.z;
+    const atStart = dafV ? from === 0 : !stNext(k, S.tj, S.tp, -1, geo);
+    const atEnd = dafV ? (geo.two ? from + 2 >= t.n : S.tj + 1 >= t.n) : !stNext(k, lastPg.j, lastPg.p, 1, geo);
     ['#rdPrev', '#rdPrev2'].forEach(s => { $r(s).disabled = atStart; });
     ['#rdNext', '#rdNext2'].forEach(s => { $r(s).disabled = atEnd; });
     markSel();
@@ -1209,9 +1272,9 @@
   }
   function talTurn(dir) {
     const t = talT();
-    if (S.tview === 'daf') { const step = geo.two ? 2 : 1, base = geo.two ? S.tj - (S.tj & 1) : S.tj, n = base + dir * step; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; return render(); }
+    if (S.tview === 'daf' && !t.z) { const step = geo.two ? 2 : 1, base = geo.two ? S.tj - (S.tj & 1) : S.tj, n = base + dir * step; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; return render(); }
     let x = { j: S.tj, p: S.tp };
-    for (let i = 0; i < (geo.two ? 2 : 1); i++) { const n = stNext(t.k, x.j, x.p, dir, geo); if (!n) { if (i === 0) return; break; } x = n; }
+    for (let i = 0; i < (geo.two && !(t.z && S.tview === 'daf') ? 2 : 1); i++) { const n = stNext(t.k, x.j, x.p, dir, geo); if (!n) { if (i === 0) return; break; } x = n; }
     S.tj = x.j; S.tp = x.p; fxDir = dir; render();
   }
   function talStep(dir) { const t = talT(), base = S.tj - (S.tj & 1), n = base + dir * 2; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; render(); }
@@ -1225,7 +1288,7 @@
   }
 
   /* חלון הקטע: הקטע שנבחר ופירושיו (רש״י / תוספות), בגודל קריא — בצורת הדף האותיות קטנות */
-  let segTab = 'r';
+  let segTab = 'r', zTabSet = false;
   function markSel() {
     R.querySelectorAll('.rdBook .sel').forEach(e => e.classList.remove('sel'));
     if (!S.sel || !isTal()) return;
@@ -1237,14 +1300,16 @@
     S.sel = { j, s }; markSel(); syncHash();
     const a = amudRow(S.tk, j), rl = a[1].filter(e => e[0] === s), tl = a[2].filter(e => e[0] === s);
     if (segTab === 'r' && !rl.length && tl.length) segTab = 't'; else if (segTab === 't' && !tl.length && rl.length) segTab = 'r';
-    const list = segTab === 'r' ? rl : tl, cmCls = S.cmFont === 'rashi' ? 'fR' : 'fN';
+    const zt = talT().z;
+    if (zt && !zTabSet) { zTabSet = true; segTab = tl.length ? 't' : 'r'; }
+    const list = segTab === 'r' ? rl : tl, cmCls = !zt && S.cmFont === 'rashi' ? 'fR' : 'fN';
     const tab = (k, label, n) => '<button type="button" class="' + (segTab === k ? 'on' : '') + '" data-segtab="' + k + '" aria-pressed="' + (segTab === k) + '"' + (n ? '' : ' disabled') + '>' + h(label) + ' · ' + n + '</button>';
     const p = $r('#rdSeg');
-    p.innerHTML = '<div class="rdPopHd"><span>' + h(talName(talT()) + ' ' + dafTxt(j) + ' · ' + T('קטע') + ' ' + num(s + 1)) + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
+    p.innerHTML = '<div class="rdPopHd"><span>' + h((zt ? talTitle(talT()) : talName(talT())) + ' ' + dafTxt(j) + ' · ' + T(zt ? 'פסקה' : 'קטע') + ' ' + num(s + 1)) + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<p class="rdSegTxt">' + fmtT(a[0][s] || '') + '</p>' +
-      '<div class="rdSegTabs" role="group">' + tab('r', innerLabel(S.tk, j), rl.length) + tab('t', T('תוספות'), tl.length) + '</div>' +
-      '<div class="rdSegList ' + cmCls + '">' + (list.length ? list.map(e => '<p>' + (e[1] ? '<b>' + fmtT(e[1]) + '</b> ' : '') + fmtT(e[2]) + '</p>').join('') : '<p class="none">' + T('אין פירוש על קטע זה') + '</p>') + '</div>' +
-      '<div class="rdSegNav"><button type="button" data-segmove="-1">' + ICON.chevR + ' ' + T('הקטע הקודם') + '</button><button type="button" data-segmove="1">' + T('הקטע הבא') + ' ' + ICON.chevL + '</button></div>';
+      '<div class="rdSegTabs" role="group">' + (zt ? tab('t', T('תרגום'), tl.length) + tab('r', T('הסולם'), rl.length) : tab('r', innerLabel(S.tk, j), rl.length) + tab('t', T('תוספות'), tl.length)) + '</div>' +
+      '<div class="rdSegList ' + cmCls + '">' + (list.length ? list.map(e => '<p>' + (e[1] ? '<b>' + fmtT(e[1]) + '</b> ' : '') + fmtT(e[2]) + '</p>').join('') : '<p class="none">' + T(zt ? 'אין תרגום או ביאור לפסקה זו' : 'אין פירוש על קטע זה') + '</p>') + '</div>' +
+      '<div class="rdSegNav"><button type="button" data-segmove="-1">' + ICON.chevR + ' ' + T(zt ? 'הפסקה הקודמת' : 'הקטע הקודם') + '</button><button type="button" data-segmove="1">' + T(zt ? 'הפסקה הבאה' : 'הקטע הבא') + ' ' + ICON.chevL + '</button></div>';
     p.hidden = false;
   }
   function segMove(dir) {
@@ -1748,7 +1813,7 @@
   function printGeo() {
     const pw = Math.round(139 * MM), ph = Math.round(190 * MM), fs = Math.round((14.5 + S.size) * 10) / 10;
     const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
-    return { pw, ph, fs, trW, two: true, per: 2, cls: ' prt', key: ['print', pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik].join('|') };
+    return { pw, ph, fs, trW, two: true, per: 2, cls: ' prt', key: ['print', pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zoff.join('')].join('|') };
   }
   const setVars = g => { R.style.setProperty('--rdPw', g.pw + 'px'); R.style.setProperty('--rdPh', g.ph + 'px'); R.style.setProperty('--rdFs', g.fs + 'px'); R.style.setProperty('--rdTrW', g.trW + 'px'); };
   // ש״ס: הדף הנוכחי (שני העמודים, א ו-ב) בתצוגה הנוכחית
@@ -1756,6 +1821,12 @@
     const k = S.tk, t = talT(), saved = geo; geo = printGeo(); setVars(geo);
     const from = S.tj - (S.tj & 1), js = [from, from + 1].filter(j => j < t.n);
     let pages;
+    if (t.z && S.tview === 'daf') { // זוהר, דף מול תרגום: כל מסך הוא גיליון (ארמית מימין, תרגום משמאל)
+      let html = '', n = 0;
+      js.forEach(j => studyPages(k, j, geo).forEach(pg => { n++; html += '<div class="rdSheet"><article class="rdPage tal prt right">' + zdInner(k, j, pg, '', 'a') + '</article><article class="rdPage tal prt left">' + zdInner(k, j, pg, '', 'b') + '</article></div>'; }));
+      const vars = R.getAttribute('style'); geo = saved; if (geo) setVars(geo);
+      return { html, vars, sheets: n };
+    }
     if (S.tview === 'daf') pages = js.map(j => side => dafPage(k, j, side, geo, ''));
     else pages = [].concat(...js.map(j => studyPages(k, j, geo).map(pg => side => '<article class="rdPage tal prt ' + side + '">' + studyInner(k, j, pg, '') + '</article>')));
     let html = '';
@@ -1806,7 +1877,7 @@
       const opt = (key, val, label, note) => '<button type="button" class="rdOpt' + (S[key] === val ? ' on' : '') + '" data-pset="' + key + '" data-val="' + val + '" aria-pressed="' + (S[key] === val) + '"><span class="dot"></span><span class="lb">' + T(label) + '</span><span class="nt">' + note + '</span></button>';
       const t = talT(), from = S.tj - (S.tj & 1);
       $r('#rdPrintPop').innerHTML = '<div class="rdPopHd"><span>' + T('הדפסה / PDF') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
-        '<div class="rdSec"><span class="rdSecT">' + T('מה להדפיס') + '</span><p class="rdNote">' + h(T('מסכת') + ' ' + talName(t) + ' ' + T('דף') + ' ' + dafLabel(from, isEn()).replace(/[.:a-z]$/, '')) + ' · ' + T(S.tview === 'daf' ? 'צורת הדף' : 'גמרא ומפרשים') + '</p></div>' +
+        '<div class="rdSec"><span class="rdSecT">' + T('מה להדפיס') + '</span><p class="rdNote">' + h((t.z ? talTitle(t) : T('מסכת') + ' ' + talName(t)) + ' ' + T('דף') + ' ' + (t.z ? (isEn() ? dafOf(from, t.d0).d : toHeb(dafOf(from, t.d0).d)) : dafLabel(from, isEn()).replace(/[.:a-z]$/, ''))) + ' · ' + T(viewName(S.tview)) + '</p></div>' +
         '<div class="rdSec"><span class="rdSecT">' + T('צבע') + '</span>' + opt('prColor', 'color', 'צבעוני', T('רקע נייר וצבעים')) + opt('prColor', 'bw', 'שחור-לבן', T('רקע לבן, לחיסכון בדיו')) + '</div>' +
         '<p class="rdNote">' + T('שני עמודים בכל דף A4 לרוחב.') + ' ' + T('ליצוא PDF בחרו בחלון ההדפסה ״שמירה כ-PDF״.') + '</p>' +
         '<button type="button" class="rdGo rdPrintGo" data-print>' + ICON.print + ' ' + T('הדפסה') + '</button>';
@@ -1848,10 +1919,24 @@
     openPop = id; $r('#rdScrim').hidden = false;
     if (id === 'print') { renderPrintPop(); $r('#rdPrintPop').hidden = false; $r('#rdPrintBtn').setAttribute('aria-expanded', 'true'); }
     else if (id === 'set') { renderSet(); $r('#rdSet').hidden = false; $r('#rdSetBtn').setAttribute('aria-expanded', 'true'); }
-    else { J.b = S.b; J.ch = S.ch; J.v = 0; J.cat = isTur() ? 20 : isTal() ? 2 : IX.books[S.b].cat; J.tk = S.tk || (TX.list[0] || {}).k; J.tj = isTal() ? S.tj : 0; J.rk = S.rk || (RX.list[0] || {}).k; J.rs = isTur() ? S.rs : 1; renderJump(); $r('#rdJump').hidden = false; $r('#rdWhere').setAttribute('aria-expanded', 'true'); const a = $r('#rdJump .rdJB.on'); if (a) a.scrollIntoView({ block: 'center' }); }
+    else { J.b = S.b; J.ch = S.ch; J.v = 0; J.cat = isTur() ? 20 : isTal() ? (talT().z ? 30 : 2) : IX.books[S.b].cat; J.tk = isTal() ? S.tk : jDef(false); J.tj = isTal() ? S.tj : 0; J.rk = S.rk || (RX.list[0] || {}).k; J.rs = isTur() ? S.rs : 1; renderJump(); $r('#rdJump').hidden = false; $r('#rdWhere').setAttribute('aria-expanded', 'true'); const a = $r('#rdJump .rdJB.on'); if (a) a.scrollIntoView({ block: 'center' }); }
   }
 
+  function renderSetZoh() {
+    const t = talT(), daf = S.tview === 'daf';
+    const card = (k, ic, label) => '<button type="button" class="rdCard' + (S.tview === k ? ' on' : '') + '" data-set="tview" data-val="' + k + '" aria-pressed="' + (S.tview === k) + '">' + ic + '<span>' + T(label) + '</span></button>';
+    const opt = (key, val, label, note) => '<button type="button" class="rdOpt' + (S[key] === val ? ' on' : '') + '" data-set="' + key + '" data-val="' + val + '" aria-pressed="' + (S[key] === val) + '"><span class="dot"></span><span class="lb">' + T(label) + '</span><span class="nt">' + T(note) + '</span></button>';
+    const chk = (x, label) => { const on = !S.zoff.includes(x); return '<button type="button" class="rdOpt rdChk' + (on ? ' on' : '') + '" data-set="zoff" data-val="' + x + '" aria-pressed="' + on + '"><span class="dot"></span><span class="lb">' + T(label) + '</span><span class="nt"></span></button>'; };
+    $r('#rdSet').innerHTML = '<div class="rdPopHd"><span>' + T('הגדרות תצוגה') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
+      '<div class="rdSec"><span class="rdSecT">' + T('סוג תצוגה') + '</span><div class="rdCards">' +
+      card('daf', '<span class="pv pvBook"><i></i><i></i><i class="s"></i><b></b></span>', 'דף מול תרגום') + card('study', '<span class="pv pvRows"><i></i><i></i><i></i></span>', 'זוהר והסולם') + '</div></div>' +
+      (daf ? '<div class="rdSec"><span class="rdSecT">' + T('בעמוד השמאלי') + '</span>' + opt('zside', 't', 'תרגום', 'ברירת מחדל') + opt('zside', 'r', 'הסולם', 'ביאור הסולם') + '</div>'
+        : '<div class="rdSec"><span class="rdSecT">' + T('מתחת לפסקאות') + '</span>' + chk('t', 'תרגום') + chk('r', 'הסולם') + '</div>') +
+      '<div class="rdSec"><span class="rdSecT">' + T('גודל אותיות') + '</span><div class="rdSizes">' + [-1, 0, 1, 2].map(z => '<button type="button" class="' + (S.size === z ? 'on' : '') + '" data-set="size" data-val="' + z + '" aria-pressed="' + (S.size === z) + '" style="font-size:' + (13 + z * 2.5) + 'px">א</button>').join('') + '</div></div>' +
+      '<p class="rdNote">' + T('לחצו על פסקה בזוהר כדי לראות את התרגום והסולם שלה.') + ' ' + T('העמודים לפי דפוס וילנא.') + ' ' + T('ההגדרות נשמרות לפעם הבאה.') + '</p>';
+  }
   function renderSetTal() {
+    if (talT().z) return renderSetZoh();
     const card = (k, ic, label) => '<button type="button" class="rdCard' + (S.tview === k ? ' on' : '') + '" data-set="tview" data-val="' + k + '" aria-pressed="' + (S.tview === k) + '">' + ic + '<span>' + T(label) + '</span></button>';
     const fontPair = (key, sample) => ['rashi', 'regular'].map(f => '<button type="button" class="rdFont' + (S[key] === f ? ' on' : '') + '" data-set="' + key + '" data-val="' + f + '" aria-pressed="' + (S[key] === f) + '"><span class="smp ' + (f === 'rashi' ? 'fR' : 'fN') + '">' + sample + '</span><span class="lb">' + T(f === 'rashi' ? 'כתב רש״י' : 'כתב רגיל') + '</span></button>').join('');
     $r('#rdSet').innerHTML = '<div class="rdPopHd"><span>' + T('הגדרות תצוגה') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
@@ -1895,7 +1980,8 @@
   }
 
   const J = { cat: 0, b: 0, ch: 1, v: 0, tk: '', tj: 0, rk: '', rs: 1 };
-  const jTabs = () => '<div class="rdJTabs" role="group">' + [0, 1, 7, 2, 20].filter(c => c === 2 ? TX.list.length : c === 20 ? RX.list.length : IX.base.some(i => IX.books[i].cat === c)).map(c => '<button type="button" data-jcat="' + c + '" class="' + (J.cat === c ? 'on' : '') + '" aria-pressed="' + (J.cat === c) + '">' + T({ 0: 'תנ״ך', 1: 'משנה', 7: 'רמב״ם', 2: 'ש״ס', 20: 'טור' }[c]) + '</button>').join('') + '</div>';
+  const jDef = z => (TX.list.find(t => !!t.z === z) || {}).k || ''; // המסכת (או הפרשה) הראשונה ברשימה שבחלון המעבר
+  const jTabs = () => '<div class="rdJTabs" role="group">' + [0, 1, 7, 2, 30, 20].filter(c => c === 2 ? TX.list.some(t => !t.z) : c === 30 ? TX.list.some(t => t.z) : c === 20 ? RX.list.length : IX.base.some(i => IX.books[i].cat === c)).map(c => '<button type="button" data-jcat="' + c + '" class="' + (J.cat === c ? 'on' : '') + '" aria-pressed="' + (J.cat === c) + '">' + T({ 0: 'תנ״ך', 1: 'משנה', 7: 'רמב״ם', 2: 'ש״ס', 30: 'זוהר', 20: 'טור' }[c]) + '</button>').join('') + '</div>';
   function renderJumpTur() {
     const t = turTOf(J.rk), cur = isTur() && S.rk === J.rk ? S.rs : -1, cells = [];
     for (let s = minS(t); s < t.n; s++) {
@@ -1907,8 +1993,18 @@
       '<div class="rdJCol"><div class="rdJH">' + T('סימן') + ' · ' + h(T('טור') + ' ' + turPartName(t)) + '</div><div class="rdCells">' + cells.join('') + '</div></div></div>' +
       '<div class="rdJFoot"><span>' + T('אפשר גם להקליד מקום בתיבת החיפוש') + ' · <b>← →</b> ' + T('דפדוף') + ' · <b>Ctrl G</b></span><button type="button" class="rdGo" data-jgo>' + (isEn() ? 'Go to ' : 'מעבר ל') + h(turPartName(t)) + ' ' + (J.rs ? num(J.rs) : T('הקדמה')) + '</button></div>';
   }
+  function renderJumpZoh() {
+    const groups = []; TX.list.forEach(t => { if (!t.z) return; let g = groups.find(x => x.name === t.g); if (!g) groups.push(g = { name: t.g, ts: [] }); g.ts.push(t); });
+    const t = TX.list[TX.byK[J.tk]], dapim = []; for (let j = 0; j < t.n; j += 2) dapim.push(j);
+    const cur = isTal() && S.tk === J.tk ? S.tj >> 1 : -1, dn = j => isEn() ? dafOf(j, t.d0).d : toHeb(dafOf(j, t.d0).d);
+    $r('#rdJump').innerHTML = '<div class="rdPopHd">' + jTabs() + '<span class="rdJT">' + T('מעבר לדף') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
+      '<div class="rdJGrid"><div class="rdJCol rdJBooks">' + groups.map(g => '<div class="rdJGrp">' + h(grpName(g.name)) + '</div>' + g.ts.map(x => '<button type="button" class="rdJB' + (x.k === J.tk ? ' on' : '') + '" data-jtk="' + h(x.k) + '">' + h(talName(x)) + '</button>').join('')).join('') + '</div>' +
+      '<div class="rdJCol"><div class="rdJH">' + T('דף') + ' · ' + h(talTitle(t)) + '</div><div class="rdCells">' + dapim.map(j => '<button type="button" class="rdCell' + ((J.tj >> 1) === (j >> 1) ? ' on' : '') + ((j >> 1) === cur ? ' cur' : '') + '" data-jd="' + j + '">' + dn(j) + '</button>').join('') + '</div></div>' +
+      '<div class="rdJCol"><div class="rdJH">' + T('עמוד') + '</div><div class="rdCells">' + [0, 1].map(sd => { const j = (J.tj & ~1) + sd; return '<button type="button" class="rdCell' + (J.tj === j ? ' on' : '') + '" data-jside="' + sd + '"' + (j >= t.n ? ' disabled' : '') + '>' + (isEn() ? 'ab'[sd] : 'אב'[sd]) + '</button>'; }).join('') + '</div></div></div>' +
+      '<div class="rdJFoot"><span>' + T('אפשר גם להקליד מקום בתיבת החיפוש') + ' · <b>← →</b> ' + T('דפדוף') + ' · <b>Ctrl G</b></span><button type="button" class="rdGo" data-jgo>' + (isEn() ? 'Go to ' : 'מעבר ל') + h(talTitle(t)) + ' ' + h(dafTxt(J.tj, t.k)) + '</button></div>';
+  }
   function renderJumpTal() {
-    const groups = []; TX.list.forEach(t => { let g = groups.find(x => x.name === t.g); if (!g) groups.push(g = { name: t.g, ts: [] }); g.ts.push(t); });
+    const groups = []; TX.list.forEach(t => { if (t.z) return; let g = groups.find(x => x.name === t.g); if (!g) groups.push(g = { name: t.g, ts: [] }); g.ts.push(t); });
     const t = TX.list[TX.byK[J.tk]], dapim = []; for (let j = 0; j < t.n; j += 2) dapim.push(j);
     const cur = isTal() && S.tk === J.tk ? S.tj >> 1 : -1;
     $r('#rdJump').innerHTML = '<div class="rdPopHd">' + jTabs() + '<span class="rdJT">' + T('מעבר לדף') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
@@ -1920,6 +2016,7 @@
   function renderJump() {
     if (J.cat === 20) return renderJumpTur();
     if (J.cat === 2) return renderJumpTal();
+    if (J.cat === 30) return renderJumpZoh();
     const groups = [];
     IX.base.forEach(i => { const bk = IX.books[i]; if (bk.cat !== J.cat) return; let g = groups.find(x => x.name === bk.g); if (!g) groups.push(g = { name: bk.g, ids: [] }); g.ids.push(i); });
     const vs = versesOf(IX, J.b, J.ch);
@@ -1988,7 +2085,7 @@
   }
   const RH = 58, GH = 28, OVER = 12, cnt = n => n.toLocaleString('en-US'), resN = n => cnt(n) + ' ' + T(n === 1 ? 'תוצאה' : 'תוצאות'); // מספרי תוצאות בספרות, כמו במסך הגימטריה
   let RS = null;
-  const talRefLabel = (k, j) => { const t = TX.list[TX.byK[k]]; return T('מסכת') + ' ' + talName(t) + ' ' + T('דף') + ' ' + dafTxt(j); };
+  const talRefLabel = (k, j) => { const t = TX.list[TX.byK[k]]; return (t.z ? talTitle(t) : T('מסכת') + ' ' + talName(t)) + ' ' + T('דף') + ' ' + dafTxt(j, k); };
   const turRefLabel = (k, s) => T('טור') + ' ' + turPartName(turTOf(k)) + ' ' + (s ? T('סימן') + ' ' + num(s) : T('הקדמה'));
   const refItemLabel = it => it.kind === 'tur' ? turRefLabel(it.k, it.s) : it.kind === 'tal' ? talRefLabel(it.k, it.j) : (isRambam(it.r.b) ? T('רמב״ם') + ', ' : '') + refLabel(it.r);
   /* הצעות ספרים תוך כדי הקלדה (v3.21.0): כל ספר — תנ״ך, משנה, רמב״ם, מסכת בבלי או טור — ששמו או ראשי התיבות שלו מתחילים
@@ -1997,7 +2094,7 @@
   function addSugg(q, max) {
     const have = new Set(dropItems.map(itKey));
     suggestPlaces(IX, TX, RX, q, max).forEach(x => {
-      const it = x.kind === 'ref' ? { kind: 'ref', r: { b: x.b, ch: chaptersOf(IX, x.b)[0], v: 0 }, sg: true } : x.kind === 'tal' ? { kind: 'tal', k: TX.list[x.i].k, j: 0, sg: true } : { kind: 'tur', k: RX.list[x.i].k, s: 1, sg: true };
+      const it = x.kind === 'ref' ? { kind: 'ref', r: { b: x.b, ch: chaptersOf(IX, x.b)[0], v: 0 }, sg: true } : x.kind === 'tal' ? { kind: 'tal', k: TX.list[x.i].k, j: TX.list[x.i].j0 || 0, sg: true } : { kind: 'tur', k: RX.list[x.i].k, s: 1, sg: true };
       if (dropItems.length < max && !have.has(itKey(it))) { have.add(itKey(it)); dropItems.push(it); }
     });
   }
@@ -2012,18 +2109,20 @@
     addSugg(q, 6);
     let html = refsHtml();
     const sq = sqOn(), res = sq ? sqSearch(q) : searchTal(q), n = sq ? res.total : res.hits.length;
-    const srcs = [['g', 'גמרא'], ['r', 'רש״י'], ['t', 'תוספות'], ['all', 'הכל']];
-    html += dropBar('talmud', (res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות')));
+    const cntTxt = res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות');
+    if (talT().z) { // בזוהר: מקורות החיפוש בפרשה — הזוהר, התרגום, הסולם או הכל
+      html += '<div class="rdDScope" role="group"><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + [['g', 'זוהר'], ['t', 'תרגום'], ['r', 'הסולם'], ['all', 'הכל']].map(([v, l]) => '<button type="button" data-tsrc="' + v + '" class="' + (S.tsrc === v ? 'on' : '') + '" aria-pressed="' + (S.tsrc === v) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + cntTxt + '</span></div>';
+    } else html += dropBar('talmud', cntTxt);
     // כל ההתאמות במסכת, ברשימה הווירטואלית עם פס הגלילה המהיר: קבוצה לכל דף (עמוד), וסימון על הפס בכל עשרה דפים
     const start = dropItems.length, t0 = talT();
     res.hits.forEach(x => dropItems.push(sq ? sqItem(x, 'talmud') : { kind: 'thit', x }));
     if (n) html += resList(res.hits, start, q, {
       sq, key: sq ? null : x => x.j, gh: x => T('דף') + ' ' + dafTxt(x.j),
-      tick: sq ? null : x => Math.floor((dafOf(x.j).d) / 10), tickName: g => T('דף') + ' ' + (isEn() ? Math.max(2, g * 10) : toHeb(Math.max(2, g * 10))),
+      tick: sq ? null : x => Math.floor((dafOf(x.j, t0.z ? t0.d0 : 2).d) / 10), tickName: g => T('דף') + ' ' + (isEn() ? Math.max(t0.z ? t0.d0 : 2, g * 10) : toHeb(Math.max(t0.z ? t0.d0 : 2, g * 10))),
       bub: x => (x.tk ? talName(TX.list[TX.byK[x.tk]]) : talName(t0)) + ' ' + dafTxt(x.j),
       row: x => {
-        const tag = x.src === 'g' ? '' : x.src === 'r' ? (TD[x.tk || S.tk] ? innerLabel(x.tk || S.tk, x.j) : T('רש״י')) : T('תוספות');
-        return { tag, fc: tag ? S.cmFont : '', ref: x.ref || dafTxt(x.j) + ' · ' + T('קטע') + ' ' + num(x.s + 1), t: plainT(x.t), html: x.html };
+        const tag = x.src === 'g' ? '' : x.src === 'r' ? (TD[x.tk || S.tk] ? srcLabel(x.tk || S.tk, x.j, 'r') : T('רש״י')) : srcLabel(x.tk || S.tk, x.j, 't');
+        return { tag, fc: tag && !t0.z ? S.cmFont : '', ref: x.ref || dafTxt(x.j) + ' · ' + T(t0.z ? 'פסקה' : 'קטע') + ' ' + num(x.s + 1), t: plainT(x.t), html: x.html };
       }
     });
     d.innerHTML = html; d.hidden = false; busy(sq && res.wait);
@@ -2068,7 +2167,7 @@
   const SQ_N = 4, SQ_MAX = 8 << 20; // 4 Workers; כל אחד עד כ-8MB של עמודים בזיכרון
   const SQD = {}; // תחום ('tanakh' / 'mishnah') → {P: הבטחה, E: המנוע, fail}
   let SQ = null, SQHL = null;
-  const sqDomOf = () => { if (isTur()) return 'tur'; if (isTal()) return 'talmud'; const c = IX.books[S.b].cat; return c === 0 ? 'tanakh' : c === 1 ? 'mishnah' : c === 7 ? 'rambam' : null; };
+  const sqDomOf = () => { if (isTur()) return 'tur'; if (isTal()) return isZ() ? null : 'talmud'; const c = IX.books[S.b].cat; return c === 0 ? 'tanakh' : c === 1 ? 'mishnah' : c === 7 ? 'rambam' : null; }; // בזוהר: חיפוש בפרשה הפתוחה, בלי מסד SQLite
   const sqPhone = () => G.matchMedia && G.matchMedia('(hover: none) and (pointer: coarse)').matches; // טלפון / טאבלט (מסך מגע בלי עכבר)
   const sqOn = () => { const d = sqDomOf(); return !!d && !(SQD[d] && SQD[d].fail) && !!G.GimSq && /^https?:$/.test(location.protocol) && !sqPhone() && typeof Worker !== 'undefined'; };
   const sqScript = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
@@ -2648,8 +2747,8 @@
      tipOf(b) לפי ה-id או ה-data של הכפתור; כפתור בלי הסבר משלו מקבל את ה-aria-label או את הטקסט שלו.
      MutationObserver (tipsWatch) מעדכן אחרי כל ציור של הסרגל, הדף והחלונות — גם כפתורים שנוצרים מחדש מקבלים הסבר. */
   function viewTip(v) {
-    if (v === 'daf') return T(isTur() ? 'צורת הדף: הטור באמצע, וב״ח ובית יוסף מקיפים אותו' : 'צורת הדף: פריסת דף וילנא — הגמרא באמצע, רש״י ותוספות מסביב');
-    if (v === 'study') return T(isTur() ? 'טור ומפרשים: קטעים מהטור, ומתחת לכל אחד הדיבורים שלו' : 'גמרא ומפרשים: קטעי הגמרא ברצף; לחיצה על קטע פותחת את פירושיו');
+    if (v === 'daf') return T(isTur() ? 'צורת הדף: הטור באמצע, וב״ח ובית יוסף מקיפים אותו' : isZ() ? 'דף מול תרגום: עמוד הזוהר בארמית מימין, והתרגום (או הסולם) מולו משמאל' : 'צורת הדף: פריסת דף וילנא — הגמרא באמצע, רש״י ותוספות מסביב');
+    if (v === 'study') return T(isTur() ? 'טור ומפרשים: קטעים מהטור, ומתחת לכל אחד הדיבורים שלו' : isZ() ? 'זוהר והסולם: פסקאות הזוהר ברצף, ומתחת להן התרגום וביאור הסולם' : 'גמרא ומפרשים: קטעי הגמרא ברצף; לחיצה על קטע פותחת את פירושיו');
     if (isRambam(S.b)) return T(v === 'book' ? 'ספר: עיצוב מהדורת פרנקל — ההלכות ברצף, והשגות הראב״ד בתוך הטקסט' : 'הלכה הלכה: כל הלכה בנפרד עם כותרת, והמפרשים בתחתית הדף');
     return T(v === 'book' ? 'ספר: הטקסט ברצף כמו בספר מודפס, והתרגום בטור צד' : 'פסוק מול תרגום: כל פסוק בשורה משלו, והתרגום מולו');
   }
@@ -2755,13 +2854,15 @@
       if (e.target.closest('[data-close]')) return closePops();
       const t = e.target.closest('[data-set]'); if (!t) return;
       const k = t.dataset.set;
-      if (k !== 'cm' && k !== 'rcm' && t.dataset.val === String(k === 'view' ? vw(S.b) : S[k])) return; // כבר בחור — בלי ציור ובלי אפקט
+      if (k !== 'cm' && k !== 'rcm' && k !== 'zoff' && t.dataset.val === String(k === 'view' ? vw(S.b) : S[k])) return; // כבר בחור — בלי ציור ובלי אפקט
       fxSetting(k);
       if (isTur()) return turKeep(() => {
         if (k === 'rcm') { const x = t.dataset.val; S.rOff = S.rOff.includes(x) ? S.rOff.filter(v => v !== x) : S.rOff.concat(x); if (S.rsel && S.rOff.includes(S.rsel.x)) closeSeg(); }
         else S[k] = k === 'size' ? Number(t.dataset.val) : t.dataset.val;
         renderSet();
       });
+      if (k === 'zoff') { const x = t.dataset.val; S.zoff = S.zoff.includes(x) ? S.zoff.filter(v => v !== x) : S.zoff.concat(x); S.tp = 0; renderSet(); return render(); }
+      if (k === 'zside') S.tp = 0;
       if (k === 'ramNik') S.ramNik = t.dataset.val === 'true';
       else if (k === 'view' && isRambam(S.b)) S.ramView = t.dataset.val;
       else if (k === 'cm') { const c = Number(t.dataset.val); S.cmOff = S.cmOff.includes(c) ? S.cmOff.filter(x => x !== c) : S.cmOff.concat(c); }
@@ -2771,16 +2872,16 @@
     $r('#rdJump').onclick = e => {
       if (e.target.closest('[data-close]')) return closePops();
       const t = e.target.closest('button'); if (!t) return;
-      if (t.dataset.jcat != null) { J.cat = Number(t.dataset.jcat); if (J.cat === 20) { J.rk = S.rk || RX.list[0].k; J.rs = isTur() ? S.rs : 1; } else if (J.cat === 2) { J.tk = S.tk || TX.list[0].k; J.tj = isTal() ? S.tj : 0; } else { J.b = IX.base.find(i => IX.books[i].cat === J.cat); J.ch = chaptersOf(IX, J.b)[0]; J.v = 0; } }
+      if (t.dataset.jcat != null) { J.cat = Number(t.dataset.jcat); if (J.cat === 20) { J.rk = S.rk || RX.list[0].k; J.rs = isTur() ? S.rs : 1; } else if (J.cat === 2 || J.cat === 30) { const same = isTal() && !!talT().z === (J.cat === 30); J.tk = same ? S.tk : jDef(J.cat === 30); J.tj = same ? S.tj : (TX.list[TX.byK[J.tk]].j0 || 0); } else { J.b = IX.base.find(i => IX.books[i].cat === J.cat); J.ch = chaptersOf(IX, J.b)[0]; J.v = 0; } }
       else if (t.dataset.jrk != null) { J.rk = t.dataset.jrk; J.rs = 1; }
       else if (t.dataset.jrs != null) { J.rs = Number(t.dataset.jrs); closePops(); return goTur(J.rk, J.rs); }
-      else if (t.dataset.jtk != null) { J.tk = t.dataset.jtk; J.tj = 0; }
+      else if (t.dataset.jtk != null) { J.tk = t.dataset.jtk; J.tj = TX.list[TX.byK[J.tk]].j0 || 0; }
       else if (t.dataset.jd != null) { J.tj = Number(t.dataset.jd); }
       else if (t.dataset.jside != null) { J.tj = (J.tj & ~1) + Number(t.dataset.jside); closePops(); return goTal(J.tk, J.tj); }
       else if (t.dataset.jb != null) { J.b = Number(t.dataset.jb); J.ch = chaptersOf(IX, J.b)[0]; J.v = 0; }
       else if (t.dataset.jch != null) { J.ch = Number(t.dataset.jch); J.v = 0; }
       else if (t.dataset.jv != null) { J.v = Number(t.dataset.jv); closePops(); return goTo(J.b, J.ch, J.v); }
-      else if (t.dataset.jgo != null) { closePops(); return J.cat === 20 ? goTur(J.rk, J.rs) : J.cat === 2 ? goTal(J.tk, J.tj) : goTo(J.b, J.ch, J.v); }
+      else if (t.dataset.jgo != null) { closePops(); return J.cat === 20 ? goTur(J.rk, J.rs) : J.cat === 2 || J.cat === 30 ? goTal(J.tk, J.tj) : goTo(J.b, J.ch, J.v); }
       const sc = $r('#rdJump .rdJBooks'), top = sc ? sc.scrollTop : 0;
       renderJump(); const nsc = $r('#rdJump .rdJBooks'); if (nsc) nsc.scrollTop = top;
     };
@@ -2890,14 +2991,16 @@
     const shown = sel => { const e = typeof sel === 'string' ? $r(sel) : sel; if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
     const pop = id => () => { if (openPop !== id) openPopover(id); return $r(id === 'jump' ? '#rdJump' : '#rdSet'); };
     const st = (element, he, heD, enT, enD, side, align, extra) => Object.assign({ element, popover: { title: en ? enT : he, description: en ? enD : heD, side: side || 'bottom', align: align || 'center' } }, extra || {});
-    const bookTip = tal
+    const bookTip = tal && talT().z
+      ? ['לחיצה על פסקה בזוהר (או על תרגום) פותחת חלון עם הפסקה, התרגום וביאור הסולם שלה. העמודים לפי דפוס וילנא.', 'Clicking a paragraph of the Zohar (or a translation) opens a window with the paragraph, its translation and the Sulam commentary. Pages follow the Vilna edition.']
+      : tal
       ? ['לחיצה על קטע בגמרא (או על פירוש) פותחת חלון עם הקטע ועם רש״י ותוספות עליו.', 'Clicking a passage of Gemara (or a commentary) opens a window with the passage and its Rashi and Tosafot.']
       : tur
         ? ['לחיצה על סימן בטור, (א) או [א], פותחת את הדיבור בבית יוסף או בב״ח.', 'Clicking a marker in the Tur, (א) or [א], opens that comment in the Beit Yosef or the Bach.']
         : ['המפרשים והתרגום מוצגים לצד הטקסט, לפי ההגדרות בחלון "תצוגה".', 'The commentaries and the translation appear beside the text, according to the "Display" settings.'];
     const steps = [
-      st(null, 'מסך הקריאה', 'כאן קוראים את המקורות עצמם, כמו בספר: תנ״ך עם תרגומים ורש״י, משנה, רמב״ם, ש״ס וטור, עם המפרשים. סיור קצר, אפשר לדלג או לצאת בכל רגע.',
-        'The reading screen', 'Here you read the sources themselves, like a book: Tanakh with translations and Rashi, Mishnah, Rambam, Talmud and Tur, with their commentaries. A short tour; skip or exit any time.'),
+      st(null, 'מסך הקריאה', 'כאן קוראים את המקורות עצמם, כמו בספר: תנ״ך עם תרגומים ורש״י, משנה, רמב״ם, ש״ס, זוהר וטור, עם המפרשים. סיור קצר, אפשר לדלג או לצאת בכל רגע.',
+        'The reading screen', 'Here you read the sources themselves, like a book: Tanakh with translations and Rashi, Mishnah, Rambam, Talmud, Zohar and Tur, with their commentaries. A short tour; skip or exit any time.'),
       st('#modeSw', 'גימטריה / קריאה', 'המתג הזה עובר בין מסך הגימטריה למסך הקריאה. כשחוזרים לכאן, הספר נפתח במקום שבו הפסקתם.',
         'Gematria / Reading', 'This switch moves between the gematria screen and the reading screen. When you come back here, the book opens where you stopped.'),
       st('#rdWhere', 'המקום בספר', 'הספר והפרק שפתוחים עכשיו. החצים משני הצדדים עוברים לפרק הקודם ולפרק הבא.',
@@ -3018,7 +3121,7 @@
     try {
       ensureIndex(); const x = parseHashRef(IX, TX, RX, m[1]); if (!x) return '';
       if (x.kind === 'tur') { const t = RX.list.find(r => r.k === x.k); return t ? turPartName(t) + ' · ' + (x.s ? T('סימן') + ' ' + num(x.s) : T('הקדמה')) : ''; }
-      if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); return t ? talName(t) + ' · ' + T('דף') + ' ' + dafTxt(x.j) : ''; }
+      if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); return t ? (t.z ? talTitle(t) + ' · ' + dafTxt(x.j, t.k) : talName(t) + ' · ' + T('דף') + ' ' + dafTxt(x.j)) : ''; }
       return bkName(IX.books[x.b].heTitle) + ' · ' + T('פרק') + ' ' + num(x.ch) + (x.v ? ', ' + num(x.v) : '');
     } catch (e) { return ''; }
   }
