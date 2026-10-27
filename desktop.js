@@ -485,7 +485,7 @@
     $('#dkGemTools').hidden = !gem;
     const f = readerF(), d = f && f.doc;
     cloneInto(nav, d && d.querySelector('#rdTop .rdNav'));
-    cloneInto(tools, d && !other && d.querySelector('#rdTop .rdTools'));
+    cloneInto(tools, d && w && !other && d.querySelector('#rdTop .rdTools')); // בלי חלון פעיל (הכול ממוזער) אין פקדי קריאה
     nav.classList.toggle('dim', other);
     nav.title = other ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();
@@ -506,7 +506,14 @@
     const b = e.target.closest('[data-fwd]'), f = F.get(gemW().id);
     if (b && f && f.doc) { const o = f.doc.querySelector(b.dataset.fwd); if (o) o.click(); }
   });
-  $('#dkKebab').onclick = () => { lastBtn = $('#dkKebab'); lastR = lastBtn.getBoundingClientRect().right; lastRc = rectOf(lastBtn); const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click(); };
+  $('#dkKebab').onclick = function openKebab() {
+    const a = W(D.act);
+    if (!a) { // הכול ממוזער: התפריט נפתח בתוך חלון, אז משחזרים את החלון האחרון ופותחים אותו בו
+      const w = W(D.last) || D.wins.find(x => x.k === 'read') || gemW(); if (!w) return;
+      focusWin(w.id); setTimeout(() => $('#dkKebab').click(), 450); return;
+    }
+    lastBtn = $('#dkKebab'); lastR = lastBtn.getBoundingClientRect().right; lastRc = rectOf(lastBtn); const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click();
+  };
 
   // תיבת החיפוש: ההקלדה מועברת ל-#rdQ של "מארח חיפוש" — iframe שקוף (index.html?embed=search) שמציג רק את הרשימה
   // הנפתחת, מתחת לתיבה כמו במסך הרגיל. המארח נוצר רק כשמתחילים לחפש ולא פותח שום חלון; בחירת תוצאה פותחת אותה
