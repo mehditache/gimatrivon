@@ -479,6 +479,25 @@
   function pathOf(el, root) { const p = []; while (el && el !== root) { p.unshift([...el.parentNode.children].indexOf(el)); el = el.parentNode; } return el === root ? p : null; }
   const byPath = (root, p) => p.reduce((n, i) => n && n.children[i], root);
   function cloneInto(slot, src) { slot.textContent = ''; if (src) [...src.childNodes].forEach(n => slot.appendChild(document.importNode(n, true))); slot.querySelectorAll('[id]').forEach(x => { x.dataset.srcId = x.id; x.removeAttribute('id'); }); }
+  // בורר הספר כשאין חלון: נפתח לפני שנפתח חלון. הבורר של מארח החיפוש (עותק נסתר של הקורא) מורם לשכבת הבורר של השולחן, ובבחירה המארח "מנווט"
+  // ו-hostChanged פותח את המקום בחלון קריאה חדש. אם נסגר בלי בחירה — לא נפתח שום חלון
+  function pickBook(tb) {
+    host(); H.quiet = Date.now() + 1500; let n = 0;
+    const tick = () => {
+      const o = H && H.doc && H.doc.getElementById('rdWhere'), rd = H && H.doc && H.doc.getElementById('reader');
+      if (!o || !rd) { if (++n < 50) setTimeout(tick, 150); return; }
+      H.quiet = 0;
+      const pw = { id: '__host', k: 'read', hist: [hostHash()], hi: 0, t: '' }, f = { doc: H.doc, win: H.win, fr: H.fr, obs: [], pops: {}, home: {} };
+      F.set(pw.id, f); lastBtn = tb; lastR = tb.getBoundingClientRect().right; lastRc = rectOf(tb);
+      const mo = new H.win.MutationObserver(() => {
+        syncPops(pw, f);
+        if (!Object.keys(f.pops).length) { mo.disconnect(); setTimeout(() => { F.delete(pw.id); if (!q.value) killHost(); }, 900); }
+      });
+      mo.observe(rd, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+      o.click(); setTimeout(() => syncPops(pw, f), 60);
+    };
+    setTimeout(tick, 200);
+  }
   const NAV_STUB = () => '<button type="button" class="rdIco" disabled aria-label="' + T('פרק קודם', 'Previous chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>' +
     '<button type="button" class="rdWhere" title="' + T('בחר ספר לקריאה', 'Choose a book to read') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg><span>' + T('בחר ספר לקריאה', 'Choose a book to read') + '</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>' +
     '<button type="button" class="rdIco" disabled aria-label="' + T('פרק הבא', 'Next chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>';
@@ -505,10 +524,7 @@
     if (slot === nav && nav.dataset.stub) { // פתיחת חלון קריאה חדש ובו בורר הספר
       if (!t.classList.contains('rdWhere')) return;
       if (reads().length >= MAXR) { const l = W(D.last) || reads()[0]; if (l) focusWin(l.id); return; }
-      const nw = openRead('#read', true); let n = 0;
-      const tick = () => { const g = F.get(nw.id), o = g && g.doc && g.doc.getElementById('rdWhere'), tb = nav.querySelector('.rdWhere');
-        if (o && tb) { lastBtn = tb; lastR = tb.getBoundingClientRect().right; lastRc = rectOf(tb); o.click(); setTimeout(() => placePops(g), 30); } else if (++n < 40) setTimeout(tick, 200); };
-      setTimeout(tick, 300); return;
+      pickBook(t); return;
     }
     const f = readerF(); if (!f || !f.doc) return;
     if (slot === nav && document.body.classList.contains('dkOther')) { if (D.last && W(D.last)) focusWin(D.last); return; }
