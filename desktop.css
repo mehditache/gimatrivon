@@ -456,3 +456,7 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 :root[data-theme=dark] .gvT{background-image:linear-gradient(160deg,#f6dd97,#d6ab4f 45%,#a07a33)}
 .dkChip .gvI .gvT{font-size:15px}
 .dkChip .gvI{padding-top:9px}
+
+/* v4.7.2: בריבוע הגימטריה אין תווית "גימטריה" — הכיתוב בזהב מספיק */
+.dkChip .gvI{padding-top:0}
+.dkChip[data-w=g]:not(.th) .gvI{min-height:34px;display:grid;place-items:center}
