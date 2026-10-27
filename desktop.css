@@ -188,6 +188,7 @@ body.dkGem .dkTools{display:none}
 .dkOmni{flex:none!important;width:440px!important;max-width:none!important;min-width:0;transition:width .2s ease}
 .dkOmni:focus-within{width:600px!important}
 .dkTools,.dkGemTools{margin-inline-start:auto}
+.dkTools:not(:empty)+.dkGemTools{margin-inline-start:0}
 .dkTop .tools{margin:0;gap:10px;flex-wrap:nowrap}
 .dkTop .themeSw{width:34px;height:34px;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);justify-content:center;color:var(--tx)}
 .dkTop .themeSw .trk{display:none}

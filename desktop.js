@@ -501,7 +501,7 @@
   const NAV_STUB = () => '<button type="button" class="rdIco" disabled aria-label="' + T('פרק קודם', 'Previous chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>' +
     '<button type="button" class="rdWhere" title="' + T('בחר ספר לקריאה', 'Choose a book to read') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg><span>' + T('בחר ספר לקריאה', 'Choose a book to read') + '</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>' +
     '<button type="button" class="rdIco" disabled aria-label="' + T('פרק הבא', 'Next chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>';
-  // כפתור הסיור מהבהב 10 שניות בפעם הראשונה שחלון הגימטריה פעיל (כמו ב-index.html); לחיצה עוצרת מיד
+  // כפתור הסיור (של החלון הפעיל) מהבהב 10 שניות בפעם הראשונה שהוא מוצג (כמו ב-index.html); לחיצה עוצרת מיד
   let attracted = false;
   function attractTour() {
     if (attracted) return; attracted = true;
@@ -514,8 +514,9 @@
     const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
     document.body.classList.toggle('dkGem', gem); document.body.classList.toggle('dkOther', other);
     try { ctxSync(); } catch (e) {} // לפני אתחול המשתנים (טעינה ראשונה) — מדלגים
-    $('#dkGemTools').hidden = !gem;
-    if (gem) attractTour();
+    const tourOn = !!w && !w.min && (w.k === 'gem' || w.k === 'read'); // לגימטריה ולקריאה יש סיור; לתוצאות אין
+    $('#dkGemTools').hidden = !tourOn;
+    if (tourOn) attractTour();
     const f = readerF(), d = f && f.doc;
     // בלי חלון פעיל (או בלי אף חלון קריאה): הפקד לא נעלם אלא מאופס — "בחר ספר לקריאה"; לחיצה פותחת חלון קריאה חדש
     const stub = !w || (w.k !== 'read' && !(D.last && W(D.last)));
@@ -544,7 +545,7 @@
   nav.addEventListener('click', e => fwdClick(nav, '#rdTop .rdNav', e));
   tools.addEventListener('click', e => fwdClick(tools, '#rdTop .rdTools', e));
   $('#dkGemTools').addEventListener('click', e => {
-    const b = e.target.closest('[data-fwd]'), f = F.get(gemW().id);
+    const w = W(D.act), b = e.target.closest('[data-fwd]'), f = w && F.get(w.id);
     if (b && f && f.doc) { const o = f.doc.querySelector(b.dataset.fwd); if (o) o.click(); }
   });
   // תפריט ⋯: עם חלון פעיל — התפריט של החלון; בלי חלון פעיל (הכול ממוזער) — תפריט של השולחן עצמו, בלי להחזיר חלון.
