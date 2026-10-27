@@ -174,10 +174,12 @@
   function sleepTick() {
     const dev = devOn();
     task.querySelectorAll('.dkChip[data-w]').forEach(c => {
+      const w = W(c.dataset.w), l = w ? sleepLeft(w) : undefined;
+      // הירח: רק כשהחלון ישן (ה-iframe שוחרר, המקום והמצב נשמרו). חלון ממוזער שעוד לא נרדם מסומן רק בשבב המקווקו
+      let mz = c.querySelector('.z'); if (l === undefined && !mz) { mz = document.createElement('span'); mz.className = 'z'; mz.innerHTML = SV(GI.moon); c.appendChild(mz); } else if (l !== undefined && mz) mz.remove();
       let el = c.querySelector('.cd'); if (!dev) { if (el) el.remove(); return; }
       if (!el) { el = document.createElement('span'); el.className = 'cd'; c.appendChild(el); }
-      const w = W(c.dataset.w), l = w ? sleepLeft(w) : undefined;
-      el.className = 'cd' + (l === undefined ? ' z' : l == null ? ' a' : l < 60000 ? ' s' : '');
+      el.className = 'cd' + (l === undefined ? ' sl' : l == null ? ' a' : l < 60000 ? ' s' : '');
       el.textContent = l === undefined ? T('ישן', 'asleep') : l == null ? (slMin() ? T('פעיל', 'active') : T('ללא שינה', 'no sleep')) : Math.floor(Math.max(0, l) / 60000) + ':' + String(Math.floor(Math.max(0, l) / 1000) % 60).padStart(2, '0');
       el.title = T('זמן עד שחרור מהזיכרון', 'Time until released from memory');
     });
@@ -442,9 +444,9 @@
       c.className = 'dkChip' + (st ? ' th' : '') + (w.min ? ' min' : '') + ((!st || w.k === 'gem') && D.act === w.id && !w.min ? ' on' : '');
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
       const mini = w.k === 'gem' ? '<i class="mg"><u></u><u></u><u></u><u></u></i>' : w.k === 'search' ? '<i class="ml"><s></s><s></s><s></s><s></s></i>' : '<i class="mp"><em></em><s></s><s></s><s></s></i>';
-      c.innerHTML = (st ? '<span class="thC">' + mini + '</span>' : '<span class="ic">' + ICON[w.k] + '</span>') + '<span class="t"></span>' + (w.min ? '<span class="z">' + SV(GI.moon) + '</span>' : '');
+      c.innerHTML = (st ? '<span class="thC">' + mini + '</span>' : '<span class="ic">' + ICON[w.k] + '</span>') + '<span class="t"></span>';
       c.querySelector('.t').textContent = t;
-      c.title = t + (w.min ? ' — ' + T('ממוזער, המקום נשמר', 'minimized, place kept') : '');
+      c.title = t + (w.min ? ' — ' + T('ממוזער', 'minimized') : '') + (F.get(w.id) && !F.get(w.id).fr ? ' — ' + T('ישן: המקום נשמר, הזיכרון שוחרר', 'asleep: place kept, memory released') : '');
       c.onclick = () => { if (!st && D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
       task.appendChild(c);
     });
