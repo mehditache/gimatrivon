@@ -58,21 +58,21 @@
     const memOpen = () => {
       if (!MEM || st.m || st.memOff || !D) return null;
       let w; try { w = new SharedWorker(abs('sqmem.js?v=4.6.0'), { name: 'gimsq-' + name }); } catch (e) { st.memOff = true; return null; }
-      let first; const m = st.m = { port: w.port, ready: false, n: 0, wait: new Map(), first: new Promise(r => { first = r; setTimeout(() => r('slow'), 1500); }) };
+      let first; const m = st.m = { port: w.port, ready: false, n: 0, wait: new Map(), hold: [], first: new Promise(r => { first = r; setTimeout(() => r('slow'), 1500); }) };
       m.port.onmessage = e => {
         const d = e.data || {};
         if (d.t === 'prog') { st.prog = [d.k, d.n]; return note(); }
         if (d.t === 'state') {
           first(d.state); st.mem = d.state; st.prog = null; note();
           if (d.state === 'ready') { // Workers הטווחים כבר לא נחוצים: מה שבתור עובר לזיכרון, ו-Worker באמצע שאילתה נסגר כשהוא מסיים
-            m.ready = true; if (m.onReady) m.onReady();
+            m.ready = true; if (m.onReady) m.onReady(); m.hold.splice(0).forEach(r => r());
             const q = st.Q.splice(0); st.starting = null;
             st.pool.splice(0).forEach(x => { x.old = true; const end = () => x.busy ? setTimeout(end, 200) : retire(st, x); end(); });
             q.forEach(j => memSend(m, j));
           }
           else if (d.state === 'fail' || d.state === 'gone') {
             if (d.state === 'fail') { st.memOff = true; try { console.warn('[GimSqPool] ' + name + ' in memory:', d.err); } catch (x) {} }
-            if (st.m === m) st.m = null; m.ready = false; if (m.onReady) m.onReady();
+            if (st.m === m) st.m = null; m.ready = false; if (m.onReady) m.onReady(); m.hold.splice(0).forEach(r => r());
             const js = [...m.wait.values()]; m.wait.clear(); js.forEach(viaRange); // מה שחיכה עובר לטווחים
           }
           return;
@@ -94,7 +94,10 @@
     const backend = { all: (sql, args, o) => new Promise((ok, no) => {
       st.last = Date.now();
       const j = { sql, args, ok, no, n: st.n++, pri: o && o.pri != null ? o.pri : 0, alive: o && o.alive }, m = st.m || memOpen();
-      if (m && m.ready) memSend(m, j); else viaRange(j);
+      if (m && m.ready) memSend(m, j);
+      // אחרי שחרור סרק (v4.6.39): המסד נטען שוב מ-OPFS בפחות משנייה, אז מחכים לו (עד 3 שניות) במקום מאגר טווחים קר מהשרת
+      else if (m) m.first.then(s => s === 'cached' && !m.ready ? new Promise(r => { m.hold.push(r); setTimeout(r, 3000); }) : 0).then(() => m.ready ? memSend(m, j) : viaRange(j));
+      else viaRange(j);
     }) };
     const P = st.P = Promise.all([G.createDbWorker || script('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || script('generated/sqlite/' + name + '.js')]).then(async () => {
       D = G.GIM_SQ_DBS[name];

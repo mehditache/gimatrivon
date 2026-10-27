@@ -4,9 +4,9 @@
    ב-OPFS לפי ה-hash שלו; בביקור הבא הוא נקרא מ-OPFS בלי רשת. עד שהוא מוכן, ובכל כשל, sqpool.js ממשיך בקריאת טווחים (Range).
    הורדה אחת בכל פעם (Web Lock), לפי סדר הבקשות: התחומים הקטנים מתבקשים ראשונים.
    הודעות: {t:'open', meta} → {t:'state', state: 'cached'|'fetch'|'ready'|'fail'|'gone', err}; {t:'q', id, sql, args, pack} → {id, r} / {id, p} (pack) או {id, e}; בזמן טעינה {t:'prog', k, n}.
-   אחרי IDLE בלי שאילתות ה-Worker נסגר (זיכרון WASM לא מתכווץ, ורק סגירה משחררת אותו), אחרי הודעת 'gone' ללקוחות. */
+   אחרי IDLE (5 דקות, v4.6.39) בלי שאילתות ה-Worker נסגר (זיכרון WASM לא מתכווץ, ורק סגירה משחררת אותו), אחרי הודעת 'gone' ללקוחות. */
 'use strict';
-const NAME = self.name.replace(/^gimsq-/, ''), IDLE = 15 * 60000, ports = new Set();
+const NAME = self.name.replace(/^gimsq-/, ''), IDLE = 5 * 60000, ports = new Set();
 let meta = null, db = null, S3 = null, loading = null, state = '', err = '', last = Date.now();
 const abs = p => new URL(p, self.location.href).href;
 const send = (m, p) => (p ? [p] : ports).forEach(x => { try { x.postMessage(m); } catch (e) {} });
