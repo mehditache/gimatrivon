@@ -498,7 +498,8 @@
       hs.replaceState = (...a) => { rep(...a); hostChanged(); };
       fw.addEventListener('hashchange', hostChanged);
       const drop = d.getElementById('rdDrop');
-      if (drop) new fw.MutationObserver(() => { fr.hidden = drop.hidden; if (!drop.hidden) placeHost(); scopeLabel(); if (drop.hidden) idleHost(); }).observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
+      // הרשימה נפתחת רק כשתיבת החיפוש (או הרשימה עצמה) בפוקוס: מעבר בין חלונות מחליף את ההקשר של המארח, והקורא מרנדר אותה מחדש (v4.6.3)
+      if (drop) new fw.MutationObserver(() => { const ae = document.activeElement; if (!drop.hidden && ae !== fr && !(ae && ae.closest && ae.closest('.dkOmni,#dkScMenu'))) drop.hidden = true; fr.hidden = drop.hidden; if (!drop.hidden) placeHost(); scopeLabel(); if (drop.hidden) idleHost(); }).observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
       themeTo(H); ctxApply(); scopeLabel();
       if (q.value) { d.getElementById('rdQ').value = q.value; fire('input'); }
     });
