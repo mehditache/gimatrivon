@@ -1522,13 +1522,16 @@
       if (tp < TT) {
         const overE = (x, end, hh) => chars(x, x === 'y' ? yp : cp, end) > capChars(hh);
         // הפירושים מפגרים אחרי הטור: מה שכבר מותר ממלא את שני הטורים גם בלי טור חדש — עמוד של פירושים בלבד
-        const lag = !first && overE('y', Y.allow(tp), 0) && overE('c', C.allow(tp), 0);
+        // מפרש יחיד (לשני אין עוד מה להוסיף) ממלא את שני טורי הצד, ולכן נמדד מול קיבולת כפולה
+        const solo = e => turOne() ? '' : C.allow(e) <= cp ? 'y' : Y.allow(e) <= yp ? 'c' : '';
+        const over2 = (x, e, hh) => { const z = m.st[x], end = z.allow(e); return end >= z.toks.length || chars(x, x === 'y' ? yp : cp, end) > 2 * capChars(hh); };
+        const s0 = solo(tp), lag = !first && (s0 ? Y.allow(tp) + C.allow(tp) > yp + cp && chars(s0, s0 === 'y' ? yp : cp, m.st[s0].allow(tp)) > 2 * capChars(0) : overE('y', Y.allow(tp), 0) && overE('c', C.allow(tp), 0));
         if (!lag) {
           const cand = m.cuts.filter(c => c > tp);
           const sat = i => {
             const e = cand[i], hh = mainH(tp, e, first);
-            const ok = x => { const z = m.st[x], end = z.allow(e); return end >= z.toks.length || overE(x, end, hh); };
-            return ok('y') && ok('c');
+            const ok = x => { const z = m.st[x], end = z.allow(e); return end >= z.toks.length || overE(x, end, hh); }, x = solo(e);
+            return x ? over2(x, e, hh) : ok('y') && ok('c');
           };
           if (mainH(tp, cand[0], first) > H && cand[0] - tp > 1) te = tp + maxOkF(1, cand[0] - tp - 1, w => mainH(tp, tp + w, first) <= H); // קטע ארוך מעמוד: חותכים במילים
           else {
@@ -1570,9 +1573,15 @@
         pg = { t: [tp, tp], wide: x, w: [pos, pos + n], hT: 0, first: false };
         if (x === 'y') yp += n; else cp += n;
       } else {
-        let ny = fill('y', yp, Y.allow(te), hT), nc = fill('c', cp, C.allow(te), hT);
+        let ny = fill('y', yp, Y.allow(te), hT), nc = fill('c', cp, C.allow(te), hT), mid = -1;
+        // רק מפרש אחד בעמוד: הוא ממשיך גם לטור הצד הפנוי — קודם בטור הימני, ואחר כך בשמאלי
+        if (!turOne()) {
+          if (nc === cp && ny > yp && ny < Y.allow(te)) { mid = ny; ny = fill('y', mid, Y.allow(te), hT); }
+          else if (ny === yp && nc > cp && nc < C.allow(te)) { mid = nc; nc = fill('c', mid, C.allow(te), hT); }
+        }
         if (te === tp && ny === yp && nc === cp && !first) { if (yp < Y.toks.length) ny = yp + 1; else if (cp < C.toks.length) nc = cp + 1; else te = Math.min(TT, tp + 1); } // תמיד מתקדמים
         pg = { t: [tp, te], y: [yp, ny], c: [cp, nc], hT, first };
+        if (mid >= 0) pg.mid = mid; // pg.mid: גבול בין הטור הימני לשמאלי, בזרם של המפרש היחיד
         tp = te; yp = ny; cp = nc;
       }
       pages.push(pg); first = false;
@@ -1580,10 +1589,15 @@
     $r('#rdDafHost').innerHTML = '';
     measured(); TPC.set(key, pages); trimMap(TPC, 60); return pages;
   }
-  function turHeader(t, s, study) {
+  function turHeader(t, s, study, pg) {
     const hil = hilOf(t, s), on = x => !S.rOff.includes(x);
     // בצד: שם המפרש שבאותו צד בדף. מפרש אחד = ברוחב מלא, ושמו משמאל; ב"טור ומפרשים" אין צדדים
-    const rt = study ? T('טור') : on('c') && on('y') ? T('בית חדש') : '', lt = study ? '' : on('y') ? T('בית יוסף') : on('c') ? T('בית חדש') : '';
+    let rt = study ? T('טור') : on('c') && on('y') ? T('בית חדש') : '', lt = study ? '' : on('y') ? T('בית יוסף') : on('c') ? T('בית חדש') : '';
+    if (!study && pg) {
+      // בעמוד שיש בו רק מפרש אחד — שמו בשני הצדדים
+      const has = x => on(x) && (pg.wide ? pg.wide === x : pg[x][1] > pg[x][0]);
+      if (has('y') !== has('c')) rt = lt = T(has('y') ? 'בית יוסף' : 'בית חדש');
+    }
     return '<header class="rdHead trHead"><span>' + rt + '</span><span class="mid">' + h(T('טור') + ' ' + turPartName(t) + ' · ' + (s ? T('סימן') + ' ' + num(s) : T('הקדמה')) + (hil ? ' · ' + hil : '')) + '</span><span class="l">' + lt + '</span></header>';
   }
   function trDafPageHtml(k, s, p, Q, side, cls) {
@@ -1592,13 +1606,14 @@
     if (pg.wide) inner = '<div class="trWide">' + streamHtml(m, pg.wide, pg.w[0], pg.w[1]) + '</div>';
     else {
       const sp = '<div class="sp" style="height:' + (pg.hT ? pg.hT + Q.vg : 0) + 'px"></div>';
-      inner = (pg.t[1] > pg.t[0] || pg.first ? '<div class="trMain' + (pg.full ? ' trFull' : '') + '">' + turMainHtml(m, pg.t[0], pg.t[1], pg.first) + '</div>' : '') +
-        '<div class="trSide trC">' + sp + '<div class="tx">' + streamHtml(m, 'c', pg.c[0], pg.c[1]) + '</div></div>' +
-        '<div class="trSide trY">' + sp + '<div class="tx">' + streamHtml(m, 'y', pg.y[0], pg.y[1]) + '</div></div>';
+      inner = (pg.t[1] > pg.t[0] || pg.first ? '<div class="trMain' + (pg.full ? ' trFull' : '') + '">' + turMainHtml(m, pg.t[0], pg.t[1], pg.first) + '</div>' : '');
+      const x = pg.mid >= 0 ? (pg.y[1] > pg.y[0] ? 'y' : 'c') : '', r = x ? streamHtml(m, x, pg[x][0], pg.mid) : streamHtml(m, 'c', pg.c[0], pg.c[1]), l = x ? streamHtml(m, x, pg.mid, pg[x][1]) : streamHtml(m, 'y', pg.y[0], pg.y[1]);
+      inner += '<div class="trSide trC">' + sp + '<div class="tx">' + r + '</div></div>' +
+        '<div class="trSide trY">' + sp + '<div class="tx">' + l + '</div></div>';
     }
     TURQ = false;
     const lbl = s ? num(s) + (ps.length > 1 ? ' · ' + num(p + 1) : '') : T('הקדמה') + (ps.length > 1 ? ' · ' + num(p + 1) : '');
-    return '<article class="rdPage tal tur ' + side + (cls || '') + '" data-s="' + s + '" aria-label="' + h(T('סימן') + ' ' + num(s)) + '">' + turHeader(t, s) +
+    return '<article class="rdPage tal tur ' + side + (cls || '') + '" data-s="' + s + '" aria-label="' + h(T('סימן') + ' ' + num(s)) + '">' + turHeader(t, s, false, pg) +
       '<div class="rdDaf"><div class="trDaf' + Q.dc + '" style="' + Q.vars + '">' + inner + '</div></div><div class="rdNum">' + h(lbl) + '</div></article>';
   }
   /* טור ומפרשים: בכל עמוד קטעים מהטור, ומתחתיהם הדיבורים שלהם — בית יוסף ואחריו ב״ח, כמו "גמרא ומפרשים".
