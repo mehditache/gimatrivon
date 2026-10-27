@@ -1401,3 +1401,10 @@ html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rd
 .mcard p{color:var(--dgMu)!important}
 .mcard .ex span,.doc .chipWrap .chip,.doc .chip{background:var(--dgTint2)!important;color:var(--dgInk)!important;border:0!important}
 .doc code{background:var(--dgTint2)!important}
+
+/* v4.6.36: ספירת הסינון ("4,619 מתוך 369,324") בשורת ההתאמות ולא בשורת הסינון, כדי שתיבת הסינון לא תשנה גודל */
+.sumRow{flex:none;display:flex;align-items:center;gap:.6rem;border-bottom:1px solid var(--ln2)}
+.sumRow .sum{flex:1;min-width:0;border-bottom:0}
+.sumRow .tsCount{padding-inline-end:.8rem}
+.pn .sumRow{border-bottom-color:var(--deskLn)}
+.tsBar .tsClear[hidden]{display:inline-flex!important;visibility:hidden} /* מקום קבוע לכפתור "נקה": תיבת הסינון לא משנה גודל */

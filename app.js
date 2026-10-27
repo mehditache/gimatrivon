@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.6.35'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.6.36'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
@@ -644,10 +644,9 @@ function sideHtml(k) {
         <label class="tsFuzz" title="${L('כולל הטיות קרובות (הסרת תחיליות/סיומות נפוצות) — לא מדויק, לא תופס טיות פועל פנימיות')}">
           <input type="checkbox" class="cb" id="tfz${k}"><span>${L('הטיות')}</span>
         </label>
-        <span class="tsCount" id="tfc${k}" hidden></span>
         <button class="sm tsClear" id="tfx${k}" hidden>${L('נקה')}</button>
       </div>
-      <div class="sum" id="rs${k}" aria-live="polite"></div>
+      <div class="sumRow"><div class="sum" id="rs${k}" aria-live="polite"></div><span class="tsCount" id="tfc${k}" hidden></span></div>
       <div class="resList">
         <div class="sc" id="rl${k}"></div>
         <div class="fsTrack" id="fsTrack${k}"><div class="fsThumb" id="fsThumb${k}"><div class="fsBubble" id="fsBubble${k}"></div></div></div>
