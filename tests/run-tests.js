@@ -276,7 +276,7 @@ t('reader', 'unitRef: מפרש ותרגום → הספר שעליו הם; מיל
 t('reader', 'תוצאות הגימטריה: כפתור "פתיחה בספר" והייחוס פותחים את הספר, עם הסבר בריחוף; הלחיצה לא בוחרת את השורה', () => {
   const a = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8'), r = fs.readFileSync(path.join(__dirname, '..', 'reader.js'), 'utf8');
   return /class="goRd" role="button" tabindex="0" data-tip="\$\{goTip\}"/.test(a) && /<b class="goRef" data-tip="\$\{goTip\}" \$\{goAt\}>/.test(a) && /goAt = `data-go="\$\{u\.b\},\$\{u\.ch\},\$\{u\.n\}"`/.test(a) &&
-    /class="cpy" role="button" tabindex="0" data-tip=/.test(a) && /closest\('\.goRd,\.goRef'\); if \(go\) \{ e\.stopPropagation\(\); return openInReader\(go\); \}/.test(a) && /G\.GimReader = \{ canOpen, openUnit(, tour)?(, highlight)?(, dropScope)?(, scopeModel)?(, setScope)?(, toggleSrc)?(, applyDefault)? \}/.test(r);
+    /class="cpy" role="button" tabindex="0" data-tip=/.test(a) && /closest\('\.goRd,\.goRef'\); if \(go\) \{ e\.stopPropagation\(\); return openInReader\(go\); \}/.test(a) && /G\.GimReader = \{ canOpen, openUnit(, tour)?(, highlight)?(, dropScope)?(, scopeModel)?(, setScope)?(, toggleSrc)?(, applyDefault)?(, placeLabel)? \}/.test(r);
 });
 
 // ---- ראשי תיבות וקיצורים בקפיצה (v3.21.0) ----

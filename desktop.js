@@ -499,9 +499,13 @@
   // ו-hostChanged פותח את המקום בחלון קריאה חדש. אם נסגר בלי בחירה — לא נפתח שום חלון
   // v4.6.21: הלחיצה לא מחכה — המארח מתחמם כבר בריחוף, נשאר חי אחרי הסגירה (idleHost משחרר אחרי 20 שניות), ולחיצות
   // נוספות בזמן הטעינה לא פותחות בורר נוסף. הניקוי אחרי סגירה מבוטל אם הבורר נפתח שוב לפני שהסתיים
-  let picking = 0, pickMo = null, pickT = 0;
+  function popLayer0() { let l = document.querySelector('body > .dkPopLayer'); if (!l) { l = document.createElement('div'); l.className = 'dkPopLayer reader'; document.body.appendChild(l); } return l; }
+  let picking = 0, pickMo = null, pickT = 0, pickClk = 0, pickNav = 0;
+  // בחירה במקום שהמארח כבר עומד בו (למשל "מעבר לבראשית א" בלי לשנות) לא משנה את הכתובת, ולכן hostChanged לא נקרא:
+  // לחיצה בתוך הבורר (לא על הסגירה) שאחריה הוא נסגר — פותחת את המקום בחלון חדש
+  popLayer0().addEventListener('click', e => { if (picking && !e.target.closest('.rdX,[data-close]')) pickClk = Date.now(); }, true);
   function pickBook(tb) {
-    if (picking) return; picking = 1; clearTimeout(pickT);
+    if (picking) return; picking = 1; pickNav = 0; pickClk = 0; clearTimeout(pickT);
     host(); clearTimeout(hostT); H.quiet = Date.now() + 1500; let n = 0;
     tb.classList.add('busy');
     const tick = () => {
@@ -515,7 +519,9 @@
       if (pickMo) pickMo.disconnect();
       pickMo = new H.win.MutationObserver(() => {
         syncPops(pw, f);
-        if (!Object.keys(f.pops).length) { pickMo.disconnect(); pickMo = null; picking = 0; pickT = setTimeout(() => { if (picking) return; F.delete(pw.id); if (H && !q.value) idleHost(); }, 900); }
+        if (!Object.keys(f.pops).length) {
+          if (Date.now() - pickClk < 500) setTimeout(() => { if (!pickNav && !picking && H && H.win) { const h = dec(H.win.location.hash); if (/^#read\//i.test(h)) { hostBase = h; pickNav = 1; openRead(h, true); } } }, 200); // הקורא סוגר לפני שהוא מנווט
+          pickMo.disconnect(); pickMo = null; picking = 0; pickT = setTimeout(() => { if (picking) return; F.delete(pw.id); if (H && !q.value) idleHost(); }, 900); }
       });
       pickMo.observe(rd, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
       o.click(); syncPops(pw, f);
@@ -661,7 +667,7 @@
   function hostChanged() {
     if (!H || !H.win) return; const h = dec(H.win.location.hash);
     if (!/^#read/i.test(h) || h === hostBase) return;
-    hostBase = h; if (Date.now() < H.quiet) return;
+    hostBase = h; if (Date.now() < H.quiet) return; pickNav = 1;
     const qv = H.doc.getElementById('rdQ').value, a = W(D.act), l = W(D.last);
     let t = a && !a.min && a.k === 'read' ? a : a && a.k === 'gem' && l && !l.min ? l : null;
     if (t) { focusWin(t.id); navPush(t, h); } else t = openRead(h, true);
@@ -748,7 +754,7 @@
   // אותו קצה אופקי של הכפתור, בתוך גבולות החלון, עם אנימציית ירידה (styles.css: gtEmbed .rdPop)
   // חלונות הבחירה של הקורא (מעבר לפרק, הגדרות, הדפסה) נפתחים תמיד מתחת לבנר, מימין — בלי קשר למיקום או לגודל החלון.
   // האלמנט מועבר מה-iframe לשכבה קבועה בשולחן (adoptNode) וחוזר למקומו כשהוא נסגר; G.GT_POPS גורם לקוד הקורא למצוא אותו.
-  const popLayer = document.createElement('div'); popLayer.className = 'dkPopLayer reader'; document.body.appendChild(popLayer);
+  const popLayer = popLayer0();
   const POPS = ['rdJump', 'rdSet', 'rdPrintPop'];
   const rectOf = e => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
   // חלון קופץ נצמד מתחת לכפתור שפתח אותו: כפתור בחצי הימני — הקצה הימני שלו בקו הקצה הימני של הכפתור, בחצי השמאלי — הקצה השמאלי;
@@ -865,6 +871,9 @@
     const hint = foot.querySelector('span'); if (hint) hint.innerHTML = '<b>← →</b> ' + T('דפדוף', 'page') + ' · <b>Ctrl G</b>';
     const g = f.doc.createElement('div'); g.className = 'dkJ';
     const cur = () => curHash(w), isMarked = () => marks().some(m => m.h === cur());
+    // סימניה מוצגת בשם המקום ולא בכתובת; גם סימניות ישנות שנשמרו עם הכתובת עצמה מקבלות שם
+    const label = h => { const gr = f.win && f.win.GimReader; return (gr && gr.placeLabel && gr.placeLabel(h)) || ''; };
+    const markTxt = x => (!x.t || x.t.charAt(0) === '#' ? label(x.h) : '') || x.t || x.h;
     g.innerHTML = '<button type="button" class="dkJB" data-j="mark"><span class="s"></span> ' + T('סימניה', 'Bookmark') + '</button>' +
       '<button type="button" class="dkJB" data-j="new" title="' + T('פתיחת המקום הנבחר בחלון קריאה חדש', 'Open the chosen place in a new reader window') + '">' + gsv('<rect x="8" y="3" width="13" height="13" rx="2"/><path d="M16 20H5a2 2 0 0 1-2-2V8"/>') + ' ' + T('בחלון חדש', 'New window') + '</button>';
     const star = () => { const s = g.querySelector('.s'); s.innerHTML = gsv('<path d="' + STAR + '"/>', isMarked()); s.parentNode.title = isMarked() ? T('הסרת הסימניה', 'Remove bookmark') : T('סימניה למקום הנוכחי', 'Bookmark this place'); };
@@ -875,7 +884,7 @@
       const b = e.target.closest('[data-j]'); if (!b) return;
       if (b.dataset.j === 'mark') {
         const m = marks(), h = cur(), i = m.findIndex(x => x.h === h);
-        if (i >= 0) m.splice(i, 1); else m.unshift({ h, t: w.t || h });
+        if (i >= 0) m.splice(i, 1); else m.unshift({ h, t: label(h) || w.t || h });
         setMarks(m.slice(0, 30)); star(); listMarks();
       } else {
         const h0 = cur(); go.click();
@@ -888,7 +897,7 @@
       const m = marks(); list.hidden = !m.length; list.textContent = '';
       if (!m.length) return;
       list.append(T('סימניות:', 'Bookmarks:'));
-      m.forEach(x => { const b = f.doc.createElement('button'); b.type = 'button'; b.innerHTML = gsv('<path d="' + STAR + '"/>', true) + ' '; b.append(x.t); b.title = x.h; b.onclick = () => { close(); navPush(w, x.h); }; list.appendChild(b); });
+      m.forEach(x => { const b = f.doc.createElement('button'); b.type = 'button'; b.innerHTML = gsv('<path d="' + STAR + '"/>', true) + ' '; b.append(markTxt(x)); b.onclick = () => { close(); navPush(w, x.h); }; list.appendChild(b); });
     }
     listMarks();
   }

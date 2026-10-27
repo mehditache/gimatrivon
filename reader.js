@@ -3012,7 +3012,17 @@
       return out(['b:' + di + ':' + S.b], bkName(IX.books[S.b].heTitle));
     } catch (e) { return null; }
   }
-  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault };
+  // שם מילולי של מקום מכתובת (#read/TUR/OC/34 → "אורח חיים · סימן לד"), באותו נוסח כמו בורר הספר בסרגל — לסימניות בשולחן
+  function placeLabel(h) {
+    const m = String(h || '').match(/^#read(?:[\/#]+(.*))?$/i); if (!m || !m[1]) return '';
+    try {
+      ensureIndex(); const x = parseHashRef(IX, TX, RX, m[1]); if (!x) return '';
+      if (x.kind === 'tur') { const t = RX.list.find(r => r.k === x.k); return t ? turPartName(t) + ' · ' + (x.s ? T('סימן') + ' ' + num(x.s) : T('הקדמה')) : ''; }
+      if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); return t ? talName(t) + ' · ' + T('דף') + ' ' + dafTxt(x.j) : ''; }
+      return bkName(IX.books[x.b].heTitle) + ' · ' + T('פרק') + ' ' + num(x.ch) + (x.v ? ', ' + num(x.v) : '');
+    } catch (e) { return ''; }
+  }
+  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault, placeLabel };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;
