@@ -53,7 +53,7 @@
   /* ---------- חלונות ---------- */
   const SV = d => '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
   const GI = { gem: '<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>', read: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5zM20 19v2H6.5"/>', search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>', arr: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>', swap: '<path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/>', arr: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
     min: '<path d="M5 12h14"/>', max: '<path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"/>', res: '<path d="M9 5v4H5M15 5v4h4M9 19v-4H5M15 19v-4h4"/>', x: '<path d="m6 6 12 12M18 6 6 18"/>',
     back: '<path d="m9 5 7 7-7 7"/>', fwd: '<path d="m15 5-7 7 7 7"/>', moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>', dn: '<path d="m6 9 6 6 6-6"/>', kb: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>', stage: '<rect x="7" y="5" width="13" height="14" rx="2"/><path d="M4 8v8"/>' };
   const ICON = { gem: SV(GI.gem), read: SV(GI.read), search: SV(GI.search) }, MAXS = 3;
@@ -472,7 +472,7 @@
       task.appendChild(c);
     });
     task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXR + '</span>' +
-      '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">' + SV(GI.plus) + '</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
+      '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + (n >= MAXR ? T('הגעת ל-5 חלונות קריאה — מחליף את החלון הישן ביותר', 'Five reader windows open — replaces the oldest one') : T('חלון קריאה חדש', 'New reader window')) + '"><span class="ic">' + SV(n >= MAXR ? GI.swap : GI.plus) + '</span><span class="t">' + (n >= MAXR ? T('החלף', 'Replace') : T('קריאה', 'Reader')) + '</span></button>' +
       '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">' + SV(GI.arr) + '</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkArr [data-arr="stage"]').classList.toggle('cur', stageOn()); ['cascade', 'side', 'grid'].forEach(k => $('#dkArr [data-arr="' + k + '"]').classList.remove('cur'));
     sleepTick();
