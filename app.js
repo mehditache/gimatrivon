@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.6.11'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.6.12'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
@@ -2252,7 +2252,7 @@ function gemProg(f) {
     const t = el.querySelector('.gmPct'); if (t) t.textContent = pct + '%';
   });
 }
-const gemLabel = () => GEM.stage === 0 ? L('סופר את אותיות התנ״ך והמשנה…') : L('סופר את אותיות כל המקורות…');
+const gemLabel = () => GEM.stage === 0 && !GEM.one ? L('סופר את אותיות התנ״ך והמשנה…') : L('סופר את אותיות כל המקורות…');
 // מציג את מסך ההמתנה בצדדים שאין בהם עדיין תוצאות (כשאין אינדקס בכלל)
 // בטלפון חלונית הקלט מכסה את התוצאות, ולכן מוצגת גם גרסה קטנה בראש החלונית (בלי השלד)
 function gemShowWait() {
@@ -2288,6 +2288,18 @@ function gemStart() {
   if (GEM.busy || (IDX && GEM.stage === 2)) return;
   const gen = ++GEM.gen; GEM.busy = true; GEM.stage = 0; GEM.f = 0;
   const first = [...ALL].filter(i => B.books[i].cat <= 1), all = [...ALL];
+  // כבר יש מה לחפש באחד הצדדים (למשל חזרה לגימטריה אחרי שהאינדקס שוחרר): בונים ישר את כל המקורות ומחפשים פעם אחת.
+  // בשני שלבים החיפוש היה רץ על תנ״ך ומשנה, נקטע באמצע כשהשלב השני הסתיים, ומתחיל מחדש
+  GEM.one = KS.some(k => numVal(S[k].num) || E.normalizeText(S[k].text).words.length);
+  if (GEM.one) {
+    const rel = GimCorpus.use(all);
+    $('#status').textContent = L('טוען קורפוס…'); gemShowWait();
+    gemStage(all, gen, gemProg, gemWait).then(ix => {
+      if (!ix) return;
+      IDX = ix; GEM.stage = 2; gemHideMini(); $('#status').textContent = ''; KS.forEach(run);
+    }).catch(() => { if (gen === GEM.gen) $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); }).then(() => { rel(); if (gen === GEM.gen) GEM.busy = false; });
+    return;
+  }
   // הקבצים מוחזקים עד שהיחידות נאספו; את שלב א׳ משחררים רק אחרי ששלב ב׳ כבר מחזיק את כל הספרים (בלי לטעון פעמיים)
   const rel1 = GimCorpus.use(first); let rel2 = null;
   const end = () => { rel1(); if (rel2) rel2(); if (gen === GEM.gen) GEM.busy = false; };
