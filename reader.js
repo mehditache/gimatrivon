@@ -1498,10 +1498,15 @@
     $r('#rdDafHost').innerHTML = '';
     measured(); TPC.set(key, pages); trimMap(TPC, 60); return pages;
   }
-  function turHeader(t, s, study) {
+  function turHeader(t, s, study, pg) {
     const hil = hilOf(t, s), on = x => !S.rOff.includes(x);
     // בצד: שם המפרש שבאותו צד בדף. מפרש אחד = ברוחב מלא, ושמו משמאל; ב"טור ומפרשים" אין צדדים
-    const rt = study ? T('טור') : on('c') && on('y') ? T('בית חדש') : '', lt = study ? '' : on('y') ? T('בית יוסף') : on('c') ? T('בית חדש') : '';
+    let rt = study ? T('טור') : on('c') && on('y') ? T('בית חדש') : '', lt = study ? '' : on('y') ? T('בית יוסף') : on('c') ? T('בית חדש') : '';
+    if (!study && pg) {
+      // בעמוד שיש בו רק מפרש אחד — שמו בשני הצדדים
+      const has = x => on(x) && (pg.wide ? pg.wide === x : pg[x][1] > pg[x][0]);
+      if (has('y') !== has('c')) rt = lt = T(has('y') ? 'בית יוסף' : 'בית חדש');
+    }
     return '<header class="rdHead trHead"><span>' + rt + '</span><span class="mid">' + h(T('טור') + ' ' + turPartName(t) + ' · ' + (s ? T('סימן') + ' ' + num(s) : T('הקדמה')) + (hil ? ' · ' + hil : '')) + '</span><span class="l">' + lt + '</span></header>';
   }
   function trDafPageHtml(k, s, p, Q, side, cls) {
@@ -1516,7 +1521,7 @@
     }
     TURQ = false;
     const lbl = s ? num(s) + (ps.length > 1 ? ' · ' + num(p + 1) : '') : T('הקדמה') + (ps.length > 1 ? ' · ' + num(p + 1) : '');
-    return '<article class="rdPage tal tur ' + side + (cls || '') + '" data-s="' + s + '" aria-label="' + h(T('סימן') + ' ' + num(s)) + '">' + turHeader(t, s) +
+    return '<article class="rdPage tal tur ' + side + (cls || '') + '" data-s="' + s + '" aria-label="' + h(T('סימן') + ' ' + num(s)) + '">' + turHeader(t, s, false, pg) +
       '<div class="rdDaf"><div class="trDaf' + Q.dc + '" style="' + Q.vars + '">' + inner + '</div></div><div class="rdNum">' + h(lbl) + '</div></article>';
   }
   /* טור ומפרשים: בכל עמוד קטעים מהטור, ומתחתיהם הדיבורים שלהם — בית יוסף ואחריו ב״ח, כמו "גמרא ומפרשים".
