@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.7.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.6.6'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
@@ -2284,23 +2284,6 @@ function gemStage(ids, gen, prog, wait) {
     wait(more);
   })).then(units => units && E.buildIndexAsync(units, null, { ms: 40, urgent: inputWaiting, wait, cancelled: () => !live(), onProgress: f => { if (live()) prog(0.4 + 0.6 * f); } }));
 }
-// v4.7.0: הבנייה ב-Worker (gem-worker.js): שיא הזיכרון של הטעינה והבנייה (כ-140MB) נשאר שם ונעלם כשה-Worker נסגר.
-// אם אי אפשר (file://, אין Worker, שגיאה) — חוזרים לבנייה בדף (gemStage).
-let GEMW = null, GEMW_OK = typeof Worker !== 'undefined' && /^https?:$/.test(location.protocol);
-function gemWorkerKill() { if (GEMW) { GEMW.terminate(); GEMW = null; } }
-function gemStageW(ids, stage, gen, prog) {
-  return new Promise((ok, fail) => {
-    const w = GEMW || (GEMW = new Worker('gem-worker.js')), live = () => gen === GEM.gen;
-    w.onmessage = ev => {
-      const d = ev.data;
-      if (d.t === 'prog') { if (live()) prog(d.f); }
-      else if (d.t === 'err') fail(new Error(d.m));
-      else if (d.t === 'done') ok(live() ? E.assembleIndex(d, CK) : null);
-    };
-    w.onerror = e => fail(new Error(e.message || 'worker'));
-    w.postMessage({ ids, stage });
-  });
-}
 function gemStart() {
   if (GEM.busy || (IDX && GEM.stage === 2)) return;
   const gen = ++GEM.gen; GEM.busy = true; GEM.stage = 0; GEM.f = 0;
@@ -2309,22 +2292,21 @@ function gemStart() {
   const rel1 = GimCorpus.use(first); let rel2 = null;
   const end = () => { rel1(); if (rel2) rel2(); if (gen === GEM.gen) GEM.busy = false; };
   $('#status').textContent = L('טוען קורפוס…'); gemShowWait();
-  const st = (ids, n, prog, wait) => GEMW_OK ? gemStageW(ids, n, gen, prog).catch(() => { GEMW_OK = false; gemWorkerKill(); return gemStage(ids, gen, prog, wait); }) : gemStage(ids, gen, prog, wait);
-  st(first, 1, gemProg, gemWait).then(ix => {
+  gemStage(first, gen, gemProg, gemWait).then(ix => {
     if (!ix) return null;
     IDX = ix; GEM.stage = 1; gemHideMini(); KS.forEach(run);
     rel2 = GimCorpus.use(all); rel1();
     $('#status').textContent = L('טוען מקורות נוספים…');
-    return st(all, 2, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
+    return gemStage(all, gen, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
   }).then(ix => {
     if (!ix) return;
-    IDX = ix; GEM.stage = 2; $('#status').textContent = ''; gemWorkerKill(); KS.forEach(run);
+    IDX = ix; GEM.stage = 2; $('#status').textContent = ''; KS.forEach(run);
   }).catch(() => { if (gen === GEM.gen) $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); }).then(end);
 }
 // משחרר את האינדקס (וכל מה שנבנה ממנו); חיפוש שרץ עכשיו נעצר (st.gen), ובחזרה לגימטריה הכל נבנה ורץ שוב
 function gemRelease() {
   if (!inRead() || (!IDX && !GEM.busy)) return;
-  GEM.gen++; GEM.busy = false; GEM.stage = 0; GEM.f = 0; IDX = null; gemHideMini(); gemWorkerKill();
+  GEM.gen++; GEM.busy = false; GEM.stage = 0; GEM.f = 0; IDX = null; gemHideMini();
   KS.forEach(k => { const st = S[k]; st.gen = (st.gen || 0) + 1; st.notGen = (st.notGen || 0) + 1; st.all = makeStore(); st.info = []; st.cur = -1; st.winStart = 0; st.winCount = 0; $('#rl' + k).innerHTML = ''; $('#rs' + k).textContent = ''; });
   $('#status').textContent = '';
 }

@@ -228,15 +228,6 @@ function indexBuilder(units, opts) {
   return { step, finish, progress };
 }
 function buildIndex(units, opts) { return indexBuilder(units, opts).finish(); }
-// v4.7.0: הרכבת אינדקס מתוצאת gem-worker.js (המערכים הטיפוסיים הועברו מה-Worker בלי העתקה). d = {n, c, b, ch, nn, k, s, tx, start, W, L, MAQAF};
-// cats = מפתחות הקטגוריות לפי מספר (CK ב-app.js). התוצאה זהה במבנה לזו של buildIndex.
-function assembleIndex(d, cats) {
-  const units = new Array(d.n);
-  for (let i = 0; i < d.n; i++) units[i] = { c: cats[d.c[i]], b: d.b[i], ch: d.ch[i], n: d.nn[i], t: d.tx[i], k: d.k[i], s: d.s[i] };
-  const W = { regular: d.W.regular, milui: d.W.milui, atbash: d.W.atbash, atbach: d.W.atbach };
-  W.kollel = W.regular; W.atbashKollel = W.atbash; W.atbachKollel = W.atbach;
-  return { units, toks: lazyToks(units, d.start, d.L.length), start: d.start, W, L: d.L, MAQAF: d.MAQAF };
-}
 // בנייה בפרוסות: wait(next) קובע מתי להמשיך (ברירת מחדל setTimeout), ms = אורך כל פרוסה, urgent() = לעצור מיד, onProgress(0..1),
 // cancelled() = להפסיק (למשל כשהתחילה בנייה חדשה). מחזיר Promise לאינדקס, או null אם בוטל.
 function buildIndexAsync(units, opts, ctl) {
@@ -487,6 +478,6 @@ function searchNotarikon(idx, target, methods, filter, limit, opts) {
   }
   return { results: res, counts, total };
 }
-root.GematriaEngine = { METHODS, VALUES, FINALS, MILUI_NAMES, MILUI, ATBASH, normalizeText, tokens, calculateRegular, calculateKollel, calculateWords, calculateLetters, calculateMilui, calculateAtbash, calculateAtbach, calculateGematria, setAtbachTable, getAtbachTable, compareAll, buildIndex, buildIndexAsync, assembleIndex, indexBuilder, search, pairAllowed, packText, unpackText, NOTARIKON_POS, ensureNotarikonSync, ensureNotarikonAsync, searchNotarikon };
+root.GematriaEngine = { METHODS, VALUES, FINALS, MILUI_NAMES, MILUI, ATBASH, normalizeText, tokens, calculateRegular, calculateKollel, calculateWords, calculateLetters, calculateMilui, calculateAtbash, calculateAtbach, calculateGematria, setAtbachTable, getAtbachTable, compareAll, buildIndex, buildIndexAsync, indexBuilder, search, pairAllowed, packText, unpackText, NOTARIKON_POS, ensureNotarikonSync, ensureNotarikonAsync, searchNotarikon };
 if (typeof module !== 'undefined') module.exports = root.GematriaEngine;
 })(typeof window !== 'undefined' ? window : globalThis);
