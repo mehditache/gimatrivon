@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.7.4'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.7.5'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
@@ -1050,9 +1050,9 @@ function setPhoneForced(on) {
   applyMobileLayout();
   window.dispatchEvent(new Event('resize'));
 }
-// יציאה ממצב טלפון במסך רחב חוזרת לשולחן העבודה (אותם תנאים כמו ההפניה בראש index.html), לא לממשק הקלאסי
+// יציאה מתצוגת הטלפון חוזרת לשולחן העבודה (אותם תנאים כמו ההפניה בראש index.html); במסך מגע או צר נשארים
 function backToDesktop() {
-  try { if (window.top !== window || navigator.webdriver || /[?&]embed=/.test(location.search) || innerWidth < 1000 || matchMedia('(pointer:coarse)').matches) return; } catch (e) { return; }
+  try { if (window.top !== window || /[?&]embed=/.test(location.search) || innerWidth < 1000 || matchMedia('(pointer:coarse)').matches) return; } catch (e) { return; }
   location.href = 'desktop.html';
 }
 (() => {

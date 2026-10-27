@@ -34,15 +34,15 @@ const ok = (name, cond, info) => { if (cond) pass++; else { fail++; console.log(
   await new Promise(r => server.listen(0, r));
   const base = 'http://localhost:' + server.address().port + '/';
   const br = await chromium.launch();
-  for (const [vpName, vp] of [['דסקטופ', { width: 1440, height: 900 }], ['טלפון', { width: 390, height: 844 }]]) {
-    const ctx = await br.newContext({ viewport: vp }), p = await ctx.newPage(), errs = [];
+  for (const [vpName, vp] of [['דסקטופ', { width: 1440, height: 900 }], ['טלפון', { width: 390, height: 844, isMobile: true, hasTouch: true }]]) {
+    const ctx = await br.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.isMobile, hasTouch: !!vp.hasTouch }), p = await ctx.newPage(), errs = [];
     p.on('pageerror', e => errs.push(e.message));
     const sig = () => p.evaluate(() => { let x = 0; for (const c of document.querySelector('#rdBook').innerHTML + getComputedStyle(document.querySelector('#reader')).getPropertyValue('--rdFs')) x = (x * 31 + c.charCodeAt(0)) | 0; return x; });
     const settle = async () => { await p.waitForFunction(() => { const b = document.querySelector('#rdBook'); return b && !b.querySelector('.rdLoading,.rdSkel') && b.innerHTML.length > 500; }, null, { timeout: 60000 }); await p.waitForTimeout(700); };
     const open = async (hash, st) => {
       await p.goto(base + '__blank__'); // מקור זהה, בלי האפליקציה — כדי שלא תשמור מצב ישן מעל מה שנקבע כאן
       await p.evaluate(st => { localStorage.clear(); localStorage.setItem('gimatrivonMode', 'read'); localStorage.setItem('gimatrivonReader', JSON.stringify(st)); }, st);
-      await p.goto(base + 'index.html' + hash); await settle();
+      await p.goto(base + 'index.html' + (vp.isMobile ? '' : '?embed=read') + hash); await settle(); // במחשב: חלון קריאה של שולחן העבודה; בטלפון: מסך הטלפון
     };
     const setBtns = () => p.$$eval('#rdSet [data-set]', a => a.map(x => ({ k: x.dataset.set, v: x.dataset.val, on: x.getAttribute('aria-pressed') === 'true' })));
     const click = async sel => { await p.click(sel); await p.waitForTimeout(250); await settle(); };
