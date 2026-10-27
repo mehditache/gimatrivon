@@ -1365,3 +1365,6 @@ html.gtResults .rsSort{order:3;margin-inline-end:0}
 html.gtResults .rsPg{justify-content:center}
 html.gtResults .rsPg button.rsAr{width:34px;padding:0;display:grid;place-items:center;font-size:16px}
 html.gtResults .rsPg button.rsAr svg{width:18px;height:18px}
+
+/* מראה כהה: ההדגשה הצהובה הבהירה הסתירה את הטקסט הבהיר — כחול שקוף שהטקסט נשאר קריא עליו (חלון התוצאות והרשימה הנפתחת של שולחן העבודה) */
+html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rdHl,html.gtResults[data-theme=dark] .rsSn mark{background:rgba(94,155,216,.5);color:#fff;box-shadow:0 0 0 1px rgba(94,155,216,.7)}
