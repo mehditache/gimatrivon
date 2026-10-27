@@ -1,5 +1,6 @@
 /* בדיקת דפדפן לשני הסיורים המודרכים (v3.31.0): הסיור של מסך הגימטריה והסיור של מסך הקריאה רצים עד הסוף בלי שגיאות,
    הסיור בגימטריה מסביר את כפתור "פתיחה בספר", וחלון הסיור בצבע הבאנר (--rdBar). דורש Playwright; בלעדיו — מדלג.
+   רץ על תוכן החלונות של שולחן העבודה (index.html?embed=…), לא על המסך הישן.
    node tests/tour.e2e.js */
 const http = require('http'), fs = require('fs'), path = require('path');
 let chromium;
@@ -19,7 +20,7 @@ const ok = (name, cond, info) => { if (cond) pass++; else { fail++; console.log(
 // מריץ סיור עד הסוף בלחיצות "הבא"; מחזיר את כותרות הצעדים ואת צבע הרקע של החלון בצעד הראשון
 async function walk(p) {
   const titles = []; let bg = null;
-  await p.click('#startTour', { force: true }).catch(() => p.evaluate(() => document.querySelector('#startTour').click()));
+  await p.evaluate(() => document.querySelector('#startTour').click()); // בחלון הכותרת מוסתרת; שולחן העבודה לוחץ על הכפתור מבפנים באותה דרך
   for (let i = 0; i < 40; i++) {
     await p.waitForTimeout(700);
     const pop = await p.$('.driver-popover'); if (!pop) break;
@@ -38,7 +39,7 @@ const rgb = hex => { const n = parseInt(hex.replace('#', ''), 16); return `rgb($
   const ctx = await br.newContext({ viewport: { width: 1440, height: 900 } }), p = await ctx.newPage(), errs = [];
   p.on('pageerror', e => errs.push(e.message));
 
-  await p.goto(base + 'index.html#gim');
+  await p.goto(base + 'index.html?embed=gem#gim');
   await p.evaluate(() => { const t = document.querySelector('#tA'); t.value = 'אב'; t.dispatchEvent(new Event('input', { bubbles: true })); });
   await p.waitForSelector('.resList .rs', { timeout: 120000 });
   const g = await walk(p);
@@ -47,12 +48,13 @@ const rgb = hex => { const n = parseInt(hex.replace('#', ''), 16); return `rgb($
   ok('גימטריה: חלון בצבע הבאנר', g.bg && g.bg[0] === rgb(g.bg[1]), g.bg && g.bg.join(' / '));
   ok('גימטריה: נשאר במסך הגימטריה', await p.evaluate(() => document.body.dataset.mode) === 'gem');
 
-  await p.goto(base + 'index.html#read/TN/Gen/1/1');
+  await p.goto(base + 'index.html?embed=read#read/TN/Gen/1/1');
   await p.waitForSelector('#rdBook article', { timeout: 60000 });
   await p.waitForTimeout(1500);
   const r = await walk(p);
   ok('קריאה: הסיור נשאר במסך הקריאה', await p.evaluate(() => document.body.dataset.mode) === 'read');
-  ok('קריאה: הסיור הגיע לסוף', r.titles[0] === 'מסך הקריאה' && r.titles[r.titles.length - 1] === 'זהו, אפשר לקרוא!', r.titles.join(' | '));
+  // בחלון אין כותרת ישנה (מתג המראה ותפריט ⋮), ולכן הסיור מסתיים בצעד של שורת המיקום
+  ok('קריאה: הסיור הגיע לסוף', r.titles[0] === 'מסך הקריאה' && r.titles[r.titles.length - 1] === 'מיקום בפרק' && !(await p.$('.driver-popover')), r.titles.join(' | '));
   ok('קריאה: החלוניות נסגרו בסוף', await p.evaluate(() => document.querySelector('#rdSet').hidden && document.querySelector('#rdJump').hidden));
   ok('בלי שגיאות JavaScript', !errs.length, errs.join(' | '));
 

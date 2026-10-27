@@ -39,7 +39,7 @@ const ok = (name, cond, info) => { if (cond) pass++; else fail++; console.log((c
   const open = async (p, hash) => {
     await p.goto(base + '__blank__');
     await p.evaluate(() => { localStorage.clear(); localStorage.setItem('gimatrivonMode', 'read'); });
-    await p.goto(base + 'index.html' + hash);
+    await p.goto(base + 'index.html' + (p.viewportSize().width > 500 ? '?embed=read' : '') + hash); // במחשב: חלון קריאה של שולחן העבודה; בטלפון: מסך הטלפון
     await p.waitForFunction(() => { const b = document.querySelector('#rdBook'); return b && !b.querySelector('.rdLoading,.rdSkel') && b.innerHTML.length > 500; }, null, { timeout: 60000 });
   };
   await open(pg, '#read/Genesis/1');
