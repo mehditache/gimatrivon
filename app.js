@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.6.14'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.6.15'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
@@ -2288,31 +2288,33 @@ function gemStart() {
   if (GEM.busy || (IDX && GEM.stage === 2)) return;
   const gen = ++GEM.gen; GEM.busy = true; GEM.stage = 0; GEM.f = 0;
   const first = [...ALL].filter(i => B.books[i].cat <= 1), all = [...ALL];
-  // כבר יש מה לחפש באחד הצדדים (למשל חזרה לגימטריה אחרי שהאינדקס שוחרר): בונים ישר את כל המקורות ומחפשים פעם אחת.
-  // בשני שלבים החיפוש היה רץ על תנ״ך ומשנה, נקטע באמצע כשהשלב השני הסתיים, ומתחיל מחדש
-  GEM.one = KS.some(k => numVal(S[k].num) || E.normalizeText(S[k].text).words.length);
-  if (GEM.one) {
-    const rel = GimCorpus.use(all);
-    $('#status').textContent = L('טוען קורפוס…'); gemShowWait();
-    gemStage(all, gen, gemProg, gemWait).then(ix => {
-      if (!ix) return;
-      IDX = ix; GEM.stage = 2; gemHideMini(); $('#status').textContent = ''; KS.forEach(run);
-    }).catch(() => { if (gen === GEM.gen) $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); }).then(() => { rel(); if (gen === GEM.gen) GEM.busy = false; });
-    return;
-  }
+  // יש כבר מה לחפש באחד הצדדים: בונים את כל המקורות בשלב אחד ומחפשים פעם אחת. בשני שלבים החיפוש היה רץ על
+  // תנ״ך ומשנה, נקטע באמצע כשהשלב השני הסתיים, ומתחיל מחדש
+  const hasQ = () => KS.some(k => numVal(S[k].num) || E.normalizeText(S[k].text).words.length);
+  GEM.one = hasQ();
   // הקבצים מוחזקים עד שהיחידות נאספו; את שלב א׳ משחררים רק אחרי ששלב ב׳ כבר מחזיק את כל הספרים (בלי לטעון פעמיים)
-  const rel1 = GimCorpus.use(first); let rel2 = null;
+  const rel1 = GEM.one ? () => {} : GimCorpus.use(first); let rel2 = null;
   const end = () => { rel1(); if (rel2) rel2(); if (gen === GEM.gen) GEM.busy = false; };
+  const stage2 = fg => {
+    if (!rel2) { rel2 = GimCorpus.use(all); rel1(); }
+    return fg ? gemStage(all, gen, gemProg, gemWait) : gemStage(all, gen, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
+  };
   $('#status').textContent = L('טוען קורפוס…'); gemShowWait();
-  gemStage(first, gen, gemProg, gemWait).then(ix => {
+  (GEM.one ? stage2(true) : gemStage(first, gen, gemProg, gemWait).then(ix => {
     if (!ix) return null;
+    // הערכים הגיעו בזמן שלב א׳ (שולחן העבודה משחזר את שדות חלון הגימטריה כ-0.4 שנ׳ אחרי שהוא נטען):
+    // לא מחפשים על תנ״ך ומשנה, אלא ממשיכים מיד לכל המקורות, עם מסך ההמתנה
+    if (hasQ()) {
+      GEM.one = true; GEM.f = 0; GEM.drawn = 0;
+      document.querySelectorAll('.gmLoad .gmTxt').forEach(t => { t.textContent = gemLabel(); }); gemProg(0);
+      return stage2(true);
+    }
     IDX = ix; GEM.stage = 1; gemHideMini(); KS.forEach(run);
-    rel2 = GimCorpus.use(all); rel1();
     $('#status').textContent = L('טוען מקורות נוספים…');
-    return gemStage(all, gen, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
-  }).then(ix => {
+    return stage2(false);
+  })).then(ix => {
     if (!ix) return;
-    IDX = ix; GEM.stage = 2; $('#status').textContent = ''; KS.forEach(run);
+    IDX = ix; GEM.stage = 2; gemHideMini(); $('#status').textContent = ''; KS.forEach(run);
   }).catch(() => { if (gen === GEM.gen) $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); }).then(end);
 }
 // משחרר את האינדקס (וכל מה שנבנה ממנו); חיפוש שרץ עכשיו נעצר (st.gen), ובחזרה לגימטריה הכל נבנה ורץ שוב
