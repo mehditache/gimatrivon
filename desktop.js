@@ -11,6 +11,9 @@
   'use strict';
   const KEY = 'gimatrivonDesk', MARKS = 'gimatrivonMarks', MAXR = 5, HMAX = 50;
   const $ = s => document.querySelector(s);
+  // מספר הגרסה בבנר: מיד בטעינה, מה-?v= של הסקריפט (אותו מספר כמו VERSION ב-app.js), גם כשחלון הגימטריה ישן או לא נטען;
+  // כשחלון גימטריה נטען הוא מחליף אותו בכיתוב שלו (כולל סיומת מצב פיתוח)
+  try { const m = /[?&]v=([\w.]+)/.exec(document.currentScript.src); if (m) $('#dkVer').textContent = 'v' + m[1]; } catch (e) {}
   const desk = $('#dkDesk'), task = $('#dkTask'), nav = $('#dkNav'), tools = $('#dkTools'), q = $('#dkQ');
   const EN = (() => { try { return localStorage.getItem('gimatrivonLang') === 'en'; } catch (e) { return false; } })();
   const T = (he, en) => EN ? en : he;
@@ -226,7 +229,7 @@
     const mp = d.getElementById('mMenuPanel'); // תפריט ה-⋮ של כל סוג חלון (גם גימטריה)
     if (mp) { const o4 = new fw.MutationObserver(() => syncMenu(w, f)); o4.observe(mp, { attributes: true, attributeFilter: ['class'] }); f.obs.push(o4); }
     themeTo(f);
-    if (!$('#dkVer').textContent) { const v = d.getElementById('ver'); if (v) $('#dkVer').textContent = v.textContent; }
+    { const v = d.getElementById('ver'); if (v && v.textContent) $('#dkVer').textContent = v.textContent; }
     if (D.act === w.id) banner();
   }
 
@@ -532,6 +535,7 @@
   let lastBtn = null; // כפתור הבנר שנלחץ אחרון — החלון הקופץ ייפתח מתחתיו
   function fwdClick(slot, srcSel, e) {
     const t = e.target.closest('button,label,input'); if (!t || !slot.contains(t)) return;
+    if (closedBy && Date.now() - closedBy.at < 800) { const rc = t.getBoundingClientRect(), c = closedBy; closedBy = null; if (Math.abs(rc.left - c.rc.left) < 2 && Math.abs(rc.right - c.rc.right) < 2) return; }
     if (slot === nav && nav.dataset.stub) { // פתיחת חלון קריאה חדש ובו בורר הספר
       if (!t.classList.contains('rdWhere')) return;
       if (reads().length >= MAXR) { const l = W(D.last) || reads()[0]; if (l) focusWin(l.id); return; }
@@ -777,7 +781,16 @@
     const f = F.get(popLayer.dataset.w); if (f && f.pops && Object.keys(f.pops).length) { const sc = f.doc.getElementById('rdScrim'); if (sc) sc.click(); }
     F.forEach(g => { if (g.menuEl && g.doc) { const sc = g.doc.getElementById('mMenuScrim'); if (sc) sc.click(); } });
   };
-  document.addEventListener('pointerdown', e => { if (!popLayer.contains(e.target) && !e.target.closest('#dkBan,#mMenuPanel')) closeLifted(); }, true);
+  // גם לחיצה על הבנר (כולל הפקד שפתח את החלון) סוגרת אותו. הלחיצה על הפקד עצמו רק סוגרת: ה-click שאחריה לא פותח אותו מחדש
+  let closedBy = null;
+  document.addEventListener('pointerdown', e => {
+    const t = e.target; if (popLayer.contains(t) || t.closest('#mMenuPanel')) return;
+    if (!t.closest('#dkBan')) { closeLifted(); return; }
+    if (!popLayer.querySelector('.rdPop:not([hidden])')) return;
+    const b = t.closest('button,label,input'), rc = b && b.getBoundingClientRect();
+    closedBy = rc && lastRc && Math.abs(rc.left - lastRc.left) < 2 && Math.abs(rc.right - lastRc.right) < 2 ? { rc, at: Date.now() } : null;
+    closeLifted();
+  }, true);
   // לחיצה בתוך iframe של חלון אחר לא מגיעה לדף השולחן, אבל המיקוד עובר אליו — זה סוגר את החלון הקופץ
   addEventListener('blur', () => setTimeout(() => { if (document.activeElement && document.activeElement.tagName === 'IFRAME') closeLifted(); }, 0));
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && (popLayer.querySelector('.rdPop:not([hidden])') || document.querySelector('body > #mMenuPanel.show'))) closeLifted(); }, true);
