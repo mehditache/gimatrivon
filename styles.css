@@ -1422,11 +1422,13 @@ html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rd
 .zCols .zA{padding:0 .2em .15em 1.1em;border-inline-end:1px solid var(--rdLn,rgba(120,100,60,.25))}
 .zCols .zT{padding:0 1.1em .15em .2em}
 .zCols .zT .tc{margin:0 0 .4em}
-.zCols .zA,.zCols .zT,.zr{text-align:start;text-justify:auto}
-.rdPage .rdTxt.zCols .zA,.rdPage .rdTxt.zCols .zT,.rdPage .rdTxt .zr{text-align:start!important}
-/* זוהר: טקסט קטן ודחוס יותר בעמוד מול עמוד ובשני טורים */
-.rdPage.tal .zr{font-size:.92em}
-.rdPage.tal .zCols .zA,.rdPage.tal .zCols .zT{font-size:.8em}
+/* זוהר: גודל הגופן כמו בשאר הספרים (מתכוונן בגודל האותיות), שורות מלאות לרוחב, ומרווח שורות מעט צפוף יותר */
+.rdPage.tal .zr{font-size:1em}
+.rdPage.tal .zCols .zA,.rdPage.tal .zCols .zT{font-size:.88em}
+.rdPage.tal .zr,.rdPage.tal .zr p,.rdPage.tal .zCols p,.rdPage.tal .zCols .zA{line-height:1.7}
+.rdPage.tal .zr,.rdPage.tal .zCols .zA,.rdPage.tal .zCols .zT{text-align:justify;text-align-last:justify}
+.rdPage.tal .zr.ze,.rdPage.tal .zCols .ze{text-align-last:start}
+.rdPage.tal .zr p,.rdPage.tal .zCols .zT p{text-align:inherit;text-align-last:inherit}
+.rdTxt i.mw{font-style:normal}
 .rdPage.tal .rdCm.zSul{font-size:.76em}
-.rdPage.tal .zr,.rdPage.tal .zr p,.rdPage.tal .zCols p,.rdPage.tal .zCols .zA{line-height:1.5}
 .rdPage.tal .zCols+.rdSp,.rdPage.tal .zSul{margin-top:.4em}

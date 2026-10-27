@@ -1026,7 +1026,10 @@
   // שמות המקורות בחלון הקטע ובעימוד: בגמרא רש״י ותוספות (או רשב״ם), בזוהר הסולם והתרגום
   const srcLabel = (k, j, src) => { const t = tOf(k); return t && t.z ? T(src === 'r' ? 'הסולם' : 'תרגום') : src === 'r' ? innerLabel(k, j) : T('תוספות'); };
   const amudRow = (k, j) => (TD[k] || [])[j] || [[], [], []];
-  const fmtT = s => h(s).replace(/\u0001/g, '<b class="big">').replace(/\u0002/g, '</b>').replace(/\u0003/g, '<b>').replace(/\u0004/g, '</b>');
+  const fmtT = s => { // סימוני הדגשה מאוזנים תמיד: סגירה בלי פתיחה נזרקת, ופתיחה שלא נסגרה נסגרת בסוף (אחרת ההדגשה דולפת לעמוד הבא)
+    let open = 0; const out = h(s).replace(/[\u0001-\u0004]/g, c => c === '\u0001' || c === '\u0003' ? (open++, c === '\u0001' ? '<b class="big">' : '<b>') : open > 0 ? (open--, '</b>') : '');
+    return open > 0 ? out + '</b>'.repeat(open) : out;
+  };
   const plainT = s => String(s).replace(/[\u0001-\u0004]/g, '');
   const talTxt = (s, q) => q ? hlHtml(plainT(s), q) : fmtT(s);
   const innerLabel = (k, j) => T(amudRow(k, j)[3] ? 'רשב״ם' : 'רש״י');
@@ -1185,15 +1188,15 @@
     let html = talHead(t, j);
     if (pg.first && side !== 'b') html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j, k)) + '</span></div>';
     const E = talCm(k, j), R = pg.rows || [];
-    const aCell = r => '<span class="rdV tg" data-j="' + j + '" data-s="' + r.s + '">' + (r.f0 <= 0 ? chip(r.s) : r.top ? '<span class="rdCont">…</span> ' : '') + talTxt(wSlice(a[0][r.s], r.f0, r.f1), q) + (r.bot ? ' <span class="rdCont">…</span>' : '') + '</span>';
-    const tCell = r => E.filter(e => e.v === r.s && e.src === 't').map(e => { const body = wSlice(e.body, r.f0, r.f1); return body.trim() ? ent(Object.assign({}, e, { body, dh: r.f0 > 0 ? '' : e.dh, cont: r.top, cut: r.bot, k2: r.f0 > 0 })) : ''; }).join('');
+    const aCell = r => r.f1 <= r.f0 ? '' : '<span class="rdV tg" data-j="' + j + '" data-s="' + r.s + '">' + (r.f0 <= 0 ? chip(r.s) : r.top ? '<span class="rdCont">…</span> ' : '') + talTxt(wSlice(a[0][r.s], r.f0, r.f1), q) + (r.bot ? ' <span class="rdCont">…</span>' : '') + '</span>';
+    const tCell = r => r.t1 <= r.t0 ? '' : E.filter(e => e.v === r.s && e.src === 't').map(e => { const body = wSlice(e.body, r.t0, r.t1); return body.trim() ? ent(Object.assign({}, e, { body, dh: r.t0 > 0 ? '' : e.dh, cont: r.ttop, cut: r.tbot, k2: r.t0 > 0 })) : ''; }).join('');
     const tail = '', SL = pg.cm.filter(e => e.src === 'r'), TL = pg.cm.filter(e => e.src === 't');
     const strip = list => list.length ? '<div class="rdSp"></div><section class="rdCm fN zSul" aria-label="' + h(T('הסולם')) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(T('הסולם')) + '</span></div><div class="rdCmBody">' + list.map(ent).join('') + '</div></section>' : '';
     const half = i => { if (side === 'c' || !SL.length) return SL; const tot = SL.reduce((x, e) => x + cmLen(e), 0), c = cutCm(SL, Math.ceil(tot / 2)); return c[i]; }; // בספר פתוח הסולם זורם מתחתית עמוד הארמית לתחתית עמוד התרגום
     const sideLb = T(S.zside === 'r' ? 'הסולם' : 'תרגום');
-    if (side === 'c') return html + '<div class="rdBody"><div class="rdTxt rdTal zCols"><div class="zColHd">' + h(T('ארמית')) + '</div><div class="zColHd">' + h(sideLb) + '</div>' + (R.length ? R.map((r, x) => '<div class="zA">' + aCell(r) + '</div><div class="zT">' + (tCell(r) || (!x && !TL.length ? none : '')) + '</div>').join('') : '<div class="zA"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></div><div class="zT"></div>') + '</div></div>' + strip(half(0)) + '<div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
-    if (side === 'b') return html + '<div class="rdCmHd zHd"><span class="ln"></span><span>' + h(T(S.zside === 'r' ? 'הסולם' : 'תרגום')) + '</span></div><div class="rdBody"><div class="rdTxt rdTal zSide">' + R.map((r, x) => '<div class="zr" data-r="' + x + '">' + (tCell(r) || (!x && !TL.length ? none : '')) + '</div>').join('') + '</div></div>' + strip(half(1)) + '<div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
-    if (side === 'a') return html + '<div class="rdBody"><div class="rdTxt rdTal">' + (R.length ? R.map((r, x) => '<p class="zr" data-r="' + x + '">' + aCell(r) + '</p>').join('') : '<p><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + '</div></div>' + strip(half(0)) + '<div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'c') return html + '<div class="rdBody"><div class="rdTxt rdTal zCols"><div class="zColHd">' + h(T('ארמית')) + '</div><div class="zColHd">' + h(sideLb) + '</div>' + (R.length ? R.map((r, x) => '<div class="zA' + (r.f1 >= 1 ? ' ze' : '') + '">' + aCell(r) + '</div><div class="zT' + (r.t1 >= 1 ? ' ze' : '') + '">' + (tCell(r) || (!x && !TL.length ? none : '')) + '</div>').join('') : '<div class="zA"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></div><div class="zT"></div>') + '</div></div>' + strip(half(0)) + '<div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'b') return html + '<div class="rdCmHd zHd"><span class="ln"></span><span>' + h(T(S.zside === 'r' ? 'הסולם' : 'תרגום')) + '</span></div><div class="rdBody"><div class="rdTxt rdTal zSide">' + R.map((r, x) => '<div class="zr' + (r.t1 >= 1 ? ' ze' : '') + '" data-r="' + x + '">' + (tCell(r) || (!x && !TL.length ? none : '')) + '</div>').join('') + '</div></div>' + strip(half(1)) + '<div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'a') return html + '<div class="rdBody"><div class="rdTxt rdTal">' + (R.length ? R.map((r, x) => '<p class="zr' + (r.f1 >= 1 ? ' ze' : '') + '" data-r="' + x + '">' + aCell(r) + '</p>').join('') : '<p><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + '</div></div>' + strip(half(0)) + '<div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
     return html + '<div class="rdBody"><div class="rdTxt rdTal zOne">' + (pg.segs.length ? pg.segs.map(s => '<p class="zp">' + para(s) + '</p>' + pg.cm.filter(e => e.v === s).map(ent).join('')).join('') : '<p class="zp"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + tail + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
   }
   /* זוהר, ספר פתוח: שורה מול שורה. כל פסקה בעמוד הארמית ותרגומה בעמוד שמול מקבלות אותו גובה, וראשי העמודים מיושרים.
@@ -1214,16 +1217,46 @@
     scan(w.slice(0, A).join(' ')); const open = bold, body = w.slice(A, B).join(' '); scan(body);
     return (open ? '\u0003' : '') + body + (bold ? '\u0004' : '');
   }
+  /* זוהר: חלוקה לעמודים לפי שורות אמיתיות. מודדים בדף כמה שורות תופסת כל פסקה (ארמית ותרגום, ברוחב העמוד או הטור), וחותכים אותה
+     לקטעים של שתי שורות שלמות מכל צד. כך כל שורה מלאה לרוחבה, שורות הארמית והתרגום מיושרות זו מול זו, והעמוד מתמלא לגובהו.
+     הפסקה שנגמרה בצד אחד לפני השני משאירה שם תא ריק, ומיד אחריה מתחילה הפסקה הבאה. */
   function zdPages(k, j, g, probe, a, ents, two) {
-    const N = a[0].length, pages = [], colW = g.zc ? (g.pw - 70) / 2 : g.pw - 60, CH = Math.max(4, Math.round((S.zsul === '1' ? 0.75 : 1.5) * colW / (g.fs * (g.zc ? 0.8 : 0.92) * 3.2))); // עם הסולם: קטעים קטנים יותר, כדי שהעמוד יתמלא
-    const units = []; // כל פסקה נחתכת לקטעים של כשורה וחצי: שורה מול שורה בלי רווחים גדולים, והעמוד מתמלא עד סופו
-    for (let s = 0; s < N; s++) { const nw = a[0][s].split(' ').length, m = Math.max(1, Math.round(nw / CH)); for (let x = 0; x < m; x++) units.push({ s, f0: x / m, f1: x + 1 < m ? (x + 1) / m : 1 }); }
-    const mk = (list) => {
-      const rows = list.map((u, x) => Object.assign({}, u, { top: !x && u.f0 > 0, bot: x === list.length - 1 && u.f1 < 1 })), segs = [], rng = {};
-      rows.forEach(r => { if (!segs.includes(r.s)) segs.push(r.s); const c = rng[r.s]; rng[r.s] = c ? [Math.min(c[0], r.f0), Math.max(c[1], r.f1)] : [r.f0, r.f1]; });
+    const N = a[0].length, pages = [], LN = S.zsul === '1' ? 1 : 2, mode = two ? 'a' : g.zc ? 'c' : 's';
+    const units = [];
+    const toks = t => { const n = t.split(' ').length; return Array.from({ length: n }, (_, i) => talTxt(wSlice(t, i / n, (i + 1) / n), '')); };
+    const lineStarts = els => { const tops = els.map(e => Math.round(e.getBoundingClientRect().top)), st = [0]; for (let i = 1; i < tops.length; i++) if (tops[i] > tops[i - 1] + 3) st.push(i); return st; };
+    const wrap = (tk, chip) => (chip || '') + tk.map(x => '<i class="mw">' + x + '</i>').join(' ');
+    const measure = (s) => { // לכל צד: מספרי המילים שפותחות שורה
+      const t = ents.filter(e => e.v === s && e.src === 't').sort((x, y) => y.body.length - x.body.length)[0], ta = toks(a[0][s]), tt = t ? toks(t.body) : [];
+      const ca = wrap(ta, '<span class="vn">' + num(s + 1) + '</span> '), ct = wrap(tt, '<span class="cv">' + num(s + 1) + '</span> ');
+      let ha, ht;
+      if (mode === 'c') { probe.innerHTML = '<div class="rdBody"><div class="rdTxt rdTal zCols"><div class="zA">' + ca + '</div><div class="zT"><p class="tc cT">' + ct + '</p></div></div></div>'; ha = probe.querySelectorAll('.zA i.mw'); ht = probe.querySelectorAll('.zT i.mw'); return [lineStarts([...ha]), lineStarts([...ht]), ta.length, tt.length]; }
+      probe.innerHTML = '<div class="rdBody"><div class="rdTxt rdTal"><p class="zr">' + ca + '</p></div></div>'; const la = lineStarts([...probe.querySelectorAll('i.mw')]);
+      probe.innerHTML = '<div class="rdBody"><div class="rdTxt rdTal zSide"><div class="zr"><p class="tc cT">' + ct + '</p></div></div></div>'; const lt = tt.length ? lineStarts([...probe.querySelectorAll('i.mw')]) : [];
+      return [la, lt, ta.length, tt.length];
+    };
+    for (let s = 0; s < N; s++) {
+      if (mode === 's') { const nw = a[0][s].split(' ').length, m = Math.max(1, Math.round(nw / 14)); for (let x = 0; x < m; x++) units.push({ s, f0: x / m, f1: x + 1 < m ? (x + 1) / m : 1, t0: x / m, t1: x + 1 < m ? (x + 1) / m : 1 }); continue; }
+      const [la, lt, na, nt] = measure(s), R = Math.max(1, Math.ceil(la.length / LN), Math.ceil(lt.length / LN));
+      const fr = (st, n, r) => { const i = r * LN, w0 = i < st.length ? st[i] : n, w1 = i + LN < st.length ? st[i + LN] : n; return [n ? w0 / n : 1, n ? w1 / n : 1]; };
+      for (let r = 0; r < R; r++) { const fa = fr(la, na, r), ft = nt ? fr(lt, nt, r) : [1, 1]; units.push({ s, f0: fa[0], f1: fa[1], t0: ft[0], t1: ft[1] }); }
+    }
+    /* הסולם זורם בנפרד משורות הטקסט: sulPos[s] = כמה מהסולם של הפסקה כבר הוצג בעמודים הקודמים (שבר). העמוד מקבל את חלקו היחסי של הסולם
+       לפי השורות שבו, ואחר כך מוסיפים מילים מהמשך הסולם עד שהעמוד מתמלא (ext), והן לא יחזרו בעמוד הבא. */
+    const sulPos = {}, nS = {};
+    for (let s = 0; s < N; s++) nS[s] = Math.max(0, ...ents.filter(e => e.v === s && e.src === 'r').map(e => cmLen(e)));
+    const mk = (list, ext) => {
+      const rows = list.map((u, x) => Object.assign({}, u, { top: !x && u.f0 > 0 && u.f0 < 1, bot: x === list.length - 1 && u.f1 < 1 && u.f1 > u.f0, ttop: !x && u.t0 > 0 && u.t0 < 1, tbot: x === list.length - 1 && u.t1 < 1 && u.t1 > u.t0 })), segs = [], rng = {}, sr = {};
+      rows.forEach(r => { if (!segs.includes(r.s)) segs.push(r.s); if (r.f1 <= r.f0 && rng[r.s]) return; const c = rng[r.s]; rng[r.s] = c ? [Math.min(c[0], r.f0), Math.max(c[1], r.f1)] : [r.f0, r.f1]; });
+      segs.forEach(sg => { const r = rng[sg]; sr[sg] = [sulPos[sg] != null ? sulPos[sg] : r[0], r[1]]; });
+      if (ext) { if (sr[ext.s]) sr[ext.s][1] = Math.max(sr[ext.s][1], ext.to); else sr[ext.s] = [sulPos[ext.s] != null ? sulPos[ext.s] : 0, ext.to]; }
       Object.keys(rng).forEach(x => { if (rng[x][0] <= 0 && rng[x][1] >= 1) delete rng[x]; });
-      const cm = [].concat(...segs.map(sg => ents.filter(e => e.v === sg).map(e => { const r = rng[sg]; return r ? Object.assign({}, e, { body: wSlice(e.body, r[0], r[1]), cont: r[0] > 0, cut: r[1] < 1 }) : e; })));
-      return { segs, rows, rng, first: !pages.length, cm };
+      const order = segs.concat(ext && !segs.includes(ext.s) ? [ext.s] : []);
+      const cm = [].concat(...order.map(sg => ents.filter(e => e.v === sg).map(e => {
+        if (e.src === 'r') { const q = sr[sg]; if (!q || q[1] <= q[0]) return null; return q[0] <= 0 && q[1] >= 1 ? e : Object.assign({}, e, { body: wSlice(e.body, q[0], q[1]), cont: q[0] > 0, cut: q[1] < 1 }); }
+        const r = rng[sg]; return r ? Object.assign({}, e, { body: wSlice(e.body, r[0], r[1]), cont: r[0] > 0, cut: r[1] < 1 }) : e;
+      }))).filter(Boolean);
+      return { segs, rows, rng, first: !pages.length, cm, sr };
     };
     const fits = pg => {
       if (!two) { probe.innerHTML = zdInner(k, j, pg, '', g.zc ? 'c' : 's'); return !over(probe); }
@@ -1232,7 +1265,18 @@
       probe.innerHTML = zdInner(k, j, pg, '', 'b'); zAlign(ha, probe, true); const ok = !over(probe) && !over(ha); ha.remove();
       return ok;
     };
-    for (let i = 0; i < units.length && pages.length < 300;) { const n = maxOkF(1, units.length - i, m => fits(mk(units.slice(i, i + m)))); pages.push(mk(units.slice(i, i + n))); i += n; }
+    for (let i = 0; i < units.length && pages.length < 300;) {
+      let n = maxOkF(1, units.length - i, m => fits(mk(units.slice(i, i + m))));
+      for (let x = 0; x < 16 && i + n < units.length && fits(mk(units.slice(i, i + n + 1))); x++) n++; // המדידה לא תמיד מונוטונית (יישור שורות, חלוקת הסולם): ממשיכים קדימה כל עוד נכנס
+      const list = units.slice(i, i + n); let ext = null;
+      if (S.zsul === '1') { // ממלאים את שארית העמוד במילים מהמשך הסולם (של הפסקה האחרונה, ואם נגמרה — של הבאה)
+        const base = mk(list), last = list[list.length - 1], nxt = units[i + n], es = last && base.sr[last.s] && base.sr[last.s][1] < 1 ? last.s : nxt ? nxt.s : null;
+        if (es != null && nS[es] > 1) { const from = base.sr[es] ? base.sr[es][1] : (sulPos[es] != null ? sulPos[es] : 0), left = Math.floor((1 - from) * nS[es]);
+          const w = left > 0 ? maxOkF(0, left, w => !w || fits(mk(list, { s: es, to: from + w / nS[es] }))) : 0; if (w > 0) ext = { s: es, to: from + w / nS[es] }; }
+      }
+      const pg = mk(list, ext); pages.push(pg); i += n;
+      Object.keys(pg.sr).forEach(x => { sulPos[x] = Math.max(sulPos[x] != null ? sulPos[x] : 0, pg.sr[x][1]); });
+    }
     probe.innerHTML = ''; return pages;
   }
   function studyPages(k, j, g) {
