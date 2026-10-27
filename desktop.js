@@ -988,7 +988,7 @@
   /* ---------- מצב פיתוח ומצב טלפון ---------- */
   // 5 לחיצות על מספר הגרסה: מצב פיתוח (ענף ופרטי בנייה) — מועבר לספר הגרסה של אחד החלונות (app.js), והטקסט מועתק לבנר
   { let taps = 0, tt = 0;
-    task.addEventListener('click', e => { if (e.target.closest('#dkVerR')) $('#dkVer').click(); });
+    task.addEventListener('click', e => { if (e.target.closest('#dkVerR,.dkCnt')) $('#dkVer').click(); /* 5 לחיצות על המונה (6/6) מחליפות מצב פיתוח */ });
   $('#dkVer').addEventListener('click', () => {
       taps++; clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 3000); if (taps < 5) return; taps = 0;
       const f = [...F.values()].find(x => x.doc && x.doc.getElementById('ver'));
