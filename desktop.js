@@ -136,7 +136,7 @@
   // טעינת ה-iframe של חלון (רק כשהוא גלוי ופעיל, או כשלוחצים עליו)
   function wake(w) {
     const f = F.get(w.id); if (!f || f.fr || w.min) return;
-    w.at = Date.now();
+    w.at = w.wk = Date.now();
     const body = f.el.querySelector('.dwBody'); body.textContent = '';
     const fr = document.createElement('iframe');
     fr.title = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
@@ -581,8 +581,12 @@
     // בלי חלון פעיל (או בלי אף חלון קריאה): הפקד לא נעלם אלא מאופס — "בחר ספר לקריאה"; לחיצה פותחת חלון קריאה חדש
     const stub = !w || (w.k !== 'read' && !(D.last && W(D.last)));
     if (stub) { nav.dataset.stub = '1'; nav.innerHTML = NAV_STUB(); }
-    else { delete nav.dataset.stub; cloneInto(nav, d && d.querySelector('#rdTop .rdNav')); }
-    cloneInto(tools, d && w && !other && d.querySelector('#rdTop .rdTools')); // בלי חלון פעיל (הכול ממוזער) אין פקדי קריאה
+    // חלון קריאה שנטען הרגע (iframe חדש, עוד בלי פקדים): הפקדים שבבנר נשארים במקומם עד שהחדשים מוכנים, במקום להיעלם לרגע
+    const loading = !!w && w.k === 'read' && !w.min && Date.now() - (w.wk || 0) < 6000;
+    let kept = false; const keep = (slot, src) => { const k = loading && slot.childNodes.length && !(src && src.childNodes.length); if (k) kept = true; return k; };
+    { const src = d && d.querySelector('#rdTop .rdNav'); if (stub) { /* למעלה */ } else { delete nav.dataset.stub; if (!keep(nav, src)) cloneInto(nav, src); } }
+    { const src = d && w && !other && d.querySelector('#rdTop .rdTools'); if (!keep(tools, src)) cloneInto(tools, src); } // בלי חלון פעיל (הכול ממוזער) אין פקדי קריאה
+    if (kept) setTimeout(banner, 400); /* נבדק שוב עד שהפקדים החדשים מוכנים (החלון "נטען הרגע" רק 6 שניות) */
     nav.classList.toggle('dim', other && !stub);
     nav.title = other && !stub ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();
