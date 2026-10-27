@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>גימטריבון</title>
 <script>try{if(localStorage.getItem('gimatrivonTheme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
-<!-- שולחן העבודה (v4.0.0): במחשב האפליקציה נפתחת בתוך desktop.html, וכל חלון שם הוא index.html?embed=gem|read.
-     לא עוברים: בתוך חלון (embed), במסך מגע/צר, בבדיקות אוטומטיות (navigator.webdriver), או עם ‎?classic=1. -->
+<!-- שולחן העבודה: במחשב האפליקציה נפתחת תמיד בתוך desktop.html, וכל חלון שם הוא index.html?embed=gem|read|search|results.
+     המסך הישן (בלי חלונות) נשאר רק למסך מגע או צר מ-1000px ולתצוגת הטלפון ‎#phone, עד שתהיה לשולחן גרסת טלפון.
+     אין יותר ‎?classic=1 ואין חריגה לבדיקות אוטומטיות (navigator.webdriver): גם בהן המחשב פותח את שולחן העבודה. -->
 <script>(function(){var m=location.search.match(/[?&]embed=(gem|read|search|results)/);if(m){window.GT_EMBED=m[1]==='search'||m[1]==='results'?'read':m[1];document.documentElement.classList.add('gtEmbed');if(m[1]==='search')document.documentElement.classList.add('gtSearch');if(m[1]==='results'){window.GT_RESULTS=true;document.documentElement.classList.add('gtResults')}return}
-addEventListener('hashchange',function(){if(location.hash==='#desktop'&&window.top===window&&!/[?&]embed=/.test(location.search)&&!navigator.webdriver&&innerWidth>=1000)location.replace('desktop.html')});
-if(window.top!==window||navigator.webdriver||/[?&]classic=1/.test(location.search)||location.hash==='#phone')return;
-try{if(matchMedia('(pointer:coarse)').matches||innerWidth<1000)return}catch(e){return}
+var nar=function(){try{return matchMedia('(pointer:coarse)').matches||innerWidth<1000}catch(e){return true}};
+addEventListener('hashchange',function(){if(location.hash==='#desktop'&&window.top===window&&!nar())location.replace('desktop.html')});
+if(window.top!==window||location.hash==='#phone'||nar())return;
 location.replace('desktop.html'+location.hash)})();</script>
 <link rel="stylesheet" href="vendor/driver.css">
 <link rel="stylesheet" href="styles.css">

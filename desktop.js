@@ -1004,9 +1004,9 @@
     });
     // 5 לחיצות מהירות על "גימטריבון": מצב טלפון — עוברים למסך הרגיל במצב טלפון (וחוזרים עם #desktop)
     let n = 0, t = 0;
-    document.querySelector('.brand h1').addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; D.wins.forEach(snapshot); save(); location.href = 'index.html?classic=1#phone'; } });
+    document.querySelector('.brand h1').addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; D.wins.forEach(snapshot); save(); location.href = 'index.html#phone'; } });
   }
-  if (location.hash === '#phone') location.replace('index.html?classic=1#phone');
+  if (location.hash === '#phone') location.replace('index.html#phone');
 
   /* ---------- מצב פיתוח: מאיפה SQLite עונה (v4.6.1) ----------
      תג בפינה (שמאל למטה): לכל תחום — זיכרון (sqmem.js, ירוק), בטעינה לזיכרון (כתום, עם אחוזים) או טווחים מהשרת (אפור); מספר השאילתות מכל מקור,
