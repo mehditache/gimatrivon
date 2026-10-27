@@ -782,9 +782,10 @@
   { let taps = 0, tt = 0;
     $('#dkVer').addEventListener('click', () => {
       taps++; clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 3000); if (taps < 5) return; taps = 0;
-      const f = [...F.values()].find(x => x.doc && x.doc.getElementById('ver')); if (!f) return;
-      const v = f.doc.getElementById('ver'); for (let i = 0; i < 5; i++) v.click();
-      $('#dkVer').textContent = v.textContent;
+      const f = [...F.values()].find(x => x.doc && x.doc.getElementById('ver'));
+      if (f) { const v = f.doc.getElementById('ver'); for (let i = 0; i < 5; i++) v.click(); $('#dkVer').textContent = v.textContent; }
+      else { try { localStorage.setItem('gimatrivonDev', localStorage.getItem('gimatrivonDev') === '1' ? '0' : '1'); } catch (e) {} } // אין חלון פתוח (או כולם ישנים): ישירות
+      dispatchEvent(new Event('gimDevSync')); // תג SQLite (למטה)
       toast(T('מצב פיתוח הוחלף. פרטי הבנייה בחלון "אודות"', 'Dev mode toggled. Build details are in About'));
     });
     // 5 לחיצות מהירות על "גימטריבון": מצב טלפון — עוברים למסך הרגיל במצב טלפון (וחוזרים עם #desktop)
@@ -824,6 +825,7 @@
       } else if (!v && el) { el.remove(); el = null; clearInterval(tm); removeEventListener('gimsq', paint); }
     };
     addEventListener('storage', e => { if (e.key === 'gimatrivonDev') sync(); });
+    addEventListener('gimDevSync', sync);
     sync();
   }
 
