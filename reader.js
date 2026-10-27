@@ -2907,17 +2907,28 @@
       const t = e.target.closest('button'); if (!t) return;
       if (t.dataset.jcat != null) { J.cat = Number(t.dataset.jcat); if (J.cat === 20) { J.rk = S.rk || RX.list[0].k; J.rs = isTur() ? S.rs : 1; } else if (J.cat === 2 || J.cat === 30) { const same = isTal() && !!talT().z === (J.cat === 30); J.tk = same ? S.tk : jDef(J.cat === 30); J.tj = same ? S.tj : (TX.list[TX.byK[J.tk]].j0 || 0); } else { J.b = IX.base.find(i => IX.books[i].cat === J.cat); J.ch = chaptersOf(IX, J.b)[0]; J.v = 0; } }
       else if (t.dataset.jrk != null) { J.rk = t.dataset.jrk; J.rs = 1; }
-      else if (t.dataset.jrs != null) { J.rs = Number(t.dataset.jrs); closePops(); return goTur(J.rk, J.rs); }
+      else if (t.dataset.jrs != null) { J.rs = Number(t.dataset.jrs); }
       else if (t.dataset.jtk != null) { J.tk = t.dataset.jtk; J.tj = TX.list[TX.byK[J.tk]].j0 || 0; }
       else if (t.dataset.jd != null) { J.tj = Number(t.dataset.jd); }
-      else if (t.dataset.jside != null) { J.tj = (J.tj & ~1) + Number(t.dataset.jside); closePops(); return goTal(J.tk, J.tj); }
+      else if (t.dataset.jside != null) { J.tj = (J.tj & ~1) + Number(t.dataset.jside); }
       else if (t.dataset.jb != null) { J.b = Number(t.dataset.jb); J.ch = chaptersOf(IX, J.b)[0]; J.v = 0; }
       else if (t.dataset.jch != null) { J.ch = Number(t.dataset.jch); J.v = 0; }
-      else if (t.dataset.jv != null) { J.v = Number(t.dataset.jv); closePops(); return goTo(J.b, J.ch, J.v); }
+      else if (t.dataset.jv != null) { J.v = Number(t.dataset.jv); }
       else if (t.dataset.jgo != null) { closePops(); return J.cat === 20 ? goTur(J.rk, J.rs) : J.cat === 2 || J.cat === 30 ? goTal(J.tk, J.tj) : goTo(J.b, J.ch, J.v); }
-      const sc = $r('#rdJump .rdJBooks'), top = sc ? sc.scrollTop : 0;
+      const sc = $r('#rdJump .rdJBooks'), top = sc ? sc.scrollTop : 0, fk = Object.keys(t.dataset).find(k => /^j/.test(k));
       renderJump(); const nsc = $r('#rdJump .rdJBooks'); if (nsc) nsc.scrollTop = top;
+      // הפוקוס נשאר על הכפתור שנבחר (הוא נבנה מחדש), כדי שאפשר יהיה להמשיך במקלדת
+      const nf = fk && $r('#rdJump [data-' + fk.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + '="' + t.dataset[fk] + '"]'); if (nf) nf.focus({ preventScroll: true });
     };
+    // בחירת פרק / פסוק / דף / עמוד / סימן רק מסמנת; הספר נפתח רק בכפתורים שלמטה. Enter על משבצת בוחר בה ופותח (כמו לחיצה על "מעבר ל…")
+    $r('#rdJump').addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target.closest && e.target.closest('button'), j = $r('#rdJump');
+      if (t && (t.dataset.close != null || t.dataset.jgo != null || t.closest('.dkJ,.dkJMarks,.rdJTabs') || t.dataset.jb != null || t.dataset.jtk != null || t.dataset.jrk != null)) return; // כפתורים רגילים: Enter לוחץ עליהם כרגיל
+      e.preventDefault(); e.stopPropagation();
+      if (t && t.classList.contains('rdCell') && !t.classList.contains('on')) t.click();
+      const go = j.querySelector('[data-jgo]'); if (go) go.click();
+    });
     const q = $r('#rdQ');
     q.addEventListener('focus', () => { const d = sqDomOf(); if (d && sqOn()) sqReady(d).catch(() => {}); if (sqShared() && sqOn()) ['tanakh', 'mishnah', 'rambam', 'talmud', 'tur'].forEach((n, i) => setTimeout(() => sqReady(n, true).catch(() => {}), 150 * (i + 1))); }); // בשולחן העבודה: מחממים את כל התחומים (חיפוש בכל הספרים), בהדרגה // מתחילים לטעון את המסד כשנכנסים לתיבת החיפוש, לפני ההקלדה
     q.addEventListener('input', () => { updClear(); clearTimeout(qTimer); qTimer = setTimeout(renderDrop, 140); busy(q.value.trim()); if (!q.value && S.hl) { S.hl = ''; render(); } });
