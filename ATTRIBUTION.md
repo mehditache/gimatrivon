@@ -122,3 +122,10 @@ daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICEN
   `json/Tanakh/Rishonim on Tanakh/Rashi/Torah/Rashi on Genesis/Hebrew/Rashi Chumash, Metsudah Publications, 2009.json`,
   `json/Tanakh/Targum/Targum Jonathan/Prophets/Targum Jonathan on Amos/Hebrew/Mikraot Gedolot.json`
   (כולם תחת `Sefaria/database_export` ב-Hugging Face).
+
+## גופן סת״ם (רקע שולחן העבודה)
+
+- **Stam Sefarad CLM** מפרויקט [Culmus](https://culmus.sourceforge.io) (גרסה 0.140), © Yoram Gnat. רק 22 אותיות א–ת, בקובץ
+  `vendor/fonts/StamSefaradCLM-letters.woff2`.
+- **רישיון: GPL-2.0 עם חריג לגופנים** (font exception): הטמעת הגופן במסמך או באפליקציה אינה מחילה עליהם את ה-GPL.
+  נוסח הרישיון המלא: `vendor/fonts/StamSefaradCLM-LICENSE.txt`.

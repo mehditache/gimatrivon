@@ -332,3 +332,26 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 /* בורר הספר בלי חלון: בזמן שהמארח נטען הפקד מראה שהלחיצה נקלטה */
 .dkNav .rdWhere.busy{cursor:progress;animation:dkBusy 1s ease-in-out infinite}
 @keyframes dkBusy{50%{opacity:.55}}
+
+/* v4.6.22: רקע השולחן — לבן (כהה במראה לילה), אותיות א–ת בזהב בכתב סת״ם ספרדי, ובפינה השמאלית התחתונה כרטיס הלוגו ומידע האודות.
+   השכבה ראשונה ב-#dkDesk, מתחת לכל החלונות (z-index:0) ולא תופסת לחיצות */
+@font-face{font-family:"GimStam";src:url(vendor/fonts/StamSefaradCLM-letters.woff2) format("woff2");font-display:swap;unicode-range:U+05D0-05EA}
+body{--wp:#fff}
+:root[data-theme=dark] body{--wp:#0e0c09}
+.wpL{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;direction:rtl;user-select:none;
+  --g1:#e9cf86;--g2:#c49a3c;--g3:#8c6421;--wgold:linear-gradient(160deg,var(--g1) 0%,var(--g2) 45%,var(--g3) 100%);--wink:#5b4a2c;--wsoft:#9a8763;--whair:#d8c393;--wbg:#fff}
+:root[data-theme=dark] .wpL{--g1:#f6dd97;--g2:#d6ab4f;--g3:#a07a33;--wink:#d9c79f;--wsoft:#9c8b69;--whair:#5e4c2a;--wbg:#0e0c09}
+.wpGrid{position:absolute;inset:-20px;display:grid;grid-template-columns:repeat(8,1fr);align-content:space-evenly;justify-items:center;opacity:.2}
+:root[data-theme=dark] .wpGrid{opacity:.14}
+.wpGrid span,.wpLogo .h,.wpLogo .l{background:var(--wgold);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wpGrid span{font:120px/1.25 "GimStam","GimFrank","Frank Ruhl Libre",serif}
+.wpCard{position:absolute;left:44px;bottom:40px;display:flex;flex-direction:column;align-items:center;gap:16px;max-width:420px;padding:28px 34px 22px;border-radius:22px;background:color-mix(in srgb,var(--wbg) 82%,transparent);box-shadow:0 0 0 .5px var(--whair),0 18px 50px rgba(120,90,30,.12)}
+.wpLogo{display:flex;flex-direction:column;align-items:center;gap:8px;line-height:1}
+.wpLogo .h{font:700 48px/1 "GimFrank","Frank Ruhl Libre",serif;white-space:nowrap}
+.wpLogo .l,.wpL .la{font-family:Cambria,Caladea,Georgia,serif;direction:ltr;unicode-bidi:isolate}
+.wpLogo .l{font-size:20px;letter-spacing:.06em;white-space:nowrap}
+.wpLogo .l i{font-style:normal;color:var(--g2);-webkit-text-fill-color:var(--g2)}
+.wpAbout{color:var(--wink);font:12.5px/1.65 var(--ui);text-align:center}
+.wpAbout b{font-weight:700}
+.wpAbout .s{color:var(--wsoft)}
+@media (max-height:620px){.wpCard{display:none}}

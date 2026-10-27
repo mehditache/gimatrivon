@@ -18,6 +18,19 @@
   const EN = (() => { try { return localStorage.getItem('gimatrivonLang') === 'en'; } catch (e) { return false; } })();
   const T = (he, en) => EN ? en : he;
 
+  /* ---------- רקע השולחן (v4.6.22): לבן, אותיות א–ת בזהב בכתב סת״ם ספרדי, ובפינה כרטיס "תורה אחת · Torah.one" עם מידע האודות ---------- */
+  (() => {
+    const AB = 'אבגדהוזחטיכלמנסעפצקרשת', ver = ($('#dkVer').textContent || '').replace(/^v/, '');
+    const wp = document.createElement('div');
+    wp.className = 'wpL'; wp.setAttribute('aria-hidden', 'true');
+    wp.innerHTML = '<div class="wpGrid">' + Array.from({ length: 40 }, (_, i) => '<span>' + AB[i % 22] + '</span>').join('') + '</div>' +
+      '<div class="wpCard"><div class="wpLogo"><div class="h">תורה אחת</div><div class="l">Torah<i>.</i>one</div></div>' +
+      '<div class="wpAbout"><div><b>' + T('גימטריבון', 'Gimatrivon') + '</b>' + T(' <span class="la">(Gimatrivon)</span>', '') + (ver ? ' · ' + T('גרסה ', 'Version ') + ver : '') + '</div>' +
+      '<div>' + T('מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י, תרגומים ומשנה תורה לרמב״ם', 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi, Targumim and the Rambam\'s Mishneh Torah') + '</div>' +
+      '<div class="s">' + T('מפתח: ', 'Developer: ') + '<span class="la">Gad Zvi Mehditache</span> · ' + T('קנייני — כל הזכויות שמורות', 'Proprietary — All Rights Reserved') + '</div></div></div>';
+    desk.prepend(wp);
+  })();
+
   /* ---------- State ---------- */
   // D = { v, seq, act, z, last (חלון הקריאה האחרון שהיה פעיל), wins: [{ id, k:'gem'|'read', x, y, w, h, max, min, z, t, hist, hi, form }] }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) {} };
