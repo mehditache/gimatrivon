@@ -1425,6 +1425,8 @@ html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rd
 .zCols .zA,.zCols .zT,.zr{text-align:start;text-justify:auto}
 .rdPage .rdTxt.zCols .zA,.rdPage .rdTxt.zCols .zT,.rdPage .rdTxt .zr{text-align:start!important}
 /* זוהר: טקסט קטן ודחוס יותר בעמוד מול עמוד ובשני טורים */
-.rdPage.tal .zr,.rdPage.tal .zCols .zA,.rdPage.tal .zCols .zT{font-size:.8em}
+.rdPage.tal .zr{font-size:.92em}
+.rdPage.tal .zCols .zA,.rdPage.tal .zCols .zT{font-size:.8em}
+.rdPage.tal .rdCm.zSul{font-size:.76em}
 .rdPage.tal .zr,.rdPage.tal .zr p,.rdPage.tal .zCols p,.rdPage.tal .zCols .zA{line-height:1.5}
 .rdPage.tal .zCols+.rdSp,.rdPage.tal .zSul{margin-top:.4em}

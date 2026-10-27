@@ -1215,7 +1215,7 @@
     return (open ? '\u0003' : '') + body + (bold ? '\u0004' : '');
   }
   function zdPages(k, j, g, probe, a, ents, two) {
-    const N = a[0].length, pages = [], colW = g.zc ? (g.pw - 70) / 2 : g.pw - 60, CH = Math.max(5, Math.round(1.5 * colW / (g.fs * 0.8 * 3.2)));
+    const N = a[0].length, pages = [], colW = g.zc ? (g.pw - 70) / 2 : g.pw - 60, CH = Math.max(4, Math.round((S.zsul === '1' ? 0.75 : 1.5) * colW / (g.fs * (g.zc ? 0.8 : 0.92) * 3.2))); // עם הסולם: קטעים קטנים יותר, כדי שהעמוד יתמלא
     const units = []; // כל פסקה נחתכת לקטעים של כשורה וחצי: שורה מול שורה בלי רווחים גדולים, והעמוד מתמלא עד סופו
     for (let s = 0; s < N; s++) { const nw = a[0][s].split(' ').length, m = Math.max(1, Math.round(nw / CH)); for (let x = 0; x < m; x++) units.push({ s, f0: x / m, f1: x + 1 < m ? (x + 1) / m : 1 }); }
     const mk = (list) => {
