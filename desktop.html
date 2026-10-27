@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>גימטריבון</title>
 <script>try{if(localStorage.getItem('gimatrivonTheme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
-<link rel="stylesheet" href="styles.css?v=4.6.30">
-<link rel="stylesheet" href="desktop.css?v=4.6.30">
+<link rel="stylesheet" href="styles.css?v=4.6.31">
+<link rel="stylesheet" href="desktop.css?v=4.6.31">
 </head>
 <!-- שולחן העבודה (v4.0.0): בנר קבוע, חלונות (גימטריה אחד, עד 5 חלונות קריאה) ושורת משימות. כל חלון הוא
      index.html?embed=… בתוך iframe — מסכי הגימטריה והקריאה עצמם לא משתנים. הלוגיקה ב-desktop.js. -->
@@ -14,7 +14,7 @@
 <header class="top dkTop" id="dkBan">
   <div class="brand"><h1>גימטריבון</h1><span class="ver" id="dkVer"></span></div>
   <div class="reader rdTop dkRd">
-    <div class="rdNav dkNav" id="dkNav"></div>
+    <div class="dkWg" id="dkWg" hidden></div>
     <div class="rdOmni dkOmni">
       <div class="rdSearch dkSearch" id="dkSearch">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -23,8 +23,8 @@
         <button type="button" class="dkScope" id="dkScope" title="טווח החיפוש">בספר</button>
       </div>
     </div>
-    <div class="dkWg" id="dkWg" hidden></div>
     <div class="dkScMenu" id="dkScMenu" hidden></div>
+    <div class="rdNav dkNav" id="dkNav"></div>
     <div class="rdTools dkTools" id="dkTools"></div>
     <div class="dkGemTools" id="dkGemTools" hidden>
       <button type="button" class="tourBtn" data-fwd="#startTour" title="הפעלת סיור מודרך קצר באפליקציה">? סיור מודרך</button>
@@ -56,6 +56,6 @@
 <div class="dkToast" id="dkToast" hidden></div>
 <script src="sqlite-search.js"></script>
 <script src="sqpool.js"></script>
-<script src="desktop.js?v=4.6.30"></script>
+<script src="desktop.js?v=4.6.31"></script>
 </body>
 </html>

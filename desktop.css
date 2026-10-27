@@ -416,3 +416,7 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 /* v4.6.30: בתפריט "מה לכלול" שורה מסומנת לא מקבלת רקע זהב — התיבה מסמנת */
 .dkScMenu button.cb.on,:root[data-theme=dark] .dkScMenu button.cb.on{background:none!important;font-weight:inherit;color:var(--tx)}
 .dkScMenu button.cb.on:hover{background:var(--pgTint)!important}
+
+/* v4.6.30: סדר הבנר מימין לשמאל — מותג, פקדי החלון (כשהוא מוגדל), תיבת החיפוש, בורר הספר (קבוע, צמוד להדפסה ולכפתורים שמשמאלו), הכלים */
+.dkNav{margin-inline-start:auto}
+.dkTools,.dkGemTools,.dkTools:not(:empty)+.dkGemTools{margin-inline-start:0}
