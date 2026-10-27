@@ -412,6 +412,10 @@
         .then(ok => { if (!ok) return; D.wins.filter(w => w.k !== 'gem').forEach(w => closeWin(w.id)); const g = gemW(); g.max = true; focusWin(g.id); });
       return;
     }
+    if (kind === 'minall') { // כל החלונות מזוערים לשורת המשימות (המצב נשמר; פתיחה מחדש מהשבב)
+      D.wins.forEach(w => { if (!w.min) { w.min = true; w.at = Date.now(); } }); D.act = '';
+      D.wins.forEach(paint); banner(); syncUrl(); taskbar(); saveSoon(); return;
+    }
     if (kind === 'stage') { D.stage = true; D.wins.forEach(w => { w.max = false; paint(w); }); taskbar(); saveSoon(); return; }
     D.stage = false;
     vis.forEach((w, i) => {
