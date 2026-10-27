@@ -323,7 +323,7 @@
       w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: scFs(sc), t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
       if (spare && spare.ready) { // מאמצים את החלון המחומם
         const s = spare; spare = null;
-        Object.assign(s.w, { x: w.x, y: w.y, w: w.w, h: w.h, min: false, z: w.z, q: qv, fs: w.fs, at: Date.now() });
+        Object.assign(s.w, { x: w.x, y: w.y, w: w.w, h: w.h, min: false, z: w.z, q: qv, fs: w.fs, t: w.t, count: null, at: Date.now() });
         w = s.w; D.wins.push(w); paint(w); attach(w, s.fr);
         try { s.fr.contentWindow.postMessage({ gtDesk: 'go', wid: w.id, q: qv, f: w.fs }, location.origin); } catch (e) {}
       } else { D.wins.push(w); build(w); }

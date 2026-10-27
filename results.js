@@ -19,6 +19,7 @@
   let R = null, me = null, idx = null, q = Q0, extra = FS.extra || '';
   let SC = FS.scope && FS.scope.sel ? FS.scope : null; // ההיקף מהרשימה הנפתחת; null = כל הספרים
   const sel = new Set(FS.sel || []), srcOff = new Set(FS.srcOff || []);
+  let none = !!FS.none; // 'נקה': שום ספר לא מסומן (בלי סינון, sel ריק = הכול)
   let sort = FS.sort === 'books' ? 'books' : 'rel', exp = new Set(FS.exp || []);
   let rows = [], off = null, order = null, shown = 0, page = Math.max(0, +FS.pg || 0), wantPg = page, pages = 1;
 
@@ -33,13 +34,13 @@
   function setCfg(m) {
     WID = m.wid; Q0 = q = m.q || ''; FS = m.f || {}; extra = FS.extra || '';
     SC = FS.scope && FS.scope.sel ? FS.scope : null;
-    sel.clear(); (FS.sel || []).forEach(k => sel.add(k)); srcOff.clear(); (FS.srcOff || []).forEach(k => srcOff.add(k));
+    none = !!FS.none; sel.clear(); (FS.sel || []).forEach(k => sel.add(k)); srcOff.clear(); (FS.srcOff || []).forEach(k => srcOff.add(k));
     sort = FS.sort === 'books' ? 'books' : 'rel'; exp = new Set(FS.exp || []); page = wantPg = Math.max(0, +FS.pg || 0);
     $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
   }
   addEventListener('message', e => { const m = e.data; if (!m || m.gtDesk !== 'go' || e.source !== parent) return; const was = goSeen; setCfg(m); goSeen = true; if (pend) { pend = false; run(); } else if (was && R && R.ready()) run(); });
 
-  const state = () => post({ type: 'state', state: { sel: [...sel], scope: SC, srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
+  const state = () => post({ type: 'state', state: { sel: [...sel], none, scope: SC, srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
 
   // ---- התחלה ----
   const bootTry = () => { R = window.GimResults; if (!R || !R.ready()) return false; clearInterval(boot); if (goSeen) run(); else pend = true; return true; };
@@ -75,6 +76,7 @@
   let RES_D = null;
   function passes(i) {
     if (srcOff.has(idx.dom[i] + ':' + idx.src[i])) return false;
+    if (none) return false;
     if (SC && SC.ord && sel.size === SC.sel.length && SC.sel.every(k => sel.has(k)) && (idx.ord[i] < SC.ord[0] || idx.ord[i] > SC.ord[1])) return false; // פרק / פרשה
     if (!sel.size) return true;
     const d = idx.dom[i], bi = idx.bk[i];
@@ -106,15 +108,17 @@
     const from = shown ? page * PG + 1 : 0, to = Math.min(shown, (page + 1) * PG);
     $('#rsFoot').textContent = (shown.toLocaleString('he')) + ' תוצאות' + (shown < idx.total && !sel.size && !srcOff.size && idx.total > idx.n ? ' (מוצגות ' + idx.n.toLocaleString('he') + ' הראשונות)' : '') + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '') + ' · לחיצה פותחת בחלון קריאה (Ctrl+לחיצה: בחלון חדש)';
     $('#rsSb').textContent = shown.toLocaleString('he') + ' תוצאות' + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '');
+    if (none) $('#rsFoot').textContent = 'לא נבחר שום ספר — לחצו "הכול" בלוח הסינון';
     pager(from, to); paint(true);
   }
+  const AR_P = SVG('<path d="m9 5 7 7-7 7"/>'), AR_N = SVG('<path d="m15 5-7 7 7 7"/>');
   function pager(from, to) {
     const pg = $('#rsPg'); pg.hidden = pages <= 1;
     if (pages <= 1) return;
-    const b = (p, t, dis, title) => '<button type="button" data-pg="' + p + '"' + (dis ? ' disabled' : '') + ' title="' + title + '">' + t + '</button>';
-    pg.innerHTML = b(0, 'הראשון', page === 0, 'לדף הראשון') + b(page - 1, 'הקודם', page === 0, 'הדף הקודם') +
+    const b = (p, t, dis, title, cls) => '<button type="button" data-pg="' + p + '"' + (cls ? ' class="' + cls + '"' : '') + (dis ? ' disabled' : '') + ' title="' + title + '" aria-label="' + title + '">' + t + '</button>';
+    pg.innerHTML = b(0, 'הראשון', page === 0, 'לדף הראשון') + b(page - 1, AR_P, page === 0, 'הדף הקודם', 'rsAr') +
       '<span class="rsPn">תוצאות ' + from.toLocaleString('he') + '–' + to.toLocaleString('he') + ' · דף <input type="number" id="rsPgIn" min="1" max="' + pages + '" value="' + (page + 1) + '"> מתוך ' + pages.toLocaleString('he') + '</span>' +
-      b(page + 1, 'הבא', page >= pages - 1, 'הדף הבא') + b(pages - 1, 'האחרון', page >= pages - 1, 'לדף האחרון');
+      b(page + 1, AR_N, page >= pages - 1, 'הדף הבא', 'rsAr') + b(pages - 1, 'האחרון', page >= pages - 1, 'לדף האחרון');
   }
   function goPage(p) { p = Math.max(0, Math.min(pages - 1, p | 0)); if (p === page) return; page = wantPg = p; showPage(); state(); }
   $('#rsPg').addEventListener('click', e => { const b = e.target.closest('button[data-pg]'); if (b && !b.disabled) goPage(+b.dataset.pg); });
@@ -134,19 +138,19 @@
     }
     const tree = {}; // d → g → [bi]
     Object.keys(bc).forEach(k => { const [d, bi] = k.split(':').map(Number), g = gOf(d, bi); ((tree[d] = tree[d] || {})[g] = tree[d][g] || []).push(bi); });
-    const mark = (on, half) => '<span class="rsCb' + (on ? ' on' : half ? ' half' : '') + '">' + (on ? I_CHK : half ? I_MIN : '') + '</span>';
-    let h = '<h4><span>סינון לפי ספר</span>' + (sel.size ? '<a data-clr="sel">נקה</a>' : '') + '</h4>';
+    const allOn = !sel.size && !none, mark = (on, half) => '<span class="rsCb' + (on ? ' on' : half ? ' half' : '') + '">' + (on ? I_CHK : half ? I_MIN : '') + '</span>';
+    let h = '<h4><span>סינון לפי ספר</span><span class="rsQ"><a data-clr="sel" class="' + (allOn ? 'dim' : '') + '">הכול</a><a data-clr="selNone" class="' + (none ? 'dim' : '') + '">נקה</a></span></h4>';
     Object.keys(tree).map(Number).sort((a, b) => a - b).forEach(d => {
-      const dk = 'd:' + d, dOn = sel.has(dk), dOpen = exp.has(dk), childSel = [...sel].some(x => x.startsWith('g:' + d + ':') || x.startsWith('b:' + d + ':'));
+      const dk = 'd:' + d, dOn = allOn || sel.has(dk), dOpen = exp.has(dk), childSel = [...sel].some(x => x.startsWith('g:' + d + ':') || x.startsWith('b:' + d + ':'));
       h += '<div class="rsFi l1' + (dOn ? ' on' : '') + '" data-k="' + dk + '"><span class="rsTg" data-t="' + dk + '">' + (dOpen ? I_DN : I_BK) + '</span>' + mark(dOn, childSel) + '<span class="rsNm">' + esc(R.DL[R.DOMS[d]]) + '</span><span class="rsN">' + dc[d].toLocaleString('he') + '</span></div>';
       if (!dOpen) return;
       const groups = Object.keys(tree[d]);
       groups.forEach(g => {
-        const gk = 'g:' + d + ':' + g, grp = !!g, gOn = sel.has(gk), gOpen = !grp || exp.has(gk), gChild = [...sel].some(x => tree[d][g].some(bi => x === 'b:' + d + ':' + bi));
+        const gk = 'g:' + d + ':' + g, grp = !!g, gOn = allOn || sel.has(gk), gOpen = !grp || exp.has(gk), gChild = [...sel].some(x => tree[d][g].some(bi => x === 'b:' + d + ':' + bi));
         if (grp) h += '<div class="rsFi l2' + (gOn ? ' on' : '') + '" data-k="' + gk + '"><span class="rsTg" data-t="' + gk + '">' + (gOpen ? I_DN : I_BK) + '</span>' + mark(gOn, gChild) + '<span class="rsNm">' + esc(g) + '</span><span class="rsN">' + gcn[d + ':' + g].toLocaleString('he') + '</span></div>';
         if (!gOpen) return;
         tree[d][g].sort((a, b) => a - b).forEach(bi => {
-          const bk = 'b:' + d + ':' + bi, on = sel.has(bk);
+          const bk = 'b:' + d + ':' + bi, on = allOn || sel.has(bk);
           h += '<div class="rsFi ' + (grp ? 'l3' : 'l2') + (on ? ' on' : '') + '" data-k="' + bk + '">' + mark(on, false) + '<span class="rsNm">' + esc(R.book(R.DOMS[d], bi).name) + '</span><span class="rsN">' + bc[d + ':' + bi].toLocaleString('he') + '</span></div>';
         });
       });
@@ -154,7 +158,7 @@
     // מקורות (נוסח / מפרשים / תרגום)
     const sc = {}; for (let i = 0; i < idx.n; i++) { const k = idx.dom[i] + ':' + idx.src[i]; sc[k] = (sc[k] || 0) + 1; }
     const byName = {}; Object.keys(sc).forEach(k => { const [d, s] = k.split(':').map(Number), nm = R.SRC[R.DOMS[d]][s]; (byName[nm] = byName[nm] || []).push(k); });
-    h += '<h4 style="margin-top:14px"><span>מקורות</span>' + (srcOff.size ? '<a data-clr="src">הכול</a>' : '') + '</h4>';
+    h += '<h4 style="margin-top:14px"><span>מקורות</span><span class="rsQ"><a data-clr="src" class="' + (!srcOff.size ? 'dim' : '') + '">הכול</a><a data-clr="srcNone" class="' + (Object.keys(sc).every(k => srcOff.has(k)) ? 'dim' : '') + '">נקה</a></span></h4>';
     Object.keys(byName).forEach(nm => {
       const ks = byName[nm], off0 = ks.every(k => srcOff.has(k)), total = ks.reduce((a, k) => a + sc[k], 0);
       h += '<div class="rsFi l2' + (off0 ? '' : ' on') + '" data-s="' + ks.join(',') + '">' + mark(!off0, false) + '<span class="rsNm">' + esc(nm) + '</span><span class="rsN">' + total.toLocaleString('he') + '</span></div>';
@@ -166,11 +170,17 @@
   }
   $('#rsSide').addEventListener('click', e => {
     if (e.target.closest('[data-retry]')) { e.preventDefault(); return run(); }
-    const clr = e.target.closest('[data-clr]'); if (clr) { if (clr.dataset.clr === 'sel') sel.clear(); else srcOff.clear(); return refilter(); }
+    const clr = e.target.closest('[data-clr]');
+    if (clr) {
+      const c = clr.dataset.clr;
+      if (c === 'sel') { sel.clear(); none = false; } else if (c === 'selNone') { sel.clear(); none = true; } else if (c === 'src') srcOff.clear();
+      else { for (let i = 0; i < idx.n; i++) srcOff.add(idx.dom[i] + ':' + idx.src[i]); }
+      return refilter();
+    }
     const t = e.target.closest('[data-t]'); if (t) { const k = t.dataset.t; exp.has(k) ? exp.delete(k) : exp.add(k); return side(), state(); }
     const f = e.target.closest('.rsFi'); if (!f) return;
     if (f.dataset.s) { const ks = f.dataset.s.split(','), off0 = ks.every(k => srcOff.has(k)); ks.forEach(k => off0 ? srcOff.delete(k) : srcOff.add(k)); return refilter(); }
-    const k = f.dataset.k; sel.has(k) ? sel.delete(k) : sel.add(k); refilter();
+    const k = f.dataset.k; if (sel.has(k)) { sel.delete(k); if (!sel.size) none = true; } else { none = false; sel.add(k); } refilter();
   });
   function chips() {
     const c = [];
@@ -190,11 +200,11 @@
     const el = $('#rsScope'); el.hidden = !SC;
     if (!SC) return;
     const same = sel.size === SC.sel.length && SC.sel.every(k => sel.has(k));
-    el.innerHTML = '<button data-sc="1" class="' + (same ? 'on' : '') + '">' + esc(SC.name) + '</button><button data-sc="0" class="' + (!sel.size ? 'on' : '') + '">בכל הספרים</button>';
+    el.innerHTML = '<button data-sc="1" class="' + (same ? 'on' : '') + '">' + esc(SC.name) + '</button><button data-sc="0" class="' + (!sel.size && !none ? 'on' : '') + '">בכל הספרים</button>';
   }
   $('#rsScope').addEventListener('click', e => {
     const b = e.target.closest('[data-sc]'); if (!b) return;
-    sel.clear(); if (b.dataset.sc === '1') SC.sel.forEach(k => sel.add(k));
+    none = false; sel.clear(); if (b.dataset.sc === '1') SC.sel.forEach(k => sel.add(k));
     refilter();
   });
   scopeBar();

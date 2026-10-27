@@ -1352,3 +1352,16 @@ html.gtResults .rsList,html.gtResults .rsSide{scrollbar-width:thin;scrollbar-col
 html.gtResults .rsBad .rsN{color:var(--mu)}
 html.gtResults .rsBad a{color:var(--gold)}
 html.gtResults .rsBadWhy{padding:0 12px 6px;font:11px/1.4 var(--ui);color:var(--mu);direction:ltr;text-align:right;word-break:break-all}
+
+/* חלון התוצאות (v4.6.0): הכול / נקה קטנים לכל עץ, תיבת חיפוש רחבה, דפדוף ממורכז עם חיצים */
+html.gtResults .rsSide h4{align-items:center}
+html.gtResults .rsQ{display:flex;gap:2px}
+html.gtResults .rsSide h4 .rsQ a{font:600 11.5px var(--ui);padding:2px 8px;border-radius:7px;color:var(--gold);letter-spacing:0}
+html.gtResults .rsSide h4 .rsQ a:hover{background:color-mix(in srgb,var(--gold) 14%,transparent)}
+html.gtResults .rsSide h4 .rsQ a.dim{opacity:.4;pointer-events:none}
+html.gtResults .rsScope{order:1;margin-inline-end:0}
+html.gtResults .rsIn{order:2;flex:1 1 auto;min-width:200px}
+html.gtResults .rsSort{order:3;margin-inline-end:0}
+html.gtResults .rsPg{justify-content:center}
+html.gtResults .rsPg button.rsAr{width:34px;padding:0;display:grid;place-items:center;font-size:16px}
+html.gtResults .rsPg button.rsAr svg{width:18px;height:18px}
