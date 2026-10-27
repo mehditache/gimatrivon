@@ -303,3 +303,6 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 #dkSqDev .m i{background:#3ecf6e}#dkSqDev .l i{background:#f0a630}#dkSqDev .f i{background:#ef5350}
 #dkSqDev tr.x{opacity:.45}
 #dkSqDev tr{transition:background .6s}#dkSqDev tr.hit{background:rgba(240,166,48,.4);transition:none}
+/* v4.6.4: מצב פיתוח — ספירה לאחור לשינה על כל ריבוע בפס (desktop.js, sleepTick) */
+.dkChip .cd{position:absolute;bottom:2px;inset-inline:2px;text-align:center;font:600 9.5px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#fff;background:rgba(20,22,28,.78);border-radius:5px;padding:0 2px;pointer-events:none}
+.dkChip .cd.a{background:rgba(62,160,100,.85)}.dkChip .cd.s{background:#d9822b}.dkChip .cd.z{background:rgba(110,114,122,.85)}

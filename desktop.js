@@ -148,20 +148,41 @@
   /* ---------- שינה אוטומטית ---------- */
   // חלון שלא היה פעיל D.sl דקות (ולא נוגעים בו) משחרר את ה-iframe ונשאר במקומו עם "לחיצה להמשך"; המצב נשמר כמו במזעור. חלון הגימטריה לבדו
   // תופס כ-400MB (אינדקס האותיות), וכל חלון קריאה כ-90MB. החלון הפעיל וחלון הקריאה שהבנר משקף אף פעם לא ישנים.
-  // הגימטריה (כבדה) ישנה אחרי slMin דקות, חלונות קריאה ותוצאות אחרי פי שניים (ברירת מחדל 10 ו-20). מזעור לא משחרר את החלון: הוא ממשיך להחזיק את מצבו
-  // ונפתח מיד, וסופר את אותו זמן מרגע המזעור.
-  const SL_OPTS = [0, 5, 10, 30], slMin = () => D.sl == null ? 10 : D.sl, slFor = w => slMin() * (w.k === 'gem' ? 1 : 2);
+  // חלון גלוי שלא פעיל: הגימטריה ישנה אחרי slMin דקות, חלונות קריאה ותוצאות אחרי פי שניים (ברירת מחדל 10 ו-20). חלון ממוזער (כל סוג): אחרי slMin דקות
+  // מרגע המזעור או מהשימוש האחרון בו, לא קודם (v4.6.4). מזעור לא משחרר את החלון: הוא ממשיך להחזיק את מצבו ונפתח מיד, עד שהזמן נגמר.
+  const SL_OPTS = [0, 5, 10, 30], slMin = () => D.sl == null ? 10 : D.sl, slFor = w => slMin() * (w.min || w.k === 'gem' ? 1 : 2);
+  // כמה מילישניות נשארו לחלון עד השינה; null = לא ישן (כבוי, או החלון הפעיל / הקורא שהבנר משקף / עם פוקוס); undefined = כבר ישן
+  const sleepLeft = w => {
+    const f = F.get(w.id); if (!f || !f.fr) return undefined;
+    if (!slMin() || w.id === D.act || (w.id === D.last && !w.min) || (!w.min && document.activeElement === f.fr)) return null;
+    return slFor(w) * 60000 - (Date.now() - (w.at || Date.now()));
+  };
   const slLabel = () => slMin() ? T('שינה אוטומטית: גימטריה ' + slMin() + ' · קריאה ' + slMin() * 2 + ' דק׳', 'Auto-sleep: gematria ' + slMin() + ' · reader ' + slMin() * 2 + ' min') : T('שינה אוטומטית: כבויה', 'Auto-sleep: off');
   function autoSleep() {
     if (!slMin()) return; const now = Date.now();
     D.wins.forEach(w => {
-      const f = F.get(w.id); if (!f || !f.fr || w.id === D.act || w.id === D.last) return;
-      if (!w.min && document.activeElement === f.fr) { w.at = now; return; }
+      const f = F.get(w.id); if (!f || !f.fr) return;
+      if (!w.min && document.activeElement === f.fr) w.at = now;
       if (!w.at) w.at = now;
-      if (now - w.at > slFor(w) * 60000) { sleepFrame(w); taskbar(); }
+      const left = sleepLeft(w);
+      if (left != null && left <= 0) { sleepFrame(w); taskbar(); }
     });
   }
-  setInterval(autoSleep, 30000);
+  setInterval(autoSleep, 5000);
+  // מצב פיתוח: ספירה לאחור לשינה על כל ריבוע בפס (מתעדכנת כל שנייה; בלי מצב פיתוח הריבועים נקיים)
+  const devOn = () => { try { return localStorage.getItem('gimatrivonDev') === '1'; } catch (e) { return false; } };
+  function sleepTick() {
+    const dev = devOn();
+    task.querySelectorAll('.dkChip[data-w]').forEach(c => {
+      let el = c.querySelector('.cd'); if (!dev) { if (el) el.remove(); return; }
+      if (!el) { el = document.createElement('span'); el.className = 'cd'; c.appendChild(el); }
+      const w = W(c.dataset.w), l = w ? sleepLeft(w) : undefined;
+      el.className = 'cd' + (l === undefined ? ' z' : l == null ? ' a' : l < 60000 ? ' s' : '');
+      el.textContent = l === undefined ? T('ישן', 'asleep') : l == null ? (slMin() ? T('פעיל', 'active') : T('ללא שינה', 'no sleep')) : Math.floor(Math.max(0, l) / 60000) + ':' + String(Math.floor(Math.max(0, l) / 1000) % 60).padStart(2, '0');
+      el.title = T('זמן עד שחרור מהזיכרון', 'Time until released from memory');
+    });
+  }
+  setInterval(sleepTick, 1000); addEventListener('gimDevSync', sleepTick); addEventListener('storage', e => { if (e.key === 'gimatrivonDev') sleepTick(); });
   // שדות הגימטריה (שני הצדדים, שיטות, מסננים): כל input/textarea/select עם id, ערך ומצב סימון
   function snapshot(w) {
     const f = F.get(w.id); if (!f || !f.doc || w.k !== 'gem') return;
@@ -417,7 +438,7 @@
     const st = stageOn();
     D.wins.slice().sort((a, b) => (a.k === 'gem' ? -1 : b.k === 'gem' ? 1 : 0)).forEach(w => {
       if (st && D.act === w.id && w.k !== 'gem') return; // במה: החלון הפעיל במרכז, לא בפס; הגימטריה תמיד בפס
-      const c = document.createElement('button'); c.type = 'button';
+      const c = document.createElement('button'); c.type = 'button'; c.dataset.w = w.id;
       c.className = 'dkChip' + (st ? ' th' : '') + (w.min ? ' min' : '') + ((!st || w.k === 'gem') && D.act === w.id && !w.min ? ' on' : '');
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
       const mini = w.k === 'gem' ? '<i class="mg"><u></u><u></u><u></u><u></u></i>' : w.k === 'search' ? '<i class="ml"><s></s><s></s><s></s><s></s></i>' : '<i class="mp"><em></em><s></s><s></s><s></s></i>';
@@ -431,6 +452,7 @@
       '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + T('חלון קריאה חדש', 'New reader window') + '"><span class="ic">' + SV(GI.plus) + '</span><span class="t">' + T('קריאה', 'Reader') + '</span></button>' +
       '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">' + SV(GI.arr) + '</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkArr [data-arr="stage"]').classList.toggle('cur', stageOn()); ['cascade', 'side', 'grid'].forEach(k => $('#dkArr [data-arr="' + k + '"]').classList.remove('cur'));
+    sleepTick();
     $('#dkAdd').onclick = () => { const l = W(D.last); openRead(l ? curHash(l) : '#read', true); };
     $('#dkArrBtn').onclick = e => { e.stopPropagation(); const sl = $('#dkArr [data-sl]'); if (sl) sl.lastChild.textContent = slLabel(); $('#dkArr').hidden = !$('#dkArr').hidden; };
   }
@@ -801,7 +823,7 @@
   {
     const DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור' };
     let el = null, tm = 0, NET = {}; const prev = {};
-    const on = () => { try { return localStorage.getItem('gimatrivonDev') === '1'; } catch (e) { return false; } };
+    const on = devOn;
     const paint = () => {
       if (!el || !window.GimSqPool) return;
       const by = {}; window.GimSqPool.stats().forEach(x => { by[x[0]] = x; });
