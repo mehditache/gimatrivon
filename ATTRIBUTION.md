@@ -129,3 +129,8 @@ daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICEN
   `vendor/fonts/StamSefaradCLM-letters.woff2`.
 - **רישיון: GPL-2.0 עם חריג לגופנים** (font exception): הטמעת הגופן במסמך או באפליקציה אינה מחילה עליהם את ה-GPL.
   נוסח הרישיון המלא: `vendor/fonts/StamSefaradCLM-LICENSE.txt`.
+
+## גופן לטיני של הלוגו ("TORAH.ONE")
+
+- **Cormorant Garamond Bold** (© The Cormorant Project Authors), רק האותיות T O R A H N E והנקודה, בקובץ `vendor/fonts/CormorantGaramond-700-torahone.woff2`.
+- **רישיון: SIL Open Font License 1.1.** נוסח הרישיון: `vendor/fonts/CormorantGaramond-OFL.txt`.

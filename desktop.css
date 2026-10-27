@@ -420,3 +420,14 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 /* v4.6.30: סדר הבנר מימין לשמאל — מותג, פקדי החלון (כשהוא מוגדל), תיבת החיפוש, בורר הספר (קבוע, צמוד להדפסה ולכפתורים שמשמאלו), הכלים */
 .dkNav{margin-inline-start:auto}
 .dkTools,.dkGemTools,.dkTools:not(:empty)+.dkGemTools{margin-inline-start:0}
+
+/* v4.6.32: לוגו "תורה אחת · torah.one" בבנר (קנבס, לוח 23 א); "גימטריבון" קטן עבר לריבוע הגימטריה. אלמנטים שאינם span, כי ל-.brand span יש גודל וצבע משלו */
+@font-face{font-family:"GimLat";src:url(vendor/fonts/CormorantGaramond-700-torahone.woff2) format("woff2");font-weight:700;font-display:swap;unicode-range:U+0041-005A,U+002E}
+.dkTop .brand{width:auto;min-width:0}
+.dkTop .brand h1.dkLogo{display:flex;flex-direction:column;align-items:center;gap:3px;margin:0;padding:0;font-size:26px!important;line-height:1!important;background:none!important;color:inherit!important;-webkit-background-clip:border-box;background-clip:border-box;font-family:inherit!important}
+.dkLogo b{font:400 1em/1 "GimStam",serif;padding-bottom:1px;background:var(--bkG);-webkit-background-clip:text;background-clip:text;color:transparent}
+.dkLogo i{display:block;width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--bk2),transparent)}
+.dkLogo em{font:700 .31em/1 "GimLat","Cormorant Garamond",serif;font-style:normal;letter-spacing:.22em;padding-inline-start:.22em;direction:ltr;color:var(--bk3)}
+:root[data-theme=dark] .dkLogo em{color:var(--bk1)}
+.thC .gvT{position:absolute;inset:0;display:grid;place-items:center;font:700 14px/1.2 "GimFrank",serif;background:linear-gradient(160deg,#e9cf86,#c49a3c 45%,#8c6421);-webkit-background-clip:text;background-clip:text;color:transparent}
+:root[data-theme=dark] .thC .gvT{background-image:linear-gradient(160deg,#f6dd97,#d6ab4f 45%,#a07a33)}
