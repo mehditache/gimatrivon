@@ -870,6 +870,12 @@
     try { localStorage.setItem('gimatrivonTheme', on ? 'dark' : 'light'); } catch (e) {}
     F.forEach(themeTo); if (H) themeTo(H);
   });
+  // מראה שהוחלף מתוך חלון (תפריט ⋯ של החלון) נשמר שם ב-localStorage: מעדכנים לפיו את השולחן ואת שאר החלונות
+  addEventListener('storage', e => {
+    if (e.key !== 'gimatrivonTheme') return;
+    const on = e.newValue === 'dark', c = $('#dkTheme');
+    if (c.checked !== on) { c.checked = on; c.dispatchEvent(new Event('change')); }
+  });
   $('#dkLang').textContent = EN ? 'עב' : 'EN';
   $('#dkLang').onclick = () => { D.wins.forEach(snapshot); save(); try { localStorage.setItem('gimatrivonLang', EN ? 'he' : 'en'); } catch (e) {} location.reload(); };
   if (EN) { document.documentElement.lang = 'en'; q.placeholder = 'Search, or jump: "Exodus 12 2"'; const tb = $('#dkGemTools').firstElementChild; tb.textContent = '? Guided tour'; tb.title = 'Start a short guided tour of the app'; }
