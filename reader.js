@@ -443,7 +443,7 @@
     'קטן': 'small', 'רגיל': 'normal', 'גדול': 'large', 'גדול מאוד': 'extra large', 'טקסט הרמב״ם עם ניקוד': 'Rambam text with vowel points', 'טקסט הרמב״ם בלי ניקוד, כמו במהדורת פרנקל': 'Rambam text without vowel points, as in the Frankel edition',
     'הדפסת שני העמודים הפתוחים בלבד': 'Print only the two open pages', 'הדפסת הפרק כולו': 'Print the whole chapter', 'הדפסה בצבע, עם רקע נייר': 'Print in color, with the paper tone', 'הדפסה בשחור-לבן על רקע לבן': 'Print in black & white on white',
     'פתיחת חלון ההדפסה (שם אפשר גם לשמור כ-PDF)': 'Open the print dialog (you can also save as PDF there)', 'רשימת הספרים': 'Book list', 'בחירת': 'Choose',
-    'זוהר': 'Zohar', 'חלק': 'Volume', 'פסקה': 'Paragraph', 'הסולם': 'Sulam', 'דף מול תרגום': 'Page & translation', 'זוהר והסולם': 'Zohar & Sulam', 'בעמוד השמאלי': 'On the left page', 'מתחת לפסקאות': 'Below the paragraphs',
+    'זוהר': 'Zohar', 'פריסה': 'Layout', 'ספר פתוח': 'Open book', 'ארמית בעמוד ימין, תרגום בשמאל': 'Aramaic on the right page, translation on the left', 'שני טורים': 'Two columns', 'בעמוד אחד, שורה מול שורה': 'On one page, line by line', 'מול הארמית': 'Opposite the Aramaic', 'ארמית': 'Aramaic', 'חלק': 'Volume', 'פסקה': 'Paragraph', 'הסולם': 'Sulam', 'דף מול תרגום': 'Page & translation', 'זוהר והסולם': 'Zohar & Sulam', 'בעמוד השמאלי': 'On the left page', 'מתחת לפסקאות': 'Below the paragraphs',
     'ביאור הסולם': 'Sulam commentary', 'לחצו על פסקה בזוהר כדי לראות את התרגום והסולם שלה.': 'Click a paragraph of the Zohar to see its translation and Sulam commentary.', 'העמודים לפי דפוס וילנא.': 'Pages follow the Vilna edition.',
     'המשך הפסקה מהעמוד הקודם': 'Continued from the previous page', 'הפרשה מתחילה בעמוד הבא': 'The portion begins on the next page', 'אין ביאור לפסקאות אלה': 'No commentary on these paragraphs', 'אין תרגום לפסקאות אלה': 'No translation for these paragraphs',
     'אין תרגום או ביאור לפסקה זו': 'No translation or commentary on this paragraph', 'הפסקה הקודמת': 'Previous paragraph', 'הפסקה הבאה': 'Next paragraph', 'לא ניתן לטעון את הפרשה.': 'Could not load the portion.',
@@ -472,11 +472,11 @@
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
   // rview = בטור: צורת הדף (daf) או טור ומפרשים (study); rOff = מפרשים מוסתרים בטור ('y' בית יוסף, 'c' ב״ח)
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zoff: [] };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zoff: [] };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; if (S.zside !== 'r') S.zside = 't'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book';
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zoff: S.zoff })); } catch (e) {} syncHash(); };
+  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; if (S.zside !== 'r') S.zside = 't'; if (S.zlay !== 'cols') S.zlay = 'spread'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book';
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zoff: S.zoff })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
   const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
@@ -571,12 +571,13 @@
 
   function geometry() {
     const desk = $r('#rdDesk'), W = desk.clientWidth, H = desk.clientHeight;
-    const narrow = W < 600, two = W >= 1000;
-    const pw = two ? Math.min(680, Math.floor((W - 140) / 2)) : Math.min(760, W - (narrow ? 12 : 120));
+    const zc = isTal() && isZ() && S.tview === 'daf' && S.zlay === 'cols' && W >= 760; // זוהר בשני טורים בעמוד אחד: עמוד רחב אחד
+    const narrow = W < 600, two = W >= 1000 && !zc;
+    const pw = zc ? Math.min(1180, W - 120) : two ? Math.min(680, Math.floor((W - 140) / 2)) : Math.min(760, W - (narrow ? 12 : 120));
     const ph = Math.max(300, H - (narrow ? 8 : 30));
     const fs = Math.round(((narrow ? 18 : 20.5) + S.size * 1.5) * 10) / 10;
     const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
-    return { W, H, narrow, two, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zoff.join('')].join('|') };
+    return { W, H, narrow, two, zc, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zlay, S.zoff.join('')].join('|') };
   }
 
   // מילים של פסוק/משנה (בלי טעמים) — לפיצול משנה ארוכה בין עמודים
@@ -928,7 +929,7 @@
     tr: '.rdTr,.rdRowHd>.trh,.rdRow>.tr',
     cm: '.rdTxt>.rdRv,.rdCmHd,.rdCmBody>p,.trSide'
   };
-  const FX_KEY = { tr: ['tr'], trFont: ['tr'], cmFont: ['cm'], cm: ['cm'], rcm: ['cm'], ramNik: ['main'], zside: ['cm'], zoff: ['cm'] }; // כל השאר (סוג תצוגה, גודל): הכל
+  const FX_KEY = { tr: ['tr'], trFont: ['tr'], cmFont: ['cm'], cm: ['cm'], rcm: ['cm'], ramNik: ['main'], zside: ['cm'], zlay: ['cm'], zoff: ['cm'] }; // כל השאר (סוג תצוגה, גודל): הכל
   const fxEls = (book, sel) => [...book.querySelectorAll('.rdPage:not(.blank)')].flatMap(pg => [...pg.querySelectorAll(sel)]);
   const fxSig = book => Object.fromEntries(Object.keys(FX_Z).map(z => [z, fxEls(book, FX_Z[z]).map(e => e.textContent).join('\u0001')]));
   // לפני שינוי הגדרה: לזכור אילו אזורים ההגדרה משנה ומה הכתב בכל אזור עכשיו. הציור הבא של הספר (fxAfter) משווה ומפעיל
@@ -1182,14 +1183,27 @@
     const none = '<p class="none">' + T(S.zside === 'r' ? 'אין ביאור לפסקאות אלה' : 'אין תרגום לפסקאות אלה') + '</p>';
     let html = talHead(t, j);
     if (pg.first && side !== 'b') html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j, k)) + '</span></div>';
-    if (side === 'b') return html + '<div class="rdCmHd zHd"><span class="ln"></span><span>' + h(T(S.zside === 'r' ? 'הסולם' : 'תרגום')) + '</span></div><div class="rdBody"><div class="rdTxt rdTal zSide">' + (pg.cm.length ? pg.cm.map(ent).join('') : none) + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
-    if (side === 'a') return html + '<div class="rdBody"><div class="rdTxt rdTal"><p>' + (pg.segs.length ? pg.segs.map(para).join(' ') : '<span class="rdCont">' + h(zEmpty(t, j)) + '</span>') + '</p></div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
-    const rest = pg.cm.filter(e => !pg.segs.includes(e.v));
-    return html + '<div class="rdBody"><div class="rdTxt rdTal zOne">' + (pg.segs.length ? pg.segs.map(s => '<p class="zp">' + para(s) + '</p>' + pg.cm.filter(e => e.v === s).map(ent).join('')).join('') : '<p class="zp"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + rest.map(ent).join('') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    const rows = s => '<div class="zr" data-r="' + s + '">' + pg.cm.filter(e => e.v === s).map(ent).join('') + '</div>';
+    const rest = pg.cm.filter(e => !pg.segs.includes(e.v)), tail = rest.map(ent).join('');
+    const sideLb = T(S.zside === 'r' ? 'הסולם' : 'תרגום');
+    if (side === 'c') return html + '<div class="rdBody"><div class="rdTxt rdTal zCols"><div class="zColHd">' + h(T('ארמית')) + '</div><div class="zColHd">' + h(sideLb) + '</div>' + (pg.segs.length ? pg.segs.map(s => '<div class="zA">' + para(s) + '</div><div class="zT">' + (pg.cm.some(e => e.v === s) ? pg.cm.filter(e => e.v === s).map(ent).join('') : (s === pg.segs[0] && !pg.cm.length ? none : '')) + '</div>').join('') : '<div class="zA"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></div><div class="zT"></div>') + (tail ? '<div class="zA"></div><div class="zT">' + tail + '</div>' : '') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'b') return html + '<div class="rdCmHd zHd"><span class="ln"></span><span>' + h(T(S.zside === 'r' ? 'הסולם' : 'תרגום')) + '</span></div><div class="rdBody"><div class="rdTxt rdTal zSide">' + (pg.segs.length ? pg.segs.map(rows).join('') : '') + (!pg.cm.length ? none : '') + tail + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'a') return html + '<div class="rdBody"><div class="rdTxt rdTal">' + (pg.segs.length ? pg.segs.map(s => '<p class="zr" data-r="' + s + '">' + para(s) + '</p>').join('') : '<p><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    return html + '<div class="rdBody"><div class="rdTxt rdTal zOne">' + (pg.segs.length ? pg.segs.map(s => '<p class="zp">' + para(s) + '</p>' + pg.cm.filter(e => e.v === s).map(ent).join('')).join('') : '<p class="zp"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + tail + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+  }
+  /* זוהר, ספר פתוח: שורה מול שורה. כל פסקה בעמוד הארמית ותרגומה בעמוד שמול מקבלות אותו גובה, וראשי העמודים מיושרים.
+     apply = לקבוע בפועל (גם במדידת החלוקה לעמודים, כדי שהגלישה תימדד אחרי היישור); מחזיר כמה גובה נוסף נדרש לכל עמוד. */
+  function zAlign(a, b, apply) {
+    const A = {}, B = {}; a.querySelectorAll('.zr').forEach(e => A[e.dataset.r] = e); b.querySelectorAll('.zr').forEach(e => B[e.dataset.r] = e);
+    let ea = 0, eb = 0;
+    Object.keys(A).forEach(r => { if (!B[r]) return; const ha = A[r].offsetHeight, hb = B[r].offsetHeight, m = Math.max(ha, hb); ea += m - ha; eb += m - hb; if (apply) { A[r].style.minHeight = B[r].style.minHeight = m + 'px'; } });
+    const fa = a.querySelector('.zr'), fb = b.querySelector('.zr');
+    if (fa && fb) { const d = Math.round((fb.getBoundingClientRect().top - b.getBoundingClientRect().top) - (fa.getBoundingClientRect().top - a.getBoundingClientRect().top)); if (d > 0) { ea += d; if (apply) fa.style.marginTop = d + 'px'; } else if (d < 0) { eb -= d; if (apply) fb.style.marginTop = -d + 'px'; } }
+    return [ea, eb];
   }
   function studyPages(k, j, g) {
     const tt = tOf(k), zd = !!tt.z && S.tview === 'daf', two = zd && !!g.two;
-    const key = 'T' + k + ':' + j + '|' + g.key + (tt.z ? '|' + S.tview + S.zside + S.zoff.join('') : ''); if (PC.has(key)) return PC.get(key);
+    const key = 'T' + k + ':' + j + '|' + g.key + (tt.z ? '|' + S.tview + S.zside + S.zlay + S.zoff.join('') : ''); if (PC.has(key)) return PC.get(key);
     const probe = $r('#rdProbe'), a = amudRow(k, j), ents = talCm(k, j), pages = [];
     probe.className = 'rdPage tal' + g.cls;
     let carry = [];
@@ -1197,9 +1211,11 @@
     const fits = (segs, cut) => {
       const pg = mk(segs, cut);
       if (!zd) { probe.innerHTML = studyInner(k, j, pg, ''); return !over(probe); }
-      if (!two) { probe.innerHTML = zdInner(k, j, pg, '', 's'); return !over(probe); }
+      if (!two) { probe.innerHTML = zdInner(k, j, pg, '', g.zc ? 'c' : 's'); return !over(probe); }
       probe.innerHTML = zdInner(k, j, pg, '', 'a'); if (over(probe)) return false;
-      probe.innerHTML = zdInner(k, j, pg, '', 'b'); return !over(probe);
+      const ha = probe.cloneNode(true); ha.id = ''; ha.style.visibility = 'hidden'; probe.parentNode.insertBefore(ha, probe);
+      probe.innerHTML = zdInner(k, j, pg, '', 'b'); zAlign(ha, probe, true); const ok = !over(probe) && !over(ha); ha.remove();
+      return ok;
     };
     if (tt.z && !a[0].length) { const pg = { segs: [], first: true, cm: [] }; PC.set(key, [pg]); return [pg]; } // עמוד בלי פסקאות (פסקה ארוכה שנמשכת מהעמוד הקודם)
     const queue = a[0].map((_, i) => i);
@@ -1253,12 +1269,13 @@
       if (zd) { // דף מול תרגום: מסך אחד = עמוד ארמית (ימין) ועמוד תרגום (שמאל)
         const pg = ps[S.tp];
         html = geo.two ? '<article class="rdPage tal right' + geo.cls + '" aria-label="' + h(T('דף') + ' ' + dafTxt(S.tj, k)) + '">' + zdInner(k, S.tj, pg, S.hl, 'a') + '</article><article class="rdPage tal left' + geo.cls + '">' + zdInner(k, S.tj, pg, S.hl, 'b') + '</article>'
-          : '<article class="rdPage tal single' + geo.cls + '">' + zdInner(k, S.tj, pg, S.hl, 's') + '</article>';
+          : '<article class="rdPage tal single' + geo.cls + (geo.zc ? ' zWide' : '') + '">' + zdInner(k, S.tj, pg, S.hl, geo.zc ? 'c' : 's') + '</article>';
       } else html = shown.map((x, i) => '<article class="rdPage tal ' + side(i) + geo.cls + '">' + studyInner(k, x.j, studyPages(k, x.j, geo)[x.p], S.hl) + '</article>').join('') + (geo.two && shown.length < 2 ? '<article class="rdPage left blank' + geo.cls + '" aria-hidden="true"></article>' : '');
       last = shown[shown.length - 1].j; lastPg = shown[shown.length - 1];
       $r('#rdPos').textContent = T('עמוד') + ' ' + dafTxt(S.tj, k) + (last !== S.tj ? '–' + dafTxt(last, k) : '') + ' ' + T('מתוך') + ' ' + dafTxt(t.n - 1, k) + (t.z && ps.length > 1 ? ' · ' + num(S.tp + 1) + '/' + num(ps.length) : '');
     }
     book.innerHTML = html + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
+    if (zd && geo.two) { const pgs = book.querySelectorAll('.rdPage'); if (pgs.length > 1) zAlign(pgs[0], pgs[1], true); }
     book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
     fxAfter(book);
     setBar();
@@ -1930,7 +1947,8 @@
     $r('#rdSet').innerHTML = '<div class="rdPopHd"><span>' + T('הגדרות תצוגה') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('סוג תצוגה') + '</span><div class="rdCards">' +
       card('daf', '<span class="pv pvBook"><i></i><i></i><i class="s"></i><b></b></span>', 'דף מול תרגום') + card('study', '<span class="pv pvRows"><i></i><i></i><i></i></span>', 'זוהר והסולם') + '</div></div>' +
-      (daf ? '<div class="rdSec"><span class="rdSecT">' + T('בעמוד השמאלי') + '</span>' + opt('zside', 't', 'תרגום', 'ברירת מחדל') + opt('zside', 'r', 'הסולם', 'ביאור הסולם') + '</div>'
+      (daf ? '<div class="rdSec"><span class="rdSecT">' + T('פריסה') + '</span>' + opt('zlay', 'spread', 'ספר פתוח', 'ארמית בעמוד ימין, תרגום בשמאל') + opt('zlay', 'cols', 'שני טורים', 'בעמוד אחד, שורה מול שורה') + '</div>' : '') +
+      (daf ? '<div class="rdSec"><span class="rdSecT">' + T('מול הארמית') + '</span>' + opt('zside', 't', 'תרגום', 'ברירת מחדל') + opt('zside', 'r', 'הסולם', 'ביאור הסולם') + '</div>'
         : '<div class="rdSec"><span class="rdSecT">' + T('מתחת לפסקאות') + '</span>' + chk('t', 'תרגום') + chk('r', 'הסולם') + '</div>') +
       '<div class="rdSec"><span class="rdSecT">' + T('גודל אותיות') + '</span><div class="rdSizes">' + [-1, 0, 1, 2].map(z => '<button type="button" class="' + (S.size === z ? 'on' : '') + '" data-set="size" data-val="' + z + '" aria-pressed="' + (S.size === z) + '" style="font-size:' + (13 + z * 2.5) + 'px">א</button>').join('') + '</div></div>' +
       '<p class="rdNote">' + T('לחצו על פסקה בזוהר כדי לראות את התרגום והסולם שלה.') + ' ' + T('העמודים לפי דפוס וילנא.') + ' ' + T('ההגדרות נשמרות לפעם הבאה.') + '</p>';
@@ -2862,7 +2880,7 @@
         renderSet();
       });
       if (k === 'zoff') { const x = t.dataset.val; S.zoff = S.zoff.includes(x) ? S.zoff.filter(v => v !== x) : S.zoff.concat(x); S.tp = 0; renderSet(); return render(); }
-      if (k === 'zside') S.tp = 0;
+      if (k === 'zside' || k === 'zlay') S.tp = 0;
       if (k === 'ramNik') S.ramNik = t.dataset.val === 'true';
       else if (k === 'view' && isRambam(S.b)) S.ramView = t.dataset.val;
       else if (k === 'cm') { const c = Number(t.dataset.val); S.cmOff = S.cmOff.includes(c) ? S.cmOff.filter(x => x !== c) : S.cmOff.concat(c); }
