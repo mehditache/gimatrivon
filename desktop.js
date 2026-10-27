@@ -191,8 +191,11 @@
   setInterval(autoSleep, 5000);
   // מצב פיתוח: ספירה לאחור לשינה על כל ריבוע בפס (מתעדכנת כל שנייה; בלי מצב פיתוח הריבועים נקיים)
   const devOn = () => { try { return localStorage.getItem('gimatrivonDev') === '1'; } catch (e) { return false; } };
+  let lastDev = null;
   function sleepTick() {
     const dev = devOn();
+    if (dev !== lastDev) { lastDev = dev; if (task.firstChild) { taskbar(); return; } }
+    const vr = $('#dkVerR'); if (vr && vr.textContent !== $('#dkVer').textContent) vr.textContent = $('#dkVer').textContent;
     task.querySelectorAll('.dkChip[data-w]').forEach(c => {
       const w = W(c.dataset.w), l = w ? sleepLeft(w) : undefined;
       // הירח: רק כשהחלון ישן (ה-iframe שוחרר, המקום והמצב נשמרו). חלון ממוזער שעוד לא נרדם מסומן רק בשבב המקווקו
@@ -498,7 +501,7 @@
       c.onclick = () => { if (!st && D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
       task.appendChild(c);
     });
-    task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXW + '</span>' +
+    task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span>' + (devOn() ? '<span class="dkVerR" id="dkVerR" title="' + T('גרסה (מצב פיתוח)', 'Version (dev mode)') + '">' + ($('#dkVer').textContent || '') + '</span>' : '') + '<span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXW + '</span>' +
       '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + (n >= MAXW ? T('הגעת ל-6 חלונות — מחליף את החלון שלא היה פעיל הכי הרבה זמן', 'Six windows open — replaces the least recently used one') : T('חלון קריאה חדש', 'New reader window')) + '"><span class="ic">' + SV(n >= MAXW ? GI.swap : GI.plus) + '</span><span class="t">' + (n >= MAXW ? T('החלף', 'Replace') : T('קריאה', 'Reader')) + '</span></button>' +
       '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">' + SV(GI.arr) + '</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkArr [data-arr="stage"]').classList.toggle('cur', stageOn()); ['cascade', 'side', 'grid'].forEach(k => $('#dkArr [data-arr="' + k + '"]').classList.remove('cur'));
@@ -985,7 +988,8 @@
   /* ---------- מצב פיתוח ומצב טלפון ---------- */
   // 5 לחיצות על מספר הגרסה: מצב פיתוח (ענף ופרטי בנייה) — מועבר לספר הגרסה של אחד החלונות (app.js), והטקסט מועתק לבנר
   { let taps = 0, tt = 0;
-    $('#dkVer').addEventListener('click', () => {
+    task.addEventListener('click', e => { if (e.target.closest('#dkVerR')) $('#dkVer').click(); });
+  $('#dkVer').addEventListener('click', () => {
       taps++; clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 3000); if (taps < 5) return; taps = 0;
       const f = [...F.values()].find(x => x.doc && x.doc.getElementById('ver'));
       if (f) { const v = f.doc.getElementById('ver'); for (let i = 0; i < 5; i++) v.click(); $('#dkVer').textContent = v.textContent; }
