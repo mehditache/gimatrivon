@@ -212,7 +212,7 @@
     if (!d || !fw || fw.location.href === 'about:blank') return;
     f.win = fw; f.doc = d; f.obs = []; f.first = true;
     fw.addEventListener('pointerdown', () => { closeSearch(); focusWin(w.id); }, true);
-    fw.addEventListener('focus', () => focusWin(w.id));
+    fw.addEventListener('focus', () => { if (Date.now() >= noFocus) focusWin(w.id); });
     fw.addEventListener('keydown', e => keys(e, w.id), true);
     if (w.k === 'read') {
       // reader.js מעדכן את הכתובת ב-history.replaceState (בלי hashchange) — עוטפים אותו כדי לשמוע כל מעבר
@@ -258,7 +258,8 @@
     w.hist = w.hist.slice(0, w.hi + 1); w.hist.push(h); if (w.hist.length > HMAX) w.hist.shift(); w.hi = w.hist.length - 1;
     navTo(w, h); paint(w); saveSoon();
   }
-  const syncUrl = () => { const w = W(D.act); if (!w) return; try { history.replaceState(null, '', curHash(w)); } catch (e) {} };
+  // בלי חלון פעיל — בלי כתובת (אחרת טעינה מחדש פותחת את החלון האחרון)
+  const syncUrl = () => { const w = W(D.act); if (!w) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} return; } try { history.replaceState(null, '', curHash(w)); } catch (e) {} };
 
   /* ---------- פעולות על חלונות ---------- */
   function focusWin(id) {
@@ -526,18 +527,35 @@
   function kbMenu() {
     const row = (id, l, ic) => '<button type="button" data-kb="' + id + '"><i class="ic">' + ic + '</i><span>' + l + '</span></button>';
     kb.innerHTML = row('theme', dark() ? T('מראה גוויל', 'Parchment look') : T('מראה לילה', 'Night look'), '☾') + row('lang', EN ? 'עברית' : 'English', 'EN') +
-      '<hr>' + row('tour', T('סיור מודרך', 'Guided tour'), '?') + row('methods', T('שיטות גימטריה', 'Gematria methods'), 'Σ') + row('about', T('אודות', 'About'), 'ⓘ') + row('contact', T('צור קשר', 'Contact'), '✉') +
+      '<hr>' + row('methods', T('שיטות גימטריה', 'Gematria methods'), 'Σ') + row('about', T('אודות', 'About'), 'ⓘ') + row('contact', T('צור קשר', 'Contact'), '✉') +
       '<hr><div class="kbV">' + ($('#dkVer').textContent || '') + '</div>';
+  }
+  // דיאלוג (אודות / צור קשר / שיטות) שחי בתוך חלון נפתח כאן, בשולחן עצמו, בלי להחזיר חלון: הפריט נפתח ב-iframe נסתר (כך הוא מתרנדר ומתאפס),
+  // ואז האלמנט עובר (adoptNode) למסמך השולחן ונפתח כמודאלי, וחוזר למקומו כשנסגר
+  const DLG = { methods: ['openMethods', 'dlgMethods'], about: ['openAbout', 'dlgAbout'], contact: ['openContact', 'dlgContact'] };
+  let noFocus = 0; // פתיחת הדיאלוג ב-iframe הנסתר מעבירה אליו פוקוס — זה לא צריך להחזיר את החלון
+  function shellDialog(k) {
+    const [btn, id] = DLG[k], f = [...F.values()].find(x => x.doc && x.doc.getElementById(id));
+    if (!f) { toast(T('אין חלון פעיל לפתיחת הדיאלוג — פתחו חלון', 'No window available for this dialog — open a window')); return; }
+    const o = f.doc.getElementById(btn), dlg = f.doc.getElementById(id), home = dlg.parentNode, next = dlg.nextSibling;
+    noFocus = Date.now() + 1000; o.click();
+    let gone = false;
+    const go = () => {
+      if (gone) return; gone = true;
+      const el = document.adoptNode(dlg); document.body.appendChild(el);
+      const back = () => { el.removeEventListener('close', back); el.removeEventListener('click', clk); try { home.insertBefore(f.doc.adoptNode(el), next); } catch (e) {} };
+      const clk = e => { if (e.target === el || e.target.closest('[data-close]')) el.close(); };
+      el.addEventListener('close', back); el.addEventListener('click', clk); el.showModal();
+    };
+    dlg.addEventListener('close', go, { once: true }); try { dlg.close(); } catch (e) {} setTimeout(go, 150); // 'close' נשלח אסינכרונית — מעבירים רק אחריו
   }
   const KB_IDS = { tour: 'startTour', methods: 'openMethods', about: 'openAbout', contact: 'openContact' };
   kb.addEventListener('click', e => {
     const b = e.target.closest('[data-kb]'); if (!b) return; const k = b.dataset.kb; kb.hidden = true;
     if (k === 'theme') { $('#dkTheme').click(); return; }
     if (k === 'lang') { $('#dkLang').click(); return; }
-    const w = W(D.last) || reads()[0] || gemW(); if (!w) return;
-    focusWin(w.id);
-    let n = 0; const tick = () => { const f = F.get(w.id), o = f && f.doc && f.doc.getElementById(KB_IDS[k]); if (o) o.click(); else if (++n < 30) setTimeout(tick, 200); };
-    setTimeout(tick, 350);
+    if (k === 'tour') return; // הסיור מדגים חלון; בלי חלון פעיל אין מה להדגים (הפריט לא מוצג)
+    shellDialog(k);
   });
   document.addEventListener('pointerdown', e => { if (!kb.hidden && !e.target.closest('.dkKb,#dkKebab')) kb.hidden = true; }, true);
   addEventListener('keydown', e => { if (e.key === 'Escape') kb.hidden = true; });
