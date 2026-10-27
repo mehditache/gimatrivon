@@ -29,7 +29,7 @@ body.dkGem .dkTools{display:none}
 :root[data-theme=dark] .dw{box-shadow:0 10px 30px rgba(0,0,0,.55)}
 .dw.act{border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb,var(--gold) 40%,transparent),0 14px 36px rgba(60,40,10,.25)}
 .dw.max{inset:0!important;width:auto!important;height:auto!important;border-radius:0;border-width:0;box-shadow:none}
-.dw[hidden]{display:none}
+.dw[hidden]{display:flex!important;visibility:hidden;pointer-events:none} /* נשאר במידות שלו: iframe שנסתר ב-display:none מקבל 0x0 ומחשב מחדש את הספר, ובשחזור הוא נראה מלבני עד העדכון */
 .dwBar{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px;background:var(--pn2);border-bottom:1px solid var(--ln);color:var(--mu);font:13px var(--ui);cursor:default;user-select:none}
 .dw.act .dwBar{background:var(--acs);color:var(--tx)}
 .dwBar b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
