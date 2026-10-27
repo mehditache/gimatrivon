@@ -649,10 +649,9 @@
       if (drop) new fw.MutationObserver(() => { const ae = document.activeElement; if (!drop.hidden && ae !== fr && !(ae && ae.closest && ae.closest('.dkOmni,#dkScMenu'))) drop.hidden = true; fr.hidden = drop.hidden; if (!drop.hidden) placeHost(); scopeLabel(); if (drop.hidden) idleHost(); }).observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
       themeTo(H); ctxApply(); scopeLabel();
       // רשימת ההצעות של החיפוש חיה בתוך המארח: אותו זכוכית לבנה וזהב כמו שאר החלונות שנפתחים מהבנר (v4.6.23)
-      try { const st = d.createElement('style'); st.textContent = '.rdDrop{--rdPaper:#fff;--rdInk:#4a3b22;background:rgba(255,255,255,.94)!important;box-shadow:0 0 0 .5px #e3d3ad,0 22px 56px rgba(120,90,30,.2)!important;border:0!important;border-radius:16px!important}' +
-        ':root[data-theme=dark] .rdDrop{--rdPaper:#16120c;--rdInk:#ecdfc4;background:rgba(22,18,12,.94)!important;box-shadow:0 0 0 .5px #4a3b22,0 22px 56px rgba(0,0,0,.55)!important}' +
-        '.rdDrop .rdDrI:hover,.rdDrop .rdDrI.on,.rdDrop [role=option]:hover,.rdDrop [aria-selected=true]{background:#f8f0dc!important}' +
-        ':root[data-theme=dark] .rdDrop .rdDrI:hover,:root[data-theme=dark] .rdDrop .rdDrI.on,:root[data-theme=dark] .rdDrop [role=option]:hover,:root[data-theme=dark] .rdDrop [aria-selected=true]{background:#2a2214!important}'; d.head.appendChild(st); } catch (e) {}
+      try { const st = d.createElement('style'); st.textContent = '.rdDrop{--rdPaper:#fff;--rdInk:#4a3b22;--rdRow:#f8f0dc;background:rgba(255,255,255,.94)!important;box-shadow:0 0 0 .5px #e3d3ad,0 22px 56px rgba(120,90,30,.2)!important;border:0!important;border-radius:16px!important}' +
+        ':root[data-theme=dark] .rdDrop{--rdPaper:#16120c;--rdInk:#ecdfc4;--rdRow:#2e2516;background:rgba(22,18,12,.94)!important;box-shadow:0 0 0 .5px #4a3b22,0 22px 56px rgba(0,0,0,.55)!important}' +
+        '.rdDrop .rdDI:hover,.rdDrop .rdDI.act{background:var(--rdRow)!important;color:var(--rdInk)!important}'; d.head.appendChild(st); } catch (e) {}
       if (q.value) { d.getElementById('rdQ').value = q.value; fire('input'); }
     });
     fr.src = 'index.html?embed=search' + hostBase;
