@@ -446,3 +446,7 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 .dkOmniSlot{flex:0 1 440px;min-width:160px;display:flex;justify-content:flex-start}
 .dkOmniSlot .dkOmni,.dkOmniSlot .dkOmni:focus-within{flex:1 1 auto!important;width:auto!important} /* בלי התרחבות בפוקוס: המשבצת קבועה והבורר לא זז */
 .dkNav{margin-inline-start:0}
+
+/* v4.6.41: בורר הספר בבנר לעולם לא נעלם — גם כשחלון הגימטריה או התוצאות פעיל הוא נראה (מעומעם קלות) */
+.dkNav.dim{visibility:visible;opacity:.6}
+.dkNav:empty{visibility:visible}

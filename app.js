@@ -62,7 +62,7 @@ const EN = {
   'שם': 'Name', 'אימייל': 'Email', 'הודעה': 'Message', 'שליחה': 'Send',
   'שולח…': 'Sending…', 'ההודעה נשלחה בהצלחה!': 'Message sent successfully!',
   'שליחה נכשלה — ודאו חיבור לאינטרנט ונסו שוב.': 'Failed to send — check your internet connection and try again.',
-  'טוען קורפוס…': 'Loading corpus…', 'טוען מקורות נוספים…': 'Loading more sources…', 'בונה את אינדקס הגימטריה': 'Building the gematria index', 'סופר את אותיות התנ״ך והמשנה…': 'Counting the letters of Tanakh and Mishnah…', 'סופר את אותיות כל המקורות…': 'Counting the letters of all sources…', 'שגיאה בטעינת הקורפוס — נסו לרענן את הדף': 'Could not load the corpus — try reloading the page', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
+  'טוען קורפוס…': 'Loading corpus…', 'טוען מקורות נוספים…': 'Loading more sources…', 'בונה את אינדקס הגימטריה': 'Building the gematria index', 'סופר את אותיות התנ״ך והמשנה…': 'Counting the letters of Tanakh and Mishnah…', 'סופר את אותיות המקורות שנבחרו…': 'Counting the letters of the selected sources…', 'שגיאה בטעינת הקורפוס — נסו לרענן את הדף': 'Could not load the corpus — try reloading the page', 'סביבת עבודה': 'Workspace', 'מספר גרסה': 'Version number', 'סגור': 'Close',
   'שיטות הגימטריה': 'Gematria Methods', 'אודות גימטריבון': 'About Gimatrivon',
   'סינון': 'Filter', 'תוצאות החיפוש במקורות': 'Search Results in Sacred Texts', 'צד א׳': 'Side A', 'צד ב׳': 'Side B', 'קלט': 'Input',
   'סינון טקסטואלי בתוך התוצאות…': 'Text filter within results…',
@@ -287,6 +287,8 @@ const SEARCH_BOOKS = B.books.map((_, i) => i).filter(i => !NO_SEARCH_CATS.has(B.
 const TREE = []; SEARCH_BOOKS.forEach(i => { const b = B.books[i]; let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
 TREE.forEach(c => { c.ids = [].concat(...c.groups.map(g => g.ids)); });
 const ALL = new Set(SEARCH_BOOKS);
+// ברירת המחדל של עץ המקורות בצד חדש: תנ״ך (0), משנה (1) ואונקלוס (3) בלבד; "בחר הכל" עדיין מסמן את כולם
+const DEFAULT_SEL = SEARCH_BOOKS.filter(i => [0, 1, 3].includes(B.books[i].cat));
 const CATCOLORS = { 0: '#23527f', 1: '#8a6d1f', 2: '#6d8f1a', 3: '#9d2f8f', 4: '#c2571f', 5: '#1a8f92', 6: '#6d4b1f', 7: '#7a2e3b', 8: '#3f6f4a', 9: '#5b4a8a', 10: '#8a5a2b' };
 
 /* ---------- 54 פרשות השבוע (פרק:פסוק, חלוקה מסורתית) — רלוונטי רק לספרי החומש ולמקבילים (רש״י/אונקלוס) ---------- */
@@ -611,10 +613,11 @@ function hitsSortToggle(k, id) {
 // winStart/winCount/avgRowH/groups/groupsTotal: שדות הגלילה-הוירטואלית (ראו renderWindow/computeGroups
 // למטה) — לא חלק מ"שדות-הגדרה" הסיור שומר/משחזר (SETTINGS_FIELDS), ממש כמו all/info/cur: מתמלאים-מחדש
 // נכון מעצמם בכל renderWindow/computeGroups.
-const S = {}; KS.forEach(k => { S[k] = { k, text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: makeStore(), winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
+const S = {}; KS.forEach(k => { S[k] = { k, text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(DEFAULT_SEL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: makeStore(), winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
 let IDX = null, CM = null, FOCUS = null;
 // מצב בניית אינדקס הגימטריה (ראו gemStart בסוף הקובץ): gen = מונה לביטול, stage = 0 (אין) / 1 (תנ״ך ומשנה) / 2 (הכל)
-const GEM = { gen: 0, busy: false, stage: 0, f: 0 };
+// cover = הספרים שהאינדקס (הנבנה או הקיים) מכסה: בדיוק המקורות שמסומנים באחד הצדדים (ראו gemNeed/gemSync)
+const GEM = { gen: 0, busy: false, stage: 0, f: 0, cover: new Set() };
 let GEM_WAIT = f => setTimeout(f, 0);
 // v3.6.0: לחיצה על עיגול-התאמה גורמת לפס-הצבע של התאים המותאמים ולשני העיגולים עצמם — בשני הצדדים — להבהב BLINK_MS. מסמנים *זמן*
 // (BLINK_AT) ולא class חד-פעמי, כי renderCenter מצייר את כל הלוח מחדש (גם בהקלדה/חיפוש חי) — כל ציור-מחדש בתוך
@@ -1218,6 +1221,8 @@ function flushNot(st) {
 }
 function run(k) {
   const st = S[k]; st.gen = (st.gen || 0) + 1; const myGen = st.gen; // מבטל כל חיפוש מדורג קודם של הצד הזה
+  gemSync();
+  if (!IDX && !gemNeed().size) { $('#rl' + k).innerHTML = ''; $('#rs' + k).textContent = L('סמן לפחות מקור אחד בעץ המקורות.'); return; }
   if (!IDX) { if (GEM.busy) gemShowWait(); else $('#rs' + k).textContent = L('הקורפוס עדיין נטען…'); return; }
   const box = $('#rl' + k);
   st.all = makeStore(); st.cur = -1; st.winStart = 0; st.winCount = 0; st.info = []; box.innerHTML = ''; box.classList.add('searching'); updateTfBar(k);
@@ -2251,7 +2256,7 @@ function gemProg(f) {
     const t = el.querySelector('.gmPct'); if (t) t.textContent = pct + '%';
   });
 }
-const gemLabel = () => GEM.stage === 0 && !GEM.one ? L('סופר את אותיות התנ״ך והמשנה…') : L('סופר את אותיות כל המקורות…');
+const gemLabel = () => GEM.stage === 0 && !GEM.one ? L('סופר את אותיות התנ״ך והמשנה…') : L('סופר את אותיות המקורות שנבחרו…');
 // מציג את מסך ההמתנה בצדדים שאין בהם עדיין תוצאות (כשאין אינדקס בכלל)
 // בטלפון חלונית הקלט מכסה את התוצאות, ולכן מוצגת גם גרסה קטנה בראש החלונית (בלי השלד)
 function gemShowWait() {
@@ -2283,14 +2288,35 @@ function gemStage(ids, gen, prog, wait) {
     wait(more);
   })).then(units => units && E.buildIndexAsync(units, null, { ms: 40, urgent: inputWaiting, wait, cancelled: () => !live(), onProgress: f => { if (live()) prog(0.4 + 0.6 * f); } }));
 }
+// הספרים שהאינדקס צריך: איחוד המקורות המסומנים בשני הצדדים. האינדקס נבנה רק מהם, כך שמקור שלא מסומן לא נטען
+// לזיכרון; כל שינוי בבחירה בונה אותו מחדש (gemSync), ומקור שהוסר משתחרר כשהאינדקס החדש מחליף את הקודם
+const gemNeed = () => { const s = new Set(); KS.forEach(k => S[k].sel.forEach(i => { if (ALL.has(i)) s.add(i); })); return s; };
+const gemCovered = need => need.size === GEM.cover.size && [...need].every(i => GEM.cover.has(i));
+let gemSyncT = 0;
+// נקרא מ-run: אם הבחירה כבר לא תואמת את מה שהאינדקס מכסה, בונים מחדש (אחרי השהיה קצרה, כדי שכמה סימונים
+// רצופים בעץ יגרמו לבנייה אחת). עד שהאינדקס החדש מוכן ממשיכים לחפש באינדקס הקיים, והתוצאות מסוננות לפי הבחירה
+function gemSync() {
+  if (inRead() || gemCovered(gemNeed())) return;
+  clearTimeout(gemSyncT);
+  gemSyncT = setTimeout(() => {
+    const need = gemNeed(); if (inRead() || gemCovered(need)) return;
+    GEM.gen++; GEM.busy = false; // מבטל בנייה שרצה (היא בודקת gen בכל פרוסה)
+    if (!need.size) { GEM.cover = new Set(); GEM.stage = 0; IDX = null; gemHideMini(); $('#status').textContent = ''; KS.forEach(run); return; }
+    gemStart();
+  }, IDX ? 400 : 0);
+}
 function gemStart() {
-  if (GEM.busy || (IDX && GEM.stage === 2)) return;
-  const gen = ++GEM.gen; GEM.busy = true; GEM.stage = 0; GEM.f = 0;
-  const first = [...ALL].filter(i => B.books[i].cat <= 1), all = [...ALL];
+  const need = gemNeed();
+  if (GEM.busy || (IDX && GEM.stage === 2 && gemCovered(need)) || !need.size) return;
+  const gen = ++GEM.gen; GEM.busy = true; GEM.f = 0; GEM.cover = need;
+  const all = [...ALL].filter(i => need.has(i)), first = all.filter(i => B.books[i].cat <= 1);
   // יש כבר מה לחפש באחד הצדדים: בונים את כל המקורות בשלב אחד ומחפשים פעם אחת. בשני שלבים החיפוש היה רץ על
   // תנ״ך ומשנה, נקטע באמצע כשהשלב השני הסתיים, ומתחיל מחדש
   const hasQ = () => KS.some(k => numVal(S[k].num) || E.normalizeText(S[k].text).words.length);
-  GEM.one = hasQ();
+  // כשכבר יש אינדקס (הבחירה השתנתה) בונים ברקע בשלב אחד וממשיכים לחפש בקיים עד שהחדש מוכן
+  const rebuild = !!IDX;
+  if (!rebuild) GEM.stage = 0;
+  GEM.one = rebuild || hasQ() || !first.length || first.length === all.length;
   // הקבצים מוחזקים עד שהיחידות נאספו; את שלב א׳ משחררים רק אחרי ששלב ב׳ כבר מחזיק את כל הספרים (בלי לטעון פעמיים)
   const rel1 = GEM.one ? () => {} : GimCorpus.use(first); let rel2 = null;
   const end = () => { rel1(); if (rel2) rel2(); if (gen === GEM.gen) GEM.busy = false; };
@@ -2298,11 +2324,11 @@ function gemStart() {
     if (!rel2) { rel2 = GimCorpus.use(all); rel1(); }
     return fg ? gemStage(all, gen, gemProg, gemWait) : gemStage(all, gen, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
   };
-  $('#status').textContent = L('טוען קורפוס…'); gemShowWait();
-  (GEM.one ? stage2(true) : gemStage(first, gen, gemProg, gemWait).then(ix => {
+  if (rebuild) $('#status').textContent = L('טוען מקורות נוספים…'); else { $('#status').textContent = L('טוען קורפוס…'); gemShowWait(); }
+  (GEM.one ? stage2(!rebuild) : gemStage(first, gen, gemProg, gemWait).then(ix => {
     if (!ix) return null;
     // הערכים הגיעו בזמן שלב א׳ (שולחן העבודה משחזר את שדות חלון הגימטריה כ-0.4 שנ׳ אחרי שהוא נטען):
-    // לא מחפשים על תנ״ך ומשנה, אלא ממשיכים מיד לכל המקורות, עם מסך ההמתנה
+    // לא מחפשים על תנ״ך ומשנה, אלא ממשיכים מיד לכל המקורות שנבחרו, עם מסך ההמתנה
     if (hasQ()) {
       GEM.one = true; GEM.f = 0; GEM.drawn = 0;
       document.querySelectorAll('.gmLoad .gmTxt').forEach(t => { t.textContent = gemLabel(); }); gemProg(0);
@@ -2319,7 +2345,7 @@ function gemStart() {
 // משחרר את האינדקס (וכל מה שנבנה ממנו); חיפוש שרץ עכשיו נעצר (st.gen), ובחזרה לגימטריה הכל נבנה ורץ שוב
 function gemRelease() {
   if (!inRead() || (!IDX && !GEM.busy)) return;
-  GEM.gen++; GEM.busy = false; GEM.stage = 0; GEM.f = 0; IDX = null; gemHideMini();
+  GEM.gen++; GEM.busy = false; GEM.stage = 0; GEM.f = 0; GEM.cover = new Set(); IDX = null; gemHideMini();
   KS.forEach(k => { const st = S[k]; st.gen = (st.gen || 0) + 1; st.notGen = (st.notGen || 0) + 1; st.all = makeStore(); st.info = []; st.cur = -1; st.winStart = 0; st.winCount = 0; $('#rl' + k).innerHTML = ''; $('#rs' + k).textContent = ''; });
   $('#status').textContent = '';
 }
@@ -2329,7 +2355,7 @@ let gemIdleT = 0;
 new MutationObserver(() => {
   clearTimeout(gemIdleT);
   if (inRead()) { gemIdleT = setTimeout(gemRelease, GEM_IDLE_MS); return; }
-  if (!GEM.busy && !(IDX && GEM.stage === 2)) setTimeout(gemStart, 0); // אחרי שהמסך התחלף ונצבע
+  if (!GEM.busy && !(IDX && GEM.stage === 2 && gemCovered(gemNeed()))) setTimeout(gemStart, 0); // אחרי שהמסך התחלף ונצבע
 }).observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
 setTimeout(() => { if (inRead()) { $('#status').textContent = ''; gemIdleT = setTimeout(gemRelease, GEM_IDLE_MS); } else gemStart(); }, 40);
 // Service Worker (sw.js): שומר את קובצי הספרים בדפדפן — ביקור חוזר לא מוריד אותם שוב, והאתר עובד גם בלי רשת.
