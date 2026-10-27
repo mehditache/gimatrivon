@@ -9,7 +9,7 @@
    - חלון "מעבר לפרק ופסוק" של כל חלון קריאה מקבל ☆ סימניה, ⧉ בחלון חדש ו-🔢 גימטריבון. */
 (() => {
   'use strict';
-  const KEY = 'gimatrivonDesk', MARKS = 'gimatrivonMarks', MAXR = 5, HMAX = 50;
+  const KEY = 'gimatrivonDesk', MARKS = 'gimatrivonMarks', MAXW = 6, HMAX = 50; // MAXW: חלונות קריאה ותוצאות יחד (חלון הגימטריה תמיד קיים, מעבר לכך)
   const $ = s => document.querySelector(s);
   // מספר הגרסה בבנר: מיד בטעינה, מה-?v= של הסקריפט (אותו מספר כמו VERSION ב-app.js), גם כשחלון הגימטריה ישן או לא נטען;
   // כשחלון גימטריה נטען הוא מחליף אותו בכיתוב שלו (כולל סיומת מצב פיתוח)
@@ -47,6 +47,7 @@
   let D = load() || fresh();
   const W = id => D.wins.find(w => w.id === id);
   const reads = () => D.wins.filter(w => w.k === 'read');
+  const others = () => D.wins.filter(w => w.k !== 'gem');
   const gemW = () => D.wins.find(w => w.k === 'gem');
   const F = new Map(); // id → { el, fr (iframe או null), doc, win }
 
@@ -56,7 +57,10 @@
     plus: '<path d="M12 5v14M5 12h14"/>', swap: '<path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/>', arr: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
     min: '<path d="M5 12h14"/>', max: '<path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"/>', res: '<path d="M9 5v4H5M15 5v4h4M9 19v-4H5M15 19v-4h4"/>', x: '<path d="m6 6 12 12M18 6 6 18"/>',
     back: '<path d="m9 5 7 7-7 7"/>', fwd: '<path d="m15 5-7 7 7 7"/>', moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>', dn: '<path d="m6 9 6 6 6-6"/>', kb: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>', stage: '<rect x="7" y="5" width="13" height="14" rx="2"/><path d="M4 8v8"/>' };
-  const ICON = { gem: SV(GI.gem), read: SV(GI.read), search: SV(GI.search) }, MAXS = 3;
+  const ICON = { gem: SV(GI.gem), read: SV(GI.read), search: SV(GI.search) };
+  // חלון קריאה/תוצאות יכול להציג את שני הסוגים; רשומת היסטוריה של תוצאות: #find?{q,fs}
+  const isFind = h => /^#find\?/.test(h || '');
+  const findEntry = (q, fs) => '#find?' + encodeURIComponent(JSON.stringify({ q, fs: fs || {} }));
   const curHash = w => w.k === 'gem' ? '#gim' : w.k === 'search' ? '#find' : (w.hist[w.hi] || '#read');
   const srcOf = w => w.k === 'search' ? 'index.html?embed=results&wid=' + w.id + '&q=' + encodeURIComponent(w.q) + '&f=' + encodeURIComponent(JSON.stringify(w.fs || {})) : 'index.html?embed=' + w.k + curHash(w);
   // מפתח "פרק" של כתובת: מעבר בתוך אותו פרק/דף מחליף את הרשומה הנוכחית בהיסטוריה, מעבר לפרק אחר מוסיף רשומה
@@ -72,7 +76,7 @@
       '<span class="dwCtl">' + (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">' + SV(GI.x) + '</button>' : '<span class="dwNoX"></span>') +
       '<button type="button" class="m" data-a="min" title="' + T('מזעור', 'Minimize') + '">' + SV(GI.min) + '</button><button type="button" class="z" data-a="max" title="' + T('הגדלה / שחזור', 'Maximize / restore') + '">' + SV(GI.max) + '</button></span>' +
       '<b class="dwT"></b>' +
-      (w.k === 'read' ? '<span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '">' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '">' + SV(GI.fwd) + '</button></span>' : '<span class="dwNav"></span>') + '</div>' +
+      (w.k !== 'gem' ? '<span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '">' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '">' + SV(GI.fwd) + '</button></span>' : '<span class="dwNav"></span>') + '</div>' +
       '<div class="dwBody"></div><div class="dwRs l"></div><div class="dwRs r"></div>';
     desk.appendChild(el);
     F.set(w.id, { el, fr: null, doc: null, win: null });
@@ -105,7 +109,7 @@
     // מחליפים את האייקון רק כשהמצב השתנה: החלפה בכל paint מנתקת את ה-svg בין לחיצת העכבר לשחרור, והקליק אובד
     const mb = el.querySelector('[data-a="max"]'), ms = w.max ? 'res' : 'max';
     if (mb.dataset.st !== ms) { mb.dataset.st = ms; mb.innerHTML = SV(w.max ? GI.res : GI.max); }
-    if (w.k === 'read') { el.querySelector('[data-a="back"]').disabled = w.hi <= 0; el.querySelector('[data-a="fwd"]').disabled = w.hi >= w.hist.length - 1; }
+    if (w.k !== 'gem') { el.querySelector('[data-a="back"]').disabled = w.hi <= 0; el.querySelector('[data-a="fwd"]').disabled = w.hi >= w.hist.length - 1; }
     wgrp();
   }
 
@@ -118,7 +122,7 @@
     if (!on) { wg.textContent = ''; return; }
     wg.innerHTML = '<span class="dwCtl">' + (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">' + SV(GI.x) + '</button>' : '<span class="dwNoX"></span>') +
       '<button type="button" class="m" data-a="min" title="' + T('מזעור', 'Minimize') + '">' + SV(GI.min) + '</button><button type="button" class="z" data-a="max" title="' + T('שחזור גודל', 'Restore') + '">' + SV(GI.res) + '</button></span>' +
-      (w.k === 'read' ? '<i class="dv"></i><span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '"' + (w.hi <= 0 ? ' disabled' : '') + '>' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '"' + (w.hi >= w.hist.length - 1 ? ' disabled' : '') + '>' + SV(GI.fwd) + '</button></span>' : '');
+      (w.k !== 'gem' ? '<i class="dv"></i><span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '"' + (w.hi <= 0 ? ' disabled' : '') + '>' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '"' + (w.hi >= w.hist.length - 1 ? ' disabled' : '') + '>' + SV(GI.fwd) + '</button></span>' : '');
   }
   $('#dkWg').addEventListener('click', e => {
     const b = e.target.closest('button[data-a]'), w = W(D.act); if (!b || !w) return;
@@ -261,11 +265,30 @@
     paint(w); if (D.act === id) syncUrl(); saveSoon();
   }
   function go(id, dir) {
-    const w = W(id); if (!w || w.k !== 'read') return;
+    const w = W(id); if (!w || w.k === 'gem' || !w.hist) return;
     const i = w.hi + dir; if (i < 0 || i >= w.hist.length) return;
     w.hi = i; navTo(w, w.hist[i]); paint(w); saveSoon();
   }
+  // החלפת התוכן של חלון בין קריאה לתוצאות (או תוצאות אחרות): ה-iframe נטען מחדש לפי הרשומה
+  function switchView(w, h) {
+    const f = F.get(w.id); if (!f) return;
+    if (f.fr) {
+      if (f.menuEl) { f.menuEl.remove(); f.menuEl = null; }
+      if (f.obs) f.obs.forEach(o => o.disconnect());
+      try { f.fr.src = 'about:blank'; } catch (e) {} f.fr.remove();
+    }
+    f.fr = f.doc = f.win = null; f.obs = null; w.navTo = null; w.snip = '';
+    if (isFind(h)) {
+      let p = {}; try { p = JSON.parse(decodeURIComponent(h.slice(6))); } catch (e) {}
+      w.k = 'search'; w.q = p.q || ''; w.fs = p.fs || {}; w.t = T('תוצאות: "', 'Results: "') + w.q + '"'; w.count = null;
+      if (D.last === w.id) D.last = '';
+    } else { w.k = 'read'; w.q = ''; w.t = ''; if (D.act === w.id) D.last = w.id; }
+    f.el.querySelector('.dwBody').textContent = '';
+    paint(w); taskbar(); if (D.act === w.id) { banner(); syncUrl(); }
+    if (!w.min) wake(w);
+  }
   function navTo(w, h) { // מעבר של חלון קריאה למקום בלי להוסיף להיסטוריה
+    if (isFind(h) || (w.k === 'search')) { switchView(w, h); return; }
     const f = F.get(w.id); w.navTo = h;
     if (f && f.win) f.win.location.hash = h; else { w.navTo = null; if (!w.min) wake(w); }
     if (D.act === w.id) syncUrl();
@@ -308,7 +331,7 @@
   function openRead(hash, fresh) {
     hash = hash || '#read';
     let w = !fresh && (W(D.last) || reads().sort((a, b) => b.z - a.z)[0]);
-    if (!w && reads().length >= MAXR) { w = reads().sort((a, b) => a.z - b.z)[0]; toast(T('הגעת ל-5 חלונות קריאה — המקום נפתח בחלון הישן ביותר', 'Five reader windows open — opened in the oldest one')); }
+    if (!w && others().length >= MAXW) { w = others().sort((a, b) => a.z - b.z)[0]; toast(T('הגעת ל-6 חלונות — המקום נפתח בחלון שלא היה פעיל הכי הרבה זמן (אחורה חוזר למה שהיה בו)', 'Six windows open — opened in the least recently used one (Back returns to what it showed)')); }
     if (w) { focusWin(w.id); navPush(w, hash); return w; }
     w = newRead(D, hash); D.wins.push(w); build(w); focusWin(w.id); return w;
   }
@@ -319,7 +342,7 @@
   // חלון תוצאות מחומם מראש: נבנה מוסתר (ממוזער, לא ברשימת החלונות) כשמתחילים לחפש, כדי שה-Enter יציג תוצאות בלי להמתין לטעינת iframe
   let spare = null;
   function prewarm() {
-    if (spare || searches().length >= MAXS || !/^https?:$/.test(location.protocol)) return;
+    if (spare || others().length >= MAXW || !/^https?:$/.test(location.protocol)) return;
     const w0 = { id: 's' + (D.seq++), k: 'search', x: 0, y: 0, w: 900, h: 600, max: false, min: true, z: 0, q: '', fs: {} };
     build(w0); const f = F.get(w0.id), fr = document.createElement('iframe');
     fr.title = T('תוצאות חיפוש', 'Search results'); fr.src = 'index.html?embed=results&spare=1&wid=' + w0.id;
@@ -336,11 +359,14 @@
       try { if (f && f.fr && f.fr.contentWindow) f.fr.contentWindow.postMessage({ gtDesk: 'go', wid: w.id, q: qv, f: w.fs }, location.origin); } catch (e) {}
     }
     if (!w) {
-      if (searches().length >= MAXS) closeWin(searches().sort((a, b) => a.z - b.z)[0].id);
-      w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: scFs(sc), t: T('תוצאות: "', 'Results: "') + qv + '"', count: null };
+      if (others().length >= MAXW) { // במקסימום: התוצאות נפתחות בחלון שלא היה פעיל הכי הרבה זמן, ואחורה חוזר למה שהיה בו
+        const t = others().sort((a, b) => a.z - b.z)[0]; focusWin(t.id); navPush(t, findEntry(qv, scFs(sc)));
+        toast(T('הגעת ל-6 חלונות — התוצאות נפתחו בחלון שלא היה פעיל הכי הרבה זמן (אחורה חוזר למה שהיה בו)', 'Six windows open — results opened in the least recently used one (Back returns to what it showed)')); return t;
+      }
+      w = { id: 's' + (D.seq++), k: 'search', x: 80 + searches().length * 30, y: 30 + searches().length * 30, w: Math.min(1100, desk.clientWidth - 120), h: Math.min(720, desk.clientHeight - 50), max: false, min: false, z: ++D.z, q: qv, fs: scFs(sc), t: T('תוצאות: "', 'Results: "') + qv + '"', count: null, hist: [findEntry(qv, scFs(sc))], hi: 0 };
       if (spare && spare.ready) { // מאמצים את החלון המחומם
         const s = spare; spare = null;
-        Object.assign(s.w, { x: w.x, y: w.y, w: w.w, h: w.h, min: false, z: w.z, q: qv, fs: w.fs, t: w.t, count: null, at: Date.now() });
+        Object.assign(s.w, { hist: w.hist, hi: 0, x: w.x, y: w.y, w: w.w, h: w.h, min: false, z: w.z, q: qv, fs: w.fs, t: w.t, count: null, at: Date.now() });
         w = s.w; D.wins.push(w); paint(w); attach(w, s.fr);
         try { s.fr.contentWindow.postMessage({ gtDesk: 'go', wid: w.id, q: qv, f: w.fs }, location.origin); } catch (e) {}
       } else { D.wins.push(w); build(w); }
@@ -350,10 +376,11 @@
   // הודעות מחלון תוצאות החיפוש: פתיחת תוצאה בחלון קריאה, ושמירת מצב הסינון
   function fromResults(m) {
     const w = W(m.wid); if (!w) return;
-    if (m.type === 'state') { w.fs = m.state; w.count = m.total; saveSoon(); }
+    if (m.type === 'state') { w.fs = m.state; w.count = m.total; if (w.hist && isFind(w.hist[w.hi])) w.hist[w.hi] = findEntry(w.q, w.fs); saveSoon(); }
     else if (m.type === 'open') {
       const l = W(D.last), t = !m.fresh && l && !l.min ? l : null;
-      let r; if (t) { focusWin(t.id); navPush(t, m.hash); r = t; } else r = openRead(m.hash, true);
+      let r; if (others().length >= MAXW) { r = w; focusWin(w.id); navPush(w, m.hash); } // במקסימום: נפתח בחלון התוצאות עצמו, ואחורה חוזר לתוצאות
+      else if (t) { focusWin(t.id); navPush(t, m.hash); r = t; } else r = openRead(m.hash, true);
       let n = 0; const tick = () => { const f = F.get(r.id), gr = f && f.win && f.win.GimReader; if (gr && gr.highlight) setTimeout(() => gr.highlight(m.q), 400); else if (++n < 30) setTimeout(tick, 300); }; tick();
     }
   }
@@ -456,7 +483,7 @@
 
   /* ---------- שורת משימות ---------- */
   function taskbar() {
-    const n = reads().length;
+    const n = others().length;
     task.innerHTML = '';
     const st = stageOn();
     D.wins.slice().sort((a, b) => (a.k === 'gem' ? -1 : b.k === 'gem' ? 1 : 0)).forEach(w => {
@@ -471,8 +498,8 @@
       c.onclick = () => { if (!st && D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
       task.appendChild(c);
     });
-    task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXR + '</span>' +
-      '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + (n >= MAXR ? T('הגעת ל-5 חלונות קריאה — מחליף את החלון הישן ביותר', 'Five reader windows open — replaces the oldest one') : T('חלון קריאה חדש', 'New reader window')) + '"><span class="ic">' + SV(n >= MAXR ? GI.swap : GI.plus) + '</span><span class="t">' + (n >= MAXR ? T('החלף', 'Replace') : T('קריאה', 'Reader')) + '</span></button>' +
+    task.insertAdjacentHTML('beforeend', '<span class="dkSp"></span><span class="dkCnt" title="' + T('חלונות קריאה', 'Reader windows') + '">' + n + '/' + MAXW + '</span>' +
+      '<button type="button" class="dkChip dkTool" id="dkAdd" title="' + (n >= MAXW ? T('הגעת ל-6 חלונות — מחליף את החלון שלא היה פעיל הכי הרבה זמן', 'Six windows open — replaces the least recently used one') : T('חלון קריאה חדש', 'New reader window')) + '"><span class="ic">' + SV(n >= MAXW ? GI.swap : GI.plus) + '</span><span class="t">' + (n >= MAXW ? T('החלף', 'Replace') : T('קריאה', 'Reader')) + '</span></button>' +
       '<button type="button" class="dkChip dkTool" id="dkArrBtn" title="' + T('סידור חלונות', 'Arrange windows') + '"><span class="ic">' + SV(GI.arr) + '</span><span class="t">' + T('סידור', 'Arrange') + '</span></button>');
     $('#dkArr [data-arr="stage"]').classList.toggle('cur', stageOn()); ['cascade', 'side', 'grid'].forEach(k => $('#dkArr [data-arr="' + k + '"]').classList.remove('cur'));
     sleepTick();
@@ -565,7 +592,7 @@
     if (closedBy && Date.now() - closedBy.at < 800) { const rc = t.getBoundingClientRect(), c = closedBy; closedBy = null; if (Math.abs(rc.left - c.rc.left) < 2 && Math.abs(rc.right - c.rc.right) < 2) return; }
     if (slot === nav && nav.dataset.stub) { // פתיחת חלון קריאה חדש ובו בורר הספר
       if (!t.classList.contains('rdWhere')) return;
-      if (reads().length >= MAXR) { const l = W(D.last) || reads()[0]; if (l) focusWin(l.id); return; }
+      if (others().length >= MAXW) { const l = W(D.last) || others()[0]; if (l) focusWin(l.id); return; }
       pickBook(t); return;
     }
     const f = readerF(); if (!f || !f.doc) return;
@@ -574,7 +601,7 @@
     if (o) { e.preventDefault(); lastBtn = t; lastR = t.getBoundingClientRect().right; lastRc = rectOf(t); o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
   }
   nav.addEventListener('click', e => fwdClick(nav, '#rdTop .rdNav', e));
-  nav.addEventListener('pointerover', e => { if (nav.dataset.stub && e.target.closest('.rdWhere') && reads().length < MAXR) { host(); clearTimeout(hostT); idleHost(); } });
+  nav.addEventListener('pointerover', e => { if (nav.dataset.stub && e.target.closest('.rdWhere') && others().length < MAXW) { host(); clearTimeout(hostT); idleHost(); } });
   tools.addEventListener('click', e => fwdClick(tools, '#rdTop .rdTools', e));
   $('#dkGemTools').addEventListener('click', e => {
     const w = W(D.act), b = e.target.closest('[data-fwd]'), f = w && F.get(w.id);
@@ -885,7 +912,7 @@
     star();
     // ב-5 חלונות קריאה אי אפשר לפתוח עוד אחד: הכפתור מושבת (הבדיקה גם בכל ריחוף, כי הבורר נשאר פתוח בין פתיחות)
     const nb = g.querySelector('[data-j="new"]'), nbT = nb.title;
-    const upd = () => { const off = reads().length >= MAXR; nb.disabled = off; nb.title = off ? T('הגעת ל-5 חלונות קריאה — אפשר לפתוח מקום חדש רק בחלון הנוכחי', 'Five reader windows open — new places open only in the current window') : nbT; };
+    const upd = () => { const off = others().length >= MAXW; nb.disabled = off; nb.title = off ? T('הגעת ל-6 חלונות — אפשר לפתוח מקום חדש רק בחלון הנוכחי', 'Six windows open — new places open only in the current window') : nbT; };
     upd(); g.addEventListener('pointerover', upd); g.addEventListener('focusin', upd);
     foot.insertBefore(g, go); g.appendChild(go);
     const close = () => { const x = hd.querySelector('[data-close],.rdX,button:last-child'); if (x) x.click(); };
@@ -915,7 +942,7 @@
   function keys(e, id) {
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.shiftKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); e.stopImmediatePropagation(); q.focus(); q.select(); }
-    else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { const w = W(id || D.act); if (w && w.k === 'read') { e.preventDefault(); e.stopImmediatePropagation(); go(w.id, e.key === 'ArrowRight' ? -1 : 1); } }
+    else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { const w = W(id || D.act); if (w && w.k !== 'gem') { e.preventDefault(); e.stopImmediatePropagation(); go(w.id, e.key === 'ArrowRight' ? -1 : 1); } }
   }
   document.addEventListener('keydown', e => keys(e));
   const dark = () => document.documentElement.getAttribute('data-theme') === 'dark';
@@ -1008,7 +1035,7 @@
   }
 
   /* ---------- התחלה ---------- */
-  D.wins.forEach(w => { if (w.k === 'read' && (!Array.isArray(w.hist) || !w.hist.length)) { w.hist = ['#read']; w.hi = 0; } w.navTo = null; });
+  D.wins.forEach(w => { if (w.k === 'read' && (!Array.isArray(w.hist) || !w.hist.length)) { w.hist = ['#read']; w.hi = 0; } if (w.k === 'search' && (!Array.isArray(w.hist) || !w.hist.length)) { w.hist = [findEntry(w.q, w.fs)]; w.hi = 0; } w.navTo = null; });
   D.wins.forEach(build);
   D.wins.forEach(w => { if (!w.min && w.id !== D.act) sleepFrame(w); });
   if (!W(D.act) || W(D.act).min) { const n = topVisible(); D.act = n ? n.id : ''; }
