@@ -865,6 +865,7 @@
       st.textContent = '.rdJFoot .dkJ{display:flex;gap:8px;align-items:center;margin-inline-start:auto}' +
         '.rdJFoot .dkJB{height:34px;padding:0 12px;border:1px solid var(--ln);border-radius:10px;background:var(--pn);color:var(--tx);font:600 13px var(--ui);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;cursor:pointer}' +
         '.rdJFoot .dkJB .s{color:var(--gold);font-size:15px}' +
+        '.rdJFoot .dkJB:disabled{opacity:.45;cursor:not-allowed}' +
         '.rdPopHd .dkJGem{height:30px;padding:0 12px;border:1px solid var(--gold);border-radius:999px;background:transparent;color:var(--gold);font:600 13px var(--ui);white-space:nowrap;margin-inline-start:auto;margin-inline-end:8px;cursor:pointer}' +
         '.dkJMarks{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 2px 8px;font:12px var(--ui);color:var(--mu)}' +
         '.dkJMarks button{height:26px;padding:0 10px;border:1px solid var(--ln);border-radius:999px;background:var(--pn2);color:var(--tx);font:12px var(--ui);cursor:pointer}';
@@ -882,10 +883,14 @@
       '<button type="button" class="dkJB" data-j="new" title="' + T('פתיחת המקום הנבחר בחלון קריאה חדש', 'Open the chosen place in a new reader window') + '">' + gsv('<rect x="8" y="3" width="13" height="13" rx="2"/><path d="M16 20H5a2 2 0 0 1-2-2V8"/>') + ' ' + T('בחלון חדש', 'New window') + '</button>';
     const star = () => { const s = g.querySelector('.s'); s.innerHTML = gsv('<path d="' + STAR + '"/>', isMarked()); s.parentNode.title = isMarked() ? T('הסרת הסימניה', 'Remove bookmark') : T('סימניה למקום הנוכחי', 'Bookmark this place'); };
     star();
+    // ב-5 חלונות קריאה אי אפשר לפתוח עוד אחד: הכפתור מושבת (הבדיקה גם בכל ריחוף, כי הבורר נשאר פתוח בין פתיחות)
+    const nb = g.querySelector('[data-j="new"]'), nbT = nb.title;
+    const upd = () => { const off = reads().length >= MAXR; nb.disabled = off; nb.title = off ? T('הגעת ל-5 חלונות קריאה — אפשר לפתוח מקום חדש רק בחלון הנוכחי', 'Five reader windows open — new places open only in the current window') : nbT; };
+    upd(); g.addEventListener('pointerover', upd); g.addEventListener('focusin', upd);
     foot.insertBefore(g, go); g.appendChild(go);
     const close = () => { const x = hd.querySelector('[data-close],.rdX,button:last-child'); if (x) x.click(); };
     g.addEventListener('click', e => {
-      const b = e.target.closest('[data-j]'); if (!b) return;
+      const b = e.target.closest('[data-j]'); if (!b || b.disabled) return;
       if (b.dataset.j === 'mark') {
         const m = marks(), h = cur(), i = m.findIndex(x => x.h === h);
         if (i >= 0) m.splice(i, 1); else m.unshift({ h, t: label(h) || w.t || h });
