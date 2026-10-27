@@ -1,0 +1,254 @@
+/* results.js — חלון "תוצאות חיפוש" של שולחן העבודה (v4.1.0): index.html?embed=results&q=…&wid=…&f=…
+   חיפוש בכל הספרים, סינון לפי ספר / תת-ספר / מקור, חיפוש בתוך התוצאות ומיון. המנוע הוא של reader.js (G.GimResults);
+   כאן רק הממשק: עץ סינון עם מונים, רשימה וירטואלית (טקסט נטען רק לשורות שנראות), ותגיות של הסינון הפעיל.
+   לחיצה על תוצאה נשלחת לשולחן העבודה (desktop.js) שפותח אותה בחלון קריאה. מצב הסינון נשמר שם (postMessage 'res-state'). */
+(() => {
+  'use strict';
+  if (!window.GT_RESULTS) return;
+  const P = new URLSearchParams(location.search);
+  const SPARE = P.get('spare') === '1'; // חלון מחומם מראש: נטען ומוכן, ומקבל שאילתה בהודעת 'go' מהשולחן
+  let WID = P.get('wid') || '', Q0 = P.get('q') || '';
+  let FS = {}; try { FS = JSON.parse(P.get('f') || '{}') || {}; } catch (e) {}
+  const CAP = 150000, RH = 82, GH = 32, PG = 100; // PG: תוצאות בדף
+  const SVG = d => '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const I_CHK = SVG('<path d="m5 12.5 4.5 4.5L19 7.5"/>'), I_MIN = SVG('<path d="M6 12h12"/>'), I_X = SVG('<path d="m7 7 10 10M17 7 7 17"/>'), I_DN = SVG('<path d="m6 9 6 6 6-6"/>'), I_BK = SVG('<path d="m9 5 7 7-7 7"/>');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const post = m => { try { parent.postMessage(Object.assign({ gtDesk: 'res', wid: WID }, m), '*'); } catch (e) {} };
+
+  // ---- State ----
+  let R = null, me = null, idx = null, q = Q0, extra = FS.extra || '';
+  let SC = FS.scope && FS.scope.sel ? FS.scope : null; // ההיקף מהרשימה הנפתחת; null = כל הספרים
+  const sel = new Set(FS.sel || []), srcOff = new Set(FS.srcOff || []);
+  let none = !!FS.none; // 'נקה': שום ספר לא מסומן (בלי סינון, sel ריק = הכול)
+  let sort = FS.sort === 'books' ? 'books' : 'rel', exp = new Set(FS.exp || []);
+  let rows = [], off = null, order = null, shown = 0, page = Math.max(0, +FS.pg || 0), wantPg = page, pages = 1;
+
+  document.documentElement.classList.add('gtResults');
+  const app = document.createElement('div'); app.id = 'rsApp'; app.dir = 'rtl';
+  app.innerHTML = '<aside class="rsSide" id="rsSide"></aside><div class="rsMain"><div class="rsHd"><h2 id="rsTt"></h2><div class="rsSb" id="rsSb"></div></div><div class="rsTools"><label class="rsIn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" id="rsIn" placeholder="חיפוש בתוך התוצאות…" autocomplete="off" spellcheck="false"></label><span class="rsSort rsScope" id="rsScope"></span><span class="rsSort" id="rsSort"><button data-s="books">לפי סדר הספרים</button><button data-s="rel">לפי רלוונטיות</button></span></div><div class="rsSel" id="rsSel"></div><div class="rsList" id="rsList"><div class="rsSp" id="rsSp"></div></div><div class="rsPg" id="rsPg" hidden></div><div class="rsFoot" id="rsFoot"></div></div>';
+  document.body.appendChild(app);
+  const $ = s => app.querySelector(s), list = $('#rsList'), sp = $('#rsSp');
+  $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
+  const sameScope = () => !!SC && sel.size === SC.sel.length && SC.sel.every(k => sel.has(k));
+  let goSeen = !SPARE, pend = false;
+  function setCfg(m) {
+    WID = m.wid; Q0 = q = m.q || ''; FS = m.f || {}; extra = FS.extra || '';
+    SC = FS.scope && FS.scope.sel ? FS.scope : null;
+    none = !!FS.none; sel.clear(); (FS.sel || []).forEach(k => sel.add(k)); srcOff.clear(); (FS.srcOff || []).forEach(k => srcOff.add(k));
+    sort = FS.sort === 'books' ? 'books' : 'rel'; exp = new Set(FS.exp || []); page = wantPg = Math.max(0, +FS.pg || 0);
+    $('#rsIn').value = extra; $('#rsTt').textContent = '"' + Q0 + '"';
+  }
+  addEventListener('message', e => { const m = e.data; if (!m || m.gtDesk !== 'go' || e.source !== parent) return; const was = goSeen; setCfg(m); goSeen = true; if (pend) { pend = false; run(); } else if (was && R && R.ready()) run(); });
+
+  const state = () => post({ type: 'state', state: { sel: [...sel], none, scope: SC, srcOff: [...srcOff], sort, exp: [...exp], extra, pg: page }, total: idx ? shown : 0, q });
+
+  // ---- התחלה ----
+  const bootTry = () => { R = window.GimResults; if (!R || !R.ready()) return false; clearInterval(boot); if (goSeen) run(); else pend = true; return true; };
+  const boot = setInterval(bootTry, 30);
+  let runTok = 0, idxTok = 0;
+  function run() {
+    const full = (q + ' ' + extra).trim();
+    $('#rsFoot').textContent = 'מחפש בכל הספרים…'; sp.style.height = '0'; list.querySelectorAll('.rsRow,.rsGh').forEach(e => e.remove());
+    const tok = ++runTok;
+    // אם אחרי 15 שניות עדיין אין שום תוצאה (תחום שנתקע בטעינה) — מציעים לנסות שוב במקום להשאיר "מחפש…" לנצח
+    setTimeout(() => {
+      if (tok !== runTok || idx) return;
+      const ft = $('#rsFoot'); ft.textContent = 'החיפוש מתעכב… '; const a = document.createElement('a'); a.href = '#'; a.textContent = 'לנסות שוב';
+      a.onclick = e => { e.preventDefault(); run(); }; ft.appendChild(a);
+    }, 15000);
+    R.start(full, (m, partial) => {
+      if (tok !== runTok) return;
+      if (!m) { $('#rsFoot').textContent = 'אין תוצאות'; idx = null; side(); return; }
+      // תוצאות חלקיות (תחומים שכבר סיימו) מוצגות מיד; הסכום והסדר מתעדכנים כשהאטיים מסיימים
+      const t = ++idxTok;
+      R.index(m, CAP, (i, n) => { if (!idx) $('#rsFoot').textContent = 'מסדר את התוצאות… ' + i.toLocaleString('he') + ' / ' + n.toLocaleString('he'); }, ix => {
+        if (t !== idxTok || tok !== runTok) return;
+        const st = idx ? list.scrollTop : 0; // עדכון חלקי לא מקפיץ את הרשימה לראש
+        me = m; me.onLoad = () => paint(true); idx = ix; side(); refilter(true);
+        if (partial) { list.scrollTop = st; paint(true); $('#rsFoot').textContent += ' · תוצאות חלקיות — עדיין מחפש (' + (m.pend || 0) + ' תחומים נותרו)'; }
+      });
+    }, (dn, pend) => { if (!idx) $('#rsFoot').textContent = 'מחפש בכל הספרים… ' + R.DOMS.map(d => R.DL[d] + (dn.includes(d) ? ' (נטען)' : ' …')).join(' · '); }, SC && SC.pre && sameScope() ? SC.pre : null);
+  }
+
+  // ---- סינון ----
+  const key = (d, bi) => d + ':' + bi;
+  const groupOf = (d, bi) => R.book(RES_D[d], bi).group;
+  let RES_D = null;
+  function passes(i) {
+    if (srcOff.has(idx.dom[i] + ':' + idx.src[i])) return false;
+    if (none) return false;
+    if (SC && SC.ord && sel.size === SC.sel.length && SC.sel.every(k => sel.has(k)) && (idx.ord[i] < SC.ord[0] || idx.ord[i] > SC.ord[1])) return false; // פרק / פרשה
+    if (!sel.size) return true;
+    const d = idx.dom[i], bi = idx.bk[i];
+    return sel.has('d:' + d) || sel.has('b:' + d + ':' + bi) || (sel.size > 0 && sel.has('g:' + d + ':' + gOf(d, bi)));
+  }
+  const gc = new Map(); const gOf = (d, bi) => { const k = d * 10000 + bi; let g = gc.get(k); if (g == null) { g = R.book(RES_D[d], bi).group; gc.set(k, g); } return g; };
+
+  // keep=true: עדכון חלקי של אותה רשימה (נשארים באותו דף); אחרת (סינון, מיון) חוזרים לדף הראשון
+  function refilter(keep) {
+    if (!idx) return;
+    RES_D = R.DOMS;
+    const arr = []; for (let i = 0; i < idx.n; i++) if (passes(i)) arr.push(i);
+    if (sort === 'books') arr.sort((a, b) => idx.dom[a] - idx.dom[b] || idx.bk[a] - idx.bk[b] || idx.ord[a] - idx.ord[b] || a - b);
+    order = arr; shown = arr.length;
+    pages = Math.max(1, Math.ceil(shown / PG)); if (!keep) wantPg = 0; page = Math.min(wantPg, pages - 1);
+    showPage(); chips(); side(); scopeBar(); state();
+  }
+  // דף אחד: PG תוצאות בלבד (עם כותרת לכל ספר שמופיע בדף). הטקסט נטען רק לדף הנוכחי
+  function showPage() {
+    const arr = order, part = arr.slice(page * PG, (page + 1) * PG);
+    rows = []; let last = -1;
+    const cnt = new Map(); if (sort === 'books') arr.forEach(i => { const k = idx.dom[i] * 10000 + idx.bk[i]; cnt.set(k, (cnt.get(k) || 0) + 1); });
+    part.forEach(i => {
+      if (sort === 'books') { const k = idx.dom[i] * 10000 + idx.bk[i]; if (k !== last) { last = k; rows.push({ gh: 1, d: idx.dom[i], bi: idx.bk[i], n: cnt.get(k) }); } }
+      rows.push({ i });
+    });
+    off = new Int32Array(rows.length + 1); rows.forEach((r, k) => { off[k + 1] = off[k] + (r.gh ? GH : RH); });
+    sp.style.height = off[rows.length] + 'px'; list.scrollTop = 0; rt = 0;
+    const from = shown ? page * PG + 1 : 0, to = Math.min(shown, (page + 1) * PG);
+    $('#rsFoot').textContent = (shown.toLocaleString('he')) + ' תוצאות' + (shown < idx.total && !sel.size && !srcOff.size && idx.total > idx.n ? ' (מוצגות ' + idx.n.toLocaleString('he') + ' הראשונות)' : '') + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '') + ' · לחיצה פותחת בחלון קריאה (Ctrl+לחיצה: בחלון חדש)';
+    $('#rsSb').textContent = shown.toLocaleString('he') + ' תוצאות' + (idx.total !== shown ? ' מתוך ' + idx.total.toLocaleString('he') : '');
+    if (none) $('#rsFoot').textContent = 'לא נבחר שום ספר — לחצו "הכול" בלוח הסינון';
+    pager(from, to); paint(true);
+  }
+  const AR_P = SVG('<path d="m9 5 7 7-7 7"/>'), AR_N = SVG('<path d="m15 5-7 7 7 7"/>');
+  function pager(from, to) {
+    const pg = $('#rsPg'); pg.hidden = pages <= 1;
+    if (pages <= 1) return;
+    const b = (p, t, dis, title, cls) => '<button type="button" data-pg="' + p + '"' + (cls ? ' class="' + cls + '"' : '') + (dis ? ' disabled' : '') + ' title="' + title + '" aria-label="' + title + '">' + t + '</button>';
+    pg.innerHTML = b(0, 'הראשון', page === 0, 'לדף הראשון') + b(page - 1, AR_P, page === 0, 'הדף הקודם', 'rsAr') +
+      '<span class="rsPn">תוצאות ' + from.toLocaleString('he') + '–' + to.toLocaleString('he') + ' · דף <input type="number" id="rsPgIn" min="1" max="' + pages + '" value="' + (page + 1) + '"> מתוך ' + pages.toLocaleString('he') + '</span>' +
+      b(page + 1, AR_N, page >= pages - 1, 'הדף הבא', 'rsAr') + b(pages - 1, 'האחרון', page >= pages - 1, 'לדף האחרון');
+  }
+  function goPage(p) { p = Math.max(0, Math.min(pages - 1, p | 0)); if (p === page) return; page = wantPg = p; showPage(); state(); }
+  $('#rsPg').addEventListener('click', e => { const b = e.target.closest('button[data-pg]'); if (b && !b.disabled) goPage(+b.dataset.pg); });
+  $('#rsPg').addEventListener('change', e => { if (e.target.id === 'rsPgIn') goPage((+e.target.value || 1) - 1); });
+  $('#rsPg').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rsPgIn') goPage((+e.target.value || 1) - 1); });
+
+  // ---- עץ סינון עם מונים ----
+  function side() {
+    const S = $('#rsSide'); if (!idx) { S.innerHTML = '<h4><span>סינון לפי ספר</span></h4>'; return; }
+    RES_D = R.DOMS;
+    // מונים (לפי המקורות הפעילים, בלי קשר לבחירת הספרים)
+    const dc = {}, gcn = {}, bc = {};
+    for (let i = 0; i < idx.n; i++) {
+      if (srcOff.has(idx.dom[i] + ':' + idx.src[i])) continue;
+      const d = idx.dom[i], bi = idx.bk[i], g = gOf(d, bi);
+      dc[d] = (dc[d] || 0) + 1; const gk = d + ':' + g; gcn[gk] = (gcn[gk] || 0) + 1; const bk = d + ':' + bi; bc[bk] = (bc[bk] || 0) + 1;
+    }
+    const tree = {}; // d → g → [bi]
+    Object.keys(bc).forEach(k => { const [d, bi] = k.split(':').map(Number), g = gOf(d, bi); ((tree[d] = tree[d] || {})[g] = tree[d][g] || []).push(bi); });
+    const allOn = !sel.size && !none, mark = (on, half) => '<span class="rsCb' + (on ? ' on' : half ? ' half' : '') + '">' + (on ? I_CHK : half ? I_MIN : '') + '</span>';
+    let h = '<h4><span>סינון לפי ספר</span><span class="rsQ"><a data-clr="sel" class="' + (allOn ? 'dim' : '') + '">הכול</a><a data-clr="selNone" class="' + (none ? 'dim' : '') + '">נקה</a></span></h4>';
+    Object.keys(tree).map(Number).sort((a, b) => a - b).forEach(d => {
+      const dk = 'd:' + d, dOn = allOn || sel.has(dk), dOpen = exp.has(dk), childSel = [...sel].some(x => x.startsWith('g:' + d + ':') || x.startsWith('b:' + d + ':'));
+      h += '<div class="rsFi l1' + (dOn ? ' on' : '') + '" data-k="' + dk + '"><span class="rsTg" data-t="' + dk + '">' + (dOpen ? I_DN : I_BK) + '</span>' + mark(dOn, childSel) + '<span class="rsNm">' + esc(R.DL[R.DOMS[d]]) + '</span><span class="rsN">' + dc[d].toLocaleString('he') + '</span></div>';
+      if (!dOpen) return;
+      const groups = Object.keys(tree[d]);
+      groups.forEach(g => {
+        const gk = 'g:' + d + ':' + g, grp = !!g, gOn = allOn || sel.has(gk), gOpen = !grp || exp.has(gk), gChild = [...sel].some(x => tree[d][g].some(bi => x === 'b:' + d + ':' + bi));
+        if (grp) h += '<div class="rsFi l2' + (gOn ? ' on' : '') + '" data-k="' + gk + '"><span class="rsTg" data-t="' + gk + '">' + (gOpen ? I_DN : I_BK) + '</span>' + mark(gOn, gChild) + '<span class="rsNm">' + esc(g) + '</span><span class="rsN">' + gcn[d + ':' + g].toLocaleString('he') + '</span></div>';
+        if (!gOpen) return;
+        tree[d][g].sort((a, b) => a - b).forEach(bi => {
+          const bk = 'b:' + d + ':' + bi, on = allOn || sel.has(bk);
+          h += '<div class="rsFi ' + (grp ? 'l3' : 'l2') + (on ? ' on' : '') + '" data-k="' + bk + '">' + mark(on, false) + '<span class="rsNm">' + esc(R.book(R.DOMS[d], bi).name) + '</span><span class="rsN">' + bc[d + ':' + bi].toLocaleString('he') + '</span></div>';
+        });
+      });
+    });
+    // מקורות (נוסח / מפרשים / תרגום)
+    const sc = {}; for (let i = 0; i < idx.n; i++) { const k = idx.dom[i] + ':' + idx.src[i]; sc[k] = (sc[k] || 0) + 1; }
+    const byName = {}; Object.keys(sc).forEach(k => { const [d, s] = k.split(':').map(Number), nm = R.SRC[R.DOMS[d]][s]; (byName[nm] = byName[nm] || []).push(k); });
+    h += '<h4 style="margin-top:14px"><span>מקורות</span><span class="rsQ"><a data-clr="src" class="' + (!srcOff.size ? 'dim' : '') + '">הכול</a><a data-clr="srcNone" class="' + (Object.keys(sc).every(k => srcOff.has(k)) ? 'dim' : '') + '">נקה</a></span></h4>';
+    Object.keys(byName).forEach(nm => {
+      const ks = byName[nm], off0 = ks.every(k => srcOff.has(k)), total = ks.reduce((a, k) => a + sc[k], 0);
+      h += '<div class="rsFi l2' + (off0 ? '' : ' on') + '" data-s="' + ks.join(',') + '">' + mark(!off0, false) + '<span class="rsNm">' + esc(nm) + '</span><span class="rsN">' + total.toLocaleString('he') + '</span></div>';
+    });
+    // תחומים שלא נטענו: לא נעלמים בשקט
+    const bad = (me && me.bad) || [];
+    if (bad.length) h = h.replace('</h4>', '</h4>' + bad.map(d => '<div class="rsFi l1 rsBad"><span class="rsNm">' + esc(R.DL[d] || d) + '</span><span class="rsN">לא נטען · <a href="#" data-retry>לנסות שוב</a></span></div>' + (me.err && me.err[d] ? '<div class="rsBadWhy">' + esc(me.err[d]) + '</div>' : '')).join(''));
+    S.innerHTML = h;
+  }
+  $('#rsSide').addEventListener('click', e => {
+    if (e.target.closest('[data-retry]')) { e.preventDefault(); return run(); }
+    const clr = e.target.closest('[data-clr]');
+    if (clr) {
+      const c = clr.dataset.clr;
+      if (c === 'sel') { sel.clear(); none = false; } else if (c === 'selNone') { sel.clear(); none = true; } else if (c === 'src') srcOff.clear();
+      else { for (let i = 0; i < idx.n; i++) srcOff.add(idx.dom[i] + ':' + idx.src[i]); }
+      return refilter();
+    }
+    const t = e.target.closest('[data-t]'); if (t) { const k = t.dataset.t; exp.has(k) ? exp.delete(k) : exp.add(k); return side(), state(); }
+    const f = e.target.closest('.rsFi'); if (!f) return;
+    if (f.dataset.s) { const ks = f.dataset.s.split(','), off0 = ks.every(k => srcOff.has(k)); ks.forEach(k => off0 ? srcOff.delete(k) : srcOff.add(k)); return refilter(); }
+    const k = f.dataset.k; if (sel.has(k)) { sel.delete(k); if (!sel.size) none = true; } else { none = false; sel.add(k); } refilter();
+  });
+  function chips() {
+    const c = [];
+    sel.forEach(k => { const [t, d, rest] = k.split(':'); const dn = R.DL[R.DOMS[+d]]; c.push([k, t === 'd' ? dn : t === 'g' ? dn + ' · ' + rest : R.book(R.DOMS[+d], +rest).name]); });
+    if (extra) c.push(['extra', 'בתוך התוצאות: ' + extra]);
+    $('#rsSel').innerHTML = c.length ? 'מסונן: ' + c.map(([k, n]) => '<span class="rsChip" data-x="' + esc(k) + '">' + esc(n) + ' ' + I_X + '</span>').join('') : '';
+  }
+  $('#rsSel').addEventListener('click', e => {
+    const c = e.target.closest('[data-x]'); if (!c) return; const k = c.dataset.x;
+    if (k === 'extra') { extra = ''; $('#rsIn').value = ''; post({ type: 'title', q: q }); run(); return; }
+    sel.delete(k); refilter();
+  });
+  $('#rsSort').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (!b || b.dataset.s === sort) return; sort = b.dataset.s; $('#rsSort').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.s === sort)); refilter(); });
+  $('#rsSort').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.s === sort));
+  // היקף: מה שנבחר ברשימה הנפתחת, או כל הספרים
+  function scopeBar() {
+    const el = $('#rsScope'); el.hidden = !SC;
+    if (!SC) return;
+    const same = sel.size === SC.sel.length && SC.sel.every(k => sel.has(k));
+    el.innerHTML = '<button data-sc="1" class="' + (same ? 'on' : '') + '">' + esc(SC.name) + '</button><button data-sc="0" class="' + (!sel.size && !none ? 'on' : '') + '">בכל הספרים</button>';
+  }
+  $('#rsScope').addEventListener('click', e => {
+    const b = e.target.closest('[data-sc]'); if (!b) return;
+    none = false; sel.clear(); if (b.dataset.sc === '1') SC.sel.forEach(k => sel.add(k));
+    refilter();
+  });
+  scopeBar();
+  // חיפוש בתוך התוצאות: מצמצם את החיפוש (המילה הנוספת חייבת להופיע גם היא) ומריץ אותו מחדש; הסינון נשמר
+  let it = 0;
+  $('#rsIn').addEventListener('input', () => { clearTimeout(it); it = setTimeout(() => { extra = $('#rsIn').value.trim(); wantPg = 0; run(); }, 450); });
+
+  // ---- רשימה וירטואלית ----
+  function firstAt(y) { let lo = 0, hi = rows.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (off[m] <= y) lo = m; else hi = m - 1; } return lo; }
+  let rf = 0; list.addEventListener('scroll', () => { rt = 0; cancelAnimationFrame(rf); rf = requestAnimationFrame(() => paint(false)); });
+  let pf = null;
+  let rt = 0; // ניסיונות טעינה חוזרים לשורות שלד
+  function paint(force) {
+    if (!idx || !rows.length) { if (idx && !rows.length) list.querySelectorAll('.rsRow,.rsGh').forEach(e => e.remove()); return; }
+    const top = list.scrollTop, hgt = list.clientHeight || 500, a = Math.max(0, firstAt(top) - 6), z = Math.min(rows.length, firstAt(top + hgt) + 8);
+    const need = []; for (let k = a; k < z; k++) { const r = rows[k]; if (r.i != null && me.hits[r.i] && me.hits[r.i].ph) need.push(r.i); }
+    if (need.length) {
+      // טעינה שנפלה (למשל הוחלפה בגרסה חדשה) משאירה שלד — מנסים שוב בהשהיה גוברת, עד 6 פעמים
+      const m0 = me, t = rt;
+      R.load(m0, need, 1).catch(() => {}).then(() => { if (m0 === me && t === rt && ++rt <= 6) setTimeout(() => { if (m0 === me && list.querySelector('.rsRow.ph')) paint(true); }, 250 * rt); });
+    }
+    const sig = a + ':' + z + ':' + need.length;
+    if (!force && sig === pf) return; pf = sig;
+    let h = '';
+    for (let k = a; k < z; k++) {
+      const r = rows[k], y = off[k];
+      if (r.gh) { const b = R.book(R.DOMS[r.d], r.bi); h += '<div class="rsGh" style="top:' + y + 'px"><span>' + esc(R.DL[R.DOMS[r.d]] + ' · ' + b.name) + '</span><span class="rsN">' + r.n.toLocaleString('he') + ' תוצאות</span></div>'; continue; }
+      const x = me.hits[r.i];
+      if (!x || x.ph) { h += '<div class="rsRow ph" style="top:' + y + 'px"><i></i><i></i></div>'; continue; }
+      const o = R.row(x);
+      h += '<button type="button" class="rsRow" style="top:' + y + 'px" data-i="' + r.i + '"><span class="rsRf">' + (o.tag ? '<i>' + esc(o.tag) + '</i> ' : '') + esc(o.ref) + '</span><span class="rsSn">' + (o.html || '') + '</span></button>';
+    }
+    list.querySelectorAll('.rsRow,.rsGh').forEach(e => e.remove());
+    list.insertAdjacentHTML('beforeend', h);
+  }
+  list.addEventListener('click', e => {
+    const b = e.target.closest('.rsRow[data-i]'); if (!b) return;
+    const x = me.hits[+b.dataset.i]; if (!x || x.ph) return;
+    post({ type: 'open', hash: R.hashOf(x), q: (q + ' ' + extra).trim(), fresh: e.ctrlKey || e.metaKey || e.shiftKey });
+  });
+  // אחרי 45 שניות בלי פעילות — משחררים את ה-Workers של מנוע החיפוש (מאות MB); הם חוזרים לבד כשמדפדפים או גוללים
+  let idleT = 0; const touch = () => { clearTimeout(idleT); idleT = setTimeout(() => { if (R && R.sleep) R.sleep(); }, 45000); };
+  ['pointerdown', 'keydown', 'wheel', 'scroll'].forEach(ev => addEventListener(ev, touch, true)); list.addEventListener('scroll', touch);
+  // רשת ביטחון: שורות שלד שנשארו (בקשה שנפלה או נתקעה) נדרשות שוב כל שנייה וחצי עד שהן נטענות
+  setInterval(() => { if (idx && me && list.querySelector('.rsRow.ph')) paint(true); }, 1500);
+  addEventListener('resize', () => paint(true));
+})();

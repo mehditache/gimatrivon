@@ -1,7 +1,7 @@
 (function () {
 'use strict';
-const VERSION = '3.32.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
-const BRANCH = 'main'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
+const VERSION = '4.6.39'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
 let VER_TXT = 'v' + VERSION + (DEV ? ' · ' + BRANCH : '');
@@ -644,10 +644,9 @@ function sideHtml(k) {
         <label class="tsFuzz" title="${L('כולל הטיות קרובות (הסרת תחיליות/סיומות נפוצות) — לא מדויק, לא תופס טיות פועל פנימיות')}">
           <input type="checkbox" class="cb" id="tfz${k}"><span>${L('הטיות')}</span>
         </label>
-        <span class="tsCount" id="tfc${k}" hidden></span>
         <button class="sm tsClear" id="tfx${k}" hidden>${L('נקה')}</button>
       </div>
-      <div class="sum" id="rs${k}" aria-live="polite"></div>
+      <div class="sumRow"><div class="sum" id="rs${k}" aria-live="polite"></div><span class="tsCount" id="tfc${k}" hidden></span></div>
       <div class="resList">
         <div class="sc" id="rl${k}"></div>
         <div class="fsTrack" id="fsTrack${k}"><div class="fsThumb" id="fsThumb${k}"><div class="fsBubble" id="fsBubble${k}"></div></div></div>
@@ -1048,9 +1047,14 @@ function setPhoneForced(on) {
   applyMobileLayout();
   window.dispatchEvent(new Event('resize'));
 }
+// יציאה ממצב טלפון במסך רחב חוזרת לשולחן העבודה (אותם תנאים כמו ההפניה בראש index.html), לא לממשק הקלאסי
+function backToDesktop() {
+  try { if (window.top !== window || navigator.webdriver || /[?&]embed=/.test(location.search) || innerWidth < 1000 || matchMedia('(pointer:coarse)').matches) return; } catch (e) { return; }
+  location.href = 'desktop.html';
+}
 (() => {
   const h1 = document.querySelector('.brand h1'); let n = 0, t = 0;
-  if (h1) h1.addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; setPhoneForced(!phoneForced); } });
+  if (h1) h1.addEventListener('click', () => { const now = Date.now(); n = now - t < 700 ? n + 1 : 1; t = now; if (n >= 5) { n = 0; setPhoneForced(!phoneForced); if (!phoneForced) backToDesktop(); } });
   const fromHash = () => { if (location.hash === '#phone') setPhoneForced(true); else if (location.hash === '#desktop') setPhoneForced(false); };
   window.addEventListener('hashchange', fromHash); setTimeout(fromHash, 0);
 })();
@@ -2247,7 +2251,7 @@ function gemProg(f) {
     const t = el.querySelector('.gmPct'); if (t) t.textContent = pct + '%';
   });
 }
-const gemLabel = () => GEM.stage === 0 ? L('סופר את אותיות התנ״ך והמשנה…') : L('סופר את אותיות כל המקורות…');
+const gemLabel = () => GEM.stage === 0 && !GEM.one ? L('סופר את אותיות התנ״ך והמשנה…') : L('סופר את אותיות כל המקורות…');
 // מציג את מסך ההמתנה בצדדים שאין בהם עדיין תוצאות (כשאין אינדקס בכלל)
 // בטלפון חלונית הקלט מכסה את התוצאות, ולכן מוצגת גם גרסה קטנה בראש החלונית (בלי השלד)
 function gemShowWait() {
@@ -2283,19 +2287,33 @@ function gemStart() {
   if (GEM.busy || (IDX && GEM.stage === 2)) return;
   const gen = ++GEM.gen; GEM.busy = true; GEM.stage = 0; GEM.f = 0;
   const first = [...ALL].filter(i => B.books[i].cat <= 1), all = [...ALL];
+  // יש כבר מה לחפש באחד הצדדים: בונים את כל המקורות בשלב אחד ומחפשים פעם אחת. בשני שלבים החיפוש היה רץ על
+  // תנ״ך ומשנה, נקטע באמצע כשהשלב השני הסתיים, ומתחיל מחדש
+  const hasQ = () => KS.some(k => numVal(S[k].num) || E.normalizeText(S[k].text).words.length);
+  GEM.one = hasQ();
   // הקבצים מוחזקים עד שהיחידות נאספו; את שלב א׳ משחררים רק אחרי ששלב ב׳ כבר מחזיק את כל הספרים (בלי לטעון פעמיים)
-  const rel1 = GimCorpus.use(first); let rel2 = null;
+  const rel1 = GEM.one ? () => {} : GimCorpus.use(first); let rel2 = null;
   const end = () => { rel1(); if (rel2) rel2(); if (gen === GEM.gen) GEM.busy = false; };
+  const stage2 = fg => {
+    if (!rel2) { rel2 = GimCorpus.use(all); rel1(); }
+    return fg ? gemStage(all, gen, gemProg, gemWait) : gemStage(all, gen, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
+  };
   $('#status').textContent = L('טוען קורפוס…'); gemShowWait();
-  gemStage(first, gen, gemProg, gemWait).then(ix => {
+  (GEM.one ? stage2(true) : gemStage(first, gen, gemProg, gemWait).then(ix => {
     if (!ix) return null;
+    // הערכים הגיעו בזמן שלב א׳ (שולחן העבודה משחזר את שדות חלון הגימטריה כ-0.4 שנ׳ אחרי שהוא נטען):
+    // לא מחפשים על תנ״ך ומשנה, אלא ממשיכים מיד לכל המקורות, עם מסך ההמתנה
+    if (hasQ()) {
+      GEM.one = true; GEM.f = 0; GEM.drawn = 0;
+      document.querySelectorAll('.gmLoad .gmTxt').forEach(t => { t.textContent = gemLabel(); }); gemProg(0);
+      return stage2(true);
+    }
     IDX = ix; GEM.stage = 1; gemHideMini(); KS.forEach(run);
-    rel2 = GimCorpus.use(all); rel1();
     $('#status').textContent = L('טוען מקורות נוספים…');
-    return gemStage(all, gen, f => { $('#status').textContent = L('טוען מקורות נוספים…') + ' ' + Math.round(f * 100) + '%'; }, gemBgWait);
-  }).then(ix => {
+    return stage2(false);
+  })).then(ix => {
     if (!ix) return;
-    IDX = ix; GEM.stage = 2; $('#status').textContent = ''; KS.forEach(run);
+    IDX = ix; GEM.stage = 2; gemHideMini(); $('#status').textContent = ''; KS.forEach(run);
   }).catch(() => { if (gen === GEM.gen) $('#status').textContent = L('שגיאה בטעינת הקורפוס — נסו לרענן את הדף'); }).then(end);
 }
 // משחרר את האינדקס (וכל מה שנבנה ממנו); חיפוש שרץ עכשיו נעצר (st.gen), ובחזרה לגימטריה הכל נבנה ורץ שוב

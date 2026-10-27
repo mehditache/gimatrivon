@@ -1226,3 +1226,185 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdRv.flash{background:var(--rdFlash)}
 .rdPage.narrow .rdRv{margin-inline:.6em}
 .rdPrint.bw .rdRamTx .hl,.rdPrint.bw .rdRv .rvh{color:#000}
+
+/* ---- חלון בשולחן העבודה (v4.0.0, desktop.js): index.html?embed=gem|read בתוך iframe ----
+   הכותרת העליונה מוסתרת (הבנר הקבוע של שולחן העבודה מחליף אותה ומעביר אליה את הלחיצות), אבל לא display:none:
+   הרשימה הנפתחת של החיפוש (#rdDrop), התפריט (⋮) והחלונות הקופצים ממוקמים לפיה ונשארים גלויים בראש החלון. */
+html.gtEmbed header.top{height:0;min-height:0;padding-top:0;padding-bottom:0;border:0;box-shadow:none;overflow:visible;visibility:hidden}
+html.gtEmbed header.top .rdDrop,html.gtEmbed .mMenuPanel{visibility:visible}
+html.gtEmbed .mSummaryBar{display:none}
+
+/* חלונות קופצים בתוך חלון של שולחן העבודה: "נופלים" מתחת לבנר */
+@keyframes dkDrop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+html.gtEmbed .rdPop:not([hidden]){animation:dkDrop .18s ease-out}
+/* מארח חיפוש (index.html?embed=search): שקוף, ורק הרשימה הנפתחת של החיפוש נראית */
+html.gtSearch,html.gtSearch body{background:transparent!important;overflow:hidden}
+html.gtSearch #stage>*:not(header.top){visibility:hidden;position:absolute;pointer-events:none}
+html.gtSearch header.top *{visibility:hidden}
+html.gtSearch header.top .rdDrop,html.gtSearch header.top .rdDrop *{visibility:visible}
+html.gtSearch header.top .rdSearch{position:fixed;top:0;left:0;width:100%;height:0}
+html.gtSearch header.top .rdDrop{top:0;inset-inline-start:0;width:100%;max-height:100vh;box-shadow:none}
+
+/* חלון "תוצאות חיפוש" של שולחן העבודה (results.js): index.html?embed=results */
+html.gtResults #stage,html.gtResults .mMenuPanel,html.gtResults .mMenuScrim{display:none!important}
+html.gtResults,html.gtResults body{background:var(--pn)!important}
+html.gtResults body>*:not(#rsApp):not(script){display:none!important}
+#rsApp{position:fixed;inset:0;display:flex;background:var(--pn);color:var(--tx);font:14px var(--ui)}
+.rsSide{width:270px;flex:none;border-inline-end:1px solid var(--ln);background:var(--pn2);overflow:auto;padding:10px 12px}
+.rsSide h4{margin:0 0 8px;font:700 13px var(--ui);color:var(--mu);display:flex;justify-content:space-between}
+.rsSide h4 a{color:var(--gold);font-weight:600;cursor:pointer}
+.rsFi{display:flex;align-items:center;gap:7px;padding:4px;border-radius:6px;white-space:nowrap;cursor:pointer;user-select:none}
+.rsFi:hover{background:var(--acs)}
+.rsFi.l1{font-weight:600}.rsFi.l2{padding-inline-start:20px}.rsFi.l3{padding-inline-start:40px;font-size:13px}
+.rsTg{width:14px;color:var(--mu);font-size:11px;text-align:center}
+.rsCb{width:15px;height:15px;border:1.5px solid var(--ln);border-radius:4px;background:var(--pn);flex:none;display:grid;place-items:center;font-size:11px;color:#fff}
+.rsCb.on{background:var(--gold);border-color:var(--gold)}.rsCb.half{background:color-mix(in srgb,var(--gold) 45%,var(--pn));border-color:var(--gold)}
+.rsNm{overflow:hidden;text-overflow:ellipsis}.rsN{margin-inline-start:auto;color:var(--mu);font-size:12px}
+.rsMain{flex:1;min-width:0;display:flex;flex-direction:column}
+.rsTools{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--ln)}
+.rsIn{flex:1;display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid var(--ln);border-radius:10px;background:var(--pn);color:var(--mu)}
+.rsIn input{flex:1;border:0;outline:0;background:none;color:var(--tx);font:14px var(--ui);min-width:0}
+.rsSort,.rsScope{display:flex;gap:6px}
+.rsScope[hidden]{display:none}
+.rsSort button,.rsScope button{height:30px;padding:0 12px;border:1px solid var(--ln);border-radius:999px;background:var(--pn);color:var(--tx);font:13px var(--ui);cursor:pointer}
+.rsSort button.on,.rsScope button.on{background:var(--gold);border-color:var(--gold);color:#fff}:root[data-theme=dark] .rsSort button.on,:root[data-theme=dark] .rsScope button.on{color:#1c160e}
+.rsSel{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px;align-items:center;color:var(--mu);font-size:12px}
+.rsSel:not(:empty){padding-top:8px}
+.rsChip{height:26px;padding:0 10px;border:1px solid var(--gold);border-radius:999px;background:var(--acs);color:var(--tx);display:inline-flex;align-items:center;cursor:pointer}
+.rsList{flex:1;overflow:auto;position:relative;padding:0 14px}
+.rsSp{width:1px}
+.rsRow,.rsGh{position:absolute;inset-inline:14px;box-sizing:border-box}
+.rsGh{height:32px;display:flex;align-items:flex-end;gap:8px;padding-bottom:4px;border-bottom:1px solid var(--ln2);font:700 13px var(--ui);color:var(--gold)}
+.rsGh .rsN{font-weight:400}
+.rsRow{height:82px;padding:8px 6px;border:0;border-bottom:1px solid var(--ln2);background:none;text-align:start;color:inherit;font:inherit;cursor:pointer;overflow:hidden;display:block}
+.rsRow:hover{background:var(--acs)}
+.rsRow.ph i{display:block;height:12px;margin:10px 0;border-radius:6px;background:var(--ln2);animation:rsPulse 1.1s ease-in-out infinite}
+@keyframes rsPulse{50%{opacity:.4}}
+.rsRf{display:flex;gap:6px;font:700 12px var(--ui);color:var(--gold);margin-bottom:2px}.rsRf i{font-style:normal;font-weight:400;color:var(--mu)}
+.rsSn{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font:17px/1.6 var(--tf)}
+.rsSn mark{background:var(--markbg,#f1dd9a);color:inherit;border-radius:3px;padding:0 2px}
+.rsFoot{padding:6px 14px;color:var(--mu);font-size:12px;border-top:1px solid var(--ln)}
+
+/* ניווט דפים בחלון התוצאות (100 תוצאות לדף) */
+.rsPg{display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 14px;border-top:1px solid var(--ln);background:var(--pn2);font:13px var(--ui);color:var(--tx)}
+.rsPg[hidden]{display:none}
+.rsPg button{height:28px;padding:0 12px;border:1px solid var(--ln);border-radius:8px;background:var(--pn);color:var(--tx);font:600 12px var(--ui);cursor:pointer}
+.rsPg button:disabled{opacity:.4;cursor:default}
+.rsPg button:not(:disabled):hover{border-color:var(--gold)}
+.rsPg .rsPn{color:var(--mu)}
+.rsPg input{width:56px;height:26px;text-align:center;border:1px solid var(--ln);border-radius:6px;background:var(--pn);color:var(--tx);font:13px var(--ui)}
+
+/* עימוד ברשימת החיפוש הנפתחת (100 תוצאות לדף) */
+.rdResWrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.rdResWrap .rdRes{flex:1 1 auto;min-height:0}
+.rdPg{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;border-top:1px solid var(--rdLine);font:12px var(--ui);color:var(--rdMu)}
+.rdPg button{height:26px;padding:0 12px;border:1px solid var(--rdLine);border-radius:8px;background:transparent;color:var(--rdInk);font:600 12px var(--ui);cursor:pointer}
+.rdPg button:disabled{opacity:.4;cursor:default}
+.rdPg button:not(:disabled):hover{border-color:var(--rdGold)}
+
+/* ===== חלון תוצאות החיפוש — מראה iOS (v4.4.0) ===== */
+html.gtResults #rsApp{background:var(--pn)}
+html.gtResults .rsSide{width:290px;padding:6px 0 0;background:color-mix(in srgb,var(--tx) 5%,var(--pn));border-inline-end:.5px solid color-mix(in srgb,var(--tx) 16%,transparent)}
+html.gtResults .rsSide h4{margin:0;padding:14px 18px 6px;font:600 12px var(--ui);letter-spacing:.2px}
+html.gtResults .rsSide h4 a{font-weight:600;font-size:12.5px}
+html.gtResults .rsFi{height:38px;padding:0 18px;gap:10px;border-radius:0;font-size:14.5px}
+html.gtResults .rsFi.l2{padding-inline-start:30px}html.gtResults .rsFi.l3{padding-inline-start:50px;font-size:13.5px}
+html.gtResults .rsFi:hover{background:color-mix(in srgb,var(--gold) 12%,transparent)}
+html.gtResults .rsTg{width:14px;height:14px;display:grid;place-items:center}
+html.gtResults .rsTg svg,html.gtResults .rsCb svg{width:100%;height:100%}
+html.gtResults .rsCb{width:21px;height:21px;border:1.5px solid var(--mu);border-radius:6px;background:none;padding:2px}
+html.gtResults .rsCb.on{background:var(--gold);border-color:var(--gold)}
+html.gtResults .rsCb.half{background:var(--gold);border-color:var(--gold)}
+:root[data-theme=dark] html.gtResults .rsCb.on,:root[data-theme=dark] html.gtResults .rsCb.half{color:#1c160e}
+html.gtResults .rsN{font-variant-numeric:tabular-nums}
+html.gtResults .rsHd{flex:none;padding:16px 20px 2px}
+html.gtResults .rsHd h2{margin:0;font:700 24px var(--ui);letter-spacing:-.3px}
+html.gtResults .rsSb{margin-top:2px;font-size:13px;color:var(--mu)}
+html.gtResults .rsTools{border:0;padding:12px 20px 8px;gap:12px}
+html.gtResults .rsIn{height:34px;border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);order:2;flex:0 1 250px}
+html.gtResults .rsSort,html.gtResults .rsScope{order:1;margin-inline-end:auto;background:color-mix(in srgb,var(--tx) 8%,transparent);border-radius:10px;padding:2px;gap:0;height:34px;box-sizing:border-box}
+html.gtResults .rsSort button,html.gtResults .rsScope button{border:0;border-radius:8px;height:30px;padding:0 14px;background:none;font:500 14px var(--ui)}
+html.gtResults .rsSort button.on{background:var(--pn);color:var(--tx);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.06)}
+:root[data-theme=dark] html.gtResults .rsSort button.on{background:rgba(255,240,210,.18)}
+html.gtResults .rsChip{border:0;background:color-mix(in srgb,var(--gold) 15%,transparent);height:26px}
+html.gtResults .rsChip svg{width:11px;height:11px;margin-inline-start:5px}
+html.gtResults .rsList{padding:0 10px}
+html.gtResults .rsRow,html.gtResults .rsGh{inset-inline:10px}
+html.gtResults .rsRow{border:0;border-radius:16px;padding:10px 16px;height:82px}
+html.gtResults .rsRow:hover{background:color-mix(in srgb,var(--tx) 7%,transparent)}
+html.gtResults .rsGh{border:0;color:var(--gold);padding:0 16px 4px}
+html.gtResults .rsRf{align-items:center;font-size:13.5px;margin-bottom:3px}
+html.gtResults .rsRf i{font-size:11.5px;font-weight:600;background:color-mix(in srgb,var(--tx) 11%,transparent);border-radius:999px;padding:1px 9px;color:var(--mu)}
+html.gtResults .rsPg{border-top:.5px solid color-mix(in srgb,var(--tx) 16%,transparent);background:none;padding:10px 16px;justify-content:flex-start;gap:8px}
+html.gtResults .rsPg button{height:32px;border:0;border-radius:10px;background:color-mix(in srgb,var(--tx) 8%,transparent);font:500 13.5px var(--ui)}
+html.gtResults .rsPg button:not(:disabled):hover{background:color-mix(in srgb,var(--tx) 14%,transparent)}
+html.gtResults .rsPg input{height:32px;border:0;border-radius:9px;background:color-mix(in srgb,var(--tx) 8%,transparent);font-weight:600}
+html.gtResults .rsFoot{border-top:.5px solid color-mix(in srgb,var(--tx) 16%,transparent);background:color-mix(in srgb,var(--tx) 5%,transparent);padding:7px 18px;font-size:12px}
+html.gtResults .rsScope{margin-inline-end:0}
+
+/* שולחן העבודה: הבורר הוא התפריט שבתיבת החיפוש; ברשימה הנפתחת של המארח נשאר רק מספר התוצאות */
+html.gtSearch .rdDScope button,html.gtSearch .rdDScope .sep,html.gtSearch .rdDScope .rdSrc{display:none}
+/* v4.5.4: חלון התוצאות — כפתור נבחר קריא בשני המראות (הכלל הכהה הקודם לא חל: ‎:root html‎), פס גלילה בצבעי המראה */
+html.gtResults .rsSort button.on,html.gtResults .rsScope button.on{background:var(--pn);color:var(--tx);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.06)}
+html.gtResults[data-theme=dark] .rsSort button.on,html.gtResults[data-theme=dark] .rsScope button.on{background:rgba(255,240,210,.18);color:var(--tx)}
+html.gtResults[data-theme=dark]{color-scheme:dark}
+html.gtResults .rsList,html.gtResults .rsSide{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--tx) 28%,transparent) transparent}
+html.gtResults .rsBad .rsN{color:var(--mu)}
+html.gtResults .rsBad a{color:var(--gold)}
+html.gtResults .rsBadWhy{padding:0 12px 6px;font:11px/1.4 var(--ui);color:var(--mu);direction:ltr;text-align:right;word-break:break-all}
+
+/* חלון התוצאות (v4.6.0): הכול / נקה קטנים לכל עץ, תיבת חיפוש רחבה, דפדוף ממורכז עם חיצים */
+html.gtResults .rsSide h4{align-items:center}
+html.gtResults .rsQ{display:flex;gap:2px}
+html.gtResults .rsSide h4 .rsQ a{font:600 11.5px var(--ui);padding:2px 8px;border-radius:7px;color:var(--gold);letter-spacing:0}
+html.gtResults .rsSide h4 .rsQ a:hover{background:color-mix(in srgb,var(--gold) 14%,transparent)}
+html.gtResults .rsSide h4 .rsQ a.dim{opacity:.4;pointer-events:none}
+html.gtResults .rsScope{order:1;margin-inline-end:0}
+html.gtResults .rsIn{order:2;flex:1 1 auto;min-width:200px}
+html.gtResults .rsSort{order:3;margin-inline-end:0}
+html.gtResults .rsPg{justify-content:center}
+html.gtResults .rsPg button.rsAr{width:34px;padding:0;display:grid;place-items:center;font-size:16px}
+html.gtResults .rsPg button.rsAr svg{width:18px;height:18px}
+
+/* מראה כהה: ההדגשה הצהובה הבהירה הסתירה את הטקסט הבהיר — כחול שקוף שהטקסט נשאר קריא עליו (חלון התוצאות והרשימה הנפתחת של שולחן העבודה) */
+html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rdHl,html.gtResults[data-theme=dark] .rsSn mark{background:rgba(94,155,216,.5);color:#fff;box-shadow:0 0 0 1px rgba(94,155,216,.7)}
+/* חלונות אודות, צור קשר ושיטות הגימטריה בלוק הלבן-זהב של עיצוב 21 */
+.dlg{--dg1:#e9cf86;--dg2:#c49a3c;--dg3:#8c6421;--dgG:linear-gradient(160deg,#c99a3e,#8c6421);--dgBg:#fff;--dgInk:#4a3b22;--dgMu:#9a8763;--dgHair:#e8dcc0;--dgTint:#f8f0dc;--dgTint2:#f1e4c4}
+:root[data-theme=dark] .dlg{--dg1:#f6dd97;--dg2:#d6ab4f;--dg3:#a07a33;--dgG:linear-gradient(160deg,#f2d488,#c99a3e);--dgBg:#16120c;--dgInk:#ecdfc4;--dgMu:#a8987a;--dgHair:#3a2f1c;--dgTint:#241d12;--dgTint2:#2e2516}
+.dlg{background:var(--dgBg)!important;color:var(--dgInk)!important;border:0!important;border-radius:22px!important;box-shadow:0 0 0 .5px var(--dgHair),0 28px 70px rgba(120,90,30,.22)!important;overflow:hidden}
+:root[data-theme=dark] .dlg{box-shadow:0 0 0 .5px var(--dgHair),0 28px 70px rgba(0,0,0,.6)!important}
+.dlg::backdrop{background:rgba(60,44,16,.28)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+:root[data-theme=dark] .dlg::backdrop{background:rgba(0,0,0,.5)!important}
+.dlg .dh{background:none!important;border:0!important;border-bottom:.5px solid var(--dgHair)!important;padding:16px 20px 12px!important;position:relative}
+.dlg .dh::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,var(--dg2) 25%,var(--dg1) 50%,var(--dg2) 75%,transparent);opacity:.75}
+.dlg .dh h2,:root:not([data-theme="dark"]) .contactDlg .dh h2{font:700 22px/1.2 "GimFrank","Frank Ruhl Libre",serif!important;background:var(--dgG);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+:root:not([data-theme="dark"]) .contactDlg .dh{border-top-color:transparent!important}
+.dlg .x{background:var(--dgTint)!important;color:var(--dgInk)!important;border:0!important;border-radius:50%!important;width:30px;height:30px;padding:0!important}
+.dlg .x:hover{background:var(--dgTint2)!important}
+.aboutBox .row{border-bottom:.5px solid var(--dgHair)!important}
+.aboutBox .k{color:var(--dg3)!important;font-weight:600}
+:root[data-theme=dark] .aboutBox .k{color:var(--dg1)!important}
+.aboutBox .v b{background:var(--dgG);-webkit-background-clip:text;background-clip:text;color:transparent;font-family:"GimFrank",serif;font-size:1.15em}
+.contactBody label{color:var(--dg3)!important;font-weight:600}
+:root[data-theme=dark] .contactBody label{color:var(--dg1)!important}
+.contactBody input,.contactBody textarea{background:var(--dgTint)!important;border:0!important;box-shadow:inset 0 0 0 .5px var(--dgHair);color:var(--dgInk)!important;border-radius:12px!important}
+.contactBody input:focus,.contactBody textarea:focus{box-shadow:inset 0 0 0 1.5px var(--dg2),0 0 0 4px color-mix(in srgb,var(--dg2) 22%,transparent)!important}
+#contactSend,:root:not([data-theme="dark"]) #contactSend{background:var(--dgG)!important;color:#fff!important;border-radius:12px!important;box-shadow:0 6px 16px rgba(160,120,40,.3)}
+:root[data-theme=dark] #contactSend{color:#1b150c!important}
+.doc h2{color:var(--dg2)!important;font:700 17px "GimFrank","Frank Ruhl Libre",serif!important}
+.doc th{background:var(--dgTint)!important;color:var(--dg3)!important}
+:root[data-theme=dark] .doc th{color:var(--dg1)!important}
+.doc th,.doc td{border-bottom:.5px solid var(--dgHair)!important}
+.mcard{background:var(--dgTint)!important;border:0!important;box-shadow:inset 0 0 0 .5px var(--dgHair);border-radius:14px!important}
+.mcard b{color:var(--dg3)!important}
+:root[data-theme=dark] .mcard b{color:var(--dg1)!important}
+.mcard p{color:var(--dgMu)!important}
+.mcard .ex span,.doc .chipWrap .chip,.doc .chip{background:var(--dgTint2)!important;color:var(--dgInk)!important;border:0!important}
+.doc code{background:var(--dgTint2)!important}
+
+/* v4.6.36: ספירת הסינון ("4,619 מתוך 369,324") בשורת ההתאמות ולא בשורת הסינון, כדי שתיבת הסינון לא תשנה גודל */
+.sumRow{flex:none;display:flex;align-items:center;gap:.6rem;border-bottom:1px solid var(--ln2)}
+.sumRow .sum{flex:1;min-width:0;border-bottom:0}
+.sumRow .tsCount{padding-inline-end:.8rem}
+.pn .sumRow{border-bottom-color:var(--deskLn)}
+.tsBar .tsClear[hidden]{display:inline-flex!important;visibility:hidden} /* מקום קבוע לכפתור "נקה": תיבת הסינון לא משנה גודל */

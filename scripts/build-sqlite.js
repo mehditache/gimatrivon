@@ -3,8 +3,10 @@
 // משנה = משניות (cat 1) וברטנורא (cat 5, דיבור לכל שורה); רמב״ם = הלכות (cat 7), כסף משנה, השגות הראב״ד ומשנה למלך;
 // גמרא = קטעי הגמרא, רש״י ותוספות לכל עמוד; טור = הטור, בית יוסף וב״ח לכל סימן. המבנה והנרמול: ראו sqlite-search.js.
 // <תחום>.js = window.GIM_SQ_DBS.<תחום>: גודל המסד ו-hash שלו (לעקיפת מטמון הדפדפן אחרי בנייה חדשה), נטען כ-script.
+// <תחום>.sqlite3.gz.000… = אותו מסד דחוס ב-gzip, בחלקים של 32MB: sqmem.js מוריד אותו פעם אחת לזיכרון ול-OPFS (v4.6.0).
 // הרצה: node scripts/build-sqlite.js [תחום…]  (ברירת מחדל: כל התחומים; Node 22.5 ומעלה, עם node:sqlite)
-const fs = require('fs'), vm = require('vm'), path = require('path'), crypto = require('crypto');
+//       node scripts/build-sqlite.js --gz [תחום…]  רק הקבצים הדחוסים, מהמסד שכבר בנוי (בלי לבנות מחדש)
+const fs = require('fs'), vm = require('vm'), path = require('path'), crypto = require('crypto'), zlib = require('zlib');
 const { DatabaseSync } = require('node:sqlite');
 const SQ = require('../sqlite-search.js');
 const root = path.join(__dirname, '..'), dir = path.join(root, 'generated', 'corpus') + path.sep, out = path.join(root, 'generated', 'sqlite');
@@ -132,7 +134,23 @@ function build(name) {
   fs.unlinkSync(file);
   const meta = { file: 'generated/sqlite/' + name + '.sqlite3', chunk: CHUNK, parts, bytes: buf.length, page: PAGE, hash, units: ids.length, words: nw };
   if (C.bk) meta.bk = C.bk; // ספרים סינתטיים (גמרא וטור): שם ומספר הקטעים בכל פרק, למיפוי מקום ← מספר סידורי
-  fs.writeFileSync(path.join(out, name + '.js'), '// נבנה ב-scripts/build-sqlite.js — לא לערוך\n(window.GIM_SQ_DBS = window.GIM_SQ_DBS || {}).' + name + ' = ' + JSON.stringify(meta) + ';\n');
+  gzOut(name, buf, meta);
   console.log(name + ': units', ids.length, 'words', nw, 'bytes', buf.length, 'hash', hash, 'missing refs', C.miss);
 }
-const want = process.argv.slice(2); (want.length ? want : Object.keys(SQ.DOMAINS)).forEach(n => { if (!SQ.DOMAINS[n]) throw new Error('unknown domain ' + n); build(n); });
+// הקבצים הדחוסים (meta.gz = {parts, bytes}) וקובץ התיאור <תחום>.js
+function gzOut(name, buf, meta) {
+  const gz = zlib.gzipSync(buf, { level: 9 }), base = path.join(out, name + '.sqlite3.gz.');
+  fs.readdirSync(out).filter(f => f.startsWith(name + '.sqlite3.gz.')).forEach(f => fs.unlinkSync(path.join(out, f)));
+  const parts = Math.ceil(gz.length / CHUNK);
+  for (let i = 0; i < parts; i++) fs.writeFileSync(base + String(i).padStart(3, '0'), gz.subarray(i * CHUNK, (i + 1) * CHUNK));
+  meta.gz = { parts, bytes: gz.length };
+  fs.writeFileSync(path.join(out, name + '.js'), '// נבנה ב-scripts/build-sqlite.js — לא לערוך\n(window.GIM_SQ_DBS = window.GIM_SQ_DBS || {}).' + name + ' = ' + JSON.stringify(meta) + ';\n');
+  console.log(name + ': gz', gz.length, 'parts', parts);
+}
+function gzOnly(name) {
+  const js = fs.readFileSync(path.join(out, name + '.js'), 'utf8'), meta = JSON.parse(js.slice(js.indexOf(').' + name + ' = ') + name.length + 5, js.lastIndexOf(';')));
+  const buf = Buffer.concat(Array.from({ length: meta.parts }, (_, i) => fs.readFileSync(path.join(out, name + '.sqlite3.' + String(i).padStart(3, '0')))));
+  if (buf.length !== meta.bytes) throw new Error(name + ': size mismatch');
+  gzOut(name, buf, meta);
+}
+const GZ = process.argv[2] === '--gz', want = process.argv.slice(GZ ? 3 : 2); (want.length ? want : Object.keys(SQ.DOMAINS)).forEach(n => { if (!SQ.DOMAINS[n]) throw new Error('unknown domain ' + n); GZ ? gzOnly(n) : build(n); });
