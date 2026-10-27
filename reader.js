@@ -1178,18 +1178,20 @@
      side: 'a' = עמוד הארמית, 'b' = עמוד הצד, 's' = עמוד אחד (מסך צר): אחרי כל פסקה — התרגום שלה. pg = {segs, first, cm} כמו בגמרא ומפרשים. */
   function zdInner(k, j, pg, q, side) {
     const t = tOf(k), a = amudRow(k, j), chip = s => '<span class="vn">' + num(s + 1) + '</span>';
-    const ent = e => '<p class="tc ' + (e.src === 't' ? 'cT' : 'cR') + (e.cont ? ' cont' : '') + '" data-j="' + j + '" data-s="' + e.v + '"><span class="cv">' + num(e.v + 1) + '</span>' + (e.cont ? '<span class="rdCont">…</span> ' : '') + (e.dh ? '<b>' + talTxt(e.dh, q) + '</b> ' : '') + talTxt(e.body, q) + (e.cut ? ' <span class="rdCont">…</span>' : '') + '</p>';
+    const ent = e => '<p class="tc ' + (e.src === 't' ? 'cT' : 'cR') + (e.cont ? ' cont' : '') + '" data-j="' + j + '" data-s="' + e.v + '">' + (e.k2 ? '' : '<span class="cv">' + num(e.v + 1) + '</span>') + (e.cont ? '<span class="rdCont">…</span> ' : '') + (e.dh ? '<b>' + talTxt(e.dh, q) + '</b> ' : '') + talTxt(e.body, q) + (e.cut ? ' <span class="rdCont">…</span>' : '') + '</p>';
     const rg = s => (pg.rng && pg.rng[s]) || null;
     const para = s => { const r = rg(s); return '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + (r && r[0] > 0 ? '<span class="rdCont">…</span> ' : chip(s)) + talTxt(r ? wSlice(a[0][s], r[0], r[1]) : a[0][s], q) + (r && r[1] < 1 ? ' <span class="rdCont">…</span>' : '') + '</span>'; };
     const none = '<p class="none">' + T(S.zside === 'r' ? 'אין ביאור לפסקאות אלה' : 'אין תרגום לפסקאות אלה') + '</p>';
     let html = talHead(t, j);
     if (pg.first && side !== 'b') html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j, k)) + '</span></div>';
-    const rows = s => '<div class="zr" data-r="' + s + '">' + pg.cm.filter(e => e.v === s).map(ent).join('') + '</div>';
-    const rest = pg.cm.filter(e => !pg.segs.includes(e.v)), tail = rest.map(ent).join('');
+    const E = talCm(k, j), R = pg.rows || [];
+    const aCell = r => '<span class="rdV tg" data-j="' + j + '" data-s="' + r.s + '">' + (r.f0 <= 0 ? chip(r.s) : r.top ? '<span class="rdCont">…</span> ' : '') + talTxt(wSlice(a[0][r.s], r.f0, r.f1), q) + (r.bot ? ' <span class="rdCont">…</span>' : '') + '</span>';
+    const tCell = r => E.filter(e => e.v === r.s).map(e => { const body = wSlice(e.body, r.f0, r.f1); return body.trim() ? ent(Object.assign({}, e, { body, dh: r.f0 > 0 ? '' : e.dh, cont: r.top, cut: r.bot, k2: r.f0 > 0 })) : ''; }).join('');
+    const tail = '';
     const sideLb = T(S.zside === 'r' ? 'הסולם' : 'תרגום');
-    if (side === 'c') return html + '<div class="rdBody"><div class="rdTxt rdTal zCols"><div class="zColHd">' + h(T('ארמית')) + '</div><div class="zColHd">' + h(sideLb) + '</div>' + (pg.segs.length ? pg.segs.map(s => '<div class="zA">' + para(s) + '</div><div class="zT">' + (pg.cm.some(e => e.v === s) ? pg.cm.filter(e => e.v === s).map(ent).join('') : (s === pg.segs[0] && !pg.cm.length ? none : '')) + '</div>').join('') : '<div class="zA"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></div><div class="zT"></div>') + (tail ? '<div class="zA"></div><div class="zT">' + tail + '</div>' : '') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
-    if (side === 'b') return html + '<div class="rdCmHd zHd"><span class="ln"></span><span>' + h(T(S.zside === 'r' ? 'הסולם' : 'תרגום')) + '</span></div><div class="rdBody"><div class="rdTxt rdTal zSide">' + (pg.segs.length ? pg.segs.map(rows).join('') : '') + (!pg.cm.length ? none : '') + tail + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
-    if (side === 'a') return html + '<div class="rdBody"><div class="rdTxt rdTal">' + (pg.segs.length ? pg.segs.map(s => '<p class="zr" data-r="' + s + '">' + para(s) + '</p>').join('') : '<p><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'c') return html + '<div class="rdBody"><div class="rdTxt rdTal zCols"><div class="zColHd">' + h(T('ארמית')) + '</div><div class="zColHd">' + h(sideLb) + '</div>' + (R.length ? R.map((r, x) => '<div class="zA">' + aCell(r) + '</div><div class="zT">' + (tCell(r) || (!x && !pg.cm.length ? none : '')) + '</div>').join('') : '<div class="zA"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></div><div class="zT"></div>') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'b') return html + '<div class="rdCmHd zHd"><span class="ln"></span><span>' + h(T(S.zside === 'r' ? 'הסולם' : 'תרגום')) + '</span></div><div class="rdBody"><div class="rdTxt rdTal zSide">' + R.map((r, x) => '<div class="zr" data-r="' + x + '">' + (tCell(r) || (!x && !pg.cm.length ? none : '')) + '</div>').join('') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
+    if (side === 'a') return html + '<div class="rdBody"><div class="rdTxt rdTal">' + (R.length ? R.map((r, x) => '<p class="zr" data-r="' + x + '">' + aCell(r) + '</p>').join('') : '<p><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
     return html + '<div class="rdBody"><div class="rdTxt rdTal zOne">' + (pg.segs.length ? pg.segs.map(s => '<p class="zp">' + para(s) + '</p>' + pg.cm.filter(e => e.v === s).map(ent).join('')).join('') : '<p class="zp"><span class="rdCont">' + h(zEmpty(t, j)) + '</span></p>') + tail + '</div></div><div class="rdNum">' + h(dafTxt(j, k)) + '</div>';
   }
   /* זוהר, ספר פתוח: שורה מול שורה. כל פסקה בעמוד הארמית ותרגומה בעמוד שמול מקבלות אותו גובה, וראשי העמודים מיושרים.
@@ -1211,8 +1213,16 @@
     return (open ? '\u0003' : '') + body + (bold ? '\u0004' : '');
   }
   function zdPages(k, j, g, probe, a, ents, two) {
-    const N = a[0].length, pages = [], wc = s => a[0][s].split(' ').length;
-    const mkp = (list, rng) => ({ segs: list, rng, first: !pages.length, cm: [].concat(...list.map(s => ents.filter(e => e.v === s).map(e => { const r = rng[s]; if (!r) return e; return r[0] <= 0 && r[1] >= 1 ? e : Object.assign({}, e, { body: wSlice(e.body, r[0], r[1]), cont: r[0] > 0, cut: r[1] < 1 }); }))) });
+    const N = a[0].length, pages = [], colW = g.zc ? (g.pw - 70) / 2 : g.pw - 60, CH = Math.max(5, Math.round(1.5 * colW / (g.fs * 3.2)));
+    const units = []; // כל פסקה נחתכת לקטעים של כשורה וחצי: שורה מול שורה בלי רווחים גדולים, והעמוד מתמלא עד סופו
+    for (let s = 0; s < N; s++) { const nw = a[0][s].split(' ').length, m = Math.max(1, Math.round(nw / CH)); for (let x = 0; x < m; x++) units.push({ s, f0: x / m, f1: x + 1 < m ? (x + 1) / m : 1 }); }
+    const mk = (list) => {
+      const rows = list.map((u, x) => Object.assign({}, u, { top: !x && u.f0 > 0, bot: x === list.length - 1 && u.f1 < 1 })), segs = [], rng = {};
+      rows.forEach(r => { if (!segs.includes(r.s)) segs.push(r.s); const c = rng[r.s]; rng[r.s] = c ? [Math.min(c[0], r.f0), Math.max(c[1], r.f1)] : [r.f0, r.f1]; });
+      Object.keys(rng).forEach(x => { if (rng[x][0] <= 0 && rng[x][1] >= 1) delete rng[x]; });
+      const cm = [].concat(...segs.map(sg => ents.filter(e => e.v === sg).map(e => { const r = rng[sg]; return r ? Object.assign({}, e, { body: wSlice(e.body, r[0], r[1]), cont: r[0] > 0, cut: r[1] < 1 }) : e; })));
+      return { segs, rows, rng, first: !pages.length, cm };
+    };
     const fits = pg => {
       if (!two) { probe.innerHTML = zdInner(k, j, pg, '', g.zc ? 'c' : 's'); return !over(probe); }
       probe.innerHTML = zdInner(k, j, pg, '', 'a'); if (over(probe)) return false;
@@ -1220,22 +1230,7 @@
       probe.innerHTML = zdInner(k, j, pg, '', 'b'); zAlign(ha, probe, true); const ok = !over(probe) && !over(ha); ha.remove();
       return ok;
     };
-    let i = 0, f0 = 0;
-    while (i < N && pages.length < 300) {
-      const rng0 = () => f0 > 0 ? { [i]: [f0, 1] } : {}, range = n => Array.from({ length: n }, (_, x) => i + x);
-      let list = [], rng = {}, n = fits(mkp([i], rng0())) ? maxOkF(1, N - i, m => fits(mkp(range(m), rng0()))) : 0;
-      if (n) {
-        list = range(n); rng = rng0(); i += n; f0 = 0;
-        if (i < N) { // הפסקה הבאה לא נכנסת כולה: חותכים אותה במקום שבו נגמר הגובה
-          const nw = wc(i), w = maxOkF(0, nw - 1, w => !w || fits(mkp(list.concat(i), Object.assign({}, rng, { [i]: [0, w / nw] }))));
-          if (w > 0) { list.push(i); rng[i] = [0, w / nw]; f0 = w / nw; }
-        }
-      } else { // אפילו תחילת הפסקה לבדה גדולה מעמוד: חותכים אותה
-        const nw = wc(i), w0 = Math.round(f0 * nw), w = Math.max(w0 + 1, maxOkF(w0, nw - 1, w => w === w0 || fits(mkp([i], { [i]: [f0, w / nw] }))));
-        list = [i]; if (w >= nw) { rng = f0 > 0 ? { [i]: [f0, 1] } : {}; i++; f0 = 0; } else { rng = { [i]: [f0, w / nw] }; f0 = w / nw; }
-      }
-      pages.push(mkp(list, rng));
-    }
+    for (let i = 0; i < units.length && pages.length < 300;) { const n = maxOkF(1, units.length - i, m => fits(mk(units.slice(i, i + m)))); pages.push(mk(units.slice(i, i + n))); i += n; }
     probe.innerHTML = ''; return pages;
   }
   function studyPages(k, j, g) {
