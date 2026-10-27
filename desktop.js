@@ -587,6 +587,7 @@
     { const src = d && d.querySelector('#rdTop .rdNav'); if (stub) { /* למעלה */ } else { delete nav.dataset.stub; if (!keep(nav, src)) cloneInto(nav, src); } }
     { const src = d && w && !other && d.querySelector('#rdTop .rdTools'); if (!keep(tools, src)) cloneInto(tools, src); } // בלי חלון פעיל (הכול ממוזער) אין פקדי קריאה
     if (kept) setTimeout(banner, 400); /* נבדק שוב עד שהפקדים החדשים מוכנים (החלון "נטען הרגע" רק 6 שניות) */
+    if (!nav.childNodes.length) { nav.dataset.stub = '1'; nav.innerHTML = NAV_STUB(); } // בורר הספר לעולם לא נעלם (גם כשהקורא האחרון ישן)
     nav.classList.toggle('dim', other && !stub);
     nav.title = other && !stub ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();
