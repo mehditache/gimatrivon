@@ -313,3 +313,22 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 .dkKb{width:220px}
 .dkKb .ic{width:20px;flex:none;font:600 14px var(--ui);font-style:normal;text-align:center;color:var(--gold)}
 .dkKb .kbV{padding:4px 12px 2px;font:600 11px var(--ui);color:var(--mu)}
+/* v4.6.21: חלונות הבחירה שנופלים מהבנר (בחירת ספר, הגדרות, הדפסה) — באותה זכוכית של הבנר והתפריטים, בלי מסגרת כבדה.
+   הם נושאים את צבעי הקליפה (גוויל/לילה) ולא את צבעי דף הספר, שנשארו בהירים גם במראה לילה */
+.dkPopLayer.reader{--rdPaper:var(--pn);--rdInk:var(--tx);--rdMu:var(--mu);--rdGold:var(--gold);--rdLine:var(--ln);--rdRow:color-mix(in srgb,var(--tx) 8%,transparent);--rdChip:color-mix(in srgb,var(--gold) 18%,var(--pn));--rdChipTx:var(--gold)}
+.dkPopLayer .rdPop{--gl:color-mix(in srgb,var(--rdPaper) 80%,transparent);background:var(--gl);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:0;border-radius:16px;box-shadow:0 0 0 .5px var(--barln),inset 0 .5px 0 rgba(255,255,255,.6),0 18px 44px rgba(0,0,0,.22);padding:14px 16px}
+:root[data-theme=dark] .dkPopLayer .rdPop{box-shadow:0 0 0 .5px var(--barln),inset 0 .5px 0 rgba(255,240,210,.08),0 18px 44px rgba(0,0,0,.5)}
+.dkPopLayer .rdPop::after{background:color-mix(in srgb,var(--rdPaper) 80%,transparent);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);border-color:var(--barln)}
+.dkPopLayer .rdJCol{border:0;background:var(--rdPaper);box-shadow:0 0 0 .5px var(--barln)}
+.dkPopLayer .rdJGrp{background:var(--rdPaper)}
+.dkPopLayer .rdJTabs{border:0;padding:2px;gap:0;border-radius:10px;background:color-mix(in srgb,var(--rdInk) 8%,transparent)}
+.dkPopLayer .rdJTabs button{border-radius:8px;padding:3px 13px}
+.dkPopLayer .rdJTabs button.on{background:var(--rdPaper);color:var(--rdInk);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.dkPopLayer .rdCell{border-color:transparent;background:color-mix(in srgb,var(--rdInk) 6%,transparent)}
+.dkPopLayer .rdCell:hover{background:color-mix(in srgb,var(--rdGold) 16%,transparent);border-color:transparent}
+.dkPopLayer .rdX{border:0;background:color-mix(in srgb,var(--rdInk) 8%,transparent)}
+.dkPopLayer .rdJFoot button:not(.rdGo){border-color:transparent!important;background:color-mix(in srgb,var(--rdInk) 7%,transparent)!important;border-radius:10px}
+.dkPopLayer .rdGo{border-radius:10px}
+/* בורר הספר בלי חלון: בזמן שהמארח נטען הפקד מראה שהלחיצה נקלטה */
+.dkNav .rdWhere.busy{cursor:progress;animation:dkBusy 1s ease-in-out infinite}
+@keyframes dkBusy{50%{opacity:.55}}

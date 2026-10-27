@@ -484,22 +484,30 @@
   function cloneInto(slot, src) { slot.textContent = ''; if (src) [...src.childNodes].forEach(n => slot.appendChild(document.importNode(n, true))); slot.querySelectorAll('[id]').forEach(x => { x.dataset.srcId = x.id; x.removeAttribute('id'); }); }
   // בורר הספר כשאין חלון: נפתח לפני שנפתח חלון. הבורר של מארח החיפוש (עותק נסתר של הקורא) מורם לשכבת הבורר של השולחן, ובבחירה המארח "מנווט"
   // ו-hostChanged פותח את המקום בחלון קריאה חדש. אם נסגר בלי בחירה — לא נפתח שום חלון
+  // v4.6.21: הלחיצה לא מחכה — המארח מתחמם כבר בריחוף, נשאר חי אחרי הסגירה (idleHost משחרר אחרי 20 שניות), ולחיצות
+  // נוספות בזמן הטעינה לא פותחות בורר נוסף. הניקוי אחרי סגירה מבוטל אם הבורר נפתח שוב לפני שהסתיים
+  let picking = 0, pickMo = null, pickT = 0;
   function pickBook(tb) {
-    host(); H.quiet = Date.now() + 1500; let n = 0;
+    if (picking) return; picking = 1; clearTimeout(pickT);
+    host(); clearTimeout(hostT); H.quiet = Date.now() + 1500; let n = 0;
+    tb.classList.add('busy');
     const tick = () => {
       const o = H && H.doc && H.doc.getElementById('rdWhere'), rd = H && H.doc && H.doc.getElementById('reader');
-      if (!o || !rd) { if (++n < 50) setTimeout(tick, 150); return; }
-      H.quiet = 0;
-      const pw = { id: '__host', k: 'read', hist: [hostHash()], hi: 0, t: '' }, f = { doc: H.doc, win: H.win, fr: H.fr, obs: [], pops: {}, home: {} };
-      F.set(pw.id, f); lastBtn = tb; lastR = tb.getBoundingClientRect().right; lastRc = rectOf(tb);
-      const mo = new H.win.MutationObserver(() => {
+      if (!o || !rd) { if (H && ++n < 80) setTimeout(tick, 60); else { picking = 0; tb.classList.remove('busy'); } return; }
+      H.quiet = Date.now() + 400;
+      const pw = { id: '__host', k: 'read', hist: [hostHash()], hi: 0, t: '' }, old = F.get(pw.id);
+      const f = old && old.doc === H.doc ? old : { doc: H.doc, win: H.win, fr: H.fr, obs: [], pops: {}, home: {} };
+      F.set(pw.id, f); const nb = $('#dkNav .rdWhere') || tb; nb.classList.remove('busy'); tb.classList.remove('busy');
+      lastBtn = nb; lastR = nb.getBoundingClientRect().right; lastRc = rectOf(nb);
+      if (pickMo) pickMo.disconnect();
+      pickMo = new H.win.MutationObserver(() => {
         syncPops(pw, f);
-        if (!Object.keys(f.pops).length) { mo.disconnect(); setTimeout(() => { F.delete(pw.id); if (!q.value) killHost(); }, 900); }
+        if (!Object.keys(f.pops).length) { pickMo.disconnect(); pickMo = null; picking = 0; pickT = setTimeout(() => { if (picking) return; F.delete(pw.id); if (H && !q.value) idleHost(); }, 900); }
       });
-      mo.observe(rd, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
-      o.click(); setTimeout(() => syncPops(pw, f), 60);
+      pickMo.observe(rd, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+      o.click(); syncPops(pw, f);
     };
-    setTimeout(tick, 200);
+    tick();
   }
   const NAV_STUB = () => '<button type="button" class="rdIco" disabled aria-label="' + T('פרק קודם', 'Previous chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>' +
     '<button type="button" class="rdWhere" title="' + T('בחר ספר לקריאה', 'Choose a book to read') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg><span>' + T('בחר ספר לקריאה', 'Choose a book to read') + '</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>' +
@@ -547,6 +555,7 @@
     if (o) { e.preventDefault(); lastBtn = t; lastR = t.getBoundingClientRect().right; lastRc = rectOf(t); o.click(); setTimeout(banner, 60); setTimeout(() => placePops(f), 30); }
   }
   nav.addEventListener('click', e => fwdClick(nav, '#rdTop .rdNav', e));
+  nav.addEventListener('pointerover', e => { if (nav.dataset.stub && e.target.closest('.rdWhere') && reads().length < MAXR) { host(); clearTimeout(hostT); idleHost(); } });
   tools.addEventListener('click', e => fwdClick(tools, '#rdTop .rdTools', e));
   $('#dkGemTools').addEventListener('click', e => {
     const w = W(D.act), b = e.target.closest('[data-fwd]'), f = w && F.get(w.id);
@@ -630,7 +639,7 @@
     if (!H) return; const r = $('#dkSearch').getBoundingClientRect(), wd = Math.max(r.width, 480);
     Object.assign(H.fr.style, { top: Math.round(r.bottom + 6) + 'px', right: Math.round(innerWidth - r.right) + 'px', width: Math.round(wd) + 'px', height: Math.round(Math.min(innerHeight * .74, 720)) + 'px' });
   }
-  function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) { killHost(); killSpare(); } }, 20000); }
+  function idleHost() { clearTimeout(hostT); hostT = setTimeout(() => { if (H && !picking && !(H.doc && !H.doc.getElementById('rdDrop').hidden) && document.activeElement !== q) { killHost(); killSpare(); } }, 20000); }
   // המארח (עותק מלא של האפליקציה עם Workers משלו) משוחרר מיד כשנפתח חלון תוצאות, ואחרי 20 שניות סרק
   function killHost() { clearTimeout(hostT); if (H) { H.fr.src = 'about:blank'; H.fr.remove(); H = null; } }
   function syncHost() { const h = hostHash(); if (H && H.win && dec(H.win.location.hash) !== h) { hostBase = h; H.quiet = Date.now() + 1000; H.win.location.hash = h; setTimeout(() => { ctxApply(); scopeLabel(); }, 350); } }
@@ -747,6 +756,9 @@
     POPS.forEach(id => {
       const lifted = f.pops[id], el = lifted || f.doc.getElementById(id); if (!el) return;
       if (!lifted && !el.hidden) {
+        // רק חלון בחירה אחד בכל פעם: חלון בחירה פתוח של חלון אחר (או של בורר הספר בלי חלון) נסגר קודם
+        const ow = popLayer.dataset.w, of = ow && ow !== w.id && F.get(ow);
+        if (of && of.pops && Object.keys(of.pops).length) { const sc = of.doc && of.doc.getElementById('rdScrim'); if (sc) sc.click(); }
         f.home[id] = { p: el.parentNode, n: el.nextSibling };
         popLayer.style.top = ($('#dkBan').getBoundingClientRect().bottom + 6) + 'px';
         popLayer.appendChild(document.adoptNode(el)); popLayer.dataset.w = w.id;
