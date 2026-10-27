@@ -446,3 +446,17 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 .dkOmniSlot{flex:0 1 440px;min-width:160px;display:flex;justify-content:flex-start}
 .dkOmniSlot .dkOmni,.dkOmniSlot .dkOmni:focus-within{flex:1 1 auto!important;width:auto!important} /* בלי התרחבות בפוקוס: המשבצת קבועה והבורר לא זז */
 .dkNav{margin-inline-start:0}
+
+/* v4.6.41: בורר הספר בבנר לעולם לא נעלם — גם כשחלון הגימטריה או התוצאות פעיל הוא נראה (מעומעם קלות) */
+.dkNav.dim{visibility:visible;opacity:.6}
+.dkNav:empty{visibility:visible}
+
+/* v4.7.1: "גימטריבון" בריבוע הגימטריה — הדרגת זהב כמו הלוגו (קנבס, לוח 23), גם בסידור חופשי (שם הצבע של .ic דרס אותה) */
+.gvT{font-family:"GimFrank",serif;font-weight:700;background:linear-gradient(160deg,#e9cf86,#c49a3c 45%,#8c6421);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+:root[data-theme=dark] .gvT{background-image:linear-gradient(160deg,#f6dd97,#d6ab4f 45%,#a07a33)}
+.dkChip .gvI .gvT{font-size:15px}
+.dkChip .gvI{padding-top:9px}
+
+/* v4.7.2: בריבוע הגימטריה אין תווית "גימטריה" — הכיתוב בזהב מספיק */
+.dkChip .gvI{padding-top:0}
+.dkChip[data-w=g]:not(.th) .gvI{min-height:34px;display:grid;place-items:center}

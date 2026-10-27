@@ -496,7 +496,7 @@
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
       const mini = w.k === 'gem' ? '<b class="gvT">' + T('גימטריבון', 'Gimatrivon') + '</b>' : w.k === 'search' ? '<i class="ml"><s></s><s></s><s></s><s></s></i>' : '<i class="mp"><em></em><s></s><s></s><s></s></i>';
       c.innerHTML = (st ? '<span class="thC">' + mini + '</span>' : w.k === 'gem' ? '<span class="ic gvI"><b class="gvT">' + T('גימטריבון', 'Gimatrivon') + '</b></span>' : '<span class="ic">' + ICON[w.k] + '</span>') + '<span class="t"></span>';
-      c.querySelector('.t').textContent = t;
+      if (w.k === 'gem') c.querySelector('.t').remove(); /* הכיתוב "גימטריבון" שבריבוע מספיק; השם נשאר בטולטיפ */ else c.querySelector('.t').textContent = t;
       c.title = t + (w.min ? ' — ' + T('ממוזער', 'minimized') : '') + (F.get(w.id) && !F.get(w.id).fr ? ' — ' + T('ישן: המקום נשמר, הזיכרון שוחרר', 'asleep: place kept, memory released') : '');
       c.onclick = () => { if (!st && D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };
       task.appendChild(c);
@@ -587,6 +587,7 @@
     { const src = d && d.querySelector('#rdTop .rdNav'); if (stub) { /* למעלה */ } else { delete nav.dataset.stub; if (!keep(nav, src)) cloneInto(nav, src); } }
     { const src = d && w && !other && d.querySelector('#rdTop .rdTools'); if (!keep(tools, src)) cloneInto(tools, src); } // בלי חלון פעיל (הכול ממוזער) אין פקדי קריאה
     if (kept) setTimeout(banner, 400); /* נבדק שוב עד שהפקדים החדשים מוכנים (החלון "נטען הרגע" רק 6 שניות) */
+    if (!nav.childNodes.length) { nav.dataset.stub = '1'; nav.innerHTML = NAV_STUB(); } // בורר הספר לעולם לא נעלם (גם כשהקורא האחרון ישן)
     nav.classList.toggle('dim', other && !stub);
     nav.title = other && !stub ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();
