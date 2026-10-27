@@ -230,6 +230,7 @@ t('reader', 'ש״ס: 37 מסכתות בסדר, וכל קובצי החלקים ק
 t('reader', 'ש״ס: ברכות ב. מתחיל במשנה "מאימתי", עם רש״י ותוספות', () => { const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'generated/talmud/Berakhot.0.js'), 'utf8'))(w); const a = w.GIM_TP['Berakhot.0'].a[0]; return /^מתני[׳']\s*מאימתי/.test(RC.noMarks(a[0][0].replace(/[\u0001-\u0004]/g, ''))) && a[1].length > 5 && a[2].length > 1; });
 t('reader', 'parseDafRef: ברכות ב. / ב: / שבת קכ ב / Berakhot 2b / דף בלי עמוד', () => { const r = q => { const x = RC.parseDafRef(TX, q); return x && [x.k, x.j, x.explicit]; };
   eq([r('ברכות ב.'), r('ברכות ב:'), r('שבת קכ ב'), r('Berakhot 2b'), r('בבא מציעא נט'), r('מסכת ברכות'), r('ברכות ב ע"ב')], [['Berakhot', 0, true], ['Berakhot', 1, true], ['Shabbat', RC.amudOf(120, 1), false], ['Berakhot', 1, true], ['Bava Metzia', RC.amudOf(59, 0), false], ['Berakhot', 0, true], ['Berakhot', 1, true]]); });
+t('reader', 'זוהר: dafOf / dafLabel עם דף ראשון d0', () => eq([RC.dafOf(0, 15).d, RC.dafOf(1, 15).d, RC.dafOf(2, 15).d, RC.dafLabel(0, true, 15), RC.dafLabel(1, true, 15), RC.dafLabel(2, true, 15)], [15, 15, 16, '15a', '15b', '16a']));
 t('reader', 'parseDafRef: דף שלא קיים / טקסט חופשי → null; dafLabel', () => eq([RC.parseDafRef(TX, 'ברכות קא'), RC.parseDafRef(TX, 'ויהי אור'), RC.dafLabel(0), RC.dafLabel(1), RC.dafLabel(237), RC.dafLabel(3, true)], [null, null, 'ב.', 'ב:', 'קכ:', '3b']));
 
 // ---- טור, בית יוסף וב״ח (generated/tur, נבנה ב-scripts/build-tur.py) ----
