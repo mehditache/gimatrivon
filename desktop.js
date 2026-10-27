@@ -492,7 +492,7 @@
       c.className = 'dkChip' + (st ? ' th' : '') + (w.min ? ' min' : '') + ((!st || w.k === 'gem') && D.act === w.id && !w.min ? ' on' : '');
       const t = w.k === 'gem' ? T('גימטריה', 'Gematria') : (w.t || T('קריאה', 'Reader'));
       const mini = w.k === 'gem' ? '<b class="gvT">' + T('גימטריבון', 'Gimatrivon') + '</b>' : w.k === 'search' ? '<i class="ml"><s></s><s></s><s></s><s></s></i>' : '<i class="mp"><em></em><s></s><s></s><s></s></i>';
-      c.innerHTML = (st ? '<span class="thC">' + mini + '</span>' : '<span class="ic">' + ICON[w.k] + '</span>') + '<span class="t"></span>';
+      c.innerHTML = (st ? '<span class="thC">' + mini + '</span>' : w.k === 'gem' ? '<span class="ic gvI"><b class="gvT">' + T('גימטריבון', 'Gimatrivon') + '</b></span>' : '<span class="ic">' + ICON[w.k] + '</span>') + '<span class="t"></span>';
       c.querySelector('.t').textContent = t;
       c.title = t + (w.min ? ' — ' + T('ממוזער', 'minimized') : '') + (F.get(w.id) && !F.get(w.id).fr ? ' — ' + T('ישן: המקום נשמר, הזיכרון שוחרר', 'asleep: place kept, memory released') : '');
       c.onclick = () => { if (!st && D.act === w.id && !w.min) minimize(w.id); else focusWin(w.id); };

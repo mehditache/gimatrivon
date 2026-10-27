@@ -431,3 +431,4 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 :root[data-theme=dark] .dkLogo em{color:var(--bk1)}
 .thC .gvT{position:absolute;inset:0;display:grid;place-items:center;font:700 14px/1.2 "GimFrank",serif;background:linear-gradient(160deg,#e9cf86,#c49a3c 45%,#8c6421);-webkit-background-clip:text;background-clip:text;color:transparent}
 :root[data-theme=dark] .thC .gvT{background-image:linear-gradient(160deg,#f6dd97,#d6ab4f 45%,#a07a33)}
+.dkChip .gvI{width:100%;font-size:inherit}.dkChip .gvI .gvT{position:static;display:block;font-size:13px;line-height:1.3}
