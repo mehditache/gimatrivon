@@ -475,7 +475,7 @@
   const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zoff: [] };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; if (S.zside !== 'r') S.zside = 't'; if (S.zlay !== 'cols') S.zlay = 'spread'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book';
+  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book';
   const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zoff: S.zoff })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
@@ -1094,7 +1094,7 @@
   const talCm = (k, j) => {
     const a = amudRow(k, j), l = a[1].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 'r' })).concat(a[2].map(e => ({ v: e[0], dh: e[1], body: e[2], src: 't' })));
     // זוהר: r = הסולם, t = תרגום. בדף מול תרגום — רק המקור שבעמוד השמאלי; בהזוהר והסולם — מה שלא הוסתר בהגדרות
-    return !zOf(k) ? l : S.tview === 'daf' ? l.filter(e => e.src === S.zside) : l.filter(e => !S.zoff.includes(e.src));
+    return !zOf(k) ? l : S.tview === 'daf' ? l.filter(e => e.src === 't') : l.filter(e => e.src === 'r' && !S.zoff.includes('r'));
   };
 
   /* צורת הדף: daf-renderer מחשב את פריסת וילנא לפי שטח הטקסטים. ההגדרות שלו הן משתנים גלובליים אחד לכל הדף,
@@ -1996,8 +1996,7 @@
       '<div class="rdSec"><span class="rdSecT">' + T('סוג תצוגה') + '</span><div class="rdCards">' +
       card('daf', '<span class="pv pvBook"><i></i><i></i><i class="s"></i><b></b></span>', 'דף מול תרגום') + card('study', '<span class="pv pvRows"><i></i><i></i><i></i></span>', 'זוהר והסולם') + '</div></div>' +
       (daf ? '<div class="rdSec"><span class="rdSecT">' + T('פריסה') + '</span>' + opt('zlay', 'spread', 'ספר פתוח', 'ארמית בעמוד ימין, תרגום בשמאל') + opt('zlay', 'cols', 'שני טורים', 'בעמוד אחד, שורה מול שורה') + '</div>' : '') +
-      (daf ? '<div class="rdSec"><span class="rdSecT">' + T('מול הארמית') + '</span>' + opt('zside', 't', 'תרגום', 'ברירת מחדל') + opt('zside', 'r', 'הסולם', 'ביאור הסולם') + '</div>'
-        : '<div class="rdSec"><span class="rdSecT">' + T('מתחת לפסקאות') + '</span>' + chk('t', 'תרגום') + chk('r', 'הסולם') + '</div>') +
+      (daf ? '' : '<div class="rdSec"><span class="rdSecT">' + T('פירוש מתחת לפסקאות') + '</span>' + chk('r', 'הסולם') + '</div>') +
       '<div class="rdSec"><span class="rdSecT">' + T('גודל אותיות') + '</span><div class="rdSizes">' + [-1, 0, 1, 2].map(z => '<button type="button" class="' + (S.size === z ? 'on' : '') + '" data-set="size" data-val="' + z + '" aria-pressed="' + (S.size === z) + '" style="font-size:' + (13 + z * 2.5) + 'px">א</button>').join('') + '</div></div>' +
       '<p class="rdNote">' + T('לחצו על פסקה בזוהר כדי לראות את התרגום והסולם שלה.') + ' ' + T('העמודים לפי דפוס וילנא.') + ' ' + T('ההגדרות נשמרות לפעם הבאה.') + '</p>';
   }
