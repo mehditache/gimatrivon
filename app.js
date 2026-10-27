@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.6.39'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.6.40'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
 const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
@@ -287,6 +287,8 @@ const SEARCH_BOOKS = B.books.map((_, i) => i).filter(i => !NO_SEARCH_CATS.has(B.
 const TREE = []; SEARCH_BOOKS.forEach(i => { const b = B.books[i]; let c = TREE.find(x => x.cat === b.cat); if (!c) TREE.push(c = { key: 'c' + b.cat, cat: b.cat, name: b.category, groups: [] }); let g = c.groups.find(x => x.name === b.g); if (!g) c.groups.push(g = { key: 'c' + b.cat + b.g, name: b.g, ids: [] }); g.ids.push(i); });
 TREE.forEach(c => { c.ids = [].concat(...c.groups.map(g => g.ids)); });
 const ALL = new Set(SEARCH_BOOKS);
+// ברירת המחדל של עץ המקורות בצד חדש: תנ״ך (0), משנה (1) ואונקלוס (3) בלבד; "בחר הכל" עדיין מסמן את כולם
+const DEFAULT_SEL = SEARCH_BOOKS.filter(i => [0, 1, 3].includes(B.books[i].cat));
 const CATCOLORS = { 0: '#23527f', 1: '#8a6d1f', 2: '#6d8f1a', 3: '#9d2f8f', 4: '#c2571f', 5: '#1a8f92', 6: '#6d4b1f', 7: '#7a2e3b', 8: '#3f6f4a', 9: '#5b4a8a', 10: '#8a5a2b' };
 
 /* ---------- 54 פרשות השבוע (פרק:פסוק, חלוקה מסורתית) — רלוונטי רק לספרי החומש ולמקבילים (רש״י/אונקלוס) ---------- */
@@ -611,7 +613,7 @@ function hitsSortToggle(k, id) {
 // winStart/winCount/avgRowH/groups/groupsTotal: שדות הגלילה-הוירטואלית (ראו renderWindow/computeGroups
 // למטה) — לא חלק מ"שדות-הגדרה" הסיור שומר/משחזר (SETTINGS_FIELDS), ממש כמו all/info/cur: מתמלאים-מחדש
 // נכון מעצמם בכל renderWindow/computeGroups.
-const S = {}; KS.forEach(k => { S[k] = { k, text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(ALL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: makeStore(), winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
+const S = {}; KS.forEach(k => { S[k] = { k, text: '', num: '', ms: new Set(E.METHODS.map(m => m.id)), sms: new Set(E.METHODS.map(m => m.id)), sel: new Set(DEFAULT_SEL), open: new Set(), rngOpen: new Set(), smOpen: new Set(GEM_FAMILIES.map(f => f.key)), ranges: new Map(), all: makeStore(), winStart: 0, winCount: 0, avgRowH: 0, groups: [], groupsTotal: 0, cur: -1, info: [], tf: '', fuzzy: false, hitsSort: null, notMode: 'perm', notCounts: {}, notGen: 0, fullUnit: false, singleWord: false }; });
 let IDX = null, CM = null, FOCUS = null;
 // מצב בניית אינדקס הגימטריה (ראו gemStart בסוף הקובץ): gen = מונה לביטול, stage = 0 (אין) / 1 (תנ״ך ומשנה) / 2 (הכל)
 const GEM = { gen: 0, busy: false, stage: 0, f: 0 };
