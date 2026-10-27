@@ -1368,3 +1368,36 @@ html.gtResults .rsPg button.rsAr svg{width:18px;height:18px}
 
 /* מראה כהה: ההדגשה הצהובה הבהירה הסתירה את הטקסט הבהיר — כחול שקוף שהטקסט נשאר קריא עליו (חלון התוצאות והרשימה הנפתחת של שולחן העבודה) */
 html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rdHl,html.gtResults[data-theme=dark] .rsSn mark{background:rgba(94,155,216,.5);color:#fff;box-shadow:0 0 0 1px rgba(94,155,216,.7)}
+/* חלונות אודות, צור קשר ושיטות הגימטריה בלוק הלבן-זהב של עיצוב 21 */
+.dlg{--dg1:#e9cf86;--dg2:#c49a3c;--dg3:#8c6421;--dgG:linear-gradient(160deg,#c99a3e,#8c6421);--dgBg:#fff;--dgInk:#4a3b22;--dgMu:#9a8763;--dgHair:#e8dcc0;--dgTint:#f8f0dc;--dgTint2:#f1e4c4}
+:root[data-theme=dark] .dlg{--dg1:#f6dd97;--dg2:#d6ab4f;--dg3:#a07a33;--dgG:linear-gradient(160deg,#f2d488,#c99a3e);--dgBg:#16120c;--dgInk:#ecdfc4;--dgMu:#a8987a;--dgHair:#3a2f1c;--dgTint:#241d12;--dgTint2:#2e2516}
+.dlg{background:var(--dgBg)!important;color:var(--dgInk)!important;border:0!important;border-radius:22px!important;box-shadow:0 0 0 .5px var(--dgHair),0 28px 70px rgba(120,90,30,.22)!important;overflow:hidden}
+:root[data-theme=dark] .dlg{box-shadow:0 0 0 .5px var(--dgHair),0 28px 70px rgba(0,0,0,.6)!important}
+.dlg::backdrop{background:rgba(60,44,16,.28)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+:root[data-theme=dark] .dlg::backdrop{background:rgba(0,0,0,.5)!important}
+.dlg .dh{background:none!important;border:0!important;border-bottom:.5px solid var(--dgHair)!important;padding:16px 20px 12px!important;position:relative}
+.dlg .dh::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,var(--dg2) 25%,var(--dg1) 50%,var(--dg2) 75%,transparent);opacity:.75}
+.dlg .dh h2,:root:not([data-theme="dark"]) .contactDlg .dh h2{font:700 22px/1.2 "GimFrank","Frank Ruhl Libre",serif!important;background:var(--dgG);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+:root:not([data-theme="dark"]) .contactDlg .dh{border-top-color:transparent!important}
+.dlg .x{background:var(--dgTint)!important;color:var(--dgInk)!important;border:0!important;border-radius:50%!important;width:30px;height:30px;padding:0!important}
+.dlg .x:hover{background:var(--dgTint2)!important}
+.aboutBox .row{border-bottom:.5px solid var(--dgHair)!important}
+.aboutBox .k{color:var(--dg3)!important;font-weight:600}
+:root[data-theme=dark] .aboutBox .k{color:var(--dg1)!important}
+.aboutBox .v b{background:var(--dgG);-webkit-background-clip:text;background-clip:text;color:transparent;font-family:"GimFrank",serif;font-size:1.15em}
+.contactBody label{color:var(--dg3)!important;font-weight:600}
+:root[data-theme=dark] .contactBody label{color:var(--dg1)!important}
+.contactBody input,.contactBody textarea{background:var(--dgTint)!important;border:0!important;box-shadow:inset 0 0 0 .5px var(--dgHair);color:var(--dgInk)!important;border-radius:12px!important}
+.contactBody input:focus,.contactBody textarea:focus{box-shadow:inset 0 0 0 1.5px var(--dg2),0 0 0 4px color-mix(in srgb,var(--dg2) 22%,transparent)!important}
+#contactSend,:root:not([data-theme="dark"]) #contactSend{background:var(--dgG)!important;color:#fff!important;border-radius:12px!important;box-shadow:0 6px 16px rgba(160,120,40,.3)}
+:root[data-theme=dark] #contactSend{color:#1b150c!important}
+.doc h2{color:var(--dg2)!important;font:700 17px "GimFrank","Frank Ruhl Libre",serif!important}
+.doc th{background:var(--dgTint)!important;color:var(--dg3)!important}
+:root[data-theme=dark] .doc th{color:var(--dg1)!important}
+.doc th,.doc td{border-bottom:.5px solid var(--dgHair)!important}
+.mcard{background:var(--dgTint)!important;border:0!important;box-shadow:inset 0 0 0 .5px var(--dgHair);border-radius:14px!important}
+.mcard b{color:var(--dg3)!important}
+:root[data-theme=dark] .mcard b{color:var(--dg1)!important}
+.mcard p{color:var(--dgMu)!important}
+.mcard .ex span,.doc .chipWrap .chip,.doc .chip{background:var(--dgTint2)!important;color:var(--dgInk)!important;border:0!important}
+.doc code{background:var(--dgTint2)!important}
