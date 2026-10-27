@@ -306,3 +306,7 @@ body{--wp:radial-gradient(1100px 800px at 70% 0,#f3dfc0 0,transparent 60%),radia
 /* v4.6.4: מצב פיתוח — ספירה לאחור לשינה על כל ריבוע בפס (desktop.js, sleepTick) */
 .dkChip .cd{position:absolute;bottom:2px;inset-inline:2px;text-align:center;font:600 9.5px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#fff;background:rgba(20,22,28,.78);border-radius:5px;padding:0 2px;pointer-events:none}
 .dkChip .cd.a{background:rgba(62,160,100,.85)}.dkChip .cd.s{background:#d9822b}.dkChip .cd.sl{background:rgba(110,114,122,.85)}
+
+.dkKb{width:220px}
+.dkKb .ic{width:20px;flex:none;font:600 14px var(--ui);font-style:normal;text-align:center;color:var(--gold)}
+.dkKb .kbV{padding:4px 12px 2px;font:600 11px var(--ui);color:var(--mu)}

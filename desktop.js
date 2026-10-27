@@ -478,16 +478,22 @@
   function pathOf(el, root) { const p = []; while (el && el !== root) { p.unshift([...el.parentNode.children].indexOf(el)); el = el.parentNode; } return el === root ? p : null; }
   const byPath = (root, p) => p.reduce((n, i) => n && n.children[i], root);
   function cloneInto(slot, src) { slot.textContent = ''; if (src) [...src.childNodes].forEach(n => slot.appendChild(document.importNode(n, true))); slot.querySelectorAll('[id]').forEach(x => { x.dataset.srcId = x.id; x.removeAttribute('id'); }); }
+  const NAV_STUB = () => '<button type="button" class="rdIco" disabled aria-label="' + T('פרק קודם', 'Previous chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>' +
+    '<button type="button" class="rdWhere" title="' + T('בחר ספר לקריאה', 'Choose a book to read') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg><span>' + T('בחר ספר לקריאה', 'Choose a book to read') + '</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>' +
+    '<button type="button" class="rdIco" disabled aria-label="' + T('פרק הבא', 'Next chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>';
   function banner() {
     const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
     document.body.classList.toggle('dkGem', gem); document.body.classList.toggle('dkOther', other);
     try { ctxSync(); } catch (e) {} // לפני אתחול המשתנים (טעינה ראשונה) — מדלגים
     $('#dkGemTools').hidden = !gem;
     const f = readerF(), d = f && f.doc;
-    cloneInto(nav, d && d.querySelector('#rdTop .rdNav'));
+    // בלי חלון פעיל (או בלי אף חלון קריאה): הפקד לא נעלם אלא מאופס — "בחר ספר לקריאה"; לחיצה פותחת חלון קריאה חדש
+    const stub = !w || (w.k !== 'read' && !(D.last && W(D.last)));
+    if (stub) { nav.dataset.stub = '1'; nav.innerHTML = NAV_STUB(); }
+    else { delete nav.dataset.stub; cloneInto(nav, d && d.querySelector('#rdTop .rdNav')); }
     cloneInto(tools, d && w && !other && d.querySelector('#rdTop .rdTools')); // בלי חלון פעיל (הכול ממוזער) אין פקדי קריאה
-    nav.classList.toggle('dim', other);
-    nav.title = other ? T('חלון הקריאה האחרון', 'Last reader window') : '';
+    nav.classList.toggle('dim', other && !stub);
+    nav.title = other && !stub ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();
   }
   let lastR = 0; // הקצה הימני של הכפתור בזמן הלחיצה (הכפתור עצמו נבנה מחדש עם הבנר)
@@ -495,6 +501,14 @@
   let lastBtn = null; // כפתור הבנר שנלחץ אחרון — החלון הקופץ ייפתח מתחתיו
   function fwdClick(slot, srcSel, e) {
     const t = e.target.closest('button,label,input'); if (!t || !slot.contains(t)) return;
+    if (slot === nav && nav.dataset.stub) { // פתיחת חלון קריאה חדש ובו בורר הספר
+      if (!t.classList.contains('rdWhere')) return;
+      if (reads().length >= MAXR) { const l = W(D.last) || reads()[0]; if (l) focusWin(l.id); return; }
+      const nw = openRead('#read', true); let n = 0;
+      const tick = () => { const g = F.get(nw.id), o = g && g.doc && g.doc.getElementById('rdWhere'), tb = nav.querySelector('.rdWhere');
+        if (o && tb) { lastBtn = tb; lastR = tb.getBoundingClientRect().right; lastRc = rectOf(tb); o.click(); setTimeout(() => placePops(g), 30); } else if (++n < 40) setTimeout(tick, 200); };
+      setTimeout(tick, 300); return;
+    }
     const f = readerF(); if (!f || !f.doc) return;
     if (slot === nav && document.body.classList.contains('dkOther')) { if (D.last && W(D.last)) focusWin(D.last); return; }
     const p = pathOf(t, slot), src = f.doc.querySelector(srcSel), o = p && src && byPath(src, p);
@@ -506,11 +520,32 @@
     const b = e.target.closest('[data-fwd]'), f = F.get(gemW().id);
     if (b && f && f.doc) { const o = f.doc.querySelector(b.dataset.fwd); if (o) o.click(); }
   });
-  $('#dkKebab').onclick = function openKebab() {
-    const a = W(D.act);
-    if (!a) { // הכול ממוזער: התפריט נפתח בתוך חלון, אז משחזרים את החלון האחרון ופותחים אותו בו
-      const w = W(D.last) || D.wins.find(x => x.k === 'read') || gemW(); if (!w) return;
-      focusWin(w.id); setTimeout(() => $('#dkKebab').click(), 450); return;
+  // תפריט ⋯: עם חלון פעיל — התפריט של החלון; בלי חלון פעיל (הכול ממוזער) — תפריט של השולחן עצמו, בלי להחזיר חלון.
+  // מראה ושפה פועלים ישר; סיור / שיטות / אודות / צור קשר הם דיאלוגים בתוך חלון, ולכן הלחיצה עליהם מחזירה את החלון האחרון
+  const kb = document.createElement('div'); kb.className = 'dkScMenu dkKb'; kb.hidden = true; document.body.appendChild(kb);
+  function kbMenu() {
+    const row = (id, l, ic) => '<button type="button" data-kb="' + id + '"><i class="ic">' + ic + '</i><span>' + l + '</span></button>';
+    kb.innerHTML = row('theme', dark() ? T('מראה גוויל', 'Parchment look') : T('מראה לילה', 'Night look'), '☾') + row('lang', EN ? 'עברית' : 'English', 'EN') +
+      '<hr>' + row('tour', T('סיור מודרך', 'Guided tour'), '?') + row('methods', T('שיטות גימטריה', 'Gematria methods'), 'Σ') + row('about', T('אודות', 'About'), 'ⓘ') + row('contact', T('צור קשר', 'Contact'), '✉') +
+      '<hr><div class="kbV">' + ($('#dkVer').textContent || '') + '</div>';
+  }
+  const KB_IDS = { tour: 'startTour', methods: 'openMethods', about: 'openAbout', contact: 'openContact' };
+  kb.addEventListener('click', e => {
+    const b = e.target.closest('[data-kb]'); if (!b) return; const k = b.dataset.kb; kb.hidden = true;
+    if (k === 'theme') { $('#dkTheme').click(); return; }
+    if (k === 'lang') { $('#dkLang').click(); return; }
+    const w = W(D.last) || reads()[0] || gemW(); if (!w) return;
+    focusWin(w.id);
+    let n = 0; const tick = () => { const f = F.get(w.id), o = f && f.doc && f.doc.getElementById(KB_IDS[k]); if (o) o.click(); else if (++n < 30) setTimeout(tick, 200); };
+    setTimeout(tick, 350);
+  });
+  document.addEventListener('pointerdown', e => { if (!kb.hidden && !e.target.closest('.dkKb,#dkKebab')) kb.hidden = true; }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape') kb.hidden = true; });
+  $('#dkKebab').onclick = function () {
+    if (!W(D.act)) {
+      if (!kb.hidden) { kb.hidden = true; return; }
+      kbMenu(); kb.hidden = false; const r = $('#dkKebab').getBoundingClientRect();
+      kb.style.top = Math.round(r.bottom + 6) + 'px'; kb.style.left = Math.max(8, Math.round(r.left)) + 'px'; return;
     }
     lastBtn = $('#dkKebab'); lastR = lastBtn.getBoundingClientRect().right; lastRc = rectOf(lastBtn); const f = F.get(D.act); const o = f && f.doc && f.doc.getElementById('mKebab'); if (o) o.click();
   };
