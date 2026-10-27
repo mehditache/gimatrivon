@@ -501,11 +501,21 @@
   const NAV_STUB = () => '<button type="button" class="rdIco" disabled aria-label="' + T('פרק קודם', 'Previous chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>' +
     '<button type="button" class="rdWhere" title="' + T('בחר ספר לקריאה', 'Choose a book to read') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg><span>' + T('בחר ספר לקריאה', 'Choose a book to read') + '</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>' +
     '<button type="button" class="rdIco" disabled aria-label="' + T('פרק הבא', 'Next chapter') + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>';
+  // כפתור הסיור מהבהב 10 שניות בפעם הראשונה שחלון הגימטריה פעיל (כמו ב-index.html); לחיצה עוצרת מיד
+  let attracted = false;
+  function attractTour() {
+    if (attracted) return; attracted = true;
+    const b = $('#dkGemTools .tourBtn'); if (!b) return;
+    b.classList.add('attract');
+    const stop = () => b.classList.remove('attract');
+    setTimeout(stop, 10000); b.addEventListener('pointerdown', stop, { once: true });
+  }
   function banner() {
     const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
     document.body.classList.toggle('dkGem', gem); document.body.classList.toggle('dkOther', other);
     try { ctxSync(); } catch (e) {} // לפני אתחול המשתנים (טעינה ראשונה) — מדלגים
     $('#dkGemTools').hidden = !gem;
+    if (gem) attractTour();
     const f = readerF(), d = f && f.doc;
     // בלי חלון פעיל (או בלי אף חלון קריאה): הפקד לא נעלם אלא מאופס — "בחר ספר לקריאה"; לחיצה פותחת חלון קריאה חדש
     const stub = !w || (w.k !== 'read' && !(D.last && W(D.last)));
@@ -862,7 +872,7 @@
   });
   $('#dkLang').textContent = EN ? 'עב' : 'EN';
   $('#dkLang').onclick = () => { D.wins.forEach(snapshot); save(); try { localStorage.setItem('gimatrivonLang', EN ? 'he' : 'en'); } catch (e) {} location.reload(); };
-  if (EN) { document.documentElement.lang = 'en'; q.placeholder = 'Search, or jump: "Exodus 12 2"'; $('#dkGemTools').firstElementChild.textContent = 'Gematria methods'; }
+  if (EN) { document.documentElement.lang = 'en'; q.placeholder = 'Search, or jump: "Exodus 12 2"'; const tb = $('#dkGemTools').firstElementChild; tb.textContent = '? Guided tour'; tb.title = 'Start a short guided tour of the app'; }
 
   // הודעות מהחלונות (reader.js): תוצאת גימטריה → חלון קריאה; ניסיון לעבור לגימטריה מחלון קריאה → חלון הגימטריה
   addEventListener('message', e => {

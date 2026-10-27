@@ -15,6 +15,8 @@ body{margin:0;display:flex;flex-direction:column;overflow:hidden;background:var(
 .dkTools:empty{display:none}
 .dkGemTools{display:flex;gap:6px;align-items:center}
 .dkGemTools[hidden]{display:none}
+.dkGemTools .tourBtn{color:var(--ac)}
+.dkGemTools .tourBtn.attract{animation-iteration-count:8} /* 8 × 1.2 שנ׳ ≈ 10 שניות */
 .dkGemTools button{height:32px;padding:0 12px;border:1px solid var(--ln);border-radius:9px;background:var(--pn);color:var(--tx);font:13px var(--ui);white-space:nowrap;cursor:pointer}
 body.dkGem .dkTools{display:none}
 

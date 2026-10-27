@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>גימטריבון</title>
 <script>try{if(localStorage.getItem('gimatrivonTheme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
-<link rel="stylesheet" href="styles.css?v=4.6.14">
-<link rel="stylesheet" href="desktop.css?v=4.6.14">
+<link rel="stylesheet" href="styles.css?v=4.6.16">
+<link rel="stylesheet" href="desktop.css?v=4.6.16">
 </head>
 <!-- שולחן העבודה (v4.0.0): בנר קבוע, חלונות (גימטריה אחד, עד 5 חלונות קריאה) ושורת משימות. כל חלון הוא
      index.html?embed=… בתוך iframe — מסכי הגימטריה והקריאה עצמם לא משתנים. הלוגיקה ב-desktop.js. -->
@@ -27,8 +27,7 @@
     <div class="dkScMenu" id="dkScMenu" hidden></div>
     <div class="rdTools dkTools" id="dkTools"></div>
     <div class="dkGemTools" id="dkGemTools" hidden>
-      <button type="button" data-fwd="#openMethods">שיטות גימטריה</button>
-      <button type="button" data-fwd="#startTour" title="סיור מודרך" aria-label="סיור מודרך">?</button>
+      <button type="button" class="tourBtn" data-fwd="#startTour" title="הפעלת סיור מודרך קצר באפליקציה">? סיור מודרך</button>
     </div>
   </div>
   <div class="tools">
@@ -57,6 +56,6 @@
 <div class="dkToast" id="dkToast" hidden></div>
 <script src="sqlite-search.js"></script>
 <script src="sqpool.js"></script>
-<script src="desktop.js?v=4.6.14"></script>
+<script src="desktop.js?v=4.6.16"></script>
 </body>
 </html>
