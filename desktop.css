@@ -412,3 +412,7 @@ html body .driver-popover button.driver-popover-next-btn{background:var(--pgG)!i
 :root[data-theme=dark] html body .driver-popover button.driver-popover-next-btn{color:#1b150c!important}
 html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint)!important;border:0!important;color:var(--pgInk)!important;border-radius:10px!important;text-shadow:none!important}
 .driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow,.driver-popover .driver-popover-arrow-side-top.driver-popover-arrow{border-color:transparent}
+
+/* v4.6.30: בתפריט "מה לכלול" שורה מסומנת לא מקבלת רקע זהב — התיבה מסמנת */
+.dkScMenu button.cb.on,:root[data-theme=dark] .dkScMenu button.cb.on{background:none!important;font-weight:inherit;color:var(--tx)}
+.dkScMenu button.cb.on:hover{background:var(--pgTint)!important}

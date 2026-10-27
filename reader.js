@@ -2207,7 +2207,7 @@
     rambam: [['txt', 'הלכות'], ['ks', 'כסף משנה'], ['ra', 'השגות הראב״ד'], ['mm', 'משנה למלך']], talmud: [['g', 'גמרא'], ['r', 'רש״י'], ['t', 'תוספות']], tur: [['t', 'טור'], ['y', 'בית יוסף'], ['c', 'ב״ח']] };
   const srcKeys = dom => SRC_DEF[dom].map(x => x[0]);
   function srcSet(dom, v) {
-    const all = srcKeys(dom); if (!v || v === 'all') return new Set(all);
+    const all = srcKeys(dom); if (v === 'none') return new Set(); if (!v || v === 'all') return new Set(all);
     const out = new Set();
     String(v).split('+').forEach(k => {
       if (dom === 'tanakh' && k === 'tr') { out.add('on'); out.add('yo'); } else if (dom === 'rambam' && k === 'cm') { ['ks', 'ra', 'mm'].forEach(x => out.add(x)); }
@@ -2215,7 +2215,7 @@
     });
     return out.size ? out : new Set(all);
   }
-  const srcStr = (dom, set) => { const all = srcKeys(dom), l = all.filter(k => set.has(k)); return l.length === all.length ? 'all' : l.join('+'); };
+  const srcStr = (dom, set) => { const all = srcKeys(dom), l = all.filter(k => set.has(k)); return l.length === all.length ? 'all' : l.length ? l.join('+') : 'none'; };
   const srcIdx = (dom, set) => { const SR = G.GimSq.DOMAINS[dom].srcs, out = new Set(); set.forEach(k => (SR[k] || []).forEach(i => out.add(i))); return [...out]; };
   // פרשות התורה (חלוקה מסורתית, מספור פרקים עברי): [ספר, שם, פרק התחלה, פסוק, פרק סיום, פסוק]
   const PAR = [['בראשית', 'בראשית', 1, 1, 6, 8], ['בראשית', 'נח', 6, 9, 11, 32], ['בראשית', 'לך לך', 12, 1, 17, 27], ['בראשית', 'וירא', 18, 1, 22, 24], ['בראשית', 'חיי שרה', 23, 1, 25, 18], ['בראשית', 'תולדות', 25, 19, 28, 9],
@@ -2606,7 +2606,7 @@
   }
   function toggleSrc(k) {
     const dom = sqDomOf(); if (!dom) return; const set = srcSet(dom, S[srcProp(dom)]);
-    if (set.has(k)) { if (set.size > 1) set.delete(k); } else set.add(k);
+    if (set.has(k)) set.delete(k); else set.add(k); // אפשר גם בלי אף מקור מסומן ('none')
     S[srcProp(dom)] = srcStr(dom, set); save(); renderDrop();
   }
   // ברירת מחדל לפי החלון הפעיל: קריאה = כל הספר בלי מפרשים; גימטריה = כל התנ״ך עם מפרשים (חיפוש מכל הספרים נשאר רק לבחירת המשתמש)
