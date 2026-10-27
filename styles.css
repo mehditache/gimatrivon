@@ -1417,7 +1417,7 @@ html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rd
 .zr{margin:0 0 .65em}
 .zSide .tc{margin:0 0 .5em}
 /* זוהר בשני טורים בעמוד אחד */
-.zWide .rdTxt.zCols{display:grid;grid-template-columns:1fr 1fr;column-gap:0;align-content:start;overflow:auto}
+.rdTxt.zCols{display:grid;grid-template-columns:1fr 1fr;column-gap:0;align-content:start;overflow:auto}
 .zCols .zColHd{font-family:var(--ui);font-size:.72em;color:var(--rdMu);letter-spacing:.04em;padding:0 .8em .35em;border-bottom:1px solid var(--rdLn,rgba(120,100,60,.25));margin-bottom:.5em}
 .zCols .zA{padding:0 .2em .7em 1.1em;border-inline-end:1px solid var(--rdLn,rgba(120,100,60,.25))}
 .zCols .zT{padding:0 1.1em .7em .2em}

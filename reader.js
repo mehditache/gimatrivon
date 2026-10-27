@@ -571,9 +571,9 @@
 
   function geometry() {
     const desk = $r('#rdDesk'), W = desk.clientWidth, H = desk.clientHeight;
-    const zc = isTal() && isZ() && S.tview === 'daf' && S.zlay === 'cols' && W >= 760; // זוהר בשני טורים בעמוד אחד: עמוד רחב אחד
-    const narrow = W < 600, two = W >= 1000 && !zc;
-    const pw = zc ? Math.min(1180, W - 120) : two ? Math.min(680, Math.floor((W - 140) / 2)) : Math.min(760, W - (narrow ? 12 : 120));
+    const narrow = W < 600, two = W >= 1000;
+    const pw = two ? Math.min(680, Math.floor((W - 140) / 2)) : Math.min(760, W - (narrow ? 12 : 120));
+    const zc = isTal() && isZ() && S.tview === 'daf' && S.zlay === 'cols' && pw >= 520; // זוהר בשני טורים בכל עמוד (ארמית | תרגום); במסך רחב — שני עמודים כמו בשאר הספרים
     const ph = Math.max(300, H - (narrow ? 8 : 30));
     const fs = Math.round(((narrow ? 18 : 20.5) + S.size * 1.5) * 10) / 10;
     const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
@@ -1202,7 +1202,7 @@
     return [ea, eb];
   }
   function studyPages(k, j, g) {
-    const tt = tOf(k), zd = !!tt.z && S.tview === 'daf', two = zd && !!g.two;
+    const tt = tOf(k), zd = !!tt.z && S.tview === 'daf', two = zd && !!g.two && !g.zc;
     const key = 'T' + k + ':' + j + '|' + g.key + (tt.z ? '|' + S.tview + S.zside + S.zlay + S.zoff.join('') : ''); if (PC.has(key)) return PC.get(key);
     const probe = $r('#rdProbe'), a = amudRow(k, j), ents = talCm(k, j), pages = [];
     probe.className = 'rdPage tal' + g.cls;
@@ -1264,13 +1264,13 @@
       $r('#rdPos').textContent = (from !== last ? T('עמודים') + ' ' + dafTxt(from) + '–' + dafTxt(last) : T('עמוד') + ' ' + dafTxt(from)) + ' ' + T('מתוך') + ' ' + dafTxt(t.n - 1);
     } else {
       const ps = studyPages(k, S.tj, geo); if (S.tp >= ps.length) S.tp = ps.length - 1;
-      const shown = [{ j: S.tj, p: S.tp }]; if (geo.two && !zd) { const n = stNext(k, S.tj, S.tp, 1, geo); if (n) shown.push(n); }
+      const shown = [{ j: S.tj, p: S.tp }]; if (geo.two && (!zd || geo.zc)) { const n = stNext(k, S.tj, S.tp, 1, geo); if (n) shown.push(n); }
       const side = i => geo.two ? (i ? 'left' : 'right') : 'single';
-      if (zd) { // דף מול תרגום: מסך אחד = עמוד ארמית (ימין) ועמוד תרגום (שמאל)
+      if (zd && !geo.zc) { // דף מול תרגום: מסך אחד = עמוד ארמית (ימין) ועמוד תרגום (שמאל)
         const pg = ps[S.tp];
         html = geo.two ? '<article class="rdPage tal right' + geo.cls + '" aria-label="' + h(T('דף') + ' ' + dafTxt(S.tj, k)) + '">' + zdInner(k, S.tj, pg, S.hl, 'a') + '</article><article class="rdPage tal left' + geo.cls + '">' + zdInner(k, S.tj, pg, S.hl, 'b') + '</article>'
           : '<article class="rdPage tal single' + geo.cls + (geo.zc ? ' zWide' : '') + '">' + zdInner(k, S.tj, pg, S.hl, geo.zc ? 'c' : 's') + '</article>';
-      } else html = shown.map((x, i) => '<article class="rdPage tal ' + side(i) + geo.cls + '">' + studyInner(k, x.j, studyPages(k, x.j, geo)[x.p], S.hl) + '</article>').join('') + (geo.two && shown.length < 2 ? '<article class="rdPage left blank' + geo.cls + '" aria-hidden="true"></article>' : '');
+      } else html = shown.map((x, i) => '<article class="rdPage tal ' + side(i) + geo.cls + '">' + (zd ? zdInner(k, x.j, studyPages(k, x.j, geo)[x.p], S.hl, 'c') : studyInner(k, x.j, studyPages(k, x.j, geo)[x.p], S.hl)) + '</article>').join('') + (geo.two && shown.length < 2 ? '<article class="rdPage left blank' + geo.cls + '" aria-hidden="true"></article>' : '');
       last = shown[shown.length - 1].j; lastPg = shown[shown.length - 1];
       $r('#rdPos').textContent = T('עמוד') + ' ' + dafTxt(S.tj, k) + (last !== S.tj ? '–' + dafTxt(last, k) : '') + ' ' + T('מתוך') + ' ' + dafTxt(t.n - 1, k) + (t.z && ps.length > 1 ? ' · ' + num(S.tp + 1) + '/' + num(ps.length) : '');
     }
@@ -1291,7 +1291,7 @@
     const t = talT();
     if (S.tview === 'daf' && !t.z) { const step = geo.two ? 2 : 1, base = geo.two ? S.tj - (S.tj & 1) : S.tj, n = base + dir * step; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; return render(); }
     let x = { j: S.tj, p: S.tp };
-    for (let i = 0; i < (geo.two && !(t.z && S.tview === 'daf') ? 2 : 1); i++) { const n = stNext(t.k, x.j, x.p, dir, geo); if (!n) { if (i === 0) return; break; } x = n; }
+    for (let i = 0; i < (geo.two && !(t.z && S.tview === 'daf' && !geo.zc) ? 2 : 1); i++) { const n = stNext(t.k, x.j, x.p, dir, geo); if (!n) { if (i === 0) return; break; } x = n; }
     S.tj = x.j; S.tp = x.p; fxDir = dir; render();
   }
   function talStep(dir) { const t = talT(), base = S.tj - (S.tj & 1), n = base + dir * 2; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; render(); }
