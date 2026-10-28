@@ -3255,6 +3255,7 @@
   const SHORT_TUR = { OC: 'או״ח', YD: 'יו״ד', CM: 'חו״מ', EH: 'אה״ע' };
   function shortRambam(name) {
     const full = name.replace(/^הלכות /, '');
+    if (full.indexOf(' ') < 0) return full; // שם של מילה אחת לא מקוצר
     const a = (RAMBAM_ABBR[name] || []).find(x => x.indexOf(' ') < 0 && x.length <= 5);
     return a ? (a.length > 1 ? a.slice(0, -1) + '״' + a.slice(-1) : a) : full;
   }
@@ -3263,8 +3264,8 @@
     try {
       ensureIndex(); const x = parseHashRef(IX, TX, RX, m[1]); if (!x) return '';
       if (x.kind === 'tur') { const t = RX.list.find(r => r.k === x.k); return t ? (SHORT_TUR[t.k] || turPartName(t)) + ' ' + (x.s ? 'ס׳ ' + num(x.s) : T('הקדמה')) : ''; }
-      if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); if (!t) return ''; return t.z ? talTitle(t).replace(/^זוהר/, 'זוה״ק').replace(/הקדמת ספר (הזוהר|הזהר)/, 'הקדמה') + ' · ' + dafTxt(x.j, t.k) : (SHORT_TRACT[t.he] || t.he) + ' ד׳ ' + dafTxt(x.j); }
-      const ti = IX.books[x.b].heTitle.replace(/^משנה /, ''), nm = isRambam(x.b) ? shortRambam(ti) : SHORT_TANAKH[ti] || SHORT_TRACT[ti] || bkName(ti);
+      if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); if (!t) return ''; return t.z ? talTitle(t).replace(/הקדמת ספר (הזוהר|הזהר)/, 'הקדמה') + ' · ' + dafTxt(x.j, t.k) : (t.he.indexOf(' ') < 0 ? t.he : SHORT_TRACT[t.he] || t.he) + ' ד׳ ' + dafTxt(x.j); }
+      const ti = IX.books[x.b].heTitle.replace(/^משנה /, ''), one = n => n.indexOf(' ') < 0, nm = isRambam(x.b) ? shortRambam(ti) : (!one(ti) && (SHORT_TANAKH[ti] || SHORT_TRACT[ti])) || bkName(ti); // שם של מילה אחת לא מקוצר
       return nm + ' פ׳ ' + num(x.ch) + (x.v ? ', ' + num(x.v) : '');
     } catch (e) { return ''; }
   }
