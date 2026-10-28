@@ -989,7 +989,7 @@
   // מספר עברי תקין: ערכי האותיות לא עולים (קכ, ריז, טו) — מסנן מילים כמו "הוה"
   const validNum = x => { const v = [...x.replace(/["״׳']/g, '')].map(c => 'אבגדהוזחטיכלמנסעפצקרשת'.indexOf(c)).map(i => i < 0 ? -1 : i < 9 ? i + 1 : i < 18 ? (i - 8) * 10 : Math.min(400, (i - 17) * 100)); return v.length > 0 && v.every((n, i) => n > 0 && (i === 0 || n <= v[i - 1])); };
   // מראה המקום האחרון (ספר בסיס, פרק) לפני המקום בטקסט, באותה פסקה, עד 400 תווים אחורה — בשביל "שם"
-  const PREV_RX = new RegExp('\\(([א-ת]{2,10}(?: [א-ת]{1,8})?) (HN)(?:[:,] ?(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), 'g');
+  const PREV_RX = new RegExp('\\(([א-ת]{2,10}(?: [א-ת]{1,8}[׳\']?){0,2}) (HN)(?:(?:[:,] ?| )(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), 'g');
   // תחום הסריקה אחורה: כל המפרש (רש״י וכו׳ — "שם" מפנה גם לדיבור הקודם), אחרת הפסקה
   const refBlock = n => n.parentNode.closest('.rdCmBody') || n.parentNode.closest('p,li,.rdRow,.rdRv,article');
   function prevRef(c) {
@@ -1008,6 +1008,20 @@
     }
     return last;
   }
+  // המסכת של "דף X" שבלי שם מסכת: האזכור הקרוב ביותר לפניו (עד 200 תווים, באותה פסקה): "דנדרים" / "מסכת X" / "X דף" / שם פרק ("בפרק אלו מגלחין")
+  let TCTX = null;
+  function tractCtx(c) {
+    const blk = refBlock(c.node); if (!blk) return null;
+    if (!TCTX) {
+      const nm = TX.list.filter(t => !t.z).map(t => [t.he, t.k]), byHe = Object.fromEntries(nm), alt = nm.map(x => x[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      TCTX = { byHe, rx: [new RegExp('(?:^|[^א-ת])ד(' + alt + ')(?![א-ת])', 'g'), new RegExp('(?:^|[^א-ת])(?:ב?מסכת|מס[׳\']) (' + alt + ')(?![א-ת])', 'g'), new RegExp('(?:^|[^א-ת])(' + alt + ') (?:בדף|דף)(?![א-ת])', 'g')] };
+    }
+    const rg = document.createRange(); rg.setStart(blk, 0); rg.setEnd(c.node, c.idx);
+    const t = rg.toString().slice(-200); let best = null;
+    TCTX.rx.forEach(re => { re.lastIndex = 0; for (let m; (m = re.exec(t));) { const at = m.index + m[0].length; if (!best || at > best.at) best = { at, k: TCTX.byHe[m[1]] }; if (m[0] === '') re.lastIndex++; } });
+    if (G.GIM_PEREK) { const pr = /(?:בפרק|פרק) ([א-ת]{1,12}(?: [א-ת]{1,12}){0,3})/g; for (let m; (m = pr.exec(t));) { const w = m[1].split(' '); for (let n = w.length; n >= 1; n--) { const e = G.GIM_PEREK[w.slice(0, n).join(' ')]; if (e) { const at = m.index + m[0].length - (w.slice(n).join(' ').length + (n < w.length ? 1 : 0)); if (!best || at > best.at) best = { at, k: e[0] }; break; } } } }
+    return best && best.k;
+  }
   let REF_RULES = null;
   function refRules() {
     if (REF_RULES) return REF_RULES;
@@ -1015,7 +1029,7 @@
     const tnames = tn.length ? tn.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') : null;
     const ref = (b, ch, v) => ({ x: { kind: 'ref', b, ch, v }, d: { k: 'r', b, ch, v } });
     REF_RULES = [
-      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{1,8})?) (HN)(?:[:,] ?(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && (m[3] ? r.v : true) && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v || 0) : null; } },
+      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{1,8}[׳\']?){0,2}) (HN)(?:(?:[:,] ?| )(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && (m[3] ? r.v : true) && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v || 0) : null; } },
       // "(שם כ״ז)" / "(שם י״ח, ד׳)": "שם" = הספר (והפרק) של מראה המקום הקודם באותה פסקה. שני מספרים = פרק ופסוק. מספר אחד = פסוק באותו פרק
       // (אם ההפניה הקודמת הייתה לפרק ולא רק לספר), ואם הפסוק לא קיים — לא מקשרים. בלי הפניה קודמת בטווח — לא מקשרים.
       { rx: '\\(שם (HN)(?:[-–־] ?HN)?(?:[:,] ?(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), res: (m, c) => {
@@ -1047,9 +1061,13 @@
     ];
     if (tnames) {
       const tal = m => { const r = parseDafRef(TX, m[1] + ' דף ' + m[2] + (m[3] ? ' ' + m[3] : '')); return r && r.explicit ? { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } } : null; };
-      // "דף ג." בלי שם מסכת בתוך מסכת פתוחה (גמרא, רש״י, תוס׳) → אותה מסכת
-      REF_RULES.push({ rx: '(?<![א-ת])דף (HN)(AM)'.replace('HN', HNR).replace('AM', AMR), res: m => {
-        const t = isTal() && !isZ() && TX.list.find(x => x.k === S.tk); if (!t || !validNum(m[1])) return null;
+      // "(דף ל״ב)" / "בדף סד" בלי שם מסכת: המסכת נקבעת לפי אזכור המסכת הקרוב ביותר לפניו באותה פסקה (דנדרים, מסכת X, "X דף", שם פרק),
+      // ואם אין — בתוך מסכת פתוחה (גמרא, רש״י, תוס׳) היא המסכת הפתוחה, ושם רק כשיש סימן עמוד (ע״א, נקודה, נקודתיים)
+      REF_RULES.push({ rx: '(?<![א-ת])(?:בדף|דף) (HN)(AM)?(?![א-ת"״׳\'])'.replace('HN', HNR).replace('AM', AMR), res: (m, c) => {
+        if (!validNum(m[1])) return null;
+        let k = tractCtx(c);
+        if (!k) { if (!m[2] || !isTal() || isZ()) return null; k = S.tk; }
+        const t = TX.list.find(x => x.k === k); if (!t) return null;
         const r = parseDafRef(TX, t.he + ' דף ' + m[1] + (m[2] ? ' ' + m[2] : '')); return r && r.k === t.k ? { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } } : null; } });
       REF_RULES.push({ rx: '(' + tnames + ') דף (HN)(AM)?'.replace('HN', HNR).replace('AM', AMR), res: tal });
       REF_RULES.push({ rx: '\\((' + tnames + ') (HN)(AM)\\)'.replace('HN', HNR).replace('AM', AMR), res: tal });
