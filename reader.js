@@ -3336,6 +3336,37 @@
       return bkName(IX.books[x.b].heTitle) + ' · ' + T('פרק') + ' ' + num(x.ch) + (x.v ? ', ' + num(x.v) : '');
     } catch (e) { return ''; }
   }
+  // שם קצר במקובל (ר״ת): "שמ׳ פ׳ יב", "או״ח ס׳ לד", "ב״מ ד׳ נט ע״א" — לסימניות בשולחן; באנגלית: השם המלא
+  const SHORT_TANAKH = { 'בראשית': 'בר׳', 'שמות': 'שמ׳', 'ויקרא': 'וי׳', 'במדבר': 'במ׳', 'דברים': 'דב׳', 'יהושע': 'יהו׳', 'שופטים': 'שופ׳', 'שמואל א': 'שמ״א', 'שמואל ב': 'שמ״ב', 'מלכים א': 'מל״א', 'מלכים ב': 'מל״ב',
+    'ישעיהו': 'יש׳', 'ירמיהו': 'יר׳', 'יחזקאל': 'יח׳', 'הושע': 'הו׳', 'עמוס': 'עמ׳', 'עובדיה': 'עוב׳', 'מיכה': 'מי׳', 'נחום': 'נח׳', 'חבקוק': 'חב׳', 'צפניה': 'צפ׳', 'חגי': 'חג׳', 'זכריה': 'זכ׳', 'מלאכי': 'מל׳',
+    'תהילים': 'תה׳', 'משלי': 'מש׳', 'שיר השירים': 'שה״ש', 'קהלת': 'קה׳', 'אסתר': 'אס׳', 'דניאל': 'דנ׳', 'עזרא': 'עז׳', 'נחמיה': 'נח׳', 'דברי הימים א': 'דה״א', 'דברי הימים ב': 'דה״ב' };
+  const SHORT_TRACT = { 'בבא קמא': 'ב״ק', 'בבא מציעא': 'ב״מ', 'בבא בתרא': 'ב״ב', 'עבודה זרה': 'ע״ז', 'ראש השנה': 'ר״ה', 'מועד קטן': 'מו״ק', 'פרקי אבות': 'אבות' };
+  const SHORT_TUR = { OC: 'או״ח', YD: 'יו״ד', CM: 'חו״מ', EH: 'אה״ע' };
+  function shortRambam(name) {
+    const full = name.replace(/^הלכות /, '');
+    if (full.indexOf(' ') < 0) return full; // שם של מילה אחת לא מקוצר
+    const a = (RAMBAM_ABBR[name] || []).find(x => x.indexOf(' ') < 0 && x.length <= 5);
+    return a ? (a.length > 1 ? a.slice(0, -1) + '״' + a.slice(-1) : a) : full;
+  }
+  function placeShort(h) {
+    const m = String(h || '').match(/^#read(?:[\/#]+(.*))?$/i); if (!m || !m[1] || isEn()) return placeLabel(h);
+    try {
+      ensureIndex(); const x = parseHashRef(IX, TX, RX, m[1]); if (!x) return '';
+      if (x.kind === 'tur') { const t = RX.list.find(r => r.k === x.k); return t ? (SHORT_TUR[t.k] || turPartName(t)) + ' ' + (x.s ? 'ס׳ ' + num(x.s) : T('הקדמה')) : ''; }
+      if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); if (!t) return ''; return t.z ? talTitle(t).replace(/הקדמת ספר (הזוהר|הזהר)/, 'הקדמה') + ' · ' + dafTxt(x.j, t.k) : (t.he.indexOf(' ') < 0 ? t.he : SHORT_TRACT[t.he] || t.he) + ' ד׳ ' + dafTxt(x.j); }
+      const ti = IX.books[x.b].heTitle.replace(/^משנה /, ''), one = n => n.indexOf(' ') < 0, nm = isRambam(x.b) ? shortRambam(ti) : (!one(ti) && (SHORT_TANAKH[ti] || SHORT_TRACT[ti])) || bkName(ti); // שם של מילה אחת לא מקוצר
+      return nm + ' פ׳ ' + num(x.ch) + (x.v ? ', ' + num(x.v) : '');
+    } catch (e) { return ''; }
+  }
+  // המקום שנבחר כרגע בבורר הספר (גם אם עוד לא נפתח) — לסימניה מהבחירה
+  function jumpHash() {
+    try {
+      ensureIndex(); if (!J) return '';
+      if (J.cat === 20) return hashOfRef(IX, { kind: 'tur', k: J.rk, s: J.rs });
+      if (J.cat === 2 || J.cat === 30) { const t = TX.list[TX.byK[J.tk]]; return t ? hashOfRef(IX, Object.assign({ kind: 'tal', k: J.tk, j: J.tj, s: -1 }, t.z ? { z: 1, d0: t.d0 } : {})) : ''; }
+      return hashOfRef(IX, { kind: 'ref', b: J.b, ch: J.ch, v: J.v });
+    } catch (e) { return ''; }
+  }
   // קטגוריית מקום מכתובת (לפי לשוניות בורר הספר) — לקיבוץ הסימניות בשולחן
   function placeCat(h) {
     const m = String(h || '').match(/^#read(?:[\/#]+(.*))?$/i); if (!m || !m[1]) return '';
@@ -3346,7 +3377,7 @@
       return isRambam(x.b) ? 'רמב״ם' : isMishnah(x.b) ? 'משנה' : 'תנ״ך';
     } catch (e) { return ''; }
   }
-  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault, placeLabel, placeCat };
+  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault, placeLabel, placeShort, jumpHash, placeCat };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;
