@@ -982,6 +982,39 @@
   }
   // flashV = פסוק להבהב בציור הבא של הספר — גם כשהספר עוד נטען והציור מגיע רק אחרי הטעינה
   let flashV = 0, flashKeep = false;
+  /* קישורי פסוק (v4.8.0): "(שמות י״ח:ד׳)" בטקסט המוצג (פירושים, גמרא, משנה) הופך לקישור לפסוק. מוזרק אחרי הציור על
+     ה-DOM, כך שהנתונים, החיפוש והעימוד לא משתנים. לחיצה: אותו חלון; Ctrl/Shift: חלון קריאה חדש בשולחן העבודה. */
+  const REF_RX = /\(([א-ת]{2,10}(?: [א-ת]{2,8})?) ([א-ת"״׳']{1,5})[:,] ?([א-ת"״׳']{1,5})\)/g;
+  function refLinks(root) {
+    if (!root || !IX) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.data.indexOf('(') < 0 || n.parentNode.closest('a,button,script,.rdNum,.rdHead') ? 3 : 1 }), todo = [];
+    for (let n; (n = w.nextNode());) todo.push(n);
+    todo.forEach(n => {
+      const t = n.data; REF_RX.lastIndex = 0; let m, last = 0, frag = null;
+      while ((m = REF_RX.exec(t))) {
+        const r = parseRef(IX, m[1] + ' ' + m[2] + ' ' + m[3], null);
+        if (!r || !r.book || !r.v || IX.owner[r.b] !== r.b) continue;
+        frag = frag || document.createDocumentFragment();
+        frag.appendChild(document.createTextNode(t.slice(last, m.index)));
+        const a = document.createElement('a'); a.className = 'rdRef'; a.href = hashOfRef(IX, { kind: 'ref', b: r.b, ch: r.ch, v: r.v }); a.dataset.b = r.b; a.dataset.ch = r.ch; a.dataset.v = r.v; a.textContent = m[0];
+        frag.appendChild(a); last = m.index + m[0].length;
+      }
+      if (frag) { frag.appendChild(document.createTextNode(t.slice(last))); n.parentNode.replaceChild(frag, n); }
+    });
+  }
+  function refLinksInit() {
+    ['#rdBook', '#rdSeg'].forEach(sel => {
+      const el = $r(sel); if (!el) return;
+      let busy = 0; new MutationObserver(() => { if (busy) return; busy = 1; try { refLinks(el); } finally { busy = 0; } }).observe(el, { childList: true, subtree: true });
+      refLinks(el);
+      el.addEventListener('click', e => {
+        const a = e.target.closest && e.target.closest('a.rdRef'); if (!a) return;
+        e.preventDefault(); const b = +a.dataset.b, ch = +a.dataset.ch, v = +a.dataset.v;
+        if ((e.ctrlKey || e.shiftKey || e.metaKey) && G.GT_EMBED && G.parent !== G) G.parent.postMessage({ gtDesk: 'open', hash: a.getAttribute('href'), fresh: 1 }, '*');
+        else goTo(b, ch, v);
+      });
+    });
+  }
   function goTo(b, ch, v) {
     S.tk = ''; S.rk = ''; closeSeg();
     S.b = b; S.ch = ch; S.anchor = v || versesOf(IX, b, ch)[0] || 1;
@@ -2934,7 +2967,7 @@
         '<button type="button" class="rdTurn next" id="rdNext" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button><div class="rdMeasure" aria-hidden="true"><article class="rdPage" id="rdProbe"></article><div id="rdDafHost"></div></div></div>' +
       '<div class="rdFoot"><button type="button" class="rdIco" id="rdPrev2" aria-label="' + T('עמוד קודם') + '">' + ICON.chevR + '</button><span id="rdPos"></span><span class="rdProg"><span id="rdProgBar"></span></span><span id="rdChPos"></span><button type="button" class="rdIco" id="rdNext2" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button></div>' +
       '<div class="rdScrim" id="rdScrim" hidden></div><div class="rdPop rdSet" id="rdSet" role="dialog" aria-label="' + T('הגדרות תצוגה') + '" hidden></div><div class="rdPop rdJump" id="rdJump" role="dialog" aria-label="' + T('מעבר לפרק ופסוק') + '" hidden></div><div class="rdPop rdPrintPop" id="rdPrintPop" role="dialog" aria-label="' + T('הדפסה / PDF') + '" hidden></div><div class="rdPop rdSegPop" id="rdSeg" role="dialog" aria-label="' + T('קטע ופירושיו') + '" hidden></div>';
-    built = true; tipsWatch();
+    built = true; tipsWatch(); refLinksInit();
     // ש״ס: לחיצה על קטע גמרא או על פירוש פותחת את חלון הקטע
     $r('#rdBook').addEventListener('click', e => {
       if (isTur()) { const x = e.target.closest('[data-x][data-i]'), art = x && x.closest('article[data-s]'); if (!x || !art) return; const s = Number(art.dataset.s), i = Number(x.dataset.i); if (S.rsel && S.rsel.s === s && S.rsel.x === x.dataset.x && S.rsel.i === i && !$r('#rdSeg').hidden) return closeSeg(); return openTurCm(s, x.dataset.x, i); }
