@@ -476,7 +476,7 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 .dkBmRow:hover,.dkBmRow:focus-within{background:color-mix(in srgb,var(--rdGold) 14%,transparent)}
 .dkBmRow.cu{background:var(--rdGold);color:#fff}
 :root[data-theme=dark] .dkBmRow.cu{color:#1b150e}
-.dkBmGo{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:32px;padding:0 8px;border:0;background:none;color:inherit;font:13.5px var(--ui);text-align:start;cursor:pointer}
+.dkBmGo{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:30px;padding:0 8px;border:0;background:none;color:inherit;font:12px var(--ui);text-align:start;cursor:pointer}
 .dkBmGo svg{flex:none;color:var(--rdGold)}
 .dkBmRow.cu .dkBmGo svg{color:inherit}
 .dkBmGo span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
