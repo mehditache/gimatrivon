@@ -2363,6 +2363,7 @@
      ברוחב השורה (נמדד בפיקסלים לפי רוחב מסגרת החיפוש והגופן), מציגים את סביבת המילים שנמצאו — כמה שיותר מילים מכל צד שעדיין
      נכנסות (עד 0), עם ״…״ בין הקטעים */
   let sqCtx = null;
+  const RASHI_FAM = '"GimRashi", "Noto Rashi Hebrew", "GimFrank"';
   function sqFit() {
     const cl = document.documentElement.classList; // שולחן העבודה: הכותרת מוסתרת, אז מודדים לפי רוחב המארח / חלון התוצאות (שתי שורות)
     if (cl.contains('gtSearch')) return Math.max(300, innerWidth - 54);
@@ -2370,13 +2371,13 @@
     const o = $r('.rdOmni'), w = o ? o.getBoundingClientRect().width : 0;
     return w ? w - 54 : 470; // ריפוד הפנל והשורה, פס הגלילה ומרווח ביטחון
   }
-  function sqWidth(t) {
+  function sqWidth(t, fam) {
     if (!sqCtx) { try { sqCtx = document.createElement('canvas').getContext('2d'); } catch (e) { sqCtx = false; } }
     if (!sqCtx) return t.length * 8;
-    sqCtx.font = '14.5px "GimFrank", serif';
+    sqCtx.font = '14.5px ' + (fam || '"GimFrank"') + ', serif'; // הגופן של השורה עצמה (כתב רש״י צר יותר), כדי שהקטע ימלא את הרוחב
     return sqCtx.measureText(t).width;
   }
-  function sqSnippet(units, sep) {
+  function sqSnippet(units, sep, fam) {
     const P = []; // {p, w (מספר המילה הרץ או -1), on}
     let nw = 0;
     units.forEach((x, k) => {
@@ -2402,13 +2403,12 @@
     };
     const fit = sqFit();
     let best = build(null);
-    if (!hits.length || sqWidth(best.txt) <= fit) return best.html;
-    for (const r of [16, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1, 0]) {
-      const keep = new Set(); hits.forEach(w => { for (let k = w - r; k <= w + r; k++) keep.add(k); });
-      best = build(keep);
-      if (sqWidth(best.txt) <= fit) break;
-    }
-    return best.html;
+    if (!hits.length || sqWidth(best.txt, fam) <= fit) return best.html;
+    // חיפוש בינארי: הרדיוס הגדול ביותר (במילים מכל צד של כל התאמה) שעדיין נכנס בשורה אחת, כך שהקטע ממלא את כל הרוחב
+    const at = r => { const keep = new Set(); hits.forEach(w => { for (let k = w - r; k <= w + r; k++) keep.add(k); }); return build(keep); };
+    let lo = 0, hi = nw, ok = at(0);
+    while (lo < hi) { const m = (lo + hi + 1) >> 1, b = at(m); if (sqWidth(b.txt, fam) <= fit) { lo = m; ok = b; } else hi = m - 1; }
+    return ok.html;
   }
   /* ---- היקף ומקורות החיפוש (v4.5.0) ----
      היקף: פרק, פרשה (בתורה), ספר, חלק (תורה / נביאים / כתובים, סדר במשנה, ספר ברמב״ם, סדר בגמרא), כל התחום, וכל הספרים.
@@ -2497,13 +2497,13 @@
     return o;
   }
   // תוצאת המנוע → תוצאה ברשימה: {b, ch, v, cm/cs או tr, pt (הטקסט), html (עם הסימון), ref (בקטע של כמה פסוקים)}
-  function sqSegText(us, r, tx, DM) { // הטקסט (pt) ו-HTML עם הסימון, לכל התחומים
-    return { pt: us.map(u => tx.get(u)).join(' '), html: sqSnippet(us.map(u => ({ t: tx.get(u), marks: r.marks.get(u) || new Set() })), DM.multi.includes(r.src) ? ' <span class="rdCont">…</span> ' : ' ') };
+  function sqSegText(us, r, tx, DM, fam) { // הטקסט (pt) ו-HTML עם הסימון, לכל התחומים
+    return { pt: us.map(u => tx.get(u)).join(' '), html: sqSnippet(us.map(u => ({ t: tx.get(u), marks: r.marks.get(u) || new Set() })), DM.multi.includes(r.src) ? ' <span class="rdCont">…</span> ' : ' ', fam) };
   }
   // גמרא וטור: אותה תוצאה כמו בחיפוש הקודם (thit / rhit), עם שם המסכת / הטור, כי החיפוש יכול לחצות מסכתות
   function sqHitBk(r, tx, dom) {
     const E = SQD[dom].E, M = E.map, DM = G.GimSq.DOMAINS[dom], bk = G.GIM_SQ_DBS[dom].bk, us = E.unitsOf(r).filter(u => tx.get(u) != null), u0 = us[0] != null ? us[0] : E.unitsOf(r)[0], ord = G.GimSq.rOrd(u0);
-    const k = bk[M.ob[ord]].k, ch = M.oc[ord], v = M.ov[ord], t = sqSegText(us, r, tx, DM), x = { sq: true, sc: r.sc, pt: t.pt, html: t.html };
+    const k = bk[M.ob[ord]].k, ch = M.oc[ord], v = M.ov[ord], t = sqSegText(us, r, tx, DM, dom === 'tur' ? (r.src ? RASHI_FAM : '') : r.src ? (S.cmFont === 'rashi' ? RASHI_FAM : '') : ''), x = { sq: true, sc: r.sc, pt: t.pt, html: t.html };
     let e = r.e > r.s ? (DM.multi.includes(r.src) ? G.GimSq.rOrd(us[us.length - 1]) : r.e) : ord;
     if (dom === 'talmud') {
       const tt = TX.list[TX.byK[k]], j = ch - 1; Object.assign(x, { tk: k, j, s: v - 1, src: ['g', 'r', 't'][r.src], t: t.pt });
@@ -2523,7 +2523,7 @@
     if (DM.csOf[r.src]) { x.cm = G.GimSq.rK(u0); x.cs = DM.csOf[r.src]; } else if (r.src >= 2) x.tr = r.src === 2 ? 'onkelos' : 'yonatan';
     if (r.e > r.s) { const e = DM.multi.includes(r.src) ? G.GimSq.rOrd(us[us.length - 1]) : r.e; if (e > ord) x.ref = refLabel(x) + '–' + (M.oc[e] === x.ch ? num(M.ov[e]) : num(M.oc[e]) + ', ' + num(M.ov[e])); }
     x.pt = us.map(u => tx.get(u)).join(' ');
-    x.html = sqSnippet(us.map(u => ({ t: tx.get(u), marks: r.marks.get(u) || new Set() })), DM.multi.includes(r.src) ? ' <span class="rdCont">…</span> ' : ' ');
+    x.html = sqSnippet(us.map(u => ({ t: tx.get(u), marks: r.marks.get(u) || new Set() })), DM.multi.includes(r.src) ? ' <span class="rdCont">…</span> ' : ' ', x.cm != null ? (S.cmFont === 'rashi' ? RASHI_FAM : '') : x.tr ? (S.trFont === 'rashi' ? RASHI_FAM : '') : '');
     return x;
   }
   /* הרשימה בגודל כל התוצאות (פס הגלילה המהיר מדויק מהרגע הראשון); שורות שעוד לא נטענו הן {ph:true}. הטקסטים נטענים לפי החלון
