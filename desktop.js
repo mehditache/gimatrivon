@@ -943,7 +943,7 @@
       if (!m.length) { col.remove(); return; }
       const hd2 = f.doc.createElement('div'); hd2.className = 'rdJGrp dkBmHd'; hd2.innerHTML = gsv('<path d="' + STAR + '"/>', true) + ' '; hd2.append(T('סימניות', 'Bookmarks') + ' · ' + m.length); col.appendChild(hd2);
       if (m.length > 8) { const inp = f.doc.createElement('input'); inp.type = 'search'; inp.className = 'dkBmFlt'; inp.placeholder = T('סינון סימניות…', 'Filter bookmarks…'); inp.value = flt; inp.oninput = () => { flt = inp.value.trim(); fill(); }; col.appendChild(inp); }
-      const body = f.doc.createElement('div'); col.appendChild(body);
+      const body = f.doc.createElement('div'); body.className = 'dkBmBody'; col.appendChild(body);
       function fill() {
         body.textContent = '';
         const rows = m.map(x => ({ x, t: markTxt(x), c: catOf(x.h) || T('אחר', 'Other') })).filter(r => !flt || r.t.includes(flt));
