@@ -986,6 +986,8 @@
      דף גמרא "ברכות דף ג ע״א" / "(ברכות ג.)", "הלכות שבת פרק ב הלכה ג", "או״ח סימן ס". מוזרק אחרי הציור על ה-DOM, כך שהנתונים,
      החיפוש והעימוד לא משתנים, וכל זיהוי מאומת מול האינדקס (ספר, דף, סימן שקיימים). לחיצה: אותו חלון; Ctrl/Shift: חלון חדש. */
   const HNR = '[א-ת"״׳\']{1,5}', AMR = '(?: ?ע["״׳\']?[אב]|[.:])';
+  // מספר עברי תקין: ערכי האותיות לא עולים (קכ, ריז, טו) — מסנן מילים כמו "הוה"
+  const validNum = x => { const v = [...x.replace(/["״׳']/g, '')].map(c => 'אבגדהוזחטיכלמנסעפצקרשת'.indexOf(c)).map(i => i < 0 ? -1 : i < 9 ? i + 1 : i < 18 ? (i - 8) * 10 : Math.min(400, (i - 17) * 100)); return v.length > 0 && v.every((n, i) => n > 0 && (i === 0 || n <= v[i - 1])); };
   let REF_RULES = null;
   function refRules() {
     if (REF_RULES) return REF_RULES;
@@ -999,6 +1001,10 @@
     ];
     if (tnames) {
       const tal = m => { const r = parseDafRef(TX, m[1] + ' דף ' + m[2] + (m[3] ? ' ' + m[3] : '')); return r && r.explicit ? { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } } : null; };
+      // "דף ג." בלי שם מסכת בתוך מסכת פתוחה (גמרא, רש״י, תוס׳) → אותה מסכת
+      REF_RULES.push({ rx: '(?<![א-ת])דף (HN)(AM)'.replace('HN', HNR).replace('AM', AMR), res: m => {
+        const t = isTal() && !isZ() && TX.list.find(x => x.k === S.tk); if (!t || !validNum(m[1])) return null;
+        const r = parseDafRef(TX, t.he + ' דף ' + m[1] + (m[2] ? ' ' + m[2] : '')); return r && r.k === t.k ? { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } } : null; } });
       REF_RULES.push({ rx: '(' + tnames + ') דף (HN)(AM)?'.replace('HN', HNR).replace('AM', AMR), res: tal });
       REF_RULES.push({ rx: '\\((' + tnames + ') (HN)(AM)\\)'.replace('HN', HNR).replace('AM', AMR), res: tal });
     }
