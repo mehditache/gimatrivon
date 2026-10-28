@@ -1,6 +1,9 @@
 (function () {
 'use strict';
 const VERSION = '4.9.3'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+// שם הענף ותאריך הפריסה (מוצגים רק במצב פיתוח — 5 לחיצות רצופות על מספר הגרסה) אינם קבועים בקוד:
+// קבוע כזה עובר עם כל מיזוג לענף אחר ומתיישן (כך הוצג "v4.8.0 · windows" ב-main). הם נקבעים בזמן ריצה, ראו buildInfo למטה.
+let BRANCH = '…', BUILT = '';
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
 let VER_TXT = 'v' + VERSION + (DEV ? ' · ' + BRANCH : '');
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
