@@ -988,6 +988,16 @@
   const HNR = '[א-ת"״׳\']{1,5}', AMR = '(?: ?ע["״׳\']?[אב]|[.:])';
   // מספר עברי תקין: ערכי האותיות לא עולים (קכ, ריז, טו) — מסנן מילים כמו "הוה"
   const validNum = x => { const v = [...x.replace(/["״׳']/g, '')].map(c => 'אבגדהוזחטיכלמנסעפצקרשת'.indexOf(c)).map(i => i < 0 ? -1 : i < 9 ? i + 1 : i < 18 ? (i - 8) * 10 : Math.min(400, (i - 17) * 100)); return v.length > 0 && v.every((n, i) => n > 0 && (i === 0 || n <= v[i - 1])); };
+  // מראה המקום האחרון (ספר בסיס, פרק) לפני המקום בטקסט, באותה פסקה, עד 400 תווים אחורה — בשביל "שם"
+  const PREV_RX = new RegExp('\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), 'g');
+  function prevRef(c) {
+    const blk = c.node.parentNode.closest('p,li,.rdRow,.rdRv,article'); if (!blk) return null;
+    const rg = document.createRange(); rg.setStart(blk, 0); rg.setEnd(c.node, c.idx);
+    const t = rg.toString().slice(-400); let last = null;
+    PREV_RX.lastIndex = 0;
+    for (let m; (m = PREV_RX.exec(t));) { if (m[1] === 'שם') { const c2 = m[3] ? parseNum(m[2].replace(/["״׳']/g, '')) : NaN; if (last && c2 >= 1) last = { b: last.b, ch: c2 }; continue; } const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); if (r && r.book && IX.owner[r.b] === r.b) last = { b: r.b, ch: r.ch }; }
+    return last;
+  }
   let REF_RULES = null;
   function refRules() {
     if (REF_RULES) return REF_RULES;
@@ -995,7 +1005,16 @@
     const tnames = tn.length ? tn.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') : null;
     const ref = (b, ch, v) => ({ x: { kind: 'ref', b, ch, v }, d: { k: 'r', b, ch, v } });
     REF_RULES = [
-      { rx: /\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)[:,] ?(HN)\)/.source.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + ' ' + m[3], null); return r && r.book && r.v && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v) : null; } },
+      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && (m[3] ? r.v : true) && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v || 0) : null; } },
+      // "(שם כ״ז)" / "(שם י״ח, ד׳)": "שם" = הספר (והפרק) של מראה המקום הקודם באותה פסקה. שני מספרים = פרק ופסוק. מספר אחד = פסוק באותו פרק
+      // (אם ההפניה הקודמת הייתה לפרק ולא רק לספר), ואם הפסוק לא קיים — לא מקשרים. בלי הפניה קודמת בטווח — לא מקשרים.
+      { rx: '\\(שם (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), res: (m, c) => {
+        const pv = prevRef(c); if (!pv) return null;
+        let ch, v;
+        const pn = x => parseNum(x.replace(/["״׳']/g, ''));
+        if (m[2]) { ch = pn(m[1]); v = pn(m[2]); } else if (pv.ch) { ch = pv.ch; v = pn(m[1]); } else return null;
+        return Number.isNaN(ch) || Number.isNaN(v) || !(ch >= 1) || !hasRef(IX, pv.b, ch, v) ? null : ref(pv.b, ch, v);
+      } },
       { rx: 'הל(?:כות|[\'׳])\\s([א-ת]{2,10}(?: [א-ת]{2,8})?) (?:פרק |פ["״\'׳]?\\s?)?(HN)(?:[ ,]+(?:הלכה |ה["״\'׳]?\\s?)?(HN))?'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, 'הלכות ' + m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v) : null; } },
       { rx: '(?:או["״]ח|יו["״]ד|אה["״]ע|חו["״]מ|אורח חיים|יורה דעה|אבן העזר|חושן משפט) (?:סימן|סי[׳\'.]?) (HN)'.replace(/HN/g, HNR), res: m => { const r = parseTurRef(RX, m[0].replace(/ (?:סימן|סי[׳\'.]?) /, ' ')); return r && r.s ? { x: { kind: 'tur', k: r.k, s: r.s }, d: { k: 'u', tk: r.k, s: r.s } } : null; } }
     ];
@@ -1017,7 +1036,7 @@
     for (let n; (n = w.nextNode());) todo.push(n);
     todo.forEach(n => {
       const t = n.data, hits = [];
-      rules.forEach(r => { r.re.lastIndex = 0; for (let m; (m = r.re.exec(t));) { const o = r.res(m); if (o) hits.push({ i: m.index, e: m.index + m[0].length, o, tx: m[0] }); if (m[0] === '') r.re.lastIndex++; } });
+      rules.forEach(r => { r.re.lastIndex = 0; for (let m; (m = r.re.exec(t));) { const o = r.res(m, { node: n, idx: m.index }); if (o) hits.push({ i: m.index, e: m.index + m[0].length, o, tx: m[0] }); if (m[0] === '') r.re.lastIndex++; } });
       if (!hits.length) return;
       hits.sort((a, b) => a.i - b.i || b.e - a.e);
       const frag = document.createDocumentFragment(); let last = 0;
