@@ -1027,6 +1027,15 @@
       REF_RULES.push({ rx: '(' + tnames + ') דף (HN)(AM)?'.replace('HN', HNR).replace('AM', AMR), res: tal });
       REF_RULES.push({ rx: '\\((' + tnames + ') (HN)(AM)\\)'.replace('HN', HNR).replace('AM', AMR), res: tal });
     }
+    // "בפרק מי שמתו" / "בפרק אלו הן הלוקין": שם הפרק = מילות הפתיחה של המשנה הראשונה בו (generated/perek-names.js, scripts/build-perek.py),
+    // → תחילת הפרק בבבלי. רק שמות חד-משמעיים; הארוך ביותר שנמצא מנצח, ומה שלא בטבלה נשאר טקסט.
+    if (G.GIM_PEREK) REF_RULES.push({ rx: '(?:בפרק|פרק|בפ["״\'׳]|בר["״]פ|ר["״]פ) ([א-ת]{1,12}(?: [א-ת]{1,12}){0,3})', res: m => {
+      const w = m[1].split(' '), pre = m[0].length - m[1].length;
+      for (let n = w.length; n >= 1; n--) {
+        const e = G.GIM_PEREK[w.slice(0, n).join(' ')];
+        if (e && TX.byK[e[0]] != null) return { x: { kind: 'tal', k: e[0], j: e[1], s: -1 }, d: { k: 't', tk: e[0], j: e[1] }, len: pre + w.slice(0, n).join(' ').length };
+      }
+      return null; } });
     REF_RULES.forEach(r => { r.re = new RegExp(r.rx, 'g'); });
     return REF_RULES;
   }
@@ -1036,7 +1045,7 @@
     for (let n; (n = w.nextNode());) todo.push(n);
     todo.forEach(n => {
       const t = n.data, hits = [];
-      rules.forEach(r => { r.re.lastIndex = 0; for (let m; (m = r.re.exec(t));) { const o = r.res(m, { node: n, idx: m.index }); if (o) hits.push({ i: m.index, e: m.index + m[0].length, o, tx: m[0] }); if (m[0] === '') r.re.lastIndex++; } });
+      rules.forEach(r => { r.re.lastIndex = 0; for (let m; (m = r.re.exec(t));) { const o = r.res(m, { node: n, idx: m.index }); if (o) { const L = o.len || m[0].length; hits.push({ i: m.index, e: m.index + L, o, tx: m[0].slice(0, L) }); } if (m[0] === '') r.re.lastIndex++; } });
       if (!hits.length) return;
       hits.sort((a, b) => a.i - b.i || b.e - a.e);
       const frag = document.createDocumentFragment(); let last = 0;
