@@ -982,24 +982,46 @@
   }
   // flashV = פסוק להבהב בציור הבא של הספר — גם כשהספר עוד נטען והציור מגיע רק אחרי הטעינה
   let flashV = 0, flashKeep = false;
-  /* קישורי פסוק (v4.8.0): "(שמות י״ח:ד׳)" בטקסט המוצג (פירושים, גמרא, משנה) הופך לקישור לפסוק. מוזרק אחרי הציור על
-     ה-DOM, כך שהנתונים, החיפוש והעימוד לא משתנים. לחיצה: אותו חלון; Ctrl/Shift: חלון קריאה חדש בשולחן העבודה. */
-  const REF_RX = /\(([א-ת]{2,10}(?: [א-ת]{2,8})?) ([א-ת"״׳']{1,5})[:,] ?([א-ת"״׳']{1,5})\)/g;
+  /* קישורי רפרנס (v4.8.0): מראה מקום בטקסט המוצג (פירושים, גמרא, משנה, רמב״ם, טור) הופך לקישור: פסוק "(שמות י״ח:ד׳)",
+     דף גמרא "ברכות דף ג ע״א" / "(ברכות ג.)", "הלכות שבת פרק ב הלכה ג", "או״ח סימן ס". מוזרק אחרי הציור על ה-DOM, כך שהנתונים,
+     החיפוש והעימוד לא משתנים, וכל זיהוי מאומת מול האינדקס (ספר, דף, סימן שקיימים). לחיצה: אותו חלון; Ctrl/Shift: חלון חדש. */
+  const HNR = '[א-ת"״׳\']{1,5}', AMR = '(?: ?ע["״׳\']?[אב]|[.:])';
+  let REF_RULES = null;
+  function refRules() {
+    if (REF_RULES) return REF_RULES;
+    const tn = TX.list.filter(t => !t.z).map(t => t.name || t.he || '').filter(Boolean);
+    const tnames = tn.length ? tn.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') : null;
+    const ref = (b, ch, v) => ({ x: { kind: 'ref', b, ch, v }, d: { k: 'r', b, ch, v } });
+    REF_RULES = [
+      { rx: /\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)[:,] ?(HN)\)/.source.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + ' ' + m[3], null); return r && r.book && r.v && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v) : null; } },
+      { rx: 'הל(?:כות|[\'׳])\\s([א-ת]{2,10}(?: [א-ת]{2,8})?) (?:פרק |פ["״\'׳]?\\s?)?(HN)(?:[ ,]+(?:הלכה |ה["״\'׳]?\\s?)?(HN))?'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, 'הלכות ' + m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v) : null; } },
+      { rx: '(?:או["״]ח|יו["״]ד|אה["״]ע|חו["״]מ|אורח חיים|יורה דעה|אבן העזר|חושן משפט) (?:סימן|סי[׳\'.]?) (HN)'.replace(/HN/g, HNR), res: m => { const r = parseTurRef(RX, m[0].replace(/ (?:סימן|סי[׳\'.]?) /, ' ')); return r && r.s ? { x: { kind: 'tur', k: r.k, s: r.s }, d: { k: 'u', tk: r.k, s: r.s } } : null; } }
+    ];
+    if (tnames) {
+      const tal = m => { const r = parseDafRef(TX, m[1] + ' דף ' + m[2] + (m[3] ? ' ' + m[3] : '')); return r && r.explicit ? { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } } : null; };
+      REF_RULES.push({ rx: '(' + tnames + ') דף (HN)(AM)?'.replace('HN', HNR).replace('AM', AMR), res: tal });
+      REF_RULES.push({ rx: '\\((' + tnames + ') (HN)(AM)\\)'.replace('HN', HNR).replace('AM', AMR), res: tal });
+    }
+    REF_RULES.forEach(r => { r.re = new RegExp(r.rx, 'g'); });
+    return REF_RULES;
+  }
   function refLinks(root) {
-    if (!root || !IX) return;
-    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.data.indexOf('(') < 0 || n.parentNode.closest('a,button,script,.rdNum,.rdHead') ? 3 : 1 }), todo = [];
+    if (!root || !IX || !TX || !RX) return;
+    const rules = refRules(), w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.data.length < 6 || n.parentNode.closest('a,button,script,.rdNum,.rdHead') ? 3 : 1 }), todo = [];
     for (let n; (n = w.nextNode());) todo.push(n);
     todo.forEach(n => {
-      const t = n.data; REF_RX.lastIndex = 0; let m, last = 0, frag = null;
-      while ((m = REF_RX.exec(t))) {
-        const r = parseRef(IX, m[1] + ' ' + m[2] + ' ' + m[3], null);
-        if (!r || !r.book || !r.v || IX.owner[r.b] !== r.b) continue;
-        frag = frag || document.createDocumentFragment();
-        frag.appendChild(document.createTextNode(t.slice(last, m.index)));
-        const a = document.createElement('a'); a.className = 'rdRef'; a.href = hashOfRef(IX, { kind: 'ref', b: r.b, ch: r.ch, v: r.v }); a.dataset.b = r.b; a.dataset.ch = r.ch; a.dataset.v = r.v; a.textContent = m[0];
-        frag.appendChild(a); last = m.index + m[0].length;
-      }
-      if (frag) { frag.appendChild(document.createTextNode(t.slice(last))); n.parentNode.replaceChild(frag, n); }
+      const t = n.data, hits = [];
+      rules.forEach(r => { r.re.lastIndex = 0; for (let m; (m = r.re.exec(t));) { const o = r.res(m); if (o) hits.push({ i: m.index, e: m.index + m[0].length, o, tx: m[0] }); if (m[0] === '') r.re.lastIndex++; } });
+      if (!hits.length) return;
+      hits.sort((a, b) => a.i - b.i || b.e - a.e);
+      const frag = document.createDocumentFragment(); let last = 0;
+      hits.forEach(hh => {
+        if (hh.i < last) return;
+        frag.appendChild(document.createTextNode(t.slice(last, hh.i)));
+        const a = document.createElement('a'); a.className = 'rdRef'; a.href = hashOfRef(IX, hh.o.x); a.dataset.ref = JSON.stringify(hh.o.d); a.textContent = hh.tx;
+        frag.appendChild(a); last = hh.e;
+      });
+      frag.appendChild(document.createTextNode(t.slice(last))); n.parentNode.replaceChild(frag, n);
     });
   }
   function refLinksInit() {
@@ -1009,9 +1031,9 @@
       refLinks(el);
       el.addEventListener('click', e => {
         const a = e.target.closest && e.target.closest('a.rdRef'); if (!a) return;
-        e.preventDefault(); const b = +a.dataset.b, ch = +a.dataset.ch, v = +a.dataset.v;
+        e.preventDefault(); const d = JSON.parse(a.dataset.ref);
         if ((e.ctrlKey || e.shiftKey || e.metaKey) && G.GT_EMBED && G.parent !== G) G.parent.postMessage({ gtDesk: 'open', hash: a.getAttribute('href'), fresh: 1 }, '*');
-        else goTo(b, ch, v);
+        else if (d.k === 't') goTal(d.tk, d.j); else if (d.k === 'u') goTur(d.tk, d.s); else goTo(d.b, d.ch, d.v);
       });
     });
   }
