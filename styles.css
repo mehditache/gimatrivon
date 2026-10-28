@@ -1432,3 +1432,5 @@ html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rd
 .rdTxt i.mw{font-style:normal}
 .rdPage.tal .rdCm.zSul{font-size:.76em}
 .rdPage.tal .zCols+.rdSp,.rdPage.tal .zSul{margin-top:.4em}
+
+a.rdRef{color:inherit;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}a.rdRef:hover{text-decoration:underline;color:var(--rdTx2,#7d5c1f)}

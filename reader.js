@@ -982,6 +982,95 @@
   }
   // flashV = פסוק להבהב בציור הבא של הספר — גם כשהספר עוד נטען והציור מגיע רק אחרי הטעינה
   let flashV = 0, flashKeep = false;
+  /* קישורי רפרנס (v4.8.0): מראה מקום בטקסט המוצג (פירושים, גמרא, משנה, רמב״ם, טור) הופך לקישור: פסוק "(שמות י״ח:ד׳)",
+     דף גמרא "ברכות דף ג ע״א" / "(ברכות ג.)", "הלכות שבת פרק ב הלכה ג", "או״ח סימן ס". מוזרק אחרי הציור על ה-DOM, כך שהנתונים,
+     החיפוש והעימוד לא משתנים, וכל זיהוי מאומת מול האינדקס (ספר, דף, סימן שקיימים). לחיצה: אותו חלון; Ctrl/Shift: חלון חדש. */
+  const HNR = '[א-ת"״׳\']{1,5}', AMR = '(?: ?ע["״׳\']?[אב]|[.:])';
+  // מספר עברי תקין: ערכי האותיות לא עולים (קכ, ריז, טו) — מסנן מילים כמו "הוה"
+  const validNum = x => { const v = [...x.replace(/["״׳']/g, '')].map(c => 'אבגדהוזחטיכלמנסעפצקרשת'.indexOf(c)).map(i => i < 0 ? -1 : i < 9 ? i + 1 : i < 18 ? (i - 8) * 10 : Math.min(400, (i - 17) * 100)); return v.length > 0 && v.every((n, i) => n > 0 && (i === 0 || n <= v[i - 1])); };
+  // מראה המקום האחרון (ספר בסיס, פרק) לפני המקום בטקסט, באותה פסקה, עד 400 תווים אחורה — בשביל "שם"
+  const PREV_RX = new RegExp('\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), 'g');
+  function prevRef(c) {
+    const blk = c.node.parentNode.closest('p,li,.rdRow,.rdRv,article'); if (!blk) return null;
+    const rg = document.createRange(); rg.setStart(blk, 0); rg.setEnd(c.node, c.idx);
+    const t = rg.toString().slice(-400); let last = null;
+    PREV_RX.lastIndex = 0;
+    for (let m; (m = PREV_RX.exec(t));) { if (m[1] === 'שם') { const c2 = m[3] ? parseNum(m[2].replace(/["״׳']/g, '')) : NaN; if (last && c2 >= 1) last = { b: last.b, ch: c2 }; continue; } const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); if (r && r.book && IX.owner[r.b] === r.b) last = { b: r.b, ch: r.ch }; }
+    return last;
+  }
+  let REF_RULES = null;
+  function refRules() {
+    if (REF_RULES) return REF_RULES;
+    const tn = TX.list.filter(t => !t.z).map(t => t.name || t.he || '').filter(Boolean);
+    const tnames = tn.length ? tn.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') : null;
+    const ref = (b, ch, v) => ({ x: { kind: 'ref', b, ch, v }, d: { k: 'r', b, ch, v } });
+    REF_RULES = [
+      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && (m[3] ? r.v : true) && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v || 0) : null; } },
+      // "(שם כ״ז)" / "(שם י״ח, ד׳)": "שם" = הספר (והפרק) של מראה המקום הקודם באותה פסקה. שני מספרים = פרק ופסוק. מספר אחד = פסוק באותו פרק
+      // (אם ההפניה הקודמת הייתה לפרק ולא רק לספר), ואם הפסוק לא קיים — לא מקשרים. בלי הפניה קודמת בטווח — לא מקשרים.
+      { rx: '\\(שם (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), res: (m, c) => {
+        const pv = prevRef(c); if (!pv) return null;
+        let ch, v;
+        const pn = x => parseNum(x.replace(/["״׳']/g, ''));
+        if (m[2]) { ch = pn(m[1]); v = pn(m[2]); } else if (pv.ch) { ch = pv.ch; v = pn(m[1]); } else return null;
+        return Number.isNaN(ch) || Number.isNaN(v) || !(ch >= 1) || !hasRef(IX, pv.b, ch, v) ? null : ref(pv.b, ch, v);
+      } },
+      { rx: 'הל(?:כות|[\'׳])\\s([א-ת]{2,10}(?: [א-ת]{2,8})?) (?:פרק |פ["״\'׳]?\\s?)?(HN)(?:[ ,]+(?:הלכה |ה["״\'׳]?\\s?)?(HN))?'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, 'הלכות ' + m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v) : null; } },
+      { rx: '(?:או["״]ח|יו["״]ד|אה["״]ע|חו["״]מ|אורח חיים|יורה דעה|אבן העזר|חושן משפט) (?:סימן|סי[׳\'.]?) (HN)'.replace(/HN/g, HNR), res: m => { const r = parseTurRef(RX, m[0].replace(/ (?:סימן|סי[׳\'.]?) /, ' ')); return r && r.s ? { x: { kind: 'tur', k: r.k, s: r.s }, d: { k: 'u', tk: r.k, s: r.s } } : null; } }
+    ];
+    if (tnames) {
+      const tal = m => { const r = parseDafRef(TX, m[1] + ' דף ' + m[2] + (m[3] ? ' ' + m[3] : '')); return r && r.explicit ? { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } } : null; };
+      // "דף ג." בלי שם מסכת בתוך מסכת פתוחה (גמרא, רש״י, תוס׳) → אותה מסכת
+      REF_RULES.push({ rx: '(?<![א-ת])דף (HN)(AM)'.replace('HN', HNR).replace('AM', AMR), res: m => {
+        const t = isTal() && !isZ() && TX.list.find(x => x.k === S.tk); if (!t || !validNum(m[1])) return null;
+        const r = parseDafRef(TX, t.he + ' דף ' + m[1] + (m[2] ? ' ' + m[2] : '')); return r && r.k === t.k ? { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } } : null; } });
+      REF_RULES.push({ rx: '(' + tnames + ') דף (HN)(AM)?'.replace('HN', HNR).replace('AM', AMR), res: tal });
+      REF_RULES.push({ rx: '\\((' + tnames + ') (HN)(AM)\\)'.replace('HN', HNR).replace('AM', AMR), res: tal });
+    }
+    // "בפרק מי שמתו" / "בפרק אלו הן הלוקין": שם הפרק = מילות הפתיחה של המשנה הראשונה בו (generated/perek-names.js, scripts/build-perek.py),
+    // → תחילת הפרק בבבלי. רק שמות חד-משמעיים; הארוך ביותר שנמצא מנצח, ומה שלא בטבלה נשאר טקסט.
+    if (G.GIM_PEREK) REF_RULES.push({ rx: '(?:בפרק|פרק|בפ["״\'׳]|בר["״]פ|ר["״]פ) ([א-ת]{1,12}(?: [א-ת]{1,12}){0,3})', res: m => {
+      const w = m[1].split(' '), pre = m[0].length - m[1].length;
+      for (let n = w.length; n >= 1; n--) {
+        const e = G.GIM_PEREK[w.slice(0, n).join(' ')];
+        if (e && TX.byK[e[0]] != null) return { x: { kind: 'tal', k: e[0], j: e[1], s: -1 }, d: { k: 't', tk: e[0], j: e[1] }, len: pre + w.slice(0, n).join(' ').length };
+      }
+      return null; } });
+    REF_RULES.forEach(r => { r.re = new RegExp(r.rx, 'g'); });
+    return REF_RULES;
+  }
+  function refLinks(root) {
+    if (!root || !IX || !TX || !RX) return;
+    const rules = refRules(), w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.data.length < 6 || n.parentNode.closest('a,button,script,.rdNum,.rdHead') ? 3 : 1 }), todo = [];
+    for (let n; (n = w.nextNode());) todo.push(n);
+    todo.forEach(n => {
+      const t = n.data, hits = [];
+      rules.forEach(r => { r.re.lastIndex = 0; for (let m; (m = r.re.exec(t));) { const o = r.res(m, { node: n, idx: m.index }); if (o) { const L = o.len || m[0].length; hits.push({ i: m.index, e: m.index + L, o, tx: m[0].slice(0, L) }); } if (m[0] === '') r.re.lastIndex++; } });
+      if (!hits.length) return;
+      hits.sort((a, b) => a.i - b.i || b.e - a.e);
+      const frag = document.createDocumentFragment(); let last = 0;
+      hits.forEach(hh => {
+        if (hh.i < last) return;
+        frag.appendChild(document.createTextNode(t.slice(last, hh.i)));
+        const a = document.createElement('a'); a.className = 'rdRef'; a.href = hashOfRef(IX, hh.o.x); a.dataset.ref = JSON.stringify(hh.o.d); a.textContent = hh.tx;
+        frag.appendChild(a); last = hh.e;
+      });
+      frag.appendChild(document.createTextNode(t.slice(last))); n.parentNode.replaceChild(frag, n);
+    });
+  }
+  function refLinksInit() {
+    ['#rdBook', '#rdSeg'].forEach(sel => {
+      const el = $r(sel); if (!el) return;
+      let busy = 0; new MutationObserver(() => { if (busy) return; busy = 1; try { refLinks(el); } finally { busy = 0; } }).observe(el, { childList: true, subtree: true });
+      refLinks(el);
+      el.addEventListener('click', e => {
+        const a = e.target.closest && e.target.closest('a.rdRef'); if (!a) return;
+        e.preventDefault(); const d = JSON.parse(a.dataset.ref);
+        if ((e.ctrlKey || e.shiftKey || e.metaKey) && G.GT_EMBED && G.parent !== G) G.parent.postMessage({ gtDesk: 'open', hash: a.getAttribute('href'), fresh: 1 }, '*');
+        else if (d.k === 't') goTal(d.tk, d.j); else if (d.k === 'u') goTur(d.tk, d.s); else goTo(d.b, d.ch, d.v);
+      });
+    });
+  }
   function goTo(b, ch, v) {
     S.tk = ''; S.rk = ''; closeSeg();
     S.b = b; S.ch = ch; S.anchor = v || versesOf(IX, b, ch)[0] || 1;
@@ -2934,7 +3023,7 @@
         '<button type="button" class="rdTurn next" id="rdNext" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button><div class="rdMeasure" aria-hidden="true"><article class="rdPage" id="rdProbe"></article><div id="rdDafHost"></div></div></div>' +
       '<div class="rdFoot"><button type="button" class="rdIco" id="rdPrev2" aria-label="' + T('עמוד קודם') + '">' + ICON.chevR + '</button><span id="rdPos"></span><span class="rdProg"><span id="rdProgBar"></span></span><span id="rdChPos"></span><button type="button" class="rdIco" id="rdNext2" aria-label="' + T('עמוד הבא') + '">' + ICON.chevL + '</button></div>' +
       '<div class="rdScrim" id="rdScrim" hidden></div><div class="rdPop rdSet" id="rdSet" role="dialog" aria-label="' + T('הגדרות תצוגה') + '" hidden></div><div class="rdPop rdJump" id="rdJump" role="dialog" aria-label="' + T('מעבר לפרק ופסוק') + '" hidden></div><div class="rdPop rdPrintPop" id="rdPrintPop" role="dialog" aria-label="' + T('הדפסה / PDF') + '" hidden></div><div class="rdPop rdSegPop" id="rdSeg" role="dialog" aria-label="' + T('קטע ופירושיו') + '" hidden></div>';
-    built = true; tipsWatch();
+    built = true; tipsWatch(); refLinksInit();
     // ש״ס: לחיצה על קטע גמרא או על פירוש פותחת את חלון הקטע
     $r('#rdBook').addEventListener('click', e => {
       if (isTur()) { const x = e.target.closest('[data-x][data-i]'), art = x && x.closest('article[data-s]'); if (!x || !art) return; const s = Number(art.dataset.s), i = Number(x.dataset.i); if (S.rsel && S.rsel.s === s && S.rsel.x === x.dataset.x && S.rsel.i === i && !$r('#rdSeg').hidden) return closeSeg(); return openTurCm(s, x.dataset.x, i); }
