@@ -909,13 +909,13 @@
     const STAR = 'm12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9-4.3-4.1 5.9-.8z';
     const hint = foot.querySelector('span'); if (hint) hint.innerHTML = '<b>← →</b> ' + T('דפדוף', 'page') + ' · <b>Ctrl G</b>';
     const g = f.doc.createElement('div'); g.className = 'dkJ';
-    const cur = () => curHash(w), isMarked = () => marks().some(m => m.h === cur());
+    const cur = () => { const gr = f.win && f.win.GimReader, jh = gr && gr.jumpHash && gr.jumpHash(); return jh || curHash(w); }, isMarked = () => marks().some(m => m.h === cur()); // המקום שנבחר בבורר (גם אם לא נפתח); בלעדיו — המקום הפתוח
     // סימניה מוצגת בשם המקום ולא בכתובת; גם סימניות ישנות שנשמרו עם הכתובת עצמה מקבלות שם
-    const label = h => { const gr = f.win && f.win.GimReader; return (gr && gr.placeLabel && gr.placeLabel(h)) || ''; };
-    const markTxt = x => (!x.t || x.t.charAt(0) === '#' ? label(x.h) : '') || x.t || x.h;
+    const label = h => { const gr = f.win && f.win.GimReader; return (gr && ((gr.placeShort && gr.placeShort(h)) || (gr.placeLabel && gr.placeLabel(h)))) || ''; };
+    const markTxt = x => label(x.h) || x.t || x.h; // תמיד בר״ת המקובלים, גם לסימניות ישנות שנשמרו בשם המלא
     g.innerHTML = '<button type="button" class="dkJB" data-j="mark"><span class="s"></span> ' + T('סימניה', 'Bookmark') + '</button>' +
       '<button type="button" class="dkJB" data-j="new" title="' + T('פתיחת המקום הנבחר בחלון קריאה חדש', 'Open the chosen place in a new reader window') + '">' + gsv('<rect x="8" y="3" width="13" height="13" rx="2"/><path d="M16 20H5a2 2 0 0 1-2-2V8"/>') + ' ' + T('בחלון חדש', 'New window') + '</button>';
-    const star = () => { const s = g.querySelector('.s'); s.innerHTML = gsv('<path d="' + STAR + '"/>', isMarked()); s.parentNode.title = isMarked() ? T('הסרת הסימניה', 'Remove bookmark') : T('סימניה למקום הנוכחי', 'Bookmark this place'); };
+    const star = () => { const s = g.querySelector('.s'); s.innerHTML = gsv('<path d="' + STAR + '"/>', isMarked()); s.parentNode.title = isMarked() ? T('הסרת הסימניה', 'Remove bookmark') : T('סימניה למקום שנבחר', 'Bookmark the selected place'); };
     star();
     // ב-5 חלונות קריאה אי אפשר לפתוח עוד אחד: הכפתור מושבת (הבדיקה גם בכל ריחוף, כי הבורר נשאר פתוח בין פתיחות)
     const nb = g.querySelector('[data-j="new"]'), nbT = nb.title;

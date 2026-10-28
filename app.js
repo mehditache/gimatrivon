@@ -1,8 +1,9 @@
 (function () {
 'use strict';
-const VERSION = '4.9.2'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
-const BRANCH = 'windows'; // שם הענף שממנו האתר מוגש — מוצג רק במצב פיתוח (5 לחיצות רצופות על מספר הגרסה); לעדכן כשעובדים בענף אחר
-const BUILT = '2026-10-25'; // תאריך הגרסה (מוצג במצב פיתוח)
+const VERSION = '4.9.4'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+// שם הענף ותאריך הפריסה (מוצגים רק במצב פיתוח — 5 לחיצות רצופות על מספר הגרסה) אינם קבועים בקוד:
+// קבוע כזה עובר עם כל מיזוג לענף אחר ומתיישן (כך הוצג "v4.8.0 · windows" ב-main). הם נקבעים בזמן ריצה, ראו buildInfo למטה.
+let BRANCH = '…', BUILT = '';
 let DEV = false; try { DEV = localStorage.getItem('gimatrivonDev') === '1'; } catch (e) {}
 let VER_TXT = 'v' + VERSION + (DEV ? ' · ' + BRANCH : '');
 // v1.4.0: נבדקה אופטימיזציה לאיחוד סריקת כמה ערכי-יעד לאותה שיטת חיפוש למעבר אחד על הקורפוס.
@@ -19,10 +20,28 @@ function getLimit() { return RESULTS_WINDOW; }
 // תקרת-בטיחות לכמות ההתאמות שנטענות לרשימה בחיפוש אחד (13 בתים לשורה, כ-65MB); מעליה ההתאמות רק נספרות
 const MAX_RESULTS_PER_SEARCH = 5000000;
 const verEl = document.getElementById('ver');
-const verPaint = () => { VER_TXT = 'v' + VERSION + (DEV ? ' · ' + BRANCH : ''); if (verEl) { verEl.textContent = VER_TXT; verEl.title = 'מספר גרסה' + (DEV ? ' · מצב פיתוח · ענף: ' + BRANCH + ' · ' + BUILT : ''); } const m = document.getElementById('mMenuVer'); if (m) m.textContent = VER_TXT; };
-verPaint();
+const verPaint = () => { VER_TXT = 'v' + VERSION + (DEV ? ' · ' + BRANCH : ''); if (verEl) { verEl.textContent = VER_TXT; verEl.title = 'מספר גרסה' + (DEV ? ' · מצב פיתוח · ענף: ' + BRANCH + (BUILT ? ' · ' + BUILT : '') : ''); } const m = document.getElementById('mMenuVer'); if (m) m.textContent = VER_TXT;
+  try { const p = parent !== window && parent.document.getElementById('dkVer'); if (p) p.textContent = VER_TXT; } catch (e) {} }; // בשולחן העבודה: גם בבנר ובפס הימני
+// --- BUILDINFO:START ---
+// חריג-רשת מבודד שלישי (נבדק ב-tests/run-tests.js): רק api.github.com, ורק במצב פיתוח באתר github.io.
+// הענף שממנו האתר מוגש בפועל: ב-github.io — הפריסה האחרונה של GitHub Pages מה-API הציבורי (ref = הענף; אם חסר — ענף הריצה
+// pages-build-deployment האחרונה). מקומית (file://, localhost) — "מקומי". נשאל רק במצב פיתוח, ונשמר ל-10 דקות בלשונית.
+function buildInfo() {
+  if (!DEV || BRANCH !== '…') return;
+  const h = location.hostname, gh = /^([\w-]+)\.github\.io$/i.exec(h);
+  if (!gh) { BRANCH = location.protocol === 'file:' || /^(localhost|127\.|\[::1\])/.test(h) ? 'מקומי' : h; return verPaint(); }
+  const KEY = 'gimatrivonBuild', put = (b, t) => { BRANCH = b; BUILT = t || ''; verPaint(); try { sessionStorage.setItem(KEY, JSON.stringify({ b, t, at: Date.now() })); } catch (e) {} };
+  try { const c = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.at < 600000) { BRANCH = c.b; BUILT = c.t || ''; return verPaint(); } } catch (e) {}
+  const api = 'https://api.github.com/repos/' + gh[1] + '/' + ((location.pathname.split('/')[1] || '').replace(/^.*\..*$/, '') || gh[1] + '.github.io') + '/', get = u => fetch(api + u, { headers: { Accept: 'application/vnd.github+json' } }).then(r => r.ok ? r.json() : Promise.reject(r.status));
+  get('deployments?environment=github-pages&per_page=1').then(d => {
+    const x = d && d[0]; if (x && x.ref && !/^[0-9a-f]{40}$/.test(x.ref)) return put(x.ref, (x.created_at || '').slice(0, 10) + ' · ' + String(x.sha || '').slice(0, 7));
+    return get('actions/runs?event=dynamic&status=success&per_page=1').then(r => { const w = r && r.workflow_runs && r.workflow_runs[0]; if (!w) throw 0; put(w.head_branch, (w.created_at || '').slice(0, 10) + ' · ' + String(w.head_sha || '').slice(0, 7)); });
+  }).catch(() => { BRANCH = 'ענף לא ידוע'; verPaint(); });
+}
+// --- BUILDINFO:END ---
+verPaint(); buildInfo();
 // 5 לחיצות רצופות (עד 3 שניות) על מספר הגרסה — מצב פיתוח: מוצג שם הענף ופרטי הבנייה (ושוב — כיבוי)
-if (verEl) { let taps = 0, tt = 0; verEl.addEventListener('click', () => { taps++; clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 3000); if (taps < 5) return; taps = 0; DEV = !DEV; try { localStorage.setItem('gimatrivonDev', DEV ? '1' : '0'); } catch (e) {} verPaint(); document.dispatchEvent(new Event('gimDev')); }); }
+if (verEl) { let taps = 0, tt = 0; verEl.addEventListener('click', () => { taps++; clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 3000); if (taps < 5) return; taps = 0; DEV = !DEV; try { localStorage.setItem('gimatrivonDev', DEV ? '1' : '0'); } catch (e) {} verPaint(); buildInfo(); document.dispatchEvent(new Event('gimDev')); }); }
 document.title = `גימטריבון - ${VERSION}`; // כותרת טאב הדפדפן — לא "סביבת עבודה"
 // --- ANALYTICS:START ---
 // Google Analytics 4 (gtag.js) — חריג-רשת מבודד שני (כמו בלוק EmailJS), נבדק ב-tests/run-tests.js.
@@ -1690,7 +1709,7 @@ function renderAbout() {
   $('#aboutDoc').innerHTML = `<div class="aboutBox">
     <div class="row"><span class="k">${en ? 'App name' : 'שם האפליקציה'}</span><span class="v"><b>גימטריבון</b> (Gimatrivon)</span></div>
     <div class="row"><span class="k">${en ? 'Version' : 'גרסה'}</span><span class="v">${esc(VERSION)}</span></div>
-    ${DEV ? `<div class="row"><span class="k">${en ? 'Branch' : 'ענף'}</span><span class="v">${esc(BRANCH)}</span></div><div class="row"><span class="k">${en ? 'Built' : 'נבנה'}</span><span class="v">${esc(BUILT)}</span></div><div class="row"><span class="k">${en ? 'Dev mode' : 'מצב פיתוח'}</span><span class="v">${en ? 'on (5 taps on the version to turn off)' : 'פעיל (5 לחיצות על הגרסה לכיבוי)'}</span></div>` : ''}
+    ${DEV ? `<div class="row"><span class="k">${en ? 'Branch' : 'ענף'}</span><span class="v">${esc(BRANCH)}</span></div><div class="row"><span class="k">${en ? 'Built' : 'נבנה'}</span><span class="v">${esc(BUILT || '—')}</span></div><div class="row"><span class="k">${en ? 'Dev mode' : 'מצב פיתוח'}</span><span class="v">${en ? 'on (5 taps on the version to turn off)' : 'פעיל (5 לחיצות על הגרסה לכיבוי)'}</span></div>` : ''}
     <div class="row"><span class="k">${en ? 'Description' : 'תיאור'}</span><span class="v">${en ? 'A gematria engine + comparison + search tool for the Tanakh, Mishnah, Rashi, Targumim and the Rambam\'s Mishneh Torah.' : 'מנוע גימטריה + השוואה + חיפוש בתנ״ך, משנה, רש״י, תרגומים ומשנה תורה לרמב״ם.'}</span></div>
     <div class="row"><span class="k">${en ? 'Corpus' : 'קורפוס'}</span><span class="v">${unitsCount ? fmt(unitsCount) + (en ? ' units (verses/mishnahs)' : ' יחידות (פסוקים/משניות)') : (en ? 'Loading…' : 'נטען…')}</span></div>
     <div class="row"><span class="k">${en ? 'Developer' : 'מפתח'}</span><span class="v">${esc(ABOUT_INFO.dev)}</span></div>
