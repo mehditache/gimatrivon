@@ -444,8 +444,11 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 
 /* v4.6.36: בורר הספר קבוע בכל מצב: תיבת החיפוש יושבת בתוך משבצת ברוחב קבוע (600), והבורר צמוד למשבצת ולא נשען על מה שמשמאלו */
 .dkOmniSlot{flex:0 1 440px;min-width:160px;display:flex;justify-content:flex-start}
+.dkOmniSlot:focus-within{flex:1 1 440px} /* v4.7.7: בשימוש התיבה מתרחבת שמאלה עד בורר הספר; הדרופדאון נמדד מהתיבה ולכן מתרחב איתה */
 .dkOmniSlot .dkOmni,.dkOmniSlot .dkOmni:focus-within{flex:1 1 auto!important;width:auto!important} /* בלי התרחבות בפוקוס: המשבצת קבועה והבורר לא זז */
-.dkNav{margin-inline-start:0}
+/* v4.7.7: בורר הספר וכל הפקדים נצמדים שמאלה (ליד מתג המראה) באותו סדר */
+.dkNav{margin-inline-start:auto}
+.dkTools,.dkTools:not(:empty)+.dkGemTools,.dkGemTools{margin-inline-start:0}
 
 /* v4.6.41: בורר הספר בבנר לעולם לא נעלם — גם כשחלון הגימטריה או התוצאות פעיל הוא נראה (מעומעם קלות) */
 .dkNav.dim{visibility:visible;opacity:.6}
@@ -460,3 +463,23 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 /* v4.7.2: בריבוע הגימטריה אין תווית "גימטריה" — הכיתוב בזהב מספיק */
 .dkChip .gvI{padding-top:0}
 .dkChip[data-w=g]:not(.th) .gvI{min-height:34px;display:grid;place-items:center}
+
+/* בורר ספר: עמודת סימניות בקצה הימני (v4.8.0) */
+.dkPopLayer .rdJump.dkBmOn{width:min(880px,calc(100% - 28px))}
+.dkPopLayer .rdJGrid.dkBm{grid-template-columns:200px 170px;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.dkPopLayer .rdJGrid.dkBm.tur{grid-template-columns:200px 170px}
+.dkBmCol{display:flex;flex-direction:column;overflow:hidden!important;padding:6px 0!important}
+.dkBmBody{flex:1;min-height:0;overflow-y:auto}
+.dkBmHd{display:flex;align-items:center;gap:5px;color:var(--rdGold)!important}
+.dkBmFlt{display:block;width:calc(100% - 16px);margin:2px 8px 4px;height:28px;border:0;border-radius:8px;padding:0 10px;background:color-mix(in srgb,var(--rdInk) 7%,transparent);color:var(--rdInk);font:12.5px var(--ui)}
+.dkBmRow{display:flex;align-items:center;margin:0 6px;border-radius:8px}
+.dkBmRow:hover,.dkBmRow:focus-within{background:color-mix(in srgb,var(--rdGold) 14%,transparent)}
+.dkBmRow.cu{background:var(--rdGold);color:#fff}
+:root[data-theme=dark] .dkBmRow.cu{color:#1b150e}
+.dkBmGo{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:32px;padding:0 8px;border:0;background:none;color:inherit;font:13.5px var(--ui);text-align:start;cursor:pointer}
+.dkBmGo svg{flex:none;color:var(--rdGold)}
+.dkBmRow.cu .dkBmGo svg{color:inherit}
+.dkBmGo span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dkBmDel{flex:none;width:26px;height:26px;margin-inline-end:3px;border:0;border-radius:13px;background:none;color:inherit;display:grid;place-items:center;opacity:0;cursor:pointer}
+.dkBmRow:hover .dkBmDel,.dkBmRow:focus-within .dkBmDel{opacity:.7}
+.dkBmDel:hover{opacity:1!important;background:color-mix(in srgb,var(--rdInk) 12%,transparent)}
