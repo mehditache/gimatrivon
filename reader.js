@@ -990,12 +990,22 @@
   const validNum = x => { const v = [...x.replace(/["״׳']/g, '')].map(c => 'אבגדהוזחטיכלמנסעפצקרשת'.indexOf(c)).map(i => i < 0 ? -1 : i < 9 ? i + 1 : i < 18 ? (i - 8) * 10 : Math.min(400, (i - 17) * 100)); return v.length > 0 && v.every((n, i) => n > 0 && (i === 0 || n <= v[i - 1])); };
   // מראה המקום האחרון (ספר בסיס, פרק) לפני המקום בטקסט, באותה פסקה, עד 400 תווים אחורה — בשביל "שם"
   const PREV_RX = new RegExp('\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), 'g');
+  // תחום הסריקה אחורה: כל המפרש (רש״י וכו׳ — "שם" מפנה גם לדיבור הקודם), אחרת הפסקה
+  const refBlock = n => n.parentNode.closest('.rdCmBody') || n.parentNode.closest('p,li,.rdRow,.rdRv,article');
   function prevRef(c) {
-    const blk = c.node.parentNode.closest('p,li,.rdRow,.rdRv,article'); if (!blk) return null;
+    const blk = refBlock(c.node); if (!blk) return null;
     const rg = document.createRange(); rg.setStart(blk, 0); rg.setEnd(c.node, c.idx);
     const t = rg.toString().slice(-400); let last = null;
     PREV_RX.lastIndex = 0;
-    for (let m; (m = PREV_RX.exec(t));) { if (m[1] === 'שם') { const c2 = m[3] ? parseNum(m[2].replace(/["״׳']/g, '')) : NaN; if (last && c2 >= 1) last = { b: last.b, ch: c2 }; continue; } const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); if (r && r.book && IX.owner[r.b] === r.b) last = { b: r.b, ch: r.ch }; }
+    for (let m; (m = PREV_RX.exec(t));) {
+      if (m[1] === 'שם') { // "שם" מקדמת באותה רמה: אחרי פרק בלבד — מספר יחיד הוא פרק; פרק ופסוק — פרק חדש
+        if (!last) continue;
+        const n1 = parseNum(m[2].replace(/["״׳']/g, ''));
+        if (m[3]) { if (n1 >= 1) last = { b: last.b, ch: n1, vless: false }; } else if (last.vless && n1 >= 1) last = { b: last.b, ch: n1, vless: true };
+        continue;
+      }
+      const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); if (r && r.book && IX.owner[r.b] === r.b) last = { b: r.b, ch: r.ch, vless: !m[3] };
+    }
     return last;
   }
   let REF_RULES = null;
@@ -1010,11 +1020,28 @@
       // (אם ההפניה הקודמת הייתה לפרק ולא רק לספר), ואם הפסוק לא קיים — לא מקשרים. בלי הפניה קודמת בטווח — לא מקשרים.
       { rx: '\\(שם (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), res: (m, c) => {
         const pv = prevRef(c); if (!pv) return null;
-        let ch, v;
-        const pn = x => parseNum(x.replace(/["״׳']/g, ''));
-        if (m[2]) { ch = pn(m[1]); v = pn(m[2]); } else if (pv.ch) { ch = pv.ch; v = pn(m[1]); } else return null;
-        return Number.isNaN(ch) || Number.isNaN(v) || !(ch >= 1) || !hasRef(IX, pv.b, ch, v) ? null : ref(pv.b, ch, v);
+        const pn = x => parseNum(x.replace(/["״׳']/g, '')), a1 = pn(m[1]);
+        if (Number.isNaN(a1) || !(a1 >= 1)) return null;
+        if (m[2]) { const v = pn(m[2]); return Number.isNaN(v) || !hasRef(IX, pv.b, a1, v) ? null : ref(pv.b, a1, v); }
+        // מספר יחיד: אחרי הפניה לפרק בלבד הוא פרק; אחרי פרק ופסוק הוא פסוק באותו פרק
+        if (pv.vless) return hasRef(IX, pv.b, a1, 0) ? ref(pv.b, a1, 0) : null;
+        return hasRef(IX, pv.b, pv.ch, a1) ? ref(pv.b, pv.ch, a1) : null;
       } },
+      // "(שם)" לבדו: אותו מראה מקום כמו הסוגריים האחרונים לפניו, אם הם עצמם מראה מקום מזוהה (אחרת — לא מקשרים)
+      { rx: '\\(שם\\)', res: (m, c) => {
+        const blk = refBlock(c.node); if (!blk) return null;
+        const rg = document.createRange(); rg.setStart(blk, 0); rg.setEnd(c.node, c.idx);
+        const g = [...rg.toString().slice(-400).matchAll(/\(([^()]{1,40})\)/g)].pop(); if (!g || g[1] === 'שם') return null;
+        for (const r of REF_RULES) { if (r.shem) continue; r.re.lastIndex = 0; const mm = r.re.exec('(' + g[1] + ')'); if (mm && mm.index === 0 && mm[0].length === g[1].length + 2) { const o = r.res(mm, c); if (o) return o; } }
+        return null;
+      }, shem: 1 },
+      // "(מנחות ל״ו)": מסכת ומספר בלי צד — דף (עמוד א), רק כשהמספר גדול ממספר פרקי המסכת במשנה (אחרת עשוי להיות פרק)
+      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)\\)'.replace(/HN/g, HNR), res: m => {
+        if (!validNum(m[2])) return null;
+        const r = parseDafRef(TX, m[1] + ' דף ' + m[2]); if (!r) return null;
+        const mb = parseRef(IX, m[1] + ' 1', null), n = parseNum(m[2].replace(/["״׳']/g, ''));
+        if (mb && mb.book && IX.books[mb.b] && n <= chaptersOf(IX, mb.b).length) return null;
+        return { x: { kind: 'tal', k: r.k, j: r.j, s: -1 }, d: { k: 't', tk: r.k, j: r.j } }; } },
       { rx: 'הל(?:כות|[\'׳])\\s([א-ת]{2,10}(?: [א-ת]{2,8})?) (?:פרק |פ["״\'׳]?\\s?)?(HN)(?:[ ,]+(?:הלכה |ה["״\'׳]?\\s?)?(HN))?'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, 'הלכות ' + m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v) : null; } },
       { rx: '(?:או["״]ח|יו["״]ד|אה["״]ע|חו["״]מ|אורח חיים|יורה דעה|אבן העזר|חושן משפט) (?:סימן|סי[׳\'.]?) (HN)'.replace(/HN/g, HNR), res: m => { const r = parseTurRef(RX, m[0].replace(/ (?:סימן|סי[׳\'.]?) /, ' ')); return r && r.s ? { x: { kind: 'tur', k: r.k, s: r.s }, d: { k: 'u', tk: r.k, s: r.s } } : null; } }
     ];
