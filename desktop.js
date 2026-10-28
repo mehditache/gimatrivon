@@ -997,7 +997,7 @@
   addEventListener('message', e => {
     const m = e.data; if (!m || !m.gtDesk || e.origin !== location.origin) return;
     if (m.gtDesk === 'res') return fromResults(m);
-    if (m.gtDesk === 'open') openRead(m.hash);
+    if (m.gtDesk === 'open') openRead(m.hash, !!m.fresh);
     else if (m.gtDesk === 'gem') openGem();
   });
   addEventListener('hashchange', () => fromUrl());
