@@ -3247,7 +3247,17 @@
       return bkName(IX.books[x.b].heTitle) + ' · ' + T('פרק') + ' ' + num(x.ch) + (x.v ? ', ' + num(x.v) : '');
     } catch (e) { return ''; }
   }
-  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault, placeLabel };
+  // קטגוריית מקום מכתובת (לפי לשוניות בורר הספר) — לקיבוץ הסימניות בשולחן
+  function placeCat(h) {
+    const m = String(h || '').match(/^#read(?:[\/#]+(.*))?$/i); if (!m || !m[1]) return '';
+    try {
+      ensureIndex(); const x = parseHashRef(IX, TX, RX, m[1]); if (!x) return '';
+      if (x.kind === 'tur') return 'טור';
+      if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); return t && t.z ? 'זוהר' : 'ש״ס'; }
+      return isRambam(x.b) ? 'רמב״ם' : isMishnah(x.b) ? 'משנה' : 'תנ״ך';
+    } catch (e) { return ''; }
+  }
+  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault, placeLabel, placeCat };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;
