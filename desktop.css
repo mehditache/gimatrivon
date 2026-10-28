@@ -444,8 +444,11 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 
 /* v4.6.36: בורר הספר קבוע בכל מצב: תיבת החיפוש יושבת בתוך משבצת ברוחב קבוע (600), והבורר צמוד למשבצת ולא נשען על מה שמשמאלו */
 .dkOmniSlot{flex:0 1 440px;min-width:160px;display:flex;justify-content:flex-start}
+.dkOmniSlot:focus-within{flex:1 1 440px} /* v4.7.7: בשימוש התיבה מתרחבת שמאלה עד בורר הספר; הדרופדאון נמדד מהתיבה ולכן מתרחב איתה */
 .dkOmniSlot .dkOmni,.dkOmniSlot .dkOmni:focus-within{flex:1 1 auto!important;width:auto!important} /* בלי התרחבות בפוקוס: המשבצת קבועה והבורר לא זז */
-.dkNav{margin-inline-start:0}
+/* v4.7.7: בורר הספר וכל הפקדים נצמדים שמאלה (ליד מתג המראה) באותו סדר */
+.dkNav{margin-inline-start:auto}
+.dkTools,.dkTools:not(:empty)+.dkGemTools,.dkGemTools{margin-inline-start:0}
 
 /* v4.6.41: בורר הספר בבנר לעולם לא נעלם — גם כשחלון הגימטריה או התוצאות פעיל הוא נראה (מעומעם קלות) */
 .dkNav.dim{visibility:visible;opacity:.6}
