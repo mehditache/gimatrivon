@@ -989,7 +989,7 @@
   // מספר עברי תקין: ערכי האותיות לא עולים (קכ, ריז, טו) — מסנן מילים כמו "הוה"
   const validNum = x => { const v = [...x.replace(/["״׳']/g, '')].map(c => 'אבגדהוזחטיכלמנסעפצקרשת'.indexOf(c)).map(i => i < 0 ? -1 : i < 9 ? i + 1 : i < 18 ? (i - 8) * 10 : Math.min(400, (i - 17) * 100)); return v.length > 0 && v.every((n, i) => n > 0 && (i === 0 || n <= v[i - 1])); };
   // מראה המקום האחרון (ספר בסיס, פרק) לפני המקום בטקסט, באותה פסקה, עד 400 תווים אחורה — בשביל "שם"
-  const PREV_RX = new RegExp('\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), 'g');
+  const PREV_RX = new RegExp('\\(([א-ת]{2,10}(?: [א-ת]{1,8})?) (HN)(?:[:,] ?(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), 'g');
   // תחום הסריקה אחורה: כל המפרש (רש״י וכו׳ — "שם" מפנה גם לדיבור הקודם), אחרת הפסקה
   const refBlock = n => n.parentNode.closest('.rdCmBody') || n.parentNode.closest('p,li,.rdRow,.rdRv,article');
   function prevRef(c) {
@@ -1015,10 +1015,10 @@
     const tnames = tn.length ? tn.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') : null;
     const ref = (b, ch, v) => ({ x: { kind: 'ref', b, ch, v }, d: { k: 'r', b, ch, v } });
     REF_RULES = [
-      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && (m[3] ? r.v : true) && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v || 0) : null; } },
+      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{1,8})?) (HN)(?:[:,] ?(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), res: m => { const r = parseRef(IX, m[1] + ' ' + m[2] + (m[3] ? ' ' + m[3] : ''), null); return r && r.book && (m[3] ? r.v : true) && IX.owner[r.b] === r.b ? ref(r.b, r.ch, r.v || 0) : null; } },
       // "(שם כ״ז)" / "(שם י״ח, ד׳)": "שם" = הספר (והפרק) של מראה המקום הקודם באותה פסקה. שני מספרים = פרק ופסוק. מספר אחד = פסוק באותו פרק
       // (אם ההפניה הקודמת הייתה לפרק ולא רק לספר), ואם הפסוק לא קיים — לא מקשרים. בלי הפניה קודמת בטווח — לא מקשרים.
-      { rx: '\\(שם (HN)(?:[:,] ?(HN))?\\)'.replace(/HN/g, HNR), res: (m, c) => {
+      { rx: '\\(שם (HN)(?:[-–־] ?HN)?(?:[:,] ?(HN)(?:[-–־] ?HN)?)?\\)'.replace(/HN/g, HNR), res: (m, c) => {
         const pv = prevRef(c); if (!pv) return null;
         const pn = x => parseNum(x.replace(/["״׳']/g, '')), a1 = pn(m[1]);
         if (Number.isNaN(a1) || !(a1 >= 1)) return null;
@@ -1036,7 +1036,7 @@
         return null;
       }, shem: 1 },
       // "(מנחות ל״ו)": מסכת ומספר בלי צד — דף (עמוד א), רק כשהמספר גדול ממספר פרקי המסכת במשנה (אחרת עשוי להיות פרק)
-      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{2,8})?) (HN)\\)'.replace(/HN/g, HNR), res: m => {
+      { rx: '\\(([א-ת]{2,10}(?: [א-ת]{1,8})?) (HN)\\)'.replace(/HN/g, HNR), res: m => {
         if (!validNum(m[2])) return null;
         const r = parseDafRef(TX, m[1] + ' דף ' + m[2]); if (!r) return null;
         const mb = parseRef(IX, m[1] + ' 1', null), n = parseNum(m[2].replace(/["״׳']/g, ''));
