@@ -333,10 +333,14 @@ t('reader', 'suggestPlaces: הצעות תוך כדי הקלדה מכל הספר�
 const root = path.join(__dirname, '..'); const runtime = ['index.html', 'styles.css', 'app.js', 'engine.js', 'reader.js', 'corpus-loader.js', 'sqlite-search.js'];
 const EMAILJS_RE = /\/\/ --- EMAILJS:START ---[\s\S]*?\/\/ --- EMAILJS:END ---/;
 const ANALYTICS_RE = /\/\/ --- ANALYTICS:START ---[\s\S]*?\/\/ --- ANALYTICS:END ---/; // חריג שני: Google Analytics, רק כשמוגדר מזהה-מדידה
-const stripEmailJs = s => s.replace(EMAILJS_RE, '').replace(ANALYTICS_RE, '');
+const BUILDINFO_RE = /\/\/ --- BUILDINFO:START ---[\s\S]*?\/\/ --- BUILDINFO:END ---/; // חריג שלישי: שם הענף במצב פיתוח, מ-api.github.com
+const stripEmailJs = s => s.replace(EMAILJS_RE, '').replace(ANALYTICS_RE, '').replace(BUILDINFO_RE, '');
 t('offline', 'אין כתובות חיצוניות / fetch / XHR / CDN / פונטים חיצוניים (מחוץ לבלוק EmailJS המבודד)', () => runtime.every(f => !/https?:\/\/|\bfetch\s*\(|XMLHttpRequest|@import|googleapis|cdn\.|WebSocket|navigator\.sendBeacon/i.test(stripEmailJs(fs.readFileSync(path.join(root, f), 'utf8')))));
 t('offline', 'בלוק EmailJS קיים פעם אחת בדיוק, וטוען אך ורק מ-cdn.jsdelivr.net', () => { const s = fs.readFileSync(path.join(root, 'app.js'), 'utf8'); const m = s.match(new RegExp(EMAILJS_RE, 'g')); return m && m.length === 1 && /https:\/\/cdn\.jsdelivr\.net\/npm\/@emailjs\/browser/.test(m[0]) && !/https?:\/\//g.test(m[0].replace(/https:\/\/cdn\.jsdelivr\.net\/npm\/@emailjs\/browser[^'"]*/, '')); });
 t('offline', 'בלוק Analytics קיים פעם אחת בדיוק, טוען רק מ-www.googletagmanager.com, ולא נטען בלי מזהה-מדידה תקין', () => { const s = fs.readFileSync(path.join(root, 'app.js'), 'utf8'); const m = s.match(new RegExp(ANALYTICS_RE, 'g')); return m && m.length === 1 && !/https?:\/\//.test(m[0].replace(/https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=/, '')) && /if \(!\/\^G-\[A-Z0-9\]\+\$\/\.test\(GA_MEASUREMENT_ID\)\) return;/.test(m[0]); });
+t('offline', 'בלוק BUILDINFO קיים פעם אחת בדיוק, פונה רק ל-api.github.com, ורק במצב פיתוח', () => { const s = fs.readFileSync(path.join(root, 'app.js'), 'utf8'); const m = s.match(new RegExp(BUILDINFO_RE, 'g')); return m && m.length === 1 && !/https?:\/\//.test(m[0].replace(/https:\/\/api\.github\.com\/repos\//, '')) && /if \(!DEV \|\| /.test(m[0]); });
+// שם הענף לא נכתב בקוד: קבוע כזה עבר במיזוג ל-main והציג "v4.8.0 · windows" (פעמיים). ראו buildInfo ב-app.js
+t('offline', 'אין שם ענף קבוע בקוד (BRANCH/BUILT נקבעים בזמן ריצה)', () => !/\b(?:const|let|var)\s+BRANCH\s*=\s*['"`](?!…)|\bBUILT\s*=\s*['"`]\d/.test(fs.readFileSync(path.join(root, 'app.js'), 'utf8')));
 t('offline', 'כל קובצי ה-runtime קיימים', () => [...runtime, 'generated/corpus.bundle.js'].every(f => fs.existsSync(path.join(root, f))));
 t('offline', 'index.html טוען רק קבצים מקומיים (ה-script של EmailJS נטען דינמית מ-app.js, לא כ-tag קבוע ב-HTML)', () => [...fs.readFileSync(path.join(root, 'index.html'), 'utf8').matchAll(/(?:src|href)="([^"]+)"/g)].every(m => !/^[a-z]+:|^\/\//i.test(m[1]) && fs.existsSync(path.join(root, m[1]))));
 
