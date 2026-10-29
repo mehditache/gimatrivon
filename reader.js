@@ -424,7 +424,7 @@
     'לא ניתן לטעון את המסכת.': 'Could not load the tractate.', 'לא ניתן לטעון את הספר.': 'Could not load the book.', 'טוען…': 'Loading…', 'בדף': 'Daf', 'במסכת': 'Tractate', 'אין פירוש על קטע זה': 'No commentary on this passage', 'הדף הנוכחי (שני העמודים)': 'The current daf (both sides)',
     'לחצו על קטע בגמרא כדי לראות את הפירוש שלו.': 'Click a passage of the Gemara to see its commentary.', 'הקטע שנבחר': 'Selected passage', 'הקטע הקודם': 'Previous passage', 'הקטע הבא': 'Next passage',
     'טור': 'Tur', 'בית יוסף': 'Beit Yosef', 'ב״ח': 'Bach', 'בית חדש': 'Bayit Chadash', 'סימן': 'Siman', 'סימן קודם': 'Previous siman', 'סימן הבא': 'Next siman', 'הקדמה': 'Introduction', 'הקדמת הטור': 'Introduction to the Tur',
-    'טוען את הטור…': 'Loading the Tur…', 'לא ניתן לטעון את הטור.': 'Could not load the Tur.', 'מעבר לסימן': 'Go to siman', 'ארבעה טורים': 'Arba\'ah Turim', 'הדיבור הקודם': 'Previous comment', 'גודל הטקסט': 'Text size', 'הקטנת הטקסט': 'Smaller text', 'הגדלת הטקסט': 'Larger text', 'זכוכית מגדלת': 'Magnifier', 'גודל הפס': 'Strip size', 'זום': 'Zoom', 'סגירת הזכוכית': 'Close magnifier', 'הזיזו את העכבר על הטקסט': 'Move the pointer over the text', 'הדיבור הבא': 'Next comment', 'הסימן כולו': 'The whole siman',
+    'טוען את הטור…': 'Loading the Tur…', 'לא ניתן לטעון את הטור.': 'Could not load the Tur.', 'מעבר לסימן': 'Go to siman', 'ארבעה טורים': 'Arba\'ah Turim', 'הדיבור הקודם': 'Previous comment', 'גודל הטקסט': 'Text size', 'הקטנת הטקסט': 'Smaller text', 'הגדלת הטקסט': 'Larger text', 'זכוכית מגדלת': 'Magnifier', 'גודל הפס': 'Strip size', 'זום': 'Zoom', 'סגירת הזכוכית': 'Close magnifier', 'הזיזו את העכבר על הטקסט': 'Move the pointer over the text', 'רוחב': 'Width', 'גובה': 'Height', 'הקפאה': 'freeze', 'הדיבור הבא': 'Next comment', 'הסימן כולו': 'The whole siman',
     'הטור באמצע, ב״ח מימין ובית יוסף משמאל.': 'The Tur in the middle, Bach on the right and Beit Yosef on the left.',
     'טור ומפרשים': 'Tur & commentary', 'משמאל': 'on the left', 'מימין': 'on the right', 'קטעים מהטור, ומתחת לכל אחד הדיבורים שלו.': 'Passages of the Tur, each followed by its comments.',
     'הטור מימין, והפירוש מקיף אותו וממשיך מתחתיו.': 'The Tur on the right; the commentary wraps around it and continues below.', 'הטור לבדו, ברוחב מלא.': 'The Tur alone, at full width.', 'לחצו על סימן בטור או על דיבור כדי לקרוא אותו באותיות גדולות.': 'Click a marker in the Tur or a comment to read it in large letters.',
@@ -1544,8 +1544,10 @@
     mag.el = document.createElement('div'); mag.el.className = 'rdMag'; mag.el.appendChild(mag.band); mag.el.appendChild(mag.lens);
     ['l', 'r', 't', 'tl', 'tr'].forEach(k => { const d = document.createElement('i'); d.className = 'rdMagH ' + k; d.dataset.h = k; d.hidden = true; mag.el.appendChild(d); mag.hs.push(d); });
     mag.ctl = document.createElement('div'); mag.ctl.className = 'rdMagCtl'; mag.ctl.setAttribute('role', 'toolbar'); mag.ctl.setAttribute('aria-label', T('זכוכית מגדלת'));
-    mag.ctl.innerHTML = '<span class="hint">' + T('הזיזו את העכבר על הטקסט') + '</span><span class="lb">' + T('גודל הפס') + '</span>' +
+    mag.ctl.innerHTML = '<span class="hint">' + T('הזיזו את העכבר על הטקסט') + '</span><span class="lb tip">Shift = ' + T('הקפאה') + '</span><span class="lb">' + T('גודל הפס') + '</span>' +
       Object.keys(MAGSZ).map(k => '<button type="button" data-msz="' + k + '">' + k + '</button>').join('') + '<span class="sep"></span>' +
+      '<span class="lb">' + T('רוחב') + '</span><button type="button" data-mw="-1" aria-label="' + T('רוחב') + ' −">−</button><button type="button" data-mw="1" aria-label="' + T('רוחב') + ' +">+</button>' +
+      '<span class="lb">' + T('גובה') + '</span><button type="button" data-mh="-1" aria-label="' + T('גובה') + ' −">−</button><button type="button" data-mh="1" aria-label="' + T('גובה') + ' +">+</button><span class="sep"></span>' +
       '<button type="button" data-mz="-1" aria-label="' + T('הקטנת הטקסט') + '">−</button><b class="mz"></b><button type="button" data-mz="1" aria-label="' + T('הגדלת הטקסט') + '">+</button><span class="sep"></span>' +
       '<button type="button" data-mx aria-label="' + T('סגירת הזכוכית') + '">' + ICON.x + '</button>';
     mag.el.appendChild(mag.ctl); R.appendChild(mag.el);
@@ -1557,6 +1559,7 @@
       const sz = e.target.closest('[data-msz]'), z = e.target.closest('[data-mz]');
       if (sz) { [S.magW, S.magH] = MAGSZ[sz.dataset.msz]; save(); magCtl(); magDraw(); }
       else if (z) magZoom(Number(z.dataset.mz));
+      else if (e.target.closest('[data-mw],[data-mh]')) { const b = e.target.closest('[data-mw],[data-mh]'); if (b.dataset.mw) S.magW = clampN(S.magW + 60 * b.dataset.mw, 200, Math.min(1000, document.documentElement.clientWidth - 16)); else S.magH = clampN(S.magH + 30 * b.dataset.mh, 60, Math.min(500, document.documentElement.clientHeight * 0.6)); save(); magCtl(); magDraw(); }
       else if (e.target.closest('[data-mx]')) setMag(false);
     });
     mag.hs.forEach(d => d.addEventListener('pointerdown', magResizeStart));
@@ -1580,7 +1583,7 @@
     return null;
   }
   function magMove(e) {
-    if (!mag.on || (e.pointerType === 'touch' && !mag.press)) return;
+    if (!mag.on || (e.pointerType === 'touch' && !mag.press) || e.shiftKey) return; // Shift מקפיא את הפס, כדי שאפשר יהיה להגיע לידיות
     if (e.target.closest && e.target.closest('.rdMagCtl,.rdMagH,.rdPop')) return;
     mag.x = e.clientX; mag.y = e.clientY; mag.has = true; magDraw();
   }
@@ -1603,8 +1606,6 @@
     const pos = { l: [left, top + H / 2], r: [left + W, top + H / 2], t: [left + W / 2, top], tl: [left, top], tr: [left + W, top] };
     mag.hs.forEach(d => { const [hx, hy] = pos[d.dataset.h]; d.style.left = hx + 'px'; d.style.top = hy + 'px'; d.hidden = false; });
     mag.band.hidden = mag.lens.hidden = false;
-    const cw = mag.ctl.offsetWidth || 360;
-    Object.assign(mag.ctl.style, { left: clampN(sx - cw / 2, 8, vw - cw - 8) + 'px', top: Math.min(sy + bh / 2 + 12, vh - 46) + 'px', bottom: 'auto' });
     magCtl();
   }
   function magResizeStart(e) {
