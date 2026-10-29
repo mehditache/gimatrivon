@@ -75,7 +75,7 @@
     el.innerHTML = '<div class="dwBar">' +
       '<span class="dwCtl">' + (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">' + SV(GI.x) + '</button>' : '<span class="dwNoX"></span>') +
       '<button type="button" class="m" data-a="min" title="' + T('מזעור', 'Minimize') + '">' + SV(GI.min) + '</button><button type="button" class="z" data-a="max" title="' + T('הגדלה / שחזור', 'Maximize / restore') + '">' + SV(GI.max) + '</button></span>' +
-      '<b class="dwT"></b>' +
+      '<b class="dwT"></b>' + (w.k !== 'gem' ? mkHtml() : '') +
       (w.k !== 'gem' ? '<span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '">' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '">' + SV(GI.fwd) + '</button></span>' : '<span class="dwNav"></span>') + '</div>' +
       '<div class="dwBody"></div><div class="dwRs l"></div><div class="dwRs r"></div>';
     desk.appendChild(el);
@@ -86,6 +86,7 @@
       const a = b.dataset.a;
       if (a === 'min') minimize(w.id); else if (a === 'max') toggleMax(w.id); else if (a === 'close') closeWin(w.id);
       else if (a === 'back') go(w.id, -1); else if (a === 'fwd') go(w.id, 1);
+      else if (a === 'mark') toggleMark(w); else if (a === 'marks') openMarks(w, b);
     });
     bar.addEventListener('dblclick', e => { if (!e.target.closest('button')) toggleMax(w.id); });
     bar.addEventListener('pointerdown', e => { if (!e.target.closest('button')) startDrag(e, w.id); });
@@ -110,7 +111,7 @@
     const mb = el.querySelector('[data-a="max"]'), ms = w.max ? 'res' : 'max';
     if (mb.dataset.st !== ms) { mb.dataset.st = ms; mb.innerHTML = SV(w.max ? GI.res : GI.max); }
     if (w.k !== 'gem') { el.querySelector('[data-a="back"]').disabled = w.hi <= 0; el.querySelector('[data-a="fwd"]').disabled = w.hi >= w.hist.length - 1; }
-    wgrp();
+    wgrp(); markPaint();
   }
 
   // חלון מוגדל: פס החלון מוסתר, וכפתורי החלון וחיצי ההיסטוריה שלו עוברים לקבוצה בבנר (הבנר נשאר בגובה 56)
@@ -122,13 +123,14 @@
     if (!on) { wg.textContent = ''; return; }
     wg.innerHTML = '<span class="dwCtl">' + (w.k !== 'gem' ? '<button type="button" class="x" data-a="close" title="' + T('סגירה', 'Close') + '">' + SV(GI.x) + '</button>' : '<span class="dwNoX"></span>') +
       '<button type="button" class="m" data-a="min" title="' + T('מזעור', 'Minimize') + '">' + SV(GI.min) + '</button><button type="button" class="z" data-a="max" title="' + T('שחזור גודל', 'Restore') + '">' + SV(GI.res) + '</button></span>' +
-      (w.k !== 'gem' ? '<i class="dv"></i><span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '"' + (w.hi <= 0 ? ' disabled' : '') + '>' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '"' + (w.hi >= w.hist.length - 1 ? ' disabled' : '') + '>' + SV(GI.fwd) + '</button></span>' : '');
+      (w.k !== 'gem' ? '<i class="dv"></i><span class="dwNav"><button type="button" data-a="back" title="' + T('אחורה', 'Back') + '"' + (w.hi <= 0 ? ' disabled' : '') + '>' + SV(GI.back) + '</button><button type="button" data-a="fwd" title="' + T('קדימה', 'Forward') + '"' + (w.hi >= w.hist.length - 1 ? ' disabled' : '') + '>' + SV(GI.fwd) + '</button></span><i class="dv"></i>' + mkHtml() : '');
   }
   $('#dkWg').addEventListener('click', e => {
     const b = e.target.closest('button[data-a]'), w = W(D.act); if (!b || !w) return;
     const a = b.dataset.a;
     if (a === 'min') minimize(w.id); else if (a === 'max') toggleMax(w.id); else if (a === 'close') closeWin(w.id);
     else if (a === 'back') go(w.id, -1); else if (a === 'fwd') go(w.id, 1);
+    else if (a === 'mark') toggleMark(w); else if (a === 'marks') openMarks(w, b);
   });
   // לחיצה כפולה על שטח ריק בבנר מחזירה חלון מוגדל לגודלו
   $('#dkBan').addEventListener('dblclick', e => { const w = W(D.act); if (w && w.max && !e.target.closest('button,input,label,a,.dkOmni,.dkNav,.dkTools')) toggleMax(w.id); });
@@ -928,7 +930,7 @@
       if (b.dataset.j === 'mark') {
         const m = marks(), h = cur(), i = m.findIndex(x => x.h === h);
         if (i >= 0) m.splice(i, 1); else m.unshift({ h, t: label(h) || w.t || h });
-        setMarks(m.slice(0, 30)); star(); listMarks();
+        setMarks(m.slice(0, 30)); star(); listMarks(); markPaint();
       } else {
         const h0 = cur(); go.click();
         setTimeout(() => { const h1 = decodeURI(f.win.location.hash); if (chKey(h1) !== chKey(h0)) { if (w.hi > 0 && w.hist[w.hi] === h1) { w.hist.splice(w.hi, 1); w.hi--; } navTo(w, h0); paint(w); } openRead(h1, true); }, 60);
@@ -956,7 +958,7 @@
             const b = f.doc.createElement('button'); b.type = 'button'; b.className = 'dkBmGo'; b.title = r.t; b.innerHTML = gsv('<path d="' + STAR + '"/>', true) + ' '; const sp = f.doc.createElement('span'); sp.textContent = r.t; b.appendChild(sp);
             b.onclick = () => { close(); navPush(w, r.x.h); };
             const d = f.doc.createElement('button'); d.type = 'button'; d.className = 'dkBmDel'; d.setAttribute('aria-label', T('הסרת הסימניה', 'Remove bookmark')); d.title = T('הסרת הסימניה', 'Remove bookmark'); d.innerHTML = gsv('<path d="m6 6 12 12M18 6 6 18"/>');
-            d.onclick = e => { e.stopPropagation(); setMarks(marks().filter(y => y.h !== r.x.h)); star(); listMarks(); };
+            d.onclick = e => { e.stopPropagation(); setMarks(marks().filter(y => y.h !== r.x.h)); star(); listMarks(); markPaint(); };
             row.append(b, d); body.appendChild(row);
           });
         });
@@ -964,8 +966,77 @@
       fill();
       if (grid) grid.prepend(col);
     }
-    listMarks();
+    listMarks(); mkSubs[w.id] = () => { star(); listMarks(); };
   }
+
+  /* ---------- ☆ סימניה בפס החלון (כוכב + חץ לרשימה) ---------- */
+  const STARP = 'm12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9-4.3-4.1 5.9-.8z';
+  const mkSubs = {}; // id חלון → רענון עמודת הסימניות שבבורר שלו, כשהרשימה השתנתה מהכוכב
+  const mkHtml = () => '<span class="dkMk" hidden><button type="button" class="mk" data-a="mark">' + SV('<path d="' + STARP + '"/>') + '</button><button type="button" class="mkm" data-a="marks" aria-label="' + T('רשימת הסימניות', 'Bookmarks list') + '" title="' + T('רשימת הסימניות', 'Bookmarks list') + '">' + SV(GI.dn) + '</button></span>';
+  const mkGr = w => { const f = F.get(w.id); return f && f.win && f.win.GimReader; };
+  const mkLabel = (w, h) => { const gr = mkGr(w); return (gr && ((gr.placeShort && gr.placeShort(h)) || (gr.placeLabel && gr.placeLabel(h)))) || ''; };
+  const mkOk = w => w.k === 'read' && !isFind(curHash(w)) && curHash(w) !== '#read'; // רק מקום מוגדר בספר (לא תוצאות חיפוש ולא ספרייה ריקה)
+  function markPaint() {
+    const m = marks(), one = (box, w) => {
+      if (!box || !w) return;
+      const ok = mkOk(w), on = ok && m.some(x => x.h === curHash(w)), b = box.querySelector('.mk');
+      box.hidden = w.k === 'gem' || !ok; box.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+      b.title = b.ariaLabel = on ? T('הסרת הסימניה', 'Remove bookmark') : T('סימניה למקום הפתוח', 'Bookmark this place');
+    };
+    D.wins.forEach(w => { const f = F.get(w.id); if (f) one(f.el.querySelector('.dkMk'), w); });
+    one(document.querySelector('#dkWg .dkMk'), W(D.act));
+  }
+  function toggleMark(w) {
+    if (!mkOk(w)) return;
+    const m = marks(), h = curHash(w), i = m.findIndex(x => x.h === h);
+    if (i >= 0) m.splice(i, 1); else m.unshift({ h, t: mkLabel(w, h) || w.t || h });
+    setMarks(m.slice(0, 30)); markPaint(); Object.values(mkSubs).forEach(fn => { try { fn(); } catch (e) {} });
+    const pop = document.getElementById('dkMkPop'); if (pop && pop._w === w) { pop._re = true; openMarks(w, pop._a); }
+  }
+  // רשימת הסימניות מתחת לכפתור: מקובצת לפי ספר; לחיצה על שורה פותחת את המקום בחלון הזה, ✕ מסיר
+  function openMarks(w, anchor) {
+    const old = document.getElementById('dkMkPop'); if (old) { old.remove(); if (old._a === anchor && !old._re) return; }
+    const m = marks(), gr = mkGr(w), cur = curHash(w), label = x => mkLabel(w, x.h) || x.t || x.h;
+    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור'], catOf = h => (gr && gr.placeCat && gr.placeCat(h)) || '';
+    const el = document.createElement('div'); el.id = 'dkMkPop'; el.className = 'dkMkPop'; el.dir = document.documentElement.dir || 'rtl'; el._w = w; el._a = anchor;
+    const add = (t, h) => { const e = document.createElement(h || 'div'); e.className = t; return e; };
+    const hd = add('hd'); hd.innerHTML = SV('<path d="' + STARP + '"/>') + ' '; hd.append(T('סימניות', 'Bookmarks') + ' · ' + m.length); el.appendChild(hd);
+    if (mkOk(w)) {
+      const on = m.some(x => x.h === cur), b = add('add', 'button'); b.type = 'button';
+      b.innerHTML = SV('<path d="' + STARP + '"/>'); b.firstChild.style.fill = on ? 'currentColor' : 'none';
+      const t = document.createElement('span'); t.textContent = (mkLabel(w, cur) || w.t || '') + ' — ' + (on ? T('מסומן', 'bookmarked') : T('סימניה למקום הזה', 'bookmark this place')); b.appendChild(t);
+      const sm = document.createElement('small'); sm.textContent = on ? T('לחיצה מסירה', 'click removes') : ''; b.appendChild(sm);
+      b.onclick = () => { el._re = true; toggleMark(w); };
+      el.appendChild(b);
+    }
+    let flt = '', body = add('body');
+    if (m.length > 8) { const inp = add('flt', 'input'); inp.type = 'search'; inp.placeholder = T('סינון סימניות…', 'Filter bookmarks…'); inp.oninput = () => { flt = inp.value.trim(); fill(); }; el.appendChild(inp); }
+    el.appendChild(body);
+    if (!m.length) { const e = add('none'); e.textContent = T('אין עדיין סימניות. ★ מסמן את המקום הפתוח.', 'No bookmarks yet. ★ bookmarks the open place.'); body.appendChild(e); }
+    function fill() {
+      body.textContent = '';
+      const rows = m.map(x => ({ x, t: label(x), c: catOf(x.h) || T('אחר', 'Other') })).filter(r => !flt || r.t.includes(flt));
+      CATS.concat(rows.map(r => r.c).filter((c, i, a) => CATS.indexOf(c) < 0 && a.indexOf(c) === i)).forEach(c => {
+        const rs = rows.filter(r => r.c === c); if (!rs.length) return;
+        const g = add('g'); g.textContent = c + ' · ' + rs.length; body.appendChild(g);
+        rs.forEach(r => {
+          const row = add('r' + (r.x.h === cur ? ' cu' : '')), go = add('go', 'button'); go.type = 'button'; go.title = r.t;
+          go.innerHTML = SV('<path d="' + STARP + '"/>'); go.firstChild.style.fill = 'currentColor'; const sp = document.createElement('span'); sp.textContent = r.t; go.appendChild(sp);
+          go.onclick = () => { el.remove(); navPush(w, r.x.h); };
+          const d = add('del', 'button'); d.type = 'button'; d.title = d.ariaLabel = T('הסרת הסימניה', 'Remove bookmark'); d.innerHTML = SV(GI.x);
+          d.onclick = e => { e.stopPropagation(); setMarks(marks().filter(y => y.h !== r.x.h)); markPaint(); Object.values(mkSubs).forEach(fn => { try { fn(); } catch (er) {} }); el._re = true; openMarks(w, anchor); };
+          row.append(go, d); body.appendChild(row);
+        });
+      });
+    }
+    fill(); document.body.appendChild(el);
+    const r = anchor.getBoundingClientRect(), pw = el.offsetWidth;
+    el.style.top = Math.round(r.bottom + 6) + 'px'; el.style.left = Math.max(8, Math.min(innerWidth - pw - 8, Math.round(r.left + r.width / 2 - pw / 2))) + 'px';
+    el.style.maxHeight = Math.max(160, innerHeight - r.bottom - 20) + 'px';
+  }
+  document.addEventListener('pointerdown', e => { const p = document.getElementById('dkMkPop'); if (p && !e.target.closest('#dkMkPop,.dkMk')) p.remove(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { const p = document.getElementById('dkMkPop'); if (p) p.remove(); } });
+  addEventListener('storage', e => { if (e.key === MARKS) { markPaint(); Object.values(mkSubs).forEach(fn => { try { fn(); } catch (er) {} }); } });
 
   /* ---------- מקלדת, מראה, שפה ---------- */
   function keys(e, id) {
