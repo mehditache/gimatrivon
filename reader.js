@@ -424,7 +424,7 @@
     'לא ניתן לטעון את המסכת.': 'Could not load the tractate.', 'לא ניתן לטעון את הספר.': 'Could not load the book.', 'טוען…': 'Loading…', 'בדף': 'Daf', 'במסכת': 'Tractate', 'אין פירוש על קטע זה': 'No commentary on this passage', 'הדף הנוכחי (שני העמודים)': 'The current daf (both sides)',
     'לחצו על קטע בגמרא כדי לראות את הפירוש שלו.': 'Click a passage of the Gemara to see its commentary.', 'הקטע שנבחר': 'Selected passage', 'הקטע הקודם': 'Previous passage', 'הקטע הבא': 'Next passage',
     'טור': 'Tur', 'בית יוסף': 'Beit Yosef', 'ב״ח': 'Bach', 'בית חדש': 'Bayit Chadash', 'סימן': 'Siman', 'סימן קודם': 'Previous siman', 'סימן הבא': 'Next siman', 'הקדמה': 'Introduction', 'הקדמת הטור': 'Introduction to the Tur',
-    'טוען את הטור…': 'Loading the Tur…', 'לא ניתן לטעון את הטור.': 'Could not load the Tur.', 'מעבר לסימן': 'Go to siman', 'ארבעה טורים': 'Arba\'ah Turim', 'הדיבור הקודם': 'Previous comment', 'הדיבור הבא': 'Next comment', 'הסימן כולו': 'The whole siman',
+    'טוען את הטור…': 'Loading the Tur…', 'לא ניתן לטעון את הטור.': 'Could not load the Tur.', 'מעבר לסימן': 'Go to siman', 'ארבעה טורים': 'Arba\'ah Turim', 'הדיבור הקודם': 'Previous comment', 'גודל הטקסט': 'Text size', 'הקטנת הטקסט': 'Smaller text', 'הגדלת הטקסט': 'Larger text', 'זכוכית מגדלת': 'Magnifier', 'גודל הפס': 'Strip size', 'זום': 'Zoom', 'סגירת הזכוכית': 'Close magnifier', 'הזיזו את העכבר על הטקסט': 'Move the pointer over the text', 'הדיבור הבא': 'Next comment', 'הסימן כולו': 'The whole siman',
     'הטור באמצע, ב״ח מימין ובית יוסף משמאל.': 'The Tur in the middle, Bach on the right and Beit Yosef on the left.',
     'טור ומפרשים': 'Tur & commentary', 'משמאל': 'on the left', 'מימין': 'on the right', 'קטעים מהטור, ומתחת לכל אחד הדיבורים שלו.': 'Passages of the Tur, each followed by its comments.',
     'הטור מימין, והפירוש מקיף אותו וממשיך מתחתיו.': 'The Tur on the right; the commentary wraps around it and continues below.', 'הטור לבדו, ברוחב מלא.': 'The Tur alone, at full width.', 'לחצו על סימן בטור או על דיבור כדי לקרוא אותו באותיות גדולות.': 'Click a marker in the Tur or a comment to read it in large letters.',
@@ -457,6 +457,7 @@
   const grpName = he => APP.groupName ? APP.groupName(he) : he;
 
   const ICON = {
+    mag: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M10.5 7.5v6M7.5 10.5h6"/></svg>',
     chevR: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
     chevL: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
     caret: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
@@ -472,11 +473,12 @@
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
   // rview = בטור: צורת הדף (daf) או טור ומפרשים (study); rOff = מפרשים מוסתרים בטור ('y' בית יוסף, 'c' ב״ח)
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zsul: '0', zoff: [] };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zsul: '0', zoff: [], segZ: 0, magZ: 2.5, magW: 420, magH: 170 };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
+  S.segZ = Math.min(3, Math.max(0, Math.round(Number(S.segZ)) || 0)); S.magZ = Math.min(4, Math.max(1.5, Number(S.magZ) || 2.5)); S.magW = Math.min(1000, Math.max(200, Number(S.magW) || 420)); S.magH = Math.min(500, Math.max(60, Number(S.magH) || 170));
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
   if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; S.zsul = S.zsul === '1' ? '1' : '0'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book';
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zsul: S.zsul, zoff: S.zoff })); } catch (e) {} syncHash(); };
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zsul: S.zsul, zoff: S.zoff, segZ: S.segZ, magZ: S.magZ, magW: S.magW, magH: S.magH })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
   const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
@@ -1525,6 +1527,128 @@
     R.querySelectorAll('.rdBook [data-j="' + S.sel.j + '"][data-s="' + S.sel.s + '"]').forEach(e => e.classList.add('sel'));
   }
   function closeSeg() { const p = $r('#rdSeg'), was = S.sel || S.rsel; if (p) p.hidden = true; S.sel = null; S.rsel = null; if (R) markSel(); if (was) syncHash(); }
+  /* ---------- זכוכית מגדלת: פס שנצמד לטור ומגדיל כמה שורות שלמות ----------
+     שכבה מעל הדף בלבד: העתק חי של #rdDesk מוגדל ב-transform ונגלל כך שהנקודה שמתחת לעכבר (מרכז הטור, אם העכבר על טור צר) במרכז הפס.
+     ההעתק נבנה מחדש רק כשהדף משתנה. העדשה לא תופסת אירועים, ולכן קישורים, בחירה וגלילה עובדים כרגיל דרכה. */
+  const MAGLH = 17, MAGSZ = { S: [300, 110], M: [420, 170], L: [560, 250], XL: [720, 360] };
+  const mag = { on: false, el: null, band: null, ctl: null, lens: null, inner: null, hs: [], dirty: true, has: false, x: 0, y: 0, dy: 0, press: 0, mo: null, rq: 0 };
+  const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
+  function setMag(on) {
+    if (on === mag.on) return; mag.on = on;
+    const btn = $r('#rdMagBtn'); if (btn) btn.setAttribute('aria-pressed', String(on));
+    if (!on) { magClear(); return; }
+    const R = $r('#reader') || $r('#rdDesk').parentNode;
+    mag.band = document.createElement('div'); mag.band.className = 'rdMagBand'; mag.band.hidden = true;
+    mag.lens = document.createElement('div'); mag.lens.className = 'rdMagLens'; mag.lens.hidden = true;
+    mag.inner = document.createElement('div'); mag.inner.className = 'rdMagIn'; mag.lens.appendChild(mag.inner);
+    mag.el = document.createElement('div'); mag.el.className = 'rdMag'; mag.el.appendChild(mag.band); mag.el.appendChild(mag.lens);
+    ['l', 'r', 't', 'tl', 'tr'].forEach(k => { const d = document.createElement('i'); d.className = 'rdMagH ' + k; d.dataset.h = k; d.hidden = true; mag.el.appendChild(d); mag.hs.push(d); });
+    mag.ctl = document.createElement('div'); mag.ctl.className = 'rdMagCtl'; mag.ctl.setAttribute('role', 'toolbar'); mag.ctl.setAttribute('aria-label', T('זכוכית מגדלת'));
+    mag.ctl.innerHTML = '<span class="hint">' + T('הזיזו את העכבר על הטקסט') + '</span><span class="lb">' + T('גודל הפס') + '</span>' +
+      Object.keys(MAGSZ).map(k => '<button type="button" data-msz="' + k + '">' + k + '</button>').join('') + '<span class="sep"></span>' +
+      '<button type="button" data-mz="-1" aria-label="' + T('הקטנת הטקסט') + '">−</button><b class="mz"></b><button type="button" data-mz="1" aria-label="' + T('הגדלת הטקסט') + '">+</button><span class="sep"></span>' +
+      '<button type="button" data-mx aria-label="' + T('סגירת הזכוכית') + '">' + ICON.x + '</button>';
+    mag.el.appendChild(mag.ctl); R.appendChild(mag.el);
+    mag.dirty = true; mag.has = false; mag.dy = 0; magCtl();
+    const book = $r('#rdBook');
+    mag.mo = new MutationObserver(() => { mag.dirty = true; if (mag.has && !mag.rq) mag.rq = setTimeout(() => { mag.rq = 0; magDraw(); }, 150); });
+    mag.mo.observe(book, { childList: true, subtree: true, attributes: true });
+    mag.ctl.addEventListener('click', e => {
+      const sz = e.target.closest('[data-msz]'), z = e.target.closest('[data-mz]');
+      if (sz) { [S.magW, S.magH] = MAGSZ[sz.dataset.msz]; save(); magCtl(); magDraw(); }
+      else if (z) magZoom(Number(z.dataset.mz));
+      else if (e.target.closest('[data-mx]')) setMag(false);
+    });
+    mag.hs.forEach(d => d.addEventListener('pointerdown', magResizeStart));
+  }
+  function magClear() {
+    if (mag.mo) mag.mo.disconnect(); clearTimeout(mag.rq); mag.rq = 0;
+    if (mag.el) mag.el.remove();
+    Object.assign(mag, { el: null, band: null, ctl: null, lens: null, inner: null, hs: [], mo: null, has: false, press: 0 });
+  }
+  function magZoom(d) { S.magZ = clampN(Math.round((S.magZ + d * 0.5) * 2) / 2, 1.5, 4); save(); magCtl(); magDraw(); }
+  function magCtl() {
+    if (!mag.ctl) return;
+    mag.ctl.querySelector('.mz').textContent = '×' + S.magZ;
+    mag.ctl.querySelectorAll('[data-msz]').forEach(b => { const [w, hh] = MAGSZ[b.dataset.msz]; b.classList.toggle('on', Math.abs(S.magW - w) < 30 && Math.abs(S.magH - hh) < 20); });
+    mag.ctl.classList.toggle('idle', !mag.has);
+  }
+  // העמודה הצרה שמתחת לעכבר (רש״י, תוספות): מרכזה הוא מרכז הפס, כך שהפס מציג שורות שלמות
+  function magColumn(x, y, maxW) {
+    let n = document.elementFromPoint(x, y); const book = $r('#rdBook');
+    while (n && n !== book && book.contains(n)) { const r = n.getBoundingClientRect(); if (r.width >= 90 && r.width <= maxW && r.height >= 40) return r; n = n.parentElement; }
+    return null;
+  }
+  function magMove(e) {
+    if (!mag.on || (e.pointerType === 'touch' && !mag.press)) return;
+    if (e.target.closest && e.target.closest('.rdMagCtl,.rdMagH,.rdPop')) return;
+    mag.x = e.clientX; mag.y = e.clientY; mag.has = true; magDraw();
+  }
+  function magDraw() {
+    if (!mag.on || !mag.has) return;
+    const desk = $r('#rdDesk'), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+    const Z = S.magZ, W = Math.min(S.magW, vw - 16), H = S.magH, dr = desk.getBoundingClientRect();
+    if (mag.dirty) {
+      const cl = desk.cloneNode(true); cl.removeAttribute('id'); cl.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
+      cl.querySelectorAll('.rdMeasure').forEach(x => x.remove()); cl.setAttribute('aria-hidden', 'true'); cl.inert = true;
+      mag.inner.textContent = ''; mag.inner.appendChild(cl); mag.dirty = false;
+    }
+    const col = magColumn(mag.x, mag.y, W / Z * 1.3), sx = col ? col.left + col.width / 2 : mag.x, sy = mag.y + mag.dy;
+    const bw = W / Z, bh = H / Z;
+    Object.assign(mag.band.style, { left: sx - bw / 2 + 'px', top: sy - bh / 2 + 'px', width: bw + 'px', height: bh + 'px' });
+    let top = sy - bh / 2 - H - 14; if (top < 6) top = sy + bh / 2 + 14;
+    const left = clampN(sx - W / 2, 8, vw - W - 8); top = clampN(top, 6, vh - H - 6);
+    Object.assign(mag.lens.style, { left: left + 'px', top: top + 'px', width: W + 'px', height: H + 'px' });
+    Object.assign(mag.inner.style, { width: dr.width + 'px', height: dr.height + 'px', transform: 'scale(' + Z + ')', left: W / 2 - (sx - dr.left) * Z + 'px', top: H / 2 - (sy - dr.top) * Z + 'px' });
+    const pos = { l: [left, top + H / 2], r: [left + W, top + H / 2], t: [left + W / 2, top], tl: [left, top], tr: [left + W, top] };
+    mag.hs.forEach(d => { const [hx, hy] = pos[d.dataset.h]; d.style.left = hx + 'px'; d.style.top = hy + 'px'; d.hidden = false; });
+    mag.band.hidden = mag.lens.hidden = false;
+    const cw = mag.ctl.offsetWidth || 360;
+    Object.assign(mag.ctl.style, { left: clampN(sx - cw / 2, 8, vw - cw - 8) + 'px', top: Math.min(sy + bh / 2 + 12, vh - 46) + 'px', bottom: 'auto' });
+    magCtl();
+  }
+  function magResizeStart(e) {
+    e.preventDefault(); e.stopPropagation(); const k = e.currentTarget.dataset.h, x0 = e.clientX, y0 = e.clientY, w0 = S.magW, h0 = S.magH, d = e.currentTarget;
+    d.setPointerCapture(e.pointerId);
+    const mv = ev => {
+      const dx = ev.clientX - x0, dy = ev.clientY - y0;
+      if (/l/.test(k) && k !== 't') S.magW = w0 - 2 * dx; if (/r/.test(k)) S.magW = w0 + 2 * dx; // הפס ממורכז על העמודה, לכן הרוחב גדל בשני הצדדים
+      if (/t/.test(k)) S.magH = h0 - dy / (1 + 1 / (2 * S.magZ));
+      S.magW = clampN(Math.round(S.magW), 200, Math.min(1000, document.documentElement.clientWidth - 16)); S.magH = clampN(Math.round(S.magH), 60, Math.min(500, document.documentElement.clientHeight * 0.6));
+      magDraw();
+    };
+    const up = () => { d.removeEventListener('pointermove', mv); d.removeEventListener('pointerup', up); d.removeEventListener('pointercancel', up); save(); magCtl(); };
+    d.addEventListener('pointermove', mv); d.addEventListener('pointerup', up); d.addEventListener('pointercancel', up);
+  }
+  function initMag() {
+    const R = $r('#rdDesk').parentNode;
+    R.addEventListener('pointermove', magMove);
+    R.addEventListener('pointerleave', () => { if (mag.on && !mag.press) { mag.has = false; mag.lens.hidden = mag.band.hidden = true; mag.hs.forEach(d => { d.hidden = true; }); magCtl(); } });
+    R.addEventListener('wheel', e => { // גלגלת על הדף משנה את הזום (Ctrl + גלגלת נשאר של הדפדפן)
+      if (!mag.on || !mag.has || e.ctrlKey || !e.target.closest('#rdDesk')) return; e.preventDefault();
+      const t = Date.now(); if (t - (mag.wt || 0) < 90) return; mag.wt = t; magZoom(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+    // מגע: לחיצה ארוכה מציגה את הפס מעל האצבע, גרירה מזיזה אותו, עזיבה מסתירה
+    let tm = 0;
+    R.addEventListener('pointerdown', e => {
+      if (!mag.on || e.pointerType !== 'touch' || !e.target.closest('#rdDesk')) return;
+      clearTimeout(tm); tm = setTimeout(() => { mag.press = 1; mag.x = e.clientX; mag.y = e.clientY - 40; mag.has = true; magDraw(); }, 350);
+    });
+    const end = () => { clearTimeout(tm); if (mag.press) { mag.press = 0; mag.has = false; if (mag.lens) { mag.lens.hidden = mag.band.hidden = true; mag.hs.forEach(d => { d.hidden = true; }); magCtl(); } } };
+    R.addEventListener('pointerup', end); R.addEventListener('pointercancel', end);
+    R.addEventListener('pointermove', e => { if (mag.press && e.pointerType === 'touch') { mag.x = e.clientX; mag.y = e.clientY - 40; magDraw(); } });
+    R.addEventListener('touchmove', e => { if (mag.press) e.preventDefault(); }, { passive: false });
+  }
+  // גודל הטקסט בפופאפ הדיבור (100/125/150/200%): נשמר, ופועל גם בפופאפ של הטור וגם של הגמרא
+  const SEGZ = [1, 1.25, 1.5, 2];
+  const segZctl = () => '<span class="rdSegZ" role="group" aria-label="' + T('גודל הטקסט') + '"><button type="button" data-segz="-1" aria-label="' + T('הקטנת הטקסט') + '"' + (S.segZ <= 0 ? ' disabled' : '') + '>אַ−</button><span class="pct">' + Math.round(SEGZ[S.segZ] * 100) + '%</span><button type="button" data-segz="1" aria-label="' + T('הגדלת הטקסט') + '"' + (S.segZ >= 3 ? ' disabled' : '') + '>אַ+</button></span>';
+  function applySegZ(p) {
+    p.style.setProperty('--sz', SEGZ[S.segZ]);
+    const c = p.querySelector('.rdSegZ'); if (!c) return;
+    c.querySelector('.pct').textContent = Math.round(SEGZ[S.segZ] * 100) + '%';
+    c.querySelector('[data-segz="-1"]').disabled = S.segZ <= 0; c.querySelector('[data-segz="1"]').disabled = S.segZ >= 3;
+  }
+  function stepSegZ(d) { const z = Math.min(3, Math.max(0, S.segZ + d)); if (z === S.segZ) return; S.segZ = z; save(); applySegZ($r('#rdSeg')); }
   function openSeg(j, s) {
     if (!TD[S.tk]) return;
     S.sel = { j, s }; markSel(); syncHash();
@@ -1535,12 +1659,12 @@
     const list = segTab === 'r' ? rl : tl, cmCls = !zt && S.cmFont === 'rashi' ? 'fR' : 'fN';
     const tab = (k, label, n) => '<button type="button" class="' + (segTab === k ? 'on' : '') + '" data-segtab="' + k + '" aria-pressed="' + (segTab === k) + '"' + (n ? '' : ' disabled') + '>' + h(label) + ' · ' + n + '</button>';
     const p = $r('#rdSeg');
-    p.innerHTML = '<div class="rdPopHd"><span>' + h((zt ? talTitle(talT()) : talName(talT())) + ' ' + dafTxt(j) + ' · ' + T(zt ? 'פסקה' : 'קטע') + ' ' + num(s + 1)) + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
+    p.innerHTML = '<div class="rdPopHd"><span>' + h((zt ? talTitle(talT()) : talName(talT())) + ' ' + dafTxt(j) + ' · ' + T(zt ? 'פסקה' : 'קטע') + ' ' + num(s + 1)) + '</span>' + segZctl() + '<button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<p class="rdSegTxt">' + fmtT(a[0][s] || '') + '</p>' +
       '<div class="rdSegTabs" role="group">' + (zt ? tab('t', T('תרגום'), tl.length) + tab('r', T('הסולם'), rl.length) : tab('r', innerLabel(S.tk, j), rl.length) + tab('t', T('תוספות'), tl.length)) + '</div>' +
       '<div class="rdSegList ' + cmCls + '">' + (list.length ? list.map(e => '<p>' + (e[1] ? '<b>' + fmtT(e[1]) + '</b> ' : '') + fmtT(e[2]) + '</p>').join('') : '<p class="none">' + T(zt ? 'אין תרגום או ביאור לפסקה זו' : 'אין פירוש על קטע זה') + '</p>') + '</div>' +
       '<div class="rdSegNav"><button type="button" data-segmove="-1">' + ICON.chevR + ' ' + T(zt ? 'הפסקה הקודמת' : 'הקטע הקודם') + '</button><button type="button" data-segmove="1">' + T(zt ? 'הפסקה הבאה' : 'הקטע הבא') + ' ' + ICON.chevL + '</button></div>';
-    p.hidden = false;
+    applySegZ(p); p.hidden = false;
   }
   function segMove(dir) {
     if (!S.sel) return; const t = talT(); let { j, s } = S.sel; s += dir;
@@ -1974,12 +2098,12 @@
     const tab = (k, n) => '<button type="button" class="' + (x === k ? 'on' : '') + '" data-turtab="' + k + '" aria-pressed="' + (x === k) + '"' + (n ? '' : ' disabled') + '>' + h(turCmName(k)) + ' · ' + n + '</button>';
     const cnt = k => m.st[k].ce.filter((v, j) => v > m.st[k].cs[j]).length;
     const p = $r('#rdSeg'); TURQ = true;
-    p.innerHTML = '<div class="rdPopHd"><span>' + h(turPartName(t) + ' ' + (s ? num(s) : T('הקדמה')) + ' · ' + turCmName(x) + ' ' + RL(x, i)) + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
+    p.innerHTML = '<div class="rdPopHd"><span>' + h(turPartName(t) + ' ' + (s ? num(s) : T('הקדמה')) + ' · ' + turCmName(x) + ' ' + RL(x, i)) + '</span>' + segZctl() + '<button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<p class="rdSegTxt">' + tokHtml(m, m.tt, a, e, 0, true) + (e < m.tt.length && !ANC.test(m.tt[e]) ? ' …' : '') + '</p>' +
       '<div class="rdSegTabs" role="group">' + tab('y', cnt('y')) + tab('c', cnt('c')) + '</div>' +
       '<div class="rdSegList fR"><p>' + tokHtml(m, z.toks, z.cs[i], z.ce[i], z.cs[i], false) + '</p></div>' +
       '<div class="rdSegNav"><button type="button" data-turmove="-1">' + ICON.chevR + ' ' + T('הדיבור הקודם') + '</button><button type="button" data-turmove="1">' + T('הדיבור הבא') + ' ' + ICON.chevL + '</button></div>';
-    TURQ = false; p.hidden = false;
+    TURQ = false; applySegZ(p); p.hidden = false;
     p.dataset.other = (() => { // הדיבור של המפרש השני הקרוב ביותר לאותו מקום בטור
       let best = -1; for (let j = 0; j < oz.n; j++) { if (m.empty(other, j)) continue; if ((oz.anc[j] || 0) <= a || best < 0) best = j; if ((oz.anc[j] || 0) > a) break; } return best;
     })();
@@ -3059,6 +3183,7 @@
         '<div class="rdSeg" id="rdViewSeg" role="group" aria-label="' + T('סוג תצוגה') + '"><button type="button" data-view="book">' + ICON.vBook + '<span class="t">' + T('ספר') + '</span></button><button type="button" data-view="aligned">' + ICON.vRows + '<span class="t"></span></button></div>' +
         '<span class="rdToolsSep" aria-hidden="true"></span>' +
         '<button type="button" class="rdSetBtn" id="rdSetBtn" aria-haspopup="dialog" aria-expanded="false"><span class="aa">אָ</span><span class="t">' + T('תצוגה') + '</span></button>' +
+        '<button type="button" class="rdIco rdMagBtn" id="rdMagBtn" aria-pressed="false" aria-label="' + T('זכוכית מגדלת') + '" title="' + T('זכוכית מגדלת') + ' (Z)">' + ICON.mag + '</button>' +
         '<button type="button" class="rdIco rdPrintBtn" id="rdPrintBtn" aria-haspopup="dialog" aria-expanded="false" aria-label="' + T('הדפסה / PDF') + '" title="' + T('הדפסה / PDF') + ' (Ctrl P)">' + ICON.print + '</button>' +
       '</div>';
     const top = $r('header.top'), sideSw = $r('#sideSw');
@@ -3076,11 +3201,21 @@
     $r('#rdBook').addEventListener('click', e => { const x = isTal() && e.target.closest('[data-j][data-s]'); if (!x) return; const j = Number(x.dataset.j), s = Number(x.dataset.s); if (S.sel && S.sel.j === j && S.sel.s === s && !$r('#rdSeg').hidden) return closeSeg(); if (x.classList.contains('cT')) segTab = 't'; else if (x.classList.contains('cR')) segTab = 'r'; openSeg(j, s); });
     $r('#rdSeg').onclick = e => {
       if (e.target.closest('[data-close]')) return closeSeg();
+      const zb = e.target.closest('[data-segz]'); if (zb) return stepSegZ(Number(zb.dataset.segz));
       const tt = e.target.closest('[data-turtab]'); if (tt && S.rsel) { if (tt.dataset.turtab !== S.rsel.x) { const o = Number($r('#rdSeg').dataset.other); if (o >= 0) openTurCm(S.rsel.s, tt.dataset.turtab, o); } return; }
       const tm = e.target.closest('[data-turmove]'); if (tm) return turCmMove(Number(tm.dataset.turmove));
       const tb = e.target.closest('[data-segtab]'); if (tb) { segTab = tb.dataset.segtab; return openSeg(S.sel.j, S.sel.s); }
       const mv = e.target.closest('[data-segmove]'); if (mv) segMove(Number(mv.dataset.segmove));
     };
+    { // Ctrl + גלגלת וצביטה בפופאפ הדיבור משנים את גודל הטקסט
+      const sp = $r('#rdSeg'); let wt = 0, pd = 0;
+      sp.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); const t = Date.now(); if (t - wt < 120) return; wt = t; stepSegZ(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+      const dist = e => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      sp.addEventListener('touchstart', e => { pd = e.touches.length === 2 ? dist(e) : 0; }, { passive: true });
+      sp.addEventListener('touchmove', e => { if (e.touches.length !== 2 || !pd) return; const d = dist(e); if (d > pd * 1.25) { stepSegZ(1); pd = d; } else if (d < pd * 0.8) { stepSegZ(-1); pd = d; } }, { passive: true });
+    }
+    initMag();
+    $r('#rdMagBtn').onclick = () => setMag(!mag.on);
     $r('#rdPrevCh').onclick = () => stepChapter(-1); $r('#rdNextCh').onclick = () => stepChapter(1);
     $r('#rdPrev').onclick = $r('#rdPrev2').onclick = () => turn(-1);
     $r('#rdNext').onclick = $r('#rdNext2').onclick = () => turn(1);
@@ -3450,7 +3585,10 @@
       if (mod && (e.key === 'p' || e.key === 'P')) { e.preventDefault(); if (openPop !== 'print') openPopover('print'); return; }
       if (e.key === 'Escape' && openPop) { closePops(); return; }
       if (e.key === 'Escape' && $r('#rdSeg') && !$r('#rdSeg').hidden) { closeSeg(); return; }
+      if (e.key === 'Escape' && mag.on) { setMag(false); return; }
       if (inField || mod || e.altKey) return;
+      if (e.code === 'KeyZ') { e.preventDefault(); setMag(!mag.on); return; }
+      if (mag.on && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); mag.dy += e.key === 'ArrowUp' ? -MAGLH : MAGLH; magDraw(); return; }
       if (e.key === '/') { e.preventDefault(); $r('#rdQ').focus(); }
       else if (e.key === 'ArrowLeft' || e.key === 'PageDown') { e.preventDefault(); turn(1); }
       else if (e.key === 'ArrowRight' || e.key === 'PageUp') { e.preventDefault(); turn(-1); }
