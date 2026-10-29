@@ -1503,3 +1503,6 @@ a.rdRef{color:inherit;text-decoration:underline dotted;text-underline-offset:3px
 .narrow .stzOn .stzA{padding:6px 0 4px}
 .narrow .stzOn .stzB{border-inline-start:0;border-radius:8px;margin-bottom:8px;font-size:.78em}
 .stzOn .stzLic{font-weight:400;opacity:.7;font-size:.9em}
+.rdSegList .stzSeg{margin:0 0 6px;line-height:1.85}
+.rdSegList .stzSm{color:var(--rdMu);font-size:.88em}
+.rdSegList .stzLic{display:block;color:var(--rdMu);opacity:.7;font-size:.78em;margin-top:4px}
