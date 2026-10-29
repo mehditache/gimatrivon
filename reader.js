@@ -450,7 +450,8 @@
     'אין תרגום או ביאור לפסקה זו': 'No translation or commentary on this paragraph', 'הפסקה הקודמת': 'Previous paragraph', 'הפסקה הבאה': 'Next paragraph', 'לא ניתן לטעון את הפרשה.': 'Could not load the portion.',
     'דף מול תרגום: עמוד הזוהר בארמית מימין, והתרגום (או הסולם) מולו משמאל': 'Page & translation: the Zohar page in Aramaic on the right, its translation (or the Sulam) facing it on the left',
     'זוהר והסולם: פסקאות הזוהר ברצף, ומתחת להן התרגום וביאור הסולם': 'Zohar & Sulam: the Zohar paragraphs as running text, with the translation and the Sulam commentary below them',
-    'בסימן': 'Siman', 'בכל הטור': 'Whole Tur', 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.': 'You can also type a place: "OC 60", "YD 193".'
+    'בסימן': 'Siman', 'בכל הטור': 'Whole Tur', 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.': 'You can also type a place: "OC 60", "YD 193".',
+    'חיפוש': 'Search', 'העתק': 'Copy', 'עוד': 'More', 'הועתק': 'Copied', 'הערך הועתק': 'Value copied', 'ערוך': 'Arukh', 'תרגם': 'Translate', 'תיבות': 'words', 'אותיות': 'letters', 'תרגום מלא ומילון': 'Full translation & dictionary', 'חיפוש גימטריה זהה': 'Same-gematria search', 'חיפוש בכל הספרים': 'Search all books', 'הצג ביאור שטיינזלץ': 'Show Steinsaltz commentary', 'העתק עם מקור': 'Copy with source', 'חפש ערך זהה': 'Find same value', 'לא נמצא תרגום. המילון מכסה בעיקר ארמית של הגמרא.': 'No translation found. The dictionary mainly covers Talmudic Aramaic.', 'מילון מביאור הרב שטיינזלץ (CC BY-NC) וספר הערוך': 'Dictionary from the Steinsaltz commentary (CC BY-NC) and Sefer HaArukh', 'רגילה': 'Regular', 'אתב״ש': 'Atbash', 'עם הכולל': 'With kollel', 'עם מספר תיבות': 'With word count', 'עם מספר אותיות': 'With letter count', 'מילוי': 'Milui'
   };
   const T = he => isEn() ? (EN[he] || he) : he;
   const num = n => isEn() ? String(n) : toHeb(n);
@@ -1241,6 +1242,14 @@
     }));
   };
   const loadStz = (k, js, done) => { const t = TX.list[TX.byK[k]]; Promise.all([...new Set(js.filter(j => j >= 0 && j < t.n).map(j => j / STZ_CH | 0))].map(c => stzChunk(k, c))).then(r => done(r.every(Boolean))); };
+  // קטע גמרא שהביאור שלו ארוך מעמוד שלם (אין מה לפצל): תא הביאור מתקצר ונגלל, כדי שהעמוד לא ייחתך
+  const stzFit = p => {
+    const cells = [...p.querySelectorAll('.stzB')];
+    for (let n = 0; n < 4 && cells.length && over(p); n++) {
+      const c = cells.reduce((a, x) => x.offsetHeight > a.offsetHeight ? x : a, cells[0]);
+      c.style.maxHeight = Math.max(80, c.offsetHeight - (p.scrollHeight - p.clientHeight)) + 'px'; c.classList.add('stzScroll');
+    }
+  };
   const stzOn = (k, j) => S.stz === '1' && S.tview === 'study' && !zOf(k) && stzHas(k, j);
   // \u0003…\u0004 = הטקסט המקורי (מודגש), \u0005…\u0006 = תרגום קצר בסוגריים מרובעים (קטן ועמום); מאוזן תמיד כמו fmtT
   const fmtStz = s => { let b = 0, m = 0; const out = h(s).replace(/[\u0003-\u0006]/g, c => c === '\u0003' ? (b++, '<b>') : c === '\u0004' ? (b > 0 ? (b--, '</b>') : '') : c === '\u0005' ? (m++, '<small class="stzSm">') : (m > 0 ? (m--, '</small>') : '')); return out + '</b>'.repeat(b) + '</small>'.repeat(m); };
@@ -1524,7 +1533,7 @@
     }
     book.innerHTML = html + (geo.two ? '<div class="rdSpine" aria-hidden="true"></div>' : '');
     if (zd && geo.two) { const pgs = book.querySelectorAll('.rdPage'); if (pgs.length > 1) zAlign(pgs[0], pgs[1], true); }
-    book.querySelectorAll('.rdPage').forEach(p => { if (over(p)) p.classList.add('tight'); });
+    book.querySelectorAll('.rdPage').forEach(p => { stzFit(p); if (over(p)) p.classList.add('tight'); });
     fxAfter(book);
     setBar();
     const dafV = S.tview === 'daf' && !t.z;
@@ -3662,10 +3671,11 @@
     if (y < 8) y = rect.b + 8; if (y + b.height > H - 8) y = Math.max(8, H - b.height - 8);
     el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.visibility = '';
   };
-  const selBarHtml = g => '<button type="button" data-a="tr">' + h(T('תרגום')) + '</button><button type="button" data-a="gem" class="gtN">' + (g ? g.reg : '') + '</button><button type="button" data-a="find">' + h(T('חיפוש')) + '</button><button type="button" data-a="copy">' + h(T('העתק')) + '</button><button type="button" data-a="more" aria-label="' + h(T('עוד')) + '">⋯</button>';
+  const selAram = () => { try { return isTal(); } catch (e) { return false; } }; // התרגום (מילון ארמית) רק בגמרא ובזוהר; בתנ״ך ובמשנה אותן אותיות הן עברית וההתאמה מטעה
+  const selBarHtml = g => (selAram() ? '<button type="button" data-a="tr">' + h(T('תרגם')) + '</button>' : '') + '<button type="button" data-a="gem" class="gtN">' + (g ? g.reg : '') + '</button><button type="button" data-a="find">' + h(T('חיפוש')) + '</button><button type="button" data-a="copy">' + h(T('העתק')) + '</button><button type="button" data-a="more" aria-label="' + h(T('עוד')) + '">⋯</button>';
   function selShow(c) {
     selEnsure(); SEL = c; selUI.card.hidden = selUI.menu.hidden = true;
-    selUI.bar.innerHTML = selBarHtml(selGem(c.text)); selPlace(selUI.bar, c.rect, false);
+    selUI.bar.innerHTML = selBarHtml(selGem(c.text)); selPlace(selUI.bar, c.rect, !!(G.matchMedia && G.matchMedia('(pointer: coarse)').matches)); // במסך מגע: מתחת לבחירה, כדי לא להסתיר את תפריט המערכת
   }
   const selTrHtml = c => {
     const tr = selTranslate(c.text);
@@ -3680,9 +3690,9 @@
       '<div class="gtBtns"><button type="button" data-a="gfind" class="gtP">' + h(T('חפש ערך זהה')) + ' (' + g.reg + ')</button><button type="button" data-a="gcopy">' + h(T('העתק')) + ' ' + g.reg + '</button></div>';
   };
   function selCardShow(tab) {
-    const c = SEL; if (!c) return; selCard = tab; selUI.menu.hidden = true;
+    const c = SEL; if (!c) return; if (!selAram()) tab = 1; selCard = tab; selUI.menu.hidden = true;
     const body = () => tab === 0 ? '<div class="gtBody" id="gtBody">' + h(T('טוען…')) + '</div>' : '<div class="gtBody">' + selGemHtml(c) + '</div>';
-    selUI.card.innerHTML = '<div class="gtHd"><b>' + h(c.text.length > 40 ? c.text.slice(0, 38) + '…' : c.text) + '</b></div><div class="gtTabs"><button type="button" data-a="tr" class="' + (tab === 0 ? 'on' : '') + '">' + h(T('תרגום')) + '</button><button type="button" data-a="gem" class="' + (tab === 1 ? 'on' : '') + '">' + h(T('גימטריה')) + '</button></div>' + body();
+    selUI.card.innerHTML = '<div class="gtHd"><b>' + h(c.text.length > 40 ? c.text.slice(0, 38) + '…' : c.text) + '</b></div><div class="gtTabs">' + (selAram() ? '<button type="button" data-a="tr" class="' + (tab === 0 ? 'on' : '') + '">' + h(T('תרגם')) + '</button>' : '') + '<button type="button" data-a="gem" class="' + (tab === 1 ? 'on' : '') + '">' + h(T('גימטריה')) + '</button></div>' + body();
     selPlace(selUI.card, c.rect, true);
     if (tab === 0) lazyJs('gloss', () => lazyJs('arukh', () => { if (SEL !== c) return; const el = selUI.card.querySelector('#gtBody'); if (el) { el.innerHTML = selTrHtml(c); selPlace(selUI.card, c.rect, true); } }));
   }
@@ -3706,14 +3716,17 @@
     const it = (a, ic, l, k) => '<button type="button" role="menuitem" data-a="' + a + '"><span class="ic">' + ic + '</span><span>' + h(l) + '</span>' + (k ? '<span class="gtK">' + k + '</span>' : '') + '</button>';
     selUI.card.hidden = true;
     selUI.menu.innerHTML = '<div class="gtHd"><b>' + h(c.text.length > 40 ? c.text.slice(0, 38) + '…' : c.text) + '</b><span>' + g.words + ' ' + h(T('תיבות')) + ' · ' + g.letters + ' ' + h(T('אותיות')) + '</span></div><div class="gtPrev" id="gtPrev"></div>' +
-      it('tr', 'א→', T('תרגום מלא ומילון')) + it('gem', '∑', T('גימטריה'), g.reg) + it('gfind', '⌕', T('חיפוש גימטריה זהה')) + it('find', '▤', T('חיפוש בכל הספרים')) + (tal ? it('stz', '❝', T('הצג ביאור שטיינזלץ')) : '') +
+      (selAram() ? it('tr', 'א→', T('תרגום מלא ומילון')) : '') + it('gem', '∑', T('גימטריה'), g.reg) + it('gfind', '⌕', T('חיפוש גימטריה זהה')) + it('find', '▤', T('חיפוש בכל הספרים')) + (tal ? it('stz', '❝', T('הצג ביאור שטיינזלץ')) : '') +
       '<hr>' + it('copy', '⧉', T('העתק'), 'Ctrl C') + it('copysrc', '⧉', T('העתק עם מקור'));
     selPlace(selUI.menu, { l: x, r: x, t: y, b: y }, true); selUI.menu.style.left = Math.max(8, Math.min(innerWidth - selUI.menu.offsetWidth - 8, x - selUI.menu.offsetWidth + 12)) + 'px';
-    lazyJs('gloss', () => { if (SEL !== c) return; const tr = selTranslate(c.text), el = selUI.menu.querySelector('#gtPrev'); if (!el) return; if (tr.found) el.textContent = tr.units.map(u => u.g ? u.g[0] : u.w).join(' '); else el.hidden = true; });
+    if (selAram()) lazyJs('gloss', () => { if (SEL !== c) return; const tr = selTranslate(c.text), el = selUI.menu.querySelector('#gtPrev'); if (!el) return; if (tr.found) el.textContent = tr.units.map(u => u.g ? u.g[0] : u.w).join(' '); else el.hidden = true; });
   }
   function selInit() {
     const upd = () => { clearTimeout(selT); selT = setTimeout(() => { if (document.body.dataset.mode !== 'read') return selHide(); const c = selCur(); if (!c) { if (selUI.card && !selUI.card.hidden && SEL) return; return selHide(); } selShow(c); }, 90); };
-    document.addEventListener('mouseup', e => { if (e.target.closest && e.target.closest('.gtSelBar,.gtSelCard,.gtSelMenu')) return; upd(); });
+    let down = false; // בגרירה בעכבר הסרגל מופיע רק בסוף (mouseup); במגע (בחירה בלחיצה ארוכה) — ב-selectionchange
+    document.addEventListener('mousedown', () => { down = true; }, true);
+    document.addEventListener('selectionchange', () => { if (!down && G.matchMedia && G.matchMedia('(pointer: coarse)').matches) upd(); });
+    document.addEventListener('mouseup', e => { down = false; if (e.target.closest && e.target.closest('.gtSelBar,.gtSelCard,.gtSelMenu')) return; upd(); });
     document.addEventListener('keyup', e => { if (e.shiftKey || e.key === 'Escape') { if (e.key === 'Escape') return selHide(); upd(); } });
     document.addEventListener('mousedown', e => { if (!e.target.closest || !e.target.closest('.gtSelBar,.gtSelCard,.gtSelMenu')) selHide(); }, true);
     document.addEventListener('scroll', selHide, true);
