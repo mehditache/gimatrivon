@@ -791,7 +791,7 @@ html.gtNoAnim .driver-overlay *{transition:none!important}
 @font-face{font-family:"GimFrank";src:url(vendor/fonts/FrankRuhlLibre-hebrew.woff2) format("woff2");font-weight:300 900;font-display:swap;unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
 @font-face{font-family:"GimRashi";src:url(vendor/fonts/NotoRashiHebrew-hebrew.woff2) format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
 :root{--rdDesk:#2e2416;--rdBar:#382c1b;--rdBarTx:#ecdfc2;--rdBarMu:#b9a67e;--rdPaper:#fbf7ec;--rdEdge:#efe5cd;--rdInk:#2a2117;--rdMu:#8a7754;--rdGold:#98722c;--rdLine:#e4d7b9;
-  --rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:#f6e39a;--rdOn:#e7c77e;--rdFlash:#f3dfa6}
+  --rdChip:#f1e6cc;--rdChipTx:#7d5c1f;--rdTrChip:#f4e3e3;--rdTrTx:#8a2f40;--rdRow:#f3ead4;--rdHl:#f6e39a;--rdHlSel:#e8c058;--rdOn:#e7c77e;--rdFlash:#f3dfa6}
 /* הסביבה של הספר (שולחן, סרגל, כפתורים) לפי המראה: גוויל = בהיר, לילה = כהה. הספר עצמו תמיד בהיר (בקשת המשתמש).
    --rdG1..3 = שכבות שקופות לרקע ולמסגרות של כפתורים בסרגל (כהות על רקע בהיר, בהירות על רקע כהה) */
 :root{--rdDesk:#d8c49d;--rdDeskGlow:radial-gradient(ellipse at 50% 35%,#e6d5b2,#cfb88a 75%);--rdBar:#efe4cb;--rdBarTx:#3a2d1a;--rdBarMu:#7d6a48;--rdBarB:#cdb787;--rdG1:rgba(70,50,15,.05);--rdG2:rgba(70,50,15,.09);--rdG3:rgba(70,50,15,.18);--rdShadow:rgba(80,55,20,.28);--rdOn:#b8913f}
@@ -928,6 +928,8 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .rdFs:hover .rdFsBub,.rdFs.drag .rdFsBub{opacity:1;transform:translateY(-50%) scale(1)}
 mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .rdPage.tur mark.rdHl{padding:0} /* העימוד בטור נמדד בלי הסימון — לא להוסיף רוחב */
+/* בפסוק שמודגש אחרי פתיחת תוצאת חיפוש (.flash) או בפסוק/דיבור מסומן (.sel) הרקע כמעט זהה ל---rdHl, ולכן מילות החיפוש בתוכו נעלמו: גוון זהב חזק יותר וקו תחתון (inset — בלי רוחב נוסף) */
+.reader .rdBook .sel mark.rdHl,.reader .rdBook .flash mark.rdHl{background:var(--rdHlSel);box-shadow:inset 0 -2px 0 var(--rdGold)}
 /* שולחן + ספר */
 .rdDesk{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--rdDeskGlow)}
 /* v3.12.0: צל כ-box-shadow ולא filter:drop-shadow — filter מצייר מחדש את הצל של כל הספר בכל פריים של אפקט הדפדוף. isolation שומר את קצוות הדפים (::before/::after, z-index:-1) מאחורי הדפים כמו קודם */
