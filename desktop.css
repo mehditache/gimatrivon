@@ -224,7 +224,7 @@ body.dkGem .dkTools{display:none}
 .dkScope::after{content:"";width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-1px) rotate(45deg)}
 .dkTop .dkTools{flex-direction:row-reverse;gap:10px;padding:0;border:0;border-radius:0;height:34px}
 .dkTop .dkTools .rdToolsSep{display:none}
-.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:var(--fl);justify-content:center}
+.dkTop .dkTools .rdMagBtn,.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:var(--fl);justify-content:center}
 .dkTop .dkTools .rdSetBtn .aa{font-size:17px}
 .dkTop .dkTools .rdSeg{flex-direction:row-reverse;width:84px;height:34px;padding:2px;box-sizing:border-box;border:0;border-radius:10px;background:var(--fl);gap:0}
 .dkTop .dkTools .rdSeg button{width:40px;height:30px;padding:0;justify-content:center;border-radius:8px;background:none;color:var(--tx)}
@@ -367,7 +367,7 @@ body{--wp:#fff}
 .dkTop .brand .ver{border-color:var(--bkHair)!important;color:var(--bk3)!important;background:var(--bkBg)!important}
 :root[data-theme=dark] .dkTop .brand .ver{color:var(--bk1)!important}
 .dkTop button,.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab{color:var(--bkInk)!important}
-.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab,.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn,.dkTop .dkTools .rdSeg,.dkTop .dkGemTools button,.dkNav .rdWhere,.dkNav>button{background:var(--bkTint)!important}
+.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab,.dkTop .dkTools .rdMagBtn,.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn,.dkTop .dkTools .rdSeg,.dkTop .dkGemTools button,.dkNav .rdWhere,.dkNav>button{background:var(--bkTint)!important}
 .dkNav{background:none!important}
 .dkTop .dkTools .rdSeg button.on{background:var(--bkBg)!important;box-shadow:0 0 0 .5px var(--bkHair),0 1px 3px rgba(140,100,33,.18)!important;color:var(--bk3)!important}
 :root[data-theme=dark] .dkTop .dkTools .rdSeg button.on{color:var(--bk1)!important}
@@ -483,3 +483,32 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 .dkBmDel{flex:none;width:26px;height:26px;margin-inline-end:3px;border:0;border-radius:13px;background:none;color:inherit;display:grid;place-items:center;opacity:0;cursor:pointer}
 .dkBmRow:hover .dkBmDel,.dkBmRow:focus-within .dkBmDel{opacity:.7}
 .dkBmDel:hover{opacity:1!important;background:color-mix(in srgb,var(--rdInk) 12%,transparent)}
+
+/* v4.10.0: סימניה בפס החלון — כוכב (מסמן/מסיר את המקום הפתוח) וחץ לרשימת הסימניות */
+.dkMk{display:inline-flex;align-items:center;height:22px;margin-inline-start:6px;border:1px solid var(--ln);border-radius:7px;background:var(--pn);z-index:1;flex:none}
+.dkMk[hidden]{display:none}
+.dkMk button{height:20px;min-width:24px;padding:0;border:0;background:none;color:var(--mu);display:grid;place-items:center;cursor:pointer;font-size:14px}
+.dkMk button:hover{color:var(--gold)}
+.dkMk .mkm{min-width:17px;font-size:11px;border-inline-start:1px solid var(--ln)}
+.dkMk.on{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--pn))}
+.dkMk.on .mk{color:var(--gold)}.dkMk.on .mk .gi{fill:currentColor}
+.dkWg .dkMk{margin-inline-start:0}
+.dkMkPop{position:fixed;z-index:300;width:310px;display:flex;flex-direction:column;overflow:hidden;padding-bottom:6px;color:var(--tx);font:13px var(--ui);border-radius:12px;background:color-mix(in srgb,var(--pgBg,var(--pn)) 92%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 0 0 .5px var(--ln),0 14px 36px rgba(0,0,0,.25)}
+.dkMkPop .hd{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--ln);font-weight:700;color:var(--gold)}
+.dkMkPop .hd .gi{fill:currentColor}
+.dkMkPop .add{display:flex;align-items:center;gap:8px;margin:8px 10px;padding:8px 10px;border:1px solid var(--gold);border-radius:9px;background:var(--acs);color:var(--tx);font:600 13px var(--ui);cursor:pointer;text-align:start}
+.dkMkPop .add .gi{flex:none;color:var(--gold)}.dkMkPop .add small{margin-inline-start:auto;color:var(--mu);font-weight:400}
+.dkMkPop .flt{margin:0 10px 4px;height:28px;border:1px solid var(--ln);border-radius:8px;background:transparent;color:var(--tx);padding:0 10px;font:13px var(--ui)}
+.dkMkPop .body{flex:1;min-height:0;overflow-y:auto}
+.dkMkPop .none{padding:12px;color:var(--mu)}
+.dkMkPop .g{padding:8px 12px 2px;color:var(--mu);font-size:11.5px;font-weight:600}
+.dkMkPop .r{display:flex;align-items:center;margin:0 6px;border-radius:7px}
+.dkMkPop .r:hover,.dkMkPop .r:focus-within{background:color-mix(in srgb,var(--gold) 14%,transparent)}
+.dkMkPop .r.cu{background:var(--acs);font-weight:600}
+.dkMkPop .go{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:30px;padding:0 6px;border:0;background:none;color:inherit;font:inherit;text-align:start;cursor:pointer}
+.dkMkPop .go .gi{flex:none;color:var(--gold);width:14px;height:14px}
+.dkMkPop .go span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dkMkPop .del{flex:none;width:24px;height:24px;margin-inline-end:3px;border:0;border-radius:12px;background:none;color:var(--mu);display:grid;place-items:center;cursor:pointer;opacity:.5}
+.dkMkPop .r:hover .del,.dkMkPop .del:focus{opacity:1}
+.dkMkPop .del .gi{width:12px;height:12px}
+.dkTop .dkTools .rdMagBtn[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--gold);color:var(--gold)}
