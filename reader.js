@@ -451,7 +451,7 @@
     'דף מול תרגום: עמוד הזוהר בארמית מימין, והתרגום (או הסולם) מולו משמאל': 'Page & translation: the Zohar page in Aramaic on the right, its translation (or the Sulam) facing it on the left',
     'זוהר והסולם: פסקאות הזוהר ברצף, ומתחת להן התרגום וביאור הסולם': 'Zohar & Sulam: the Zohar paragraphs as running text, with the translation and the Sulam commentary below them',
     'בסימן': 'Siman', 'בכל הטור': 'Whole Tur', 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.': 'You can also type a place: "OC 60", "YD 193".',
-    'חיפוש': 'Search', 'העתק': 'Copy', 'עוד': 'More', 'הועתק': 'Copied', 'הערך הועתק': 'Value copied', 'ערוך': 'Arukh', 'תרגם': 'Translate', 'תיבות': 'words', 'אותיות': 'letters', 'תרגום מלא ומילון': 'Full translation & dictionary', 'חיפוש גימטריה זהה': 'Same-gematria search', 'חיפוש בכל הספרים': 'Search all books', 'הצג ביאור שטיינזלץ': 'Show Steinsaltz commentary', 'העתק עם מקור': 'Copy with source', 'חפש ערך זהה': 'Find same value', 'לא נמצא תרגום. המילון מכסה בעיקר ארמית של הגמרא.': 'No translation found. The dictionary mainly covers Talmudic Aramaic.', 'מילון מביאור הרב שטיינזלץ (CC BY-NC) וספר הערוך': 'Dictionary from the Steinsaltz commentary (CC BY-NC) and Sefer HaArukh', 'רגילה': 'Regular', 'אתב״ש': 'Atbash', 'עם הכולל': 'With kollel', 'עם מספר תיבות': 'With word count', 'עם מספר אותיות': 'With letter count', 'מילוי': 'Milui'
+    'חיפוש': 'Search', 'העתק': 'Copy', 'עוד': 'More', 'הועתק': 'Copied', 'הערך הועתק': 'Value copied', 'ערוך': 'Arukh', 'ביאור הרב עדין שטיינזלץ, מהדורת William Davidson, דרך ספריא. רישיון CC BY-NC 4.0: שימוש לא מסחרי, עם ייחוס.': 'Rabbi Adin Steinsaltz commentary, William Davidson edition, via Sefaria. CC BY-NC 4.0: non-commercial use with attribution.', 'הסתרת רש״י ותוספות': 'Hide Rashi & Tosafot', 'רק גמרא וביאור': 'Gemara and commentary only', 'תרגם': 'Translate', 'תיבות': 'words', 'אותיות': 'letters', 'תרגום מלא ומילון': 'Full translation & dictionary', 'חיפוש גימטריה זהה': 'Same-gematria search', 'חיפוש בכל הספרים': 'Search all books', 'הצג ביאור שטיינזלץ': 'Show Steinsaltz commentary', 'העתק עם מקור': 'Copy with source', 'חפש ערך זהה': 'Find same value', 'לא נמצא תרגום. המילון מכסה בעיקר ארמית של הגמרא.': 'No translation found. The dictionary mainly covers Talmudic Aramaic.', 'מילון מביאור הרב שטיינזלץ (CC BY-NC) וספר הערוך': 'Dictionary from the Steinsaltz commentary (CC BY-NC) and Sefer HaArukh', 'רגילה': 'Regular', 'אתב״ש': 'Atbash', 'עם הכולל': 'With kollel', 'עם מספר תיבות': 'With word count', 'עם מספר אותיות': 'With letter count', 'מילוי': 'Milui'
   };
   const T = he => isEn() ? (EN[he] || he) : he;
   const num = n => isEn() ? String(n) : toHeb(n);
@@ -475,12 +475,12 @@
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
   // rview = בטור: צורת הדף (daf) או טור ומפרשים (study); rOff = מפרשים מוסתרים בטור ('y' בית יוסף, 'c' ב״ח)
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zsul: '0', zoff: [], segZ: 0, magZ: 2.5, magW: 420, magH: 170, stz: '0' };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zsul: '0', zoff: [], segZ: 0, magZ: 2.5, magW: 420, magH: 170, stz: '0', stzHide: '0' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.segZ = Math.min(3, Math.max(0, Math.round(Number(S.segZ)) || 0)); S.magZ = Math.min(4, Math.max(1.5, Number(S.magZ) || 2.5)); S.magW = Math.min(1000, Math.max(200, Number(S.magW) || 420)); S.magH = Math.min(500, Math.max(60, Number(S.magH) || 170));
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; S.zsul = S.zsul === '1' ? '1' : '0'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book'; S.stz = S.stz === '1' ? '1' : '0';
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zsul: S.zsul, zoff: S.zoff, segZ: S.segZ, magZ: S.magZ, magW: S.magW, magH: S.magH, stz: S.stz })); } catch (e) {} syncHash(); };
+  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; S.zsul = S.zsul === '1' ? '1' : '0'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book'; S.stz = S.stz === '1' ? '1' : '0'; S.stzHide = S.stzHide === '1' ? '1' : '0';
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zsul: S.zsul, zoff: S.zoff, segZ: S.segZ, magZ: S.magZ, magW: S.magW, magH: S.magH, stz: S.stz, stzHide: S.stzHide })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
   const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
@@ -581,7 +581,7 @@
     const ph = Math.max(300, H - (narrow ? 8 : 30));
     const fs = Math.round(((narrow ? 18 : 20.5) + S.size * 1.5) * 10) / 10;
     const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
-    return { W, H, narrow, two, zc, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zlay, S.zsul, S.zoff.join(''), S.stz].join('|') };
+    return { W, H, narrow, two, zc, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zlay, S.zsul, S.zoff.join(''), S.stz, S.stzHide].join('|') };
   }
 
   // מילים של פסוק/משנה (בלי טעמים) — לפיצול משנה ארוכה בין עמודים
@@ -1334,7 +1334,7 @@
     const seg = s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>';
     if (stzOn(k, j)) { // ביאור שטיינזלץ שורה מול שורה: הגמרא מימין, הביאור משמאל, לפי קטע
       const sz = stzRow(k, j);
-      html += '<div class="rdBody"><div class="rdTxt rdTal stzOn"><div class="stzHd"><span>' + h(T('גמרא')) + '</span><span>' + h(T('ביאור הרב שטיינזלץ')) + '</span></div>' +
+      html += '<div class="rdBody"><div class="rdTxt rdTal stzOn"><div class="stzHd"><span>' + h(T('גמרא')) + '</span><span>' + h(T('ביאור הרב שטיינזלץ')) + ' <small class="stzLic" title="' + h(T('ביאור הרב עדין שטיינזלץ, מהדורת William Davidson, דרך ספריא. רישיון CC BY-NC 4.0: שימוש לא מסחרי, עם ייחוס.')) + '">· CC BY-NC</small></span></div>' +
         pg.segs.map(s => '<div class="stzR"><p class="stzA">' + seg(s) + '</p><div class="stzB" data-j="' + j + '" data-s="' + s + '">' + (sz[s] ? fmtStz(sz[s]) : '') + '</div></div>').join('') + '</div></div><div class="rdSp"></div>';
     } else
     html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + (pg.segs.length || !t.z ? pg.segs.map(seg).join(' ') : '<span class="rdCont">' + h(zEmpty(t, j)) + '</span>') + '</p></div></div><div class="rdSp"></div>';
@@ -1450,7 +1450,7 @@
   function studyPages(k, j, g) {
     const tt = tOf(k), zd = !!tt.z && S.tview === 'daf', two = zd && !!g.two && !g.zc;
     const key = 'T' + k + ':' + j + '|' + g.key + (tt.z ? '|' + S.tview + S.zside + S.zlay + S.zsul + S.zoff.join('') : ''); if (PC.has(key)) return PC.get(key);
-    const probe = $r('#rdProbe'), a = amudRow(k, j), ents = talCm(k, j), pages = [];
+    const probe = $r('#rdProbe'), a = amudRow(k, j), ents = stzOn(k, j) && S.stzHide === '1' ? [] : talCm(k, j), pages = []; // ביאור שטיינזלץ פעיל + הסתרת הפירושים: רק גמרא וביאור
     probe.className = 'rdPage tal' + g.cls;
     if (zd && a[0].length) { const zp = zdPages(k, j, g, probe, a, ents, two); PC.set(key, zp); trimMap(PC, 60); return zp; }
     let carry = [];
@@ -2353,7 +2353,7 @@
     $r('#rdSet').innerHTML = '<div class="rdPopHd"><span>' + T('הגדרות תצוגה') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('סוג תצוגה') + '</span><div class="rdCards">' +
       card('daf', '<span class="pv pvDaf"><i></i><i class="m"></i><i></i></span>', 'צורת הדף') + card('study', '<span class="pv pvRows"><i></i><i></i><i></i></span>', 'גמרא ומפרשים') + '</div></div>' +
-      (S.tview === 'study' ? '<div class="rdSec"><span class="rdSecT">' + T('ביאור') + '</span><button type="button" class="rdOpt rdChk' + (S.stz === '1' ? ' on' : '') + '" data-set="stz" data-val="' + (S.stz === '1' ? '0' : '1') + '" aria-pressed="' + (S.stz === '1') + '"><span class="dot"></span><span class="lb">' + T('ביאור הרב שטיינזלץ') + '</span><span class="nt">' + T('שורה מול שורה') + '</span></button></div>' : '') +
+      (S.tview === 'study' ? '<div class="rdSec"><span class="rdSecT">' + T('ביאור') + '</span><button type="button" class="rdOpt rdChk' + (S.stz === '1' ? ' on' : '') + '" data-set="stz" data-val="' + (S.stz === '1' ? '0' : '1') + '" aria-pressed="' + (S.stz === '1') + '"><span class="dot"></span><span class="lb">' + T('ביאור הרב שטיינזלץ') + '</span><span class="nt">' + T('שורה מול שורה') + '</span></button>' + (S.stz === '1' ? '<button type="button" class="rdOpt rdChk' + (S.stzHide === '1' ? ' on' : '') + '" data-set="stzHide" data-val="' + (S.stzHide === '1' ? '0' : '1') + '" aria-pressed="' + (S.stzHide === '1') + '"><span class="dot"></span><span class="lb">' + T('הסתרת רש״י ותוספות') + '</span><span class="nt">' + T('רק גמרא וביאור') + '</span></button>' : '') + '</div>' : '') +
       '<div class="rdSec"><span class="rdSecT">' + T('כתב הפירוש') + ' (' + T('גמרא ומפרשים') + ')</span><div class="rdFonts">' + fontPair('cmFont', 'מאימתי קורין') + '</div></div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('גודל אותיות') + '</span><div class="rdSizes">' + [-1, 0, 1, 2].map(z => '<button type="button" class="' + (S.size === z ? 'on' : '') + '" data-set="size" data-val="' + z + '" aria-pressed="' + (S.size === z) + '" style="font-size:' + (13 + z * 2.5) + 'px">א</button>').join('') + '</div></div>' +
       '<p class="rdNote">' + T('לחצו על קטע בגמרא כדי לראות את הפירוש שלו.') + ' ' + T('ההגדרות נשמרות לפעם הבאה.') + '</p>';
@@ -3285,7 +3285,7 @@
         renderSet();
       });
       if (k === 'zoff') { const x = t.dataset.val; S.zoff = S.zoff.includes(x) ? S.zoff.filter(v => v !== x) : S.zoff.concat(x); S.tp = 0; renderSet(); return render(); }
-      if (k === 'zside' || k === 'zlay' || k === 'zsul' || k === 'stz') S.tp = 0;
+      if (k === 'zside' || k === 'zlay' || k === 'zsul' || k === 'stz' || k === 'stzHide') S.tp = 0;
       if (k === 'ramNik') S.ramNik = t.dataset.val === 'true';
       else if (k === 'view' && isRambam(S.b)) S.ramView = t.dataset.val;
       else if (k === 'cm') { const c = Number(t.dataset.val); S.cmOff = S.cmOff.includes(c) ? S.cmOff.filter(x => x !== c) : S.cmOff.concat(c); }
