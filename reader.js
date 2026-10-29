@@ -1563,6 +1563,9 @@
       else if (e.target.closest('[data-mx]')) setMag(false);
     });
     mag.hs.forEach(d => d.addEventListener('pointerdown', magResizeStart));
+    mag.ctlOver = false;
+    mag.ctl.addEventListener('pointerenter', () => { mag.ctlOver = true; if (mag.band) mag.band.hidden = true; });
+    mag.ctl.addEventListener('pointerleave', () => { mag.ctlOver = false; });
   }
   function magClear() {
     if (mag.mo) mag.mo.disconnect(); clearTimeout(mag.rq); mag.rq = 0;
@@ -1605,7 +1608,7 @@
     Object.assign(mag.inner.style, { width: dr.width + 'px', height: dr.height + 'px', transform: 'scale(' + Z + ')', left: W / 2 - (sx - dr.left) * Z + 'px', top: H / 2 - (sy - dr.top) * Z + 'px' });
     const pos = { l: [left, top + H / 2], r: [left + W, top + H / 2], t: [left + W / 2, top], tl: [left, top], tr: [left + W, top] };
     mag.hs.forEach(d => { const [hx, hy] = pos[d.dataset.h]; d.style.left = hx + 'px'; d.style.top = hy + 'px'; d.hidden = false; });
-    mag.band.hidden = mag.lens.hidden = false;
+    mag.lens.hidden = false; mag.band.hidden = mag.ctlOver; // כשהעכבר על הסרגל המלבן החום מוסתר
     magCtl();
   }
   function magResizeStart(e) {
