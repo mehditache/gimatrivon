@@ -224,7 +224,7 @@ body.dkGem .dkTools{display:none}
 .dkScope::after{content:"";width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-1px) rotate(45deg)}
 .dkTop .dkTools{flex-direction:row-reverse;gap:10px;padding:0;border:0;border-radius:0;height:34px}
 .dkTop .dkTools .rdToolsSep{display:none}
-.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:var(--fl);justify-content:center}
+.dkTop .dkTools .rdMagBtn,.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:var(--fl);justify-content:center}
 .dkTop .dkTools .rdSetBtn .aa{font-size:17px}
 .dkTop .dkTools .rdSeg{flex-direction:row-reverse;width:84px;height:34px;padding:2px;box-sizing:border-box;border:0;border-radius:10px;background:var(--fl);gap:0}
 .dkTop .dkTools .rdSeg button{width:40px;height:30px;padding:0;justify-content:center;border-radius:8px;background:none;color:var(--tx)}
@@ -367,7 +367,7 @@ body{--wp:#fff}
 .dkTop .brand .ver{border-color:var(--bkHair)!important;color:var(--bk3)!important;background:var(--bkBg)!important}
 :root[data-theme=dark] .dkTop .brand .ver{color:var(--bk1)!important}
 .dkTop button,.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab{color:var(--bkInk)!important}
-.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab,.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn,.dkTop .dkTools .rdSeg,.dkTop .dkGemTools button,.dkNav .rdWhere,.dkNav>button{background:var(--bkTint)!important}
+.dkTop .themeSw,.dkTop .langSw,.dkTop #dkKebab,.dkTop .dkTools .rdMagBtn,.dkTop .dkTools .rdPrintBtn,.dkTop .dkTools .rdSetBtn,.dkTop .dkTools .rdSeg,.dkTop .dkGemTools button,.dkNav .rdWhere,.dkNav>button{background:var(--bkTint)!important}
 .dkNav{background:none!important}
 .dkTop .dkTools .rdSeg button.on{background:var(--bkBg)!important;box-shadow:0 0 0 .5px var(--bkHair),0 1px 3px rgba(140,100,33,.18)!important;color:var(--bk3)!important}
 :root[data-theme=dark] .dkTop .dkTools .rdSeg button.on{color:var(--bk1)!important}
@@ -511,3 +511,4 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 .dkMkPop .del{flex:none;width:24px;height:24px;margin-inline-end:3px;border:0;border-radius:12px;background:none;color:var(--mu);display:grid;place-items:center;cursor:pointer;opacity:.5}
 .dkMkPop .r:hover .del,.dkMkPop .del:focus{opacity:1}
 .dkMkPop .del .gi{width:12px;height:12px}
+.dkTop .dkTools .rdMagBtn[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--gold);color:var(--gold)}
