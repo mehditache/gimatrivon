@@ -1,14 +1,14 @@
 /* sw.js — Service Worker (v3.12.0): ביקור חוזר לא מוריד שוב את הקורפוס, והאתר עובד גם בלי אינטרנט.
    - קובצי ספרים עם hash בשם (generated/corpus/<ספר>.<hash>.js) וגופנים: מהמטמון תמיד — התוכן שלהם לא משתנה לעולם
      (ספר שהשתנה מקבל שם חדש ב-index.js).
-   - מסכתות הגמרא והטור (generated/talmud/*.js, generated/tur/*.js, generated/zohar/*.js, בלי hash): מהמטמון מיד, ומתעדכנות ברקע לפעם הבאה.
+   - מסכתות הגמרא והטור (generated/talmud/*.js, generated/talmud-stz/*.js, generated/tur/*.js, generated/zohar/*.js, בלי hash): מהמטמון מיד, ומתעדכנות ברקע לפעם הבאה.
    - כל השאר (index.html, app.js, reader.js, styles.css, generated/corpus/index.js…): קודם מהרשת, כך שגרסה חדשה
      מופיעה מיד; בלי רשת — מהמטמון.
    - מסד החיפוש (generated/sqlite/): לא נוגעים — הדפדפן קורא ממנו טווחים ישר מהשרת.
    נרשם מ-app.js רק ב-http(s) (לא ב-file:// ולא ב-localhost). בקשות לאתרים אחרים (EmailJS, Analytics) לא נוגעים בהן. */
 const CACHE = 'gimatrivon-v1';
 const HASHED = /\/generated\/corpus\/\d+\.(\d+\.)?[0-9a-f]{8}\.js$|\/vendor\/fonts\//;
-const TALMUD = /\/generated\/(talmud|tur|zohar)\/(?!index\.js)[^/]+\.js$/;
+const TALMUD = /\/generated\/(talmud|talmud-stz|tur|zohar)\/(?!index\.js)[^/]+\.js$/;
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));

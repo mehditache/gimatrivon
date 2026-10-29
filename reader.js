@@ -404,6 +404,7 @@
   const APP = G.GimApp || {}; // מ-app.js: שפה, שמות ספרים וסדרים באנגלית, מדידת שימוש
   const isEn = () => APP.isEn ? APP.isEn() : document.documentElement.lang === 'en';
   const EN = {
+    'ביאור הרב שטיינזלץ': 'Steinsaltz commentary', 'שורה מול שורה': 'Row by row', 'גמרא': 'Gemara', 'ביאור': 'Commentary',
     'גימטריה': 'Gematria', 'קריאה ומפרשים': 'Read & commentary', 'קריאה': 'Read', 'מצב עבודה': 'Mode', 'ספר': 'Book', 'פסוק מול תרגום': 'Verse & translation', 'משנה מול תרגום': 'Text & translation',
     'תצוגה': 'Display', 'הגדרות תצוגה': 'Display settings', 'סוג תצוגה': 'Layout', 'תרגום בצד שמאל': 'Translation on the left',
     'תרגום אונקלוס': 'Targum Onkelos', 'תרגום יונתן': 'Targum Yonatan', 'ללא תרגום': 'No translation', 'ברירת מחדל': 'default', 'אין בספר זה': 'not in this book',
@@ -472,11 +473,11 @@
   const PC = new Map(); // מטמון עימוד: ספר:פרק|גאומטריה → [[פסוקים בעמוד]]
   // tk = המסכת הפתוחה (ריק = תנ״ך/משנה), tj = העמוד בה, tview = צורת הדף (daf) או גמרא ומפרשים (study)
   // rview = בטור: צורת הדף (daf) או טור ומפרשים (study); rOff = מפרשים מוסתרים בטור ('y' בית יוסף, 'c' ב״ח)
-  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zsul: '0', zoff: [] };
+  const DEF = { b: 0, ch: 1, anchor: 1, view: 'book', ramView: 'book', tr: 'onkelos', trFont: 'rashi', cmFont: 'rashi', size: 0, scope: 'book', src: 'txt', prScope: 'spread', prColor: 'color', tk: '', tj: 0, tview: 'daf', tsrc: 'all', tscope: 'tr', cmOff: [], ramNik: true, rk: '', rs: 1, rscope: 'all', rsrc: 'all', rview: 'daf', rOff: [], zside: 't', zlay: 'spread', zsul: '0', zoff: [], stz: '0' };
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; S.zsul = S.zsul === '1' ? '1' : '0'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book';
-  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zsul: S.zsul, zoff: S.zoff })); } catch (e) {} syncHash(); };
+  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; S.zsul = S.zsul === '1' ? '1' : '0'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book'; S.stz = S.stz === '1' ? '1' : '0';
+  const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zsul: S.zsul, zoff: S.zoff, stz: S.stz })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
   const MODE_HASH = /^#(read([\/#].*)?|gim)$/i;
@@ -577,7 +578,7 @@
     const ph = Math.max(300, H - (narrow ? 8 : 30));
     const fs = Math.round(((narrow ? 18 : 20.5) + S.size * 1.5) * 10) / 10;
     const trW = Math.round(pw * (S.view === 'book' ? (S.trFont === 'rashi' ? 0.27 : 0.3) : (S.trFont === 'rashi' ? 0.3 : 0.33)));
-    return { W, H, narrow, two, zc, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zlay, S.zsul, S.zoff.join('')].join('|') };
+    return { W, H, narrow, two, zc, pw, ph, fs, trW, per: two ? 2 : 1, cls: pw < 540 ? ' narrow' : '', key: [two, pw, ph, fs, S.view, S.ramView, S.tr, S.trFont, S.cmFont, isEn(), S.cmOff.join(','), S.ramNik, S.tview, S.zside, S.zlay, S.zsul, S.zoff.join(''), S.stz].join('|') };
   }
 
   // מילים של פסוק/משנה (בלי טעמים) — לפיצול משנה ארוכה בין עמודים
@@ -1173,7 +1174,7 @@
     const i = TKEEP.indexOf(k); if (i >= 0) TKEEP.splice(i, 1); TKEEP.push(k);
     while (TKEEP.length > TMAX) {
       const old = TKEEP.shift(), TP = G.GIM_TP || {}; if (old === S.tk) { TKEEP.push(old); continue; }
-      delete TD[old]; TX.list[TX.byK[old]].parts.forEach((p, i) => { delete TP[old + '.' + i]; }); // (הזוהר: כל פרשה בנפרד, אותו מנגנון)
+      delete TD[old]; Object.keys(G.GIM_TS || {}).forEach(x => { if (x.startsWith(old + '.')) delete G.GIM_TS[x]; }); TX.list[TX.byK[old]].parts.forEach((p, i) => { delete TP[old + '.' + i]; }); // (הזוהר: כל פרשה בנפרד, אותו מנגנון)
     }
   }
   /* מסך טעינה: שלד של הדף שהשורות שלו "נכתבות", ושם הספר בכתב חלול שמתמלא בזהב (מימין לשמאל) לפי אחוזי הטעינה.
@@ -1225,6 +1226,22 @@
       document.head.appendChild(sc);
     });
   }
+  // ביאור שטיינזלץ: קובץ לכל 24 עמודים (12 דפים) בכל מסכת (generated/talmud-stz), נטען רק כשהוא מופעל ובאזור שקוראים
+  const STZ_CH = 24, STP = {};
+  const stzHas = (k, j) => !!(G.GIM_TS || {})[k + '.' + (j / STZ_CH | 0)];
+  const stzRow = (k, j) => { const c = (G.GIM_TS || {})[k + '.' + (j / STZ_CH | 0)]; return c ? c.a[j - c.from] || [] : null; };
+  const stzChunk = (k, c) => {
+    const key = k + '.' + c; if ((G.GIM_TS || {})[key]) return Promise.resolve(true);
+    return STP[key] || (STP[key] = new Promise(res => {
+      const sc = document.createElement('script'); sc.src = 'generated/talmud-stz/' + k.replace(/\W/g, '') + '.' + c + '.js';
+      sc.onload = () => { delete STP[key]; res(!!(G.GIM_TS || {})[key]); }; sc.onerror = () => { delete STP[key]; res(false); };
+      document.head.appendChild(sc);
+    }));
+  };
+  const loadStz = (k, js, done) => { const t = TX.list[TX.byK[k]]; Promise.all([...new Set(js.filter(j => j >= 0 && j < t.n).map(j => j / STZ_CH | 0))].map(c => stzChunk(k, c))).then(r => done(r.every(Boolean))); };
+  const stzOn = (k, j) => S.stz === '1' && S.tview === 'study' && !zOf(k) && stzHas(k, j);
+  // \u0003…\u0004 = הטקסט המקורי (מודגש), \u0005…\u0006 = תרגום קצר בסוגריים מרובעים (קטן ועמום); מאוזן תמיד כמו fmtT
+  const fmtStz = s => { let b = 0, m = 0; const out = h(s).replace(/[\u0003-\u0006]/g, c => c === '\u0003' ? (b++, '<b>') : c === '\u0004' ? (b > 0 ? (b--, '</b>') : '') : c === '\u0005' ? (m++, '<small class="stzSm">') : (m > 0 ? (m--, '</small>') : '')); return out + '</b>'.repeat(b) + '</small>'.repeat(m); };
   // פירושי עמוד: [{v: קטע, dh, body, src: 'r'|'t'}]
   const zOf = k => { const t = tOf(k); return !!(t && t.z); };
   const zEmpty = (t, j) => T(j < t.j0 ? 'הפרשה מתחילה בעמוד הבא' : 'המשך הפסקה מהעמוד הקודם'); // עמוד בלי פסקאות
@@ -1303,7 +1320,13 @@
     const chip = s => '<span class="vn">' + num(s + 1) + '</span>';
     let html = talHead(t, j);
     if (pg.first) html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j, k)) + '</span></div>';
-    html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + (pg.segs.length || !t.z ? pg.segs.map(s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>').join(' ') : '<span class="rdCont">' + h(zEmpty(t, j)) + '</span>') + '</p></div></div><div class="rdSp"></div>';
+    const seg = s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>';
+    if (stzOn(k, j)) { // ביאור שטיינזלץ שורה מול שורה: הגמרא מימין, הביאור משמאל, לפי קטע
+      const sz = stzRow(k, j);
+      html += '<div class="rdBody"><div class="rdTxt rdTal stzOn"><div class="stzHd"><span>' + h(T('גמרא')) + '</span><span>' + h(T('ביאור הרב שטיינזלץ')) + '</span></div>' +
+        pg.segs.map(s => '<div class="stzR"><p class="stzA">' + seg(s) + '</p><div class="stzB" data-j="' + j + '" data-s="' + s + '">' + (sz[s] ? fmtStz(sz[s]) : '') + '</div></div>').join('') + '</div></div><div class="rdSp"></div>';
+    } else
+    html += '<div class="rdBody"><div class="rdTxt rdTal"><p>' + (pg.segs.length || !t.z ? pg.segs.map(seg).join(' ') : '<span class="rdCont">' + h(zEmpty(t, j)) + '</span>') + '</p></div></div><div class="rdSp"></div>';
     (t.z ? [['t', T('תרגום')], ['r', T('הסולם')]] : [['r', innerLabel(k, j)], ['t', T('תוספות')]]).forEach(([src, label]) => {
       const list = pg.cm.filter(e => e.src === src); if (!list.length) return;
       html += '<section class="rdCm ' + cmCls + '" aria-label="' + h(label) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(label) + '</span></div><div class="rdCmBody">' +
@@ -1468,6 +1491,16 @@
       book.innerHTML = loadingHtml(k, talTitle(t), geo);
       loadTract(k, ok => { if (!ok) book.innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T(t.z ? 'לא ניתן לטעון את הפרשה.' : 'לא ניתן לטעון את המסכת.') + '</p></article>'; else if (S.tk !== k) return; else if (S.sel) goTal(k, S.sel.j, S.sel.s); else render(); });
       return;
+    }
+    if (S.stz === '1' && S.tview === 'study' && !t.z) { // ביאור שטיינזלץ מופעל: טוענים את הקובץ של האזור שקוראים (וקובץ הבא בקרבת הסוף) לפני הציור
+      const near = [S.tj, S.tj + 1].filter(j => j < t.n);
+      if (near.some(j => !stzHas(k, j))) {
+        setBar(); $r('#rdPos').textContent = '';
+        book.innerHTML = loadingHtml(k, talTitle(t), geo);
+        loadStz(k, near, ok => { if (S.tk !== k) return; if (!ok) { S.stz = '0'; save(); } render(); });
+        return;
+      }
+      [S.tj + STZ_CH / 2, S.tj - STZ_CH / 2].forEach(j => { if (j >= 0 && j < t.n && !stzHas(k, j)) stzChunk(k, j / STZ_CH | 0); }); // קדימה ואחורה: ברקע
     }
     S.tj = Math.max(0, Math.min(S.tj, t.n - 1));
     let html = '', from = S.tj, last = S.tj, lastPg = null;
@@ -2187,6 +2220,7 @@
     $r('#rdSet').innerHTML = '<div class="rdPopHd"><span>' + T('הגדרות תצוגה') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('סוג תצוגה') + '</span><div class="rdCards">' +
       card('daf', '<span class="pv pvDaf"><i></i><i class="m"></i><i></i></span>', 'צורת הדף') + card('study', '<span class="pv pvRows"><i></i><i></i><i></i></span>', 'גמרא ומפרשים') + '</div></div>' +
+      (S.tview === 'study' ? '<div class="rdSec"><span class="rdSecT">' + T('ביאור') + '</span><button type="button" class="rdOpt rdChk' + (S.stz === '1' ? ' on' : '') + '" data-set="stz" data-val="' + (S.stz === '1' ? '0' : '1') + '" aria-pressed="' + (S.stz === '1') + '"><span class="dot"></span><span class="lb">' + T('ביאור הרב שטיינזלץ') + '</span><span class="nt">' + T('שורה מול שורה') + '</span></button></div>' : '') +
       '<div class="rdSec"><span class="rdSecT">' + T('כתב הפירוש') + ' (' + T('גמרא ומפרשים') + ')</span><div class="rdFonts">' + fontPair('cmFont', 'מאימתי קורין') + '</div></div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('גודל אותיות') + '</span><div class="rdSizes">' + [-1, 0, 1, 2].map(z => '<button type="button" class="' + (S.size === z ? 'on' : '') + '" data-set="size" data-val="' + z + '" aria-pressed="' + (S.size === z) + '" style="font-size:' + (13 + z * 2.5) + 'px">א</button>').join('') + '</div></div>' +
       '<p class="rdNote">' + T('לחצו על קטע בגמרא כדי לראות את הפירוש שלו.') + ' ' + T('ההגדרות נשמרות לפעם הבאה.') + '</p>';
@@ -3107,7 +3141,7 @@
         renderSet();
       });
       if (k === 'zoff') { const x = t.dataset.val; S.zoff = S.zoff.includes(x) ? S.zoff.filter(v => v !== x) : S.zoff.concat(x); S.tp = 0; renderSet(); return render(); }
-      if (k === 'zside' || k === 'zlay' || k === 'zsul') S.tp = 0;
+      if (k === 'zside' || k === 'zlay' || k === 'zsul' || k === 'stz') S.tp = 0;
       if (k === 'ramNik') S.ramNik = t.dataset.val === 'true';
       else if (k === 'view' && isRambam(S.b)) S.ramView = t.dataset.val;
       else if (k === 'cm') { const c = Number(t.dataset.val); S.cmOff = S.cmOff.includes(c) ? S.cmOff.filter(x => x !== c) : S.cmOff.concat(c); }
@@ -3434,6 +3468,135 @@
     document.querySelectorAll('#modeSw button').forEach(b => { const rd = b.dataset.mode === 'read'; b.innerHTML = rd ? '<span class="lf">' + T('קריאה ומפרשים') + '</span><span class="ls">' + T('קריאה') + '</span>' : T('גימטריה'); b.title = T(rd ? 'מסך הקריאה: תנ״ך, משנה, רמב״ם, ש״ס וטור עם מפרשים' : 'מסך הגימטריה: חישוב, חיפוש והשוואה'); });
     const sw = $r('#modeSw'); if (sw) sw.setAttribute('aria-label', T('מצב עבודה'));
   }
+
+
+  /* ---------- כלי בחירת טקסט (v4.10.0): בוחרים מילה או משפט בקורא ← סרגל קטן צף (תרגום, גימטריה, חיפוש, העתקה); קליק ימני — התפריט המלא ----------
+     התרגום: מילון ארמי-עברי שנבנה מזוגות "מילה מודגשת + [תרגום]" בביאור שטיינזלץ (generated/aramaic-gloss.js, CC BY-NC) ופירוש הערוך (generated/arukh.js).
+     הגימטריה: GematriaEngine (אותן שיטות כמו מסך הגימטריה). שני הקבצים נטענים רק בפעם הראשונה שמבקשים תרגום. */
+  const selUI = {}; let SEL = null, selT = 0, selCard = 0;
+  const lazyJs = (name, done) => {
+    if (G[name === 'gloss' ? 'GIM_GLOSS' : 'GIM_ARUKH']) return done(true);
+    const sc = document.createElement('script'); sc.src = 'generated/' + (name === 'gloss' ? 'aramaic-gloss' : 'arukh') + '.js';
+    sc.onload = () => done(true); sc.onerror = () => done(false); document.head.appendChild(sc);
+  };
+  const FIN5 = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
+  const selNorm = w => w.replace(/[֑-ׇ]/g, '').replace(/[^א-ת]/g, '').replace(/[ךםןףץ]/g, c => FIN5[c]);
+  const selWords = t => t.split(/[\s\-־]+/).map(selNorm).filter(Boolean);
+  const PFX = ['ומה', 'ודב', 'ודל', 'ודמ', 'ודכ', 'ושה', 'וד', 'וה', 'וב', 'ול', 'ומ', 'וכ', 'וש', 'דב', 'דל', 'דמ', 'דכ', 'ד', 'ה', 'ב', 'ל', 'מ', 'כ', 'ש', 'ו'];
+  const selLook = (D, w) => {
+    if (D[w]) return { k: w, v: D[w] };
+    for (const p of PFX) if (w.length - p.length >= 2 && w.startsWith(p) && D[w.slice(p.length)]) return { k: w.slice(p.length), v: D[w.slice(p.length)] };
+    return null;
+  };
+  // תרגום: החלק הארוך ביותר (עד 3 מילים) שיש לו תרגום; מילים בלי תרגום נשארות כמות שהן
+  function selTranslate(text) {
+    const GL = G.GIM_GLOSS || {}, AR = G.GIM_ARUKH || {}, w = selWords(text), units = [];
+    for (let i = 0; i < w.length;) {
+      let hit = null, n = 1;
+      for (n = Math.min(3, w.length - i); n >= 1 && !hit; n--) { const key = w.slice(i, i + n).join(' '); hit = selLook(GL, key); if (hit) hit.n = n; }
+      if (hit) { units.push({ w: w.slice(i, i + hit.n).join(' '), g: hit.v }); i += hit.n; } else { units.push({ w: w[i], g: null }); i++; }
+    }
+    const first = w[0] && selLook(AR, w[0]);
+    return { units, ar: w.length <= 2 && first ? { k: first.k, t: first.v } : null, found: units.some(u => u.g) };
+  }
+  const selGem = text => {
+    const E = G.GematriaEngine; if (!E) return null; const c = m => E.calculateGematria(text, m);
+    return { reg: c('regular').value, atb: c('atbash').value, kol: c('kollel').value, wds: c('words').value, ltr: c('letters').value, mil: c('milui').value, words: c('words').details.wordCount, letters: c('letters').details.letterCount };
+  };
+  const selOk = t => t && t.length <= 400 && /[א-ת]/.test(t);
+  const selCur = () => {
+    const sel = G.getSelection && G.getSelection(); if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
+    const a = sel.anchorNode, bk = $r('#rdBook'); if (!a || !bk || !bk.contains(a.nodeType === 3 ? a.parentNode : a)) return null;
+    const text = sel.toString().replace(/\s+/g, ' ').trim(); if (!selOk(text)) return null;
+    const rs = sel.getRangeAt(0).getClientRects(), r = rs.length ? rs[rs.length - 1] : sel.getRangeAt(0).getBoundingClientRect(), r0 = rs.length ? rs[0] : r;
+    return { text, rect: { l: Math.min(r0.left, r.left), r: Math.max(r0.right, r.right), t: r0.top, b: r.bottom } };
+  };
+  const selEnsure = () => {
+    if (selUI.bar) return;
+    const mk = (c, role) => { const d = document.createElement('div'); d.className = c; d.hidden = true; if (role) d.setAttribute('role', role); d.dir = isEn() ? 'ltr' : 'rtl'; d.addEventListener('mousedown', e => { if (!e.target.closest('input,textarea')) e.preventDefault(); }); document.body.appendChild(d); return d; };
+    selUI.bar = mk('gtSelBar', 'toolbar'); selUI.card = mk('gtSelCard', 'dialog'); selUI.menu = mk('gtSelMenu', 'menu');
+    selUI.bar.onclick = e => { const b = e.target.closest('[data-a]'); if (b) selAct(b.dataset.a, b); };
+    selUI.card.onclick = e => { const b = e.target.closest('[data-a]'); if (b) selAct(b.dataset.a, b); };
+    selUI.menu.onclick = e => { const b = e.target.closest('[data-a]'); if (b) selAct(b.dataset.a, b); };
+  };
+  const selHide = () => { clearTimeout(selT); SEL = null; if (selUI.bar) { selUI.bar.hidden = selUI.card.hidden = selUI.menu.hidden = true; } };
+  const selPlace = (el, rect, below, w) => {
+    el.hidden = false; el.style.visibility = 'hidden'; el.style.left = '0px'; el.style.top = '0px';
+    const b = el.getBoundingClientRect(), W = innerWidth, H = innerHeight, cx = (rect.l + rect.r) / 2;
+    let x = Math.max(8, Math.min(W - b.width - 8, cx - b.width / 2)), y = below ? rect.b + 8 : rect.t - b.height - 8;
+    if (y < 8) y = rect.b + 8; if (y + b.height > H - 8) y = Math.max(8, H - b.height - 8);
+    el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.visibility = '';
+  };
+  const selBarHtml = g => '<button type="button" data-a="tr">' + h(T('תרגום')) + '</button><button type="button" data-a="gem" class="gtN">' + (g ? g.reg : '') + '</button><button type="button" data-a="find">' + h(T('חיפוש')) + '</button><button type="button" data-a="copy">' + h(T('העתק')) + '</button><button type="button" data-a="more" aria-label="' + h(T('עוד')) + '">⋯</button>';
+  function selShow(c) {
+    selEnsure(); SEL = c; selUI.card.hidden = selUI.menu.hidden = true;
+    selUI.bar.innerHTML = selBarHtml(selGem(c.text)); selPlace(selUI.bar, c.rect, false);
+  }
+  const selTrHtml = c => {
+    const tr = selTranslate(c.text);
+    if (!tr.found && !tr.ar) return '<p class="gtNone">' + h(T('לא נמצא תרגום. המילון מכסה בעיקר ארמית של הגמרא.')) + '</p>';
+    return '<div class="gtTr">' + tr.units.map(u => '<div class="gtU"><b>' + h(u.w) + '</b><span>' + (u.g ? h(u.g.slice(0, 3).join(' · ')) : '—') + '</span></div>').join('') + '</div>' +
+      (tr.ar ? '<div class="gtAr"><b>' + h(T('ערוך')) + '</b> ' + h(tr.ar.t) + '</div>' : '') + '<small class="gtSrc">' + h(T('מילון מביאור הרב שטיינזלץ (CC BY-NC) וספר הערוך')) + '</small>';
+  };
+  const selGemHtml = c => {
+    const g = selGem(c.text); if (!g) return '';
+    const row = (l, v) => '<tr><td>' + h(T(l)) + '</td><td>' + v + '</td></tr>';
+    return '<table class="gtGem">' + row('רגילה', g.reg) + row('אתב״ש', g.atb) + row('עם הכולל', g.kol) + row('עם מספר תיבות', g.wds) + row('עם מספר אותיות', g.ltr) + row('מילוי', g.mil) + '</table><small class="gtSrc">' + g.words + ' ' + h(T('תיבות')) + ' · ' + g.letters + ' ' + h(T('אותיות')) + '</small>' +
+      '<div class="gtBtns"><button type="button" data-a="gfind" class="gtP">' + h(T('חפש ערך זהה')) + ' (' + g.reg + ')</button><button type="button" data-a="gcopy">' + h(T('העתק')) + ' ' + g.reg + '</button></div>';
+  };
+  function selCardShow(tab) {
+    const c = SEL; if (!c) return; selCard = tab; selUI.menu.hidden = true;
+    const body = () => tab === 0 ? '<div class="gtBody" id="gtBody">' + h(T('טוען…')) + '</div>' : '<div class="gtBody">' + selGemHtml(c) + '</div>';
+    selUI.card.innerHTML = '<div class="gtHd"><b>' + h(c.text.length > 40 ? c.text.slice(0, 38) + '…' : c.text) + '</b></div><div class="gtTabs"><button type="button" data-a="tr" class="' + (tab === 0 ? 'on' : '') + '">' + h(T('תרגום')) + '</button><button type="button" data-a="gem" class="' + (tab === 1 ? 'on' : '') + '">' + h(T('גימטריה')) + '</button></div>' + body();
+    selPlace(selUI.card, c.rect, true);
+    if (tab === 0) lazyJs('gloss', () => lazyJs('arukh', () => { if (SEL !== c) return; const el = selUI.card.querySelector('#gtBody'); if (el) { el.innerHTML = selTrHtml(c); selPlace(selUI.card, c.rect, true); } }));
+  }
+  const selSource = () => { try { ensureIndex(); return placeShort(hashOfRef(IX, curRef())); } catch (e) { return ''; } };
+  const selCopy = txt => { try { if (navigator.clipboard) return navigator.clipboard.writeText(txt); } catch (e) {} const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); };
+  function selFlash(msg) { const b = selUI.bar; if (!b) return; const old = b.innerHTML; b.innerHTML = '<span class="gtDone">' + h(msg) + '</span>'; setTimeout(() => { if (SEL && selUI.bar === b && !b.hidden) { b.innerHTML = selBarHtml(selGem(SEL.text)); } }, 900); }
+  function selAct(a) {
+    const c = SEL; if (!c) return;
+    if (a === 'tr') return selCardShow(0);
+    if (a === 'gem') return selCardShow(1);
+    if (a === 'more') return selMenuShow(c.rect.l, c.rect.b + 6);
+    if (a === 'copy') { selCopy(c.text); selUI.menu.hidden = true; return selFlash(T('הועתק')); }
+    if (a === 'copysrc') { const src = selSource(); selCopy('״' + c.text + '״' + (src ? ' (' + src + ')' : '')); selUI.menu.hidden = true; return selFlash(T('הועתק')); }
+    if (a === 'gcopy') { selCopy(String(selGem(c.text).reg)); return selFlash(T('הערך הועתק')); }
+    if (a === 'find') { if (G.GT_EMBED && G.parent !== G) G.parent.postMessage({ gtDesk: 'results', q: c.text }, '*'); else { const q = $r('#rdQ'); q.value = c.text; q.focus(); q.dispatchEvent(new Event('input', { bubbles: true })); } return selHide(); }
+    if (a === 'gfind') { if (G.GT_EMBED && G.parent !== G) G.parent.postMessage({ gtDesk: 'gemq', q: c.text }, '*'); else { const q = $r('#rdQ'); q.value = c.text; q.focus(); q.dispatchEvent(new Event('input', { bubbles: true })); } return selHide(); }
+    if (a === 'stz') { S.stz = '1'; S.tp = 0; save(); selHide(); return render(); }
+  }
+  function selMenuShow(x, y) {
+    const c = SEL; if (!c) return; selEnsure(); const g = selGem(c.text), tal = isTal() && !talT().z && S.tview === 'study' && S.stz !== '1';
+    const it = (a, ic, l, k) => '<button type="button" role="menuitem" data-a="' + a + '"><span class="ic">' + ic + '</span><span>' + h(l) + '</span>' + (k ? '<span class="gtK">' + k + '</span>' : '') + '</button>';
+    selUI.card.hidden = true;
+    selUI.menu.innerHTML = '<div class="gtHd"><b>' + h(c.text.length > 40 ? c.text.slice(0, 38) + '…' : c.text) + '</b><span>' + g.words + ' ' + h(T('תיבות')) + ' · ' + g.letters + ' ' + h(T('אותיות')) + '</span></div><div class="gtPrev" id="gtPrev"></div>' +
+      it('tr', 'א→', T('תרגום מלא ומילון')) + it('gem', '∑', T('גימטריה'), g.reg) + it('gfind', '⌕', T('חיפוש גימטריה זהה')) + it('find', '▤', T('חיפוש בכל הספרים')) + (tal ? it('stz', '❝', T('הצג ביאור שטיינזלץ')) : '') +
+      '<hr>' + it('copy', '⧉', T('העתק'), 'Ctrl C') + it('copysrc', '⧉', T('העתק עם מקור'));
+    selPlace(selUI.menu, { l: x, r: x, t: y, b: y }, true); selUI.menu.style.left = Math.max(8, Math.min(innerWidth - selUI.menu.offsetWidth - 8, x - selUI.menu.offsetWidth + 12)) + 'px';
+    lazyJs('gloss', () => { if (SEL !== c) return; const tr = selTranslate(c.text), el = selUI.menu.querySelector('#gtPrev'); if (!el) return; if (tr.found) el.textContent = tr.units.map(u => u.g ? u.g[0] : u.w).join(' '); else el.hidden = true; });
+  }
+  function selInit() {
+    const upd = () => { clearTimeout(selT); selT = setTimeout(() => { if (document.body.dataset.mode !== 'read') return selHide(); const c = selCur(); if (!c) { if (selUI.card && !selUI.card.hidden && SEL) return; return selHide(); } selShow(c); }, 90); };
+    document.addEventListener('mouseup', e => { if (e.target.closest && e.target.closest('.gtSelBar,.gtSelCard,.gtSelMenu')) return; upd(); });
+    document.addEventListener('keyup', e => { if (e.shiftKey || e.key === 'Escape') { if (e.key === 'Escape') return selHide(); upd(); } });
+    document.addEventListener('mousedown', e => { if (!e.target.closest || !e.target.closest('.gtSelBar,.gtSelCard,.gtSelMenu')) selHide(); }, true);
+    document.addEventListener('scroll', selHide, true);
+    addEventListener('resize', selHide);
+    document.addEventListener('contextmenu', e => {
+      if (document.body.dataset.mode !== 'read' || !e.target.closest || !e.target.closest('#rdBook')) return;
+      let c = selCur();
+      if (!c) { // בלי בחירה: בוחרים את המילה שמתחת לסמן
+        try {
+          const r = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null;
+          if (r && r.startContainer.nodeType === 3 && /[א-ת]/.test(r.startContainer.nodeValue)) { const sel = G.getSelection(); sel.removeAllRanges(); sel.addRange(r); sel.modify('move', 'backward', 'word'); sel.modify('extend', 'forward', 'word'); c = selCur(); }
+        } catch (err) {}
+      }
+      if (!c) return;
+      e.preventDefault(); selEnsure(); SEL = c; selUI.bar.hidden = true; selMenuShow(e.clientX, e.clientY);
+    });
+  }
+  selInit();
 
   function init() {
     const sw = $r('#modeSw');
