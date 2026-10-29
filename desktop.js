@@ -341,6 +341,12 @@
     w = newRead(D, hash); D.wins.push(w); build(w); focusWin(w.id); return w;
   }
   function openGem() { focusWin(gemW().id); }
+  // טקסט שנבחר בחלון קריאה ← תיבת הקלט א׳ של חלון הגימטריה (החישוב והחיפוש מתבצעים תוך כדי הקלדה)
+  function gemText(qv) {
+    const w = gemW(); focusWin(w.id); let n = 0;
+    const tick = () => { const f = F.get(w.id), t = f && f.doc && f.doc.getElementById('tA'); if (t) { t.value = qv; t.dispatchEvent(new f.win.Event('input', { bubbles: true })); } else if (++n < 20) setTimeout(tick, 200); };
+    tick();
+  }
   const searches = () => D.wins.filter(w => w.k === 'search');
   // ההיקף שנבחר ברשימה הנפתחת (מארח החיפוש): חלון התוצאות נפתח לפיו
   function hostScope() { try { const gr = H && H.doc && H.doc.defaultView.GimReader; return (gr && gr.dropScope && gr.dropScope()) || null; } catch (e) { return null; } }
@@ -1068,7 +1074,9 @@
   addEventListener('message', e => {
     const m = e.data; if (!m || !m.gtDesk || e.origin !== location.origin) return;
     if (m.gtDesk === 'res') return fromResults(m);
-    if (m.gtDesk === 'open') openRead(m.hash, !!m.fresh);
+    if (m.gtDesk === 'results' && typeof m.q === 'string' && m.q.trim()) openResults(m.q.trim(), null); // חיפוש טקסט שנבחר בחלון קריאה: בכל הספרים
+    else if (m.gtDesk === 'gemq' && typeof m.q === 'string') gemText(m.q); // גימטריה של טקסט שנבחר בחלון קריאה: בחלון הגימטריה
+    else if (m.gtDesk === 'open') openRead(m.hash, !!m.fresh);
     else if (m.gtDesk === 'gem') openGem();
   });
   addEventListener('hashchange', () => fromUrl());

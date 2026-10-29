@@ -139,3 +139,11 @@ daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICEN
 
 - **Sefaria-Export**: Zohar — Vocalized Zohar, Israel 2013 (ארמית מנוקדת וחלוקת דפי וילנא), Zohar — Hebrew Translation, ו-Sulam on Zohar — Zohar with Sulam commentary, Jerusalem 1945. הנתונים נבנים על ידי `scripts/build-zohar.py`.
 - **רישיון: לא צוין (unknown)** במטא-דאטה של ספריא לגרסאות אלה; יש לאמת לפני הפצה רחבה.
+
+## ביאור הרב שטיינזלץ, מילון ארמי-עברי וספר הערוך (v4.10.0)
+
+- **ביאור הרב עדין שטיינזלץ על הש״ס** (מהדורת William Davidson, עברית), מ-Sefaria-Export: `Talmud/Bavli/Modern Commentary on Talmud/Steinsaltz/<סדר>/Steinsaltz on <מסכת>/Hebrew/merged.json`, 37 מסכתות. נטען ל-`generated/talmud-stz/` (`scripts/build-steinsaltz.py`).
+- **רישיון: CC BY-NC 4.0** (שימוש לא מסחרי, עם ייחוס) לפי הודעת ספריא על מהדורת דוידסון (sefaria.org/william-davidson-talmud). **לא לאמת מחדש בקובץ הממוזג** (אין בו שדה `license`) — יש לבדוק את גרסת המקור לפני הפצה מסחרית. האפליקציה חייבת להישאר חינמית ולא מסחרית כל עוד הביאור כלול בה.
+- **מילון ארמי-עברי** (`generated/aramaic-gloss.js`): נגזר מזוגות ״מילה מודגשת + [תרגום]״ בביאור שטיינזלץ, ולכן נושא את אותו רישיון (CC BY-NC 4.0).
+- **ספר הערוך** (רבי נתן מרומי, דפוס לובלין 1883), Sefaria-Export: `Reference/Dictionary/Sefer HeArukh/Hebrew/merged.json` → `generated/arukh.js`. טקסט היסטורי בנחלת הכלל (תרגום/עיבוד ספריא: לבדוק).
+

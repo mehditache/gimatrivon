@@ -1437,6 +1437,47 @@ html.gtResults[data-theme=dark] mark.rdHl,html.gtSearch[data-theme=dark] mark.rd
 
 a.rdRef{color:inherit;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}a.rdRef:hover{text-decoration:underline;color:var(--rdTx2,#7d5c1f)}
 
+/* ---- ביאור שטיינזלץ שורה מול שורה (תצוגת "גמרא ומפרשים") ---- */
+.stzOn .stzHd,.stzOn .stzR{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0}
+.stzOn .stzHd{font:600 .62em var(--ui,inherit);color:var(--rdGold);letter-spacing:.03em;padding:0 0 4px}
+.stzOn .stzHd span:last-child{padding-inline-start:12px}
+.stzOn .stzR{border-top:1px solid var(--rdLine);align-items:start}
+.stzOn .stzA{margin:0;padding:6px 0 8px 12px;font-size:.92em;line-height:1.7}
+.stzOn .stzB{padding:7px 12px 9px;border-inline-start:1px solid var(--rdLine);background:color-mix(in srgb,var(--rdGold) 6%,transparent);font-family:var(--ui,inherit);font-size:.72em;line-height:1.75;text-align:start}
+.stzOn .stzB b{font-weight:700}
+.stzOn .stzSm{color:var(--rdMu);font-size:.88em}
+.stzOn .stzB:empty{background:none}
+/* ---- כלי בחירת טקסט: סרגל צף, כרטיס תרגום/גימטריה, תפריט קליק ימני ---- */
+.gtSelBar,.gtSelCard,.gtSelMenu{position:fixed;z-index:2147483000;direction:rtl;font:14px var(--ui,"Segoe UI",Heebo,Arial,sans-serif);color:var(--rdInk);background:color-mix(in srgb,var(--rdPaper) 90%,transparent);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:0 0 0 .5px var(--rdLine),0 14px 40px rgba(40,25,5,.3);user-select:none}
+.gtSelBar[hidden],.gtSelCard[hidden],.gtSelMenu[hidden]{display:none}
+.gtSelBar{display:flex;gap:2px;padding:4px;border-radius:999px}
+.gtSelBar button{border:0;background:none;color:inherit;font:inherit;padding:5px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.gtSelBar button:hover,.gtSelCard button:hover,.gtSelMenu button:hover{background:color-mix(in srgb,var(--rdGold) 16%,transparent)}
+.gtSelBar .gtN{font-weight:700;color:var(--rdGold);font-variant-numeric:tabular-nums}
+.gtDone{padding:5px 14px;color:var(--rdGold);font-weight:600}
+.gtSelCard,.gtSelMenu{border-radius:12px;padding:6px;width:min(330px,calc(100vw - 16px))}
+.gtSelMenu{width:min(300px,calc(100vw - 16px))}
+.gtHd{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:6px 10px 8px;color:var(--rdMu);font-size:12.5px}
+.gtHd b{color:var(--rdInk);font:600 17px var(--ui,serif)}
+.gtTabs{display:flex;gap:4px;padding:2px;margin:0 4px 8px;background:color-mix(in srgb,var(--rdGold) 10%,transparent);border-radius:9px}
+.gtTabs button{flex:1;border:0;background:none;color:var(--rdMu);font:inherit;font-size:13px;padding:5px 0;border-radius:7px;cursor:pointer}
+.gtTabs .on{background:var(--rdPaper);color:var(--rdInk);font-weight:600;box-shadow:0 0 0 .5px var(--rdLine)}
+.gtBody{padding:0 10px 4px;max-height:46vh;overflow:auto;user-select:text}
+.gtU{display:flex;gap:8px;line-height:1.7;border-top:.5px solid var(--rdLine);padding:3px 0}.gtU:first-child{border-top:0}
+.gtU b{min-width:5.5em;font-weight:600}.gtU span{color:var(--rdInk)}
+.gtAr{margin-top:8px;padding:8px 10px;border-radius:9px;background:color-mix(in srgb,var(--rdGold) 10%,transparent);line-height:1.6;font-size:13.5px}
+.gtNone{margin:4px 0;color:var(--rdMu)}
+.gtSrc{display:block;margin-top:6px;color:var(--rdMu);font-size:11.5px}
+.gtGem{border-collapse:collapse;width:100%}.gtGem td{padding:5px 2px;border-top:.5px solid var(--rdLine);font-size:13.5px}.gtGem tr:first-child td{border-top:0}.gtGem td:last-child{text-align:left;font-weight:700;color:var(--rdGold);font-variant-numeric:tabular-nums}
+.gtBtns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.gtBtns button{border:0;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;background:none;color:var(--rdGold);box-shadow:inset 0 0 0 1px var(--rdGold)}
+.gtBtns .gtP{background:var(--rdGold);color:#fff}
+.gtPrev{margin:2px 4px 6px;padding:8px 10px;border-radius:9px;background:color-mix(in srgb,var(--rdGold) 10%,transparent);line-height:1.55}
+.gtPrev[hidden]{display:none}.gtPrev:empty{display:none}
+.gtSelMenu button{display:flex;align-items:center;gap:10px;width:100%;height:34px;padding:0 10px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;text-align:start;cursor:pointer;white-space:nowrap}
+.gtSelMenu .ic{width:20px;text-align:center;color:var(--rdGold)}
+.gtSelMenu .gtK{margin-inline-start:auto;color:var(--rdMu);font-size:12px;direction:ltr;font-weight:700}
+.gtSelMenu hr{border:0;height:.5px;margin:5px 6px;background:var(--rdLine)}
 /* גודל הטקסט בפופאפ הדיבור */
 .rdSegZ{display:inline-flex;align-items:center;gap:2px;flex:none}
 .rdSegZ button{min-width:30px;height:26px;padding:0 6px;border-radius:8px;border:0;background:var(--rdRow);color:var(--rdInk);font:700 13px var(--ui);cursor:pointer}
@@ -1456,3 +1497,9 @@ a.rdRef{color:inherit;text-decoration:underline dotted;text-underline-offset:3px
 .rdMagCtl .lb{opacity:.8}.rdMagCtl .sep{width:1px;height:20px;background:var(--rdLine)}.rdMagCtl .mz{min-width:32px;text-align:center;font:700 14px var(--ui)}
 .rdMagCtl button{min-width:28px;height:28px;padding:0 7px;border-radius:8px;border:0;background:var(--rdRow);color:var(--rdInk);font:700 13px var(--ui);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .rdMagCtl button.on{background:var(--rdGold);color:#fff}
+.stzOn .stzScroll{overflow-y:auto;overscroll-behavior:contain}
+.narrow .stzOn .stzHd{display:none}
+.narrow .stzOn .stzR{grid-template-columns:1fr}
+.narrow .stzOn .stzA{padding:6px 0 4px}
+.narrow .stzOn .stzB{border-inline-start:0;border-radius:8px;margin-bottom:8px;font-size:.78em}
+.stzOn .stzLic{font-weight:400;opacity:.7;font-size:.9em}
