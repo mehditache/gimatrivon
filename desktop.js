@@ -1127,6 +1127,7 @@
         const hit = prev[k] != null && cr > prev[k]; prev[k] = cr;
         h += '<tr class="' + c + (hit ? ' hit' : '') + '"><td><i></i></td><td class="n">' + DL[k] + '</td><td>' + lbl + '</td><td>' + (nw || '') + '</td><td>' + cm + '</td><td>' + cr + '</td><td>' + nt[0] + '</td><td>' + (nt[1] / 1048576).toFixed(1) + '</td></tr>';
       });
+      h += '<tr class="x"><td><i></i></td><td class="n">שו״ע</td><td colspan="6" title="שולחן ערוך עדיין לא במסד SQLite: חיפוש בסימן ובחלק הפתוח, בזיכרון">אין SQLite · חיפוש בזיכרון</td></tr>';
       el.innerHTML = h + '</table>';
     };
     const sync = () => {
