@@ -3446,7 +3446,7 @@
     const steps = [
       st(null, 'מסך הקריאה', 'כאן קוראים את המקורות עצמם, כמו בספר: תנ״ך עם תרגומים ורש״י, משנה, רמב״ם, ש״ס, זוהר וטור, עם המפרשים. סיור קצר, אפשר לדלג או לצאת בכל רגע.',
         'The reading screen', 'Here you read the sources themselves, like a book: Tanakh with translations and Rashi, Mishnah, Rambam, Talmud, Zohar and Tur, with their commentaries. A short tour; skip or exit any time.'),
-      st('#modeSw', 'גימטריה / קריאה', 'המתג הזה עובר בין מסך הגימטריה למסך הקריאה. כשחוזרים לכאן, הספר נפתח במקום שבו הפסקתם.',
+      st((() => { const n = document.getElementById('mNav'); return n && getComputedStyle(n).display !== 'none' ? '#mNav' : '#modeSw'; })(), 'גימטריה / קריאה', 'המתג הזה (בטלפון: הסרגל התחתון) עובר בין מסך הגימטריה למסך הקריאה. כשחוזרים לכאן, הספר נפתח במקום שבו הפסקתם.',
         'Gematria / Reading', 'This switch moves between the gematria screen and the reading screen. When you come back here, the book opens where you stopped.'),
       st('#rdWhere', 'המקום בספר', 'הספר והפרק שפתוחים עכשיו. החצים משני הצדדים עוברים לפרק הקודם ולפרק הבא.',
         'Where you are', 'The book and chapter open now. The arrows on either side go to the previous and next chapter.'),

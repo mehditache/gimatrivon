@@ -1506,3 +1506,36 @@ a.rdRef{color:inherit;text-decoration:underline dotted;text-underline-offset:3px
 .rdSegList .stzSeg{margin:0 0 6px;line-height:1.85}
 .rdSegList .stzSm{color:var(--rdMu);font-size:.88em}
 .rdSegList .stzLic{display:block;color:var(--rdMu);opacity:.7;font-size:.78em;margin-top:4px}
+
+/* ============ v4.12.0 · טלפון: סרגל ניווט תחתון בזכוכית (קריאה · חישוב · תוצאות) ============
+   מחליף את מתג המצב העליון (#modeSw) ואת פס הצדדים העליון (#mSummaryBar). בלוק אחד לטלפון-אמיתי וכפילו תחת
+   html.forcePhone (תצוגת #phone בדסקטופ). הצבעים: אותה זכוכית של שולחן העבודה (desktop.css --bar). */
+#mNav{display:none}
+@media (pointer:coarse) and (max-width:500px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
+  #mNav{display:flex}
+  .modeSw,#mSummaryBar{display:none!important}
+  #stage .top,#mNav{--bar:rgba(255,255,255,.58);--barhi:inset 0 .5px 0 rgba(255,255,255,.75);--barln:rgba(60,40,10,.14);--tile:rgba(255,255,255,.88);--tileSh:0 1px 6px rgba(80,55,15,.22),0 0 0 .5px rgba(60,40,10,.14);--gm:#8c6421;--gmuted:#7d6a44;--wg:linear-gradient(160deg,#c99a3e,#8c6421)}
+  :root[data-theme=dark] #stage .top,:root[data-theme=dark] #mNav{--bar:rgba(22,18,13,.58);--barhi:inset 0 .5px 0 rgba(255,240,210,.10);--barln:rgba(255,240,210,.14);--tile:rgba(255,240,210,.13);--tileSh:0 0 0 .5px rgba(255,240,210,.2);--gm:#f6dd97;--gmuted:#a8987a;--wg:linear-gradient(160deg,#f6dd97,#c99a3e)}
+  #stage .top{background:var(--bar)!important;-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);box-shadow:var(--barhi),inset 0 -.5px 0 var(--barln)!important;border-bottom:0!important}
+  #stage .top .brand h1{background:var(--wg);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;font-weight:800}
+  #stage .top .ver{color:var(--gm)!important;background:rgba(255,255,255,.5);border:0;box-shadow:0 0 0 .5px var(--barln)}
+  :root[data-theme=dark] #stage .top .ver{background:rgba(255,240,210,.08)}
+  #stage .top #mKebab{border-radius:12px;border:0;box-shadow:0 0 0 .5px var(--barln);background:rgba(255,255,255,.5)!important}
+  :root[data-theme=dark] #stage .top #mKebab{background:rgba(255,240,210,.08)!important}
+  #mNav{flex:none;gap:10px;padding:7px 18px calc(9px + env(safe-area-inset-bottom,0px));background:var(--bar);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);box-shadow:var(--barhi),inset 0 .5px 0 var(--barln);position:relative;z-index:19}
+}
+html.forcePhone #mNav{display:flex}
+html.forcePhone .modeSw,html.forcePhone #mSummaryBar{display:none!important}
+html.forcePhone #stage .top,html.forcePhone #mNav{--bar:rgba(255,255,255,.58);--barhi:inset 0 .5px 0 rgba(255,255,255,.75);--barln:rgba(60,40,10,.14);--tile:rgba(255,255,255,.88);--tileSh:0 1px 6px rgba(80,55,15,.22),0 0 0 .5px rgba(60,40,10,.14);--gm:#8c6421;--gmuted:#7d6a44;--wg:linear-gradient(160deg,#c99a3e,#8c6421)}
+html.forcePhone[data-theme=dark] #stage .top,html.forcePhone[data-theme=dark] #mNav{--bar:rgba(22,18,13,.58);--barhi:inset 0 .5px 0 rgba(255,240,210,.10);--barln:rgba(255,240,210,.14);--tile:rgba(255,240,210,.13);--tileSh:0 0 0 .5px rgba(255,240,210,.2);--gm:#f6dd97;--gmuted:#a8987a;--wg:linear-gradient(160deg,#f6dd97,#c99a3e)}
+html.forcePhone #stage .top{background:var(--bar)!important;-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);box-shadow:var(--barhi),inset 0 -.5px 0 var(--barln)!important;border-bottom:0!important}
+html.forcePhone #stage .top .brand h1{background:var(--wg);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;font-weight:800}
+html.forcePhone #stage .top .ver{color:var(--gm)!important;background:rgba(255,255,255,.5);border:0;box-shadow:0 0 0 .5px var(--barln)}
+html.forcePhone[data-theme=dark] #stage .top .ver{background:rgba(255,240,210,.08)}
+html.forcePhone #stage .top #mKebab{border-radius:12px;border:0;box-shadow:0 0 0 .5px var(--barln);background:rgba(255,255,255,.5)!important}
+html.forcePhone[data-theme=dark] #stage .top #mKebab{background:rgba(255,240,210,.08)!important}
+html.forcePhone #mNav{flex:none;gap:10px;padding:7px 18px 9px;background:var(--bar);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);box-shadow:var(--barhi),inset 0 .5px 0 var(--barln);position:relative;z-index:19}
+.mNavTab{flex:1;min-width:0;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative;border:0;border-radius:16px;background:none;box-shadow:none;padding:0;color:var(--gmuted);font:600 12px var(--ui);-webkit-tap-highlight-color:transparent}
+.mNavTab.on{background:var(--tile);box-shadow:var(--tileSh);color:var(--gm)}
+.mNavSide{position:absolute;top:5px;inset-inline-end:calc(50% - 26px);min-width:16px;height:16px;border-radius:8px;padding:0 4px;box-sizing:border-box;display:none;align-items:center;justify-content:center;font:700 10px var(--ui);color:#fff;background:var(--acA)}
+.mNavTab[data-tab=res] .mNavSide{display:flex}
