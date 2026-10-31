@@ -28,6 +28,14 @@ PARTS = [
     ('KOC', 'OC', 'Orach Chayim, with Kaf HaChayim', 'אורח חיים · כף החיים', ('KHOC', None, 'כף החיים', 'links'), ('TAZ-OC', 'Turei Zahav', 'ט״ז', 'order')),
     ('KYD', 'YD', "Yoreh De'ah, with Kaf HaChayim", 'יורה דעה · כף החיים', ('KHYD', None, 'כף החיים', 'links'), ('BH-YD', "Ba'er Hetev", 'באר היטב', 'order')),
 ]
+# מפרשים נוספים לתצוגת "הלכות ומפרשים" (דף שלם כמו בדפוס): (קוד, קובץ, שם העוגן בלמברג, שם בעברית, סוג עוגן: order / seq / struct)
+EXTRA = {
+    'OC': [('g', 'BG-OC', "Be'er HaGolah", 'באר הגולה', 'order'), ('t', 'BT-OC', "Ba'er Hetev", 'באר היטב', 'order'), ('s', 'ST-OC', "Sha'arei Teshuvah", 'שערי תשובה', 'seq'),
+           ('m', 'MA', 'Magen Avraham', 'מגן אברהם', 'order'), ('r', 'GRA-OC', None, 'ביאור הגר״א', 'struct')],
+    'YD': [('g', 'BG-YD', "Be'er HaGolah", 'באר הגולה', 'order'), ('t', 'BT-YD', "Ba'er Hetev", 'באר היטב', 'order'), ('r', 'GRA-YD', 'Beur HaGra', 'ביאור הגר״א', 'order')],
+    'EH': [('g', 'BG-EH', "Be'er HaGolah", 'באר הגולה', 'order'), ('t', 'BT-EH', "Ba'er Hetev", 'באר היטב', 'order'), ('r', 'GRA-EH', 'Beur HaGra', 'ביאור הגר״א', 'order')],
+    'CM': [('g', 'BG-CM', "Be'er HaGolah", 'באר הגולה', 'order'), ('t', 'BT-CM', "Ba'er Hetev", 'באר היטב', 'order'), ('r', 'GRA-CM', 'Beur HaGra', 'ביאור הגר״א', 'order')],
+}
 NIK = re.compile('[֑-ׇ]')
 
 def load(name, lic=('Public Domain', 'unknown', None)):
@@ -58,11 +66,11 @@ def clean(s):
     return s.strip()
 
 DH_END = re.compile(r"^(וכו['׳]?|כו['׳]?|וגו['׳]?)[.:]?$")
-def comment(paras, mb=False):
+def comment(paras, mb=False, strip=False):
     """קטע אחד של מפרש → טקסט עם הדיבור המתחיל מודגש. במשנה ברורה: "(א) דיבור - הסבר"."""
     t = ' '.join(clean(p) for p in paras if isinstance(p, str) and p.strip()).strip()
     if not t: return ''
-    t = re.sub(r'^\(([א-ת"׳\']{1,5})\)\s*', '', t) if mb else t  # המספר ("(א)") נוסף בתצוגה
+    t = re.sub(r'^[(\[]([א-ת"׳\']{1,5})[)\]]\s*', '', t) if mb or strip else t  # המספר ("(א)") נוסף בתצוגה
     if t.startswith('\u0003'): return t
     if mb or ' - ' in t[:120]:
         m = re.match(r'^(.{1,120}?) [-–] (.*)$', t, re.S)
@@ -186,6 +194,7 @@ for key_, k2, en, he, y, c in PARTS:
     sa = sim(load('SA-' + k2)); lb = sim(load('LB-' + k2)); n_s = len(sa)
     hil = hilchot(k2); first = {s: nm for s, nm in hil}
     S = [stream(x[0], n_s, LINKS) for x in (y, c)]
+    XD = {code: sim(load(f, ('Public Domain', 'unknown', None))) for code, f, *_ in (EXTRA.get(k2, []) if key_[0] == 'S' else [])}
     rows = [['', [], []]]
     stats = [0, 0, 0]
     for s in range(n_s):
@@ -215,17 +224,38 @@ for key_, k2, en, he, y, c in PARTS:
                     items.append((pos, gi))
             fx = fix_anchors(items, len(cm), xc)
             for i in range(len(cm)): byp.setdefault(fx[i], []).append((xc, i))
-        out = []
-        for i in range(len(toks) + 1):
-            for xc, j in sorted(byp.get(i, []), key=lambda z: (z[0] != 'y', z[1])): out.append('\u0010' + xc + str(j) + '\u0011')
-            if i < len(toks): out.append(toks[i])
-        text = ' '.join(out).replace('\n ', '\n').replace(' \n', '\n')
-        text = re.sub(r' *\n *', '\n', text)
-        if s + 1 in first: text = '\u0003' + first[s + 1] + '\u0004\n' + text
+        def assemble(by):
+            out = []
+            for i in range(len(toks) + 1):
+                for xc, j in sorted(by.get(i, []), key=lambda z: ('yc' + 'gtsmr').index(z[0]) * 1000 + z[1]): out.append('\u0010' + xc + str(j) + '\u0011')
+                if i < len(toks): out.append(toks[i])
+            t = re.sub(r' *\n *', '\n', ' '.join(out).replace('\n ', '\n').replace(' \n', '\n'))
+            return '\u0003' + first[s + 1] + '\u0004\n' + t if s + 1 in first else t
+        text = assemble(byp)
+        extras, byp2 = {}, {k: list(v) for k, v in byp.items()}
+        for code, f, lname, hname, mode in (EXTRA.get(k2, []) if key_[0] == 'S' else []):
+            T = XD[code]
+            if mode == 'struct':
+                cm, sq = [], []
+                for qi, g in enumerate(T[s] if s < len(T) else []):
+                    for x in flat(g): cm.append(comment([x], False, True)); sq.append(qi + 1)
+                items, prev = [], 0
+                for gi, t in enumerate(cm):
+                    q = min(max(sq[gi], 1), len(seifs)) - 1
+                    m = re.match('^\u0003(.*?)\u0004', t)
+                    pos = max(find_dh(m.group(1) if m else t[:60], toks, starts[q], ends[q]), prev); prev = pos
+                    items.append((pos, gi))
+            else:
+                cm = [comment([x], False, True) for x in flat(T[s])] if s < len(T) else []
+                items = [(p, o) for o, (p, nm, _) in enumerate(q for q in placed if q[1] == lname)] if mode == 'seq' else [(p, o - 1) for p, nm, o in placed if nm == lname and o]
+            fx = fix_anchors(items, len(cm), code)
+            for i in range(len(cm)): byp2.setdefault(fx[i], []).append((code, i))
+            if any(cm): extras[code] = cm
+        tb = assemble(byp2) if extras else None
         ys, cs = list(S[0][0][s]), list(S[1][0][s])
         while ys and not ys[-1]: ys.pop()
         while cs and not cs[-1]: cs.pop()
-        rows.append([text, ys, cs])
+        rows.append([text, ys, cs] + ([tb, extras] if extras else []))
         stats[0] += 1; stats[1] += len(ys); stats[2] += len(cs)
     while len(rows) > 1 and not rows[-1][0] and not rows[-1][1] and not rows[-1][2]: rows.pop()
     parts, cur, size, start = [], [], 0, 0
@@ -242,7 +272,7 @@ for key_, k2, en, he, y, c in PARTS:
         open(os.path.join(OUT, fn), 'w', encoding='utf-8').write('(window.GIM_TUR_P=window.GIM_TUR_P||{})[' + json.dumps(key_ + '.' + str(pi)) + ']=' + out + ';\n')
         total += len(out.encode('utf-8')); pinfo.append({'f': fn, 'from': st, 'b': len(out.encode('utf-8'))})
     index.append({'k': key_, 'he': 'שולחן ערוך ' + he, 'en': 'Shulchan Arukh, ' + en, 'n': len(rows), 'intro': False, 'sa': 1, 'a': k2, 'dir': 'sa', **({'kh': 1} if key_[0] == 'K' else {}),
-                  'cm': [y[2], c[2]], 'parts': pinfo, 'hil': hil})
+                  'cm': [y[2], c[2]], **({'xs': [[x[0], x[3]] for x in EXTRA[k2]]} if key_[0] == 'S' else {}), 'parts': pinfo, 'hil': hil})
     print(key_, stats[0], 'simanim', stats[1], y[2], stats[2], c[2], len(parts), 'parts')
 open(os.path.join(OUT, 'index.js'), 'w', encoding='utf-8').write('window.GIM_SA_INDEX=' + json.dumps(index, ensure_ascii=False, separators=(',', ':')) + ';\n')
 print(round(total / 1e6, 1), 'MB')

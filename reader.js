@@ -431,7 +431,7 @@
     'טור': 'Tur', 'בית יוסף': 'Beit Yosef', 'ב״ח': 'Bach', 'בית חדש': 'Bayit Chadash', 'סימן': 'Siman', 'סימן קודם': 'Previous siman', 'סימן הבא': 'Next siman', 'הקדמה': 'Introduction', 'הקדמת הטור': 'Introduction to the Tur',
     'טוען את הטור…': 'Loading the Tur…', 'לא ניתן לטעון את הטור.': 'Could not load the Tur.', 'מעבר לסימן': 'Go to siman', 'ארבעה טורים': 'Arba\'ah Turim', 'הדיבור הקודם': 'Previous comment', 'גודל הטקסט': 'Text size', 'הקטנת הטקסט': 'Smaller text', 'הגדלת הטקסט': 'Larger text', 'זכוכית מגדלת': 'Magnifier', 'גודל הפס': 'Strip size', 'זום': 'Zoom', 'סגירת הזכוכית': 'Close magnifier', 'הזיזו את העכבר על הטקסט': 'Move the pointer over the text', 'רוחב': 'Width', 'גובה': 'Height', 'גרירת הגודל': 'drag to resize', 'הדיבור הבא': 'Next comment', 'הסימן כולו': 'The whole siman',
     'הטור באמצע, ב״ח מימין ובית יוסף משמאל.': 'The Tur in the middle, Bach on the right and Beit Yosef on the left.',
-    'טור ומפרשים': 'Tur & commentary', 'משמאל': 'on the left', 'מימין': 'on the right', 'קטעים מהטור, ומתחת לכל אחד הדיבורים שלו.': 'Passages of the Tur, each followed by its comments.',
+    'טור ומפרשים': 'Tur & commentary', 'הלכות ומפרשים': 'Law & commentaries', 'משמאל': 'on the left', 'מימין': 'on the right', 'קטעים מהטור, ומתחת לכל אחד הדיבורים שלו.': 'Passages of the Tur, each followed by its comments.',
     'הטור מימין, והפירוש מקיף אותו וממשיך מתחתיו.': 'The Tur on the right; the commentary wraps around it and continues below.', 'הטור לבדו, ברוחב מלא.': 'The Tur alone, at full width.', 'לחצו על סימן בטור או על דיבור כדי לקרוא אותו באותיות גדולות.': 'Click a marker in the Tur or a comment to read it in large letters.',
     'בטור מקלידים מקום: ״או״ח ס״, ״יו״ד קצג״, או מספר סימן.': 'In the Tur, type a place: "OC 60", "YD 193", or a siman number.',
     'הלכה הלכה': 'Halakhah by halakhah', 'מסך הקריאה: תנ״ך, משנה, רמב״ם, ש״ס וטור עם מפרשים': 'Reading: Tanakh, Mishnah, Rambam, Talmud and Tur with commentaries', 'מסך הגימטריה: חישוב, חיפוש והשוואה': 'Gematria: calculate, search and compare', 'סוג תצוגה, מפרשים, כתב וגודל אותיות': 'layout, commentaries, script and text size',
@@ -483,7 +483,7 @@
   const S = Object.assign({}, DEF, (() => { try { return JSON.parse(localStorage.getItem('gimatrivonReader') || '{}'); } catch (e) { return {}; } })());
   S.segZ = Math.min(3, Math.max(0, Math.round(Number(S.segZ)) || 0)); S.magZ = Math.min(4, Math.max(1.5, Number(S.magZ) || 2.5)); S.magW = Math.min(1000, Math.max(200, Number(S.magW) || 420)); S.magH = Math.min(500, Math.max(60, Number(S.magH) || 170));
   S.p = 0; S.hl = ''; S.lock = null; S.tp = 0; S.sel = null; S.rp = 0; S.rsel = null; S.rgo = null;
-  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => x === 'y' || x === 'c'); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; S.zsul = S.zsul === '1' ? '1' : '0'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book'; S.stz = S.stz === '1' ? '1' : '0'; S.stzHide = S.stzHide === '1' ? '1' : '0';
+  if (!Array.isArray(S.rOff)) S.rOff = []; S.rOff = S.rOff.filter(x => /^[yc gtsmr]$/.test(x) && x !== ' '); if (S.rview !== 'study') S.rview = 'daf'; S.zside = 't'; // התרגום תמיד מול הטקסט; הסולם הוא פירוש if (S.zlay !== 'cols') S.zlay = 'spread'; S.zsul = S.zsul === '1' ? '1' : '0'; if (!Array.isArray(S.zoff)) S.zoff = []; S.zoff = S.zoff.filter(x => x === 't' || x === 'r'); if (S.ramView !== 'aligned') S.ramView = 'book'; S.stz = S.stz === '1' ? '1' : '0'; S.stzHide = S.stzHide === '1' ? '1' : '0';
   const save = () => { try { localStorage.setItem('gimatrivonReader', JSON.stringify({ b: S.b, ch: S.ch, anchor: S.anchor, view: S.view, ramView: S.ramView, tr: S.tr, trFont: S.trFont, cmFont: S.cmFont, size: S.size, scope: S.scope, src: S.src, prScope: S.prScope, prColor: S.prColor, tk: S.tk, tj: S.tj, tview: S.tview, tsrc: S.tsrc, cmOff: S.cmOff, ramNik: S.ramNik, rk: S.rk, rs: S.rs, rscope: S.rscope, rsrc: S.rsrc, rview: S.rview, rOff: S.rOff, zside: S.zside, zlay: S.zlay, zsul: S.zsul, zoff: S.zoff, segZ: S.segZ, magZ: S.magZ, magW: S.magW, magH: S.magH, stz: S.stz, stzHide: S.stzHide })); } catch (e) {} syncHash(); };
   /* הכתובת: #read/… במסך הקריאה (מתעדכנת בכל דפדוף, ב-replaceState — בלי רשומות בהיסטוריה), #gim במסך הגימטריה.
      נוגעים בה רק כשהיא ריקה או כבר אחת מאלה — #phone / #desktop (app.js) נשארים */
@@ -850,7 +850,7 @@
 
   /* כפתור סוג התצוגה בסרגל: שמות, מצב לחוץ, הסבר בריחוף — לפי הספר הפתוח. מתעדכן לפני הטעינה, כך שגם בזמן שספר נטען
      הכפתור מראה את הסוג של הספר הזה ולא של הקודם (ש״ס / טור) */
-  const viewName = v => v === 'book' ? 'ספר' : v === 'aligned' ? alignedName(S.b) : v === 'daf' ? (isZ() ? 'דף מול תרגום' : 'צורת הדף') : isTur() ? 'טור ומפרשים' : isZ() ? 'זוהר והסולם' : 'גמרא ומפרשים';
+  const viewName = v => v === 'book' ? 'ספר' : v === 'aligned' ? alignedName(S.b) : v === 'daf' ? (isZ() ? 'דף מול תרגום' : 'צורת הדף') : isTur() ? (turT().sa ? 'הלכות ומפרשים' : 'טור ומפרשים') : isZ() ? 'זוהר והסולם' : 'גמרא ומפרשים';
   function syncSeg() {
     const seg = $r('#rdViewSeg'), tal = isTal(), tur = isTur(), cur = tur ? S.rview : tal ? S.tview : vw(S.b);
     seg.hidden = !tal && !tur && !hasViews(S.b);
@@ -1765,7 +1765,7 @@
   const turPartName = t => isEn() ? t.en : t.he;
   const hilOf = (t, s) => { let n = ''; (t.hil || []).forEach(x => { if (x[0] <= s) n = x[1]; }); return s ? n : ''; };
   const RL = (x, i) => x === 'y' ? '(' + toHeb(i + 1) + ')' : '[' + toHeb(i + 1) + ']';
-  const turCmName = x => { const t = S.rk && RX && RX.byK[S.rk] != null ? turT() : null; return t && t.cm ? t.cm[x === 'y' ? 0 : 1] : T(x === 'y' ? 'בית יוסף' : 'ב״ח'); };
+  const turCmName = x => { const t = S.rk && RX && RX.byK[S.rk] != null ? turT() : null; const e = t && t.xs && t.xs.find(z => z[0] === x); return e ? T(e[1]) : t && t.cm ? T(t.cm[x === 'y' ? 0 : 1]) : T(x === 'y' ? 'בית יוסף' : 'ב״ח'); };
   const turFull = t => t.sa ? turPartName(t) : T('טור') + ' ' + turPartName(t); // שם החלק עם המילה "טור" (בשולחן ערוך השם כולל אותה)
   const cmRashi = () => S.cmFont === 'rashi' && !(S.rk && RX && RX.byK[S.rk] != null && turT().sa); // מפרשי השולחן ערוך בכתב רגיל
   // חלקי הטור בזיכרון: אלה שהמסך צריך עכשיו, ועוד TUR_KEEP האחרונים (חלק = בערך 2MB); השאר נטענים שוב כשצריך
@@ -1858,7 +1858,7 @@
   const turMainHtml = (m, a, b, first) => (first ? turHeadHtml(turTOf(m.k), m.s, m.hd) : '') + tokHtml(m, m.tt, a, b, 0, true);
   // מידות העמוד: שטח הטקסט (W×H) ממדידה, וגדלי האותיות ורוחב הטורים לפיו
   // מפרש אחד בלבד (השני מוסתר): הטור בחצי הימני למעלה, והפירוש ברוחב מלא מקיף אותו משמאל וממשיך מתחתיו
-  const turOne = () => S.rOff.length === 1;
+  const turOne = () => S.rOff.filter(x => x === 'y' || x === 'c').length === 1;
   function trDafGeo(g) {
     const gk = g.key + '|' + S.size + '|' + S.rOff.join('') + (S.rk && RX && RX.byK[S.rk] != null && turT().sa ? '|sa' : '');
     if (TGC.has(gk)) return TGC.get(gk);
@@ -2020,8 +2020,8 @@
      עמוד = אותו מבנה כמו בצורת הדף ({t, y, c}: תחומים בטור ובזרמים), כך שהחיפוש, הדיבור הבא וההדפסה עובדים בשתי התצוגות.
      ממלאים קטעים שלמים (עד נקודות החיתוך) עם כל הפירוש שלהם; קטע שלא נכנס עם הפירוש — הפירוש ממשיך לעמוד הבא. */
   const trGeo = g => S.rview === 'study' ? { study: true, g, key: 'S|' + g.key + '|' + S.rOff.join('') } : trDafGeo(g);
-  const turPages = (k, s, Q) => Q.study ? tsPages(k, s, Q) : trDafPages(k, s, Q);
-  const turPageHtml = (k, s, p, Q, side, cls) => Q.study ? tsPageHtml(k, s, p, Q, side, cls) : trDafPageHtml(k, s, p, Q, side, cls);
+  const turPages = (k, s, Q) => Q.study ? (turTOf(k).sa ? sbPages(k, s, Q) : tsPages(k, s, Q)) : trDafPages(k, s, Q);
+  const turPageHtml = (k, s, p, Q, side, cls) => Q.study ? (turTOf(k).sa ? sbPageHtml(k, s, p, Q, side, cls) : tsPageHtml(k, s, p, Q, side, cls)) : trDafPageHtml(k, s, p, Q, side, cls);
   function tsStream(m, x, a, b) {
     const z = m.st[x], out = [];
     for (let i = 0; i < z.n; i++) {
@@ -2039,6 +2039,90 @@
       html += '<section class="rdCm ' + cls + '" aria-label="' + h(turCmName(x)) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(turCmName(x)) + '</span></div><div class="rdCmBody">' + tsStream(m, x, pg[x][0], pg[x][1]) + '</div></section>';
     });
     return html;
+  }
+
+  /* ---------- שולחן ערוך: "הלכות ומפרשים" — דף בסגנון הדפוס (v4.14.0) ----------
+     הסעיפים של הסימן מלמעלה, כל אחד בשורה חדשה עם אות הסעיף, ומתחתם בלוקים של המפרשים (באר הגולה, באר היטב, שערי תשובה, מגן אברהם,
+     ביאור הגר״א, ביאור הלכה, משנה ברורה…) בסדר הדפוס, כל אחד עם כותרת. הטקסט נקרא מעמודה 3 של השורה (הטקסט עם עוגני כל המפרשים),
+     המפרשים הנוספים מעמודה 4 ({קוד: [הערות]}). העימוד: יחידות שלמות (סעיף או הערה) בכל עמוד, ויחידה גדולה מעמוד נחתכת במילים;
+     בלוק שממשיך בעמוד הבא מקבל "(המשך)". */
+  const SBC = new Map(), SBA = /^\u0010([a-z])(\d+)\u0011$/;
+  const sbMark = (c, i) => { const n = toHeb(i + 1); return c === 'y' ? '(' + n + ')' : c === 'c' ? '[' + n + ']' : c === 't' ? '(' + n + ')' : c === 's' ? '[' + n + ']' : c === 'm' ? '{' + n + '}' : c === 'r' ? '⟨' + n + '⟩' : n; };
+  function sbModel(k, s) {
+    const key = k + ':' + s; if (SBC.has(key)) return SBC.get(key);
+    const t = turTOf(k), row = turRow(k, s), lines = String(row[3] || row[0] || '').split('\n'), xs = row[4] || {};
+    let hd = ''; const mh = /^\u0003([^\u0004]*)\u0004$/.exec(lines[0] || '');
+    if (mh && /^(הלכות|דיני|סימני) /.test(mh[1]) && mh[1].length < 50) { hd = mh[1].trim(); lines.shift(); }
+    const lists = Object.assign({ y: row[1] || [], c: row[2] || [] }, xs), order = t.xs ? t.xs.map(x => x[0]).concat(['c', 'y']) : ['y', 'c'];
+    const units = []; lines.forEach((l, i) => units.push({ sec: 't', i, first: i === 0, toks: turToks(l) }));
+    order.forEach(c => { let f = true; (lists[c] || []).forEach((txt, i) => { if (txt) { units.push({ sec: c, i, first: f, toks: turToks(txt) }); f = false; } }); });
+    const m = { k, s, hd, units }; SBC.set(key, m); trimMap(SBC, 40); return m;
+  }
+  const isSB = () => !!(S.rk && RX && RX.byK[S.rk] != null && turT().sa && S.rview === 'study');
+  // HTML לאסימונים [a, b) של יחידה: הדגשה והגהה, ועוגני מפרשים (מוסתרים — לא מוצגים)
+  function sbTokHtml(tk, a, b) {
+    let bold = false, bh = false;
+    for (let i = 0; i < a; i++) if (/[\u0003-\u0006]/.test(tk[i])) for (const c of tk[i]) { if (c === '\u0003') bold = true; else if (c === '\u0004') bold = false; else if (c === '\u0005') bh = true; else if (c === '\u0006') bh = false; }
+    const conv = x => h(x).replace(/[\u0003-\u0006]/g, c => c === '\u0003' ? (bold = true, '<b>') : c === '\u0004' ? (bold = false, '</b>') : c === '\u0005' ? (bh = true, '<span class="bh">') : (bh = false, '</span>'));
+    let out = (bh ? '<span class="bh">' : '') + (bold ? '<b>' : ''), any = false;
+    for (let i = a; i < b; i++) {
+      const w = tk[i], an = SBA.exec(w);
+      if (an) {
+        if (S.rOff.includes(an[1])) continue;
+        const x = an[1], mk = sbMark(x, +an[2]);
+        out += x === 'y' || x === 'c' ? '<span class="ra rsb r' + x + '" data-x="' + x + '" data-i="' + an[2] + '">' + mk + '</span>' : '<sup class="sbx sbx-' + x + '">' + mk + '</sup>';
+        any = true; continue;
+      }
+      out += (any ? ' ' : '') + conv(w); any = true;
+    }
+    return out + (bold ? '</b>' : '') + (bh ? '</span>' : '');
+  }
+  const sbUnits = m => m.units.filter(u => u.sec === 't' || !S.rOff.includes(u.sec));
+  function sbInner(m, U, ps, first) {
+    const t = turTOf(m.k), cls = cmRashi() ? 'fR' : 'fN', DOTS = ' <span class="rdCont">…</span> ';
+    let html = turHeader(t, m.s, true), txt = '', secs = [], cur = null;
+    ps.forEach(p => {
+      const u = U[p.u], body = sbTokHtml(u.toks, p.a, p.b), pre = p.a > 0 ? DOTS.trim() + ' ' : '', post = p.b < u.toks.length ? ' ' + DOTS.trim() : '';
+      if (u.sec === 't') { txt += '<p class="sbSf" data-i="' + u.i + '">' + (p.a ? '' : '<span class="sbSn">' + toHeb(u.i + 1) + '</span>') + pre + body + post + '</p>'; return; }
+      if (!cur || cur.c !== u.sec) secs.push(cur = { c: u.sec, cont: !(u.first && p.a === 0), html: '' });
+      const cl = u.sec === 'y' || u.sec === 'c', lb = p.a ? '' : '<span class="sbn">' + sbMark(u.sec, u.i) + '</span> ';
+      cur.html += '<p class="rcm sbc r' + u.sec + (p.a ? ' cont' : '') + '"' + (cl ? ' data-x="' + u.sec + '"' : '') + ' data-i="' + u.i + '">' + pre + lb + body + post + '</p>';
+    });
+    if (txt || first) html += '<div class="rdBody"><div class="rdTxt trStudy sb">' + (first ? turHeadHtml(t, m.s, m.hd) : '') + txt + '</div></div>';
+    if (txt || first) html += '<div class="rdSp"></div>';
+    secs.forEach(z => { const nm = turCmName(z.c) + (z.cont ? ' (' + T('המשך') + ')' : ''); html += '<section class="rdCm sbS sb-' + z.c + ' ' + cls + '" aria-label="' + h(turCmName(z.c)) + '"><div class="rdCmHd"><span class="ln"></span><span>' + h(nm) + '</span></div><div class="rdCmBody">' + z.html + '</div></section>'; });
+    return html;
+  }
+  function sbPages(k, s, Q) {
+    const key = 'sb|' + k + ':' + s + '|' + Q.key; if (TPC.has(key)) return TPC.get(key);
+    const m = sbModel(k, s), U = sbUnits(m), probe = $r('#rdProbe'), pages = [];
+    probe.className = 'rdPage tal tur study sb' + Q.g.cls;
+    const fits = (ps, first) => { probe.innerHTML = sbInner(m, U, ps, first) + '<div class="rdNum">א</div>'; return !over(probe); };
+    const pc = (i, a, b) => ({ u: i, sec: U[i].sec, i: U[i].i, a, b });
+    let u = 0, a = 0, first = true;
+    while (pages.length < 400) {
+      if (!first && u >= U.length) break;
+      const mk = n => { const ps = []; for (let j = 0; j < n; j++) ps.push(pc(u + j, j ? 0 : a, U[u + j].toks.length)); return ps; };
+      let n = u < U.length ? maxOkF(0, U.length - u, n => fits(mk(n), first)) : 0, ps = mk(n), nu = u + n, na = 0;
+      // היחידה הבאה לא נכנסת: ממלאים את שאר העמוד במילים ממנה (אם נכנס יותר משורה בערך), או חותכים כשהיא לבדה גדולה מעמוד
+      if (nu < U.length) {
+        const nx = U[nu], from = n ? 0 : a, len = nx.toks.length;
+        if (len - from > 14) {
+          const w = maxOkF(0, len - from - 1, w => fits(ps.concat(pc(nu, from, from + w)), first));
+          if (w >= 12 || !n) { const wd = Math.max(w, n ? 0 : 1); ps = ps.concat(pc(nu, from, from + wd)); nu = nu; na = from + wd; }
+        } else if (!n) { ps = [pc(nu, from, len)]; nu++; }
+      }
+      if (!ps.length) { if (u < U.length) { ps = [pc(u, a, U[u].toks.length)]; nu = u + 1; na = 0; } }
+      pages.push({ t: [0, 0], y: [0, 0], c: [0, 0], first, sb: ps });
+      u = nu; a = na; first = false;
+    }
+    probe.innerHTML = '';
+    TPC.set(key, pages); trimMap(TPC, 80); return pages;
+  }
+  const sbPageOf = (ps, sec, i) => Math.max(0, ps.findIndex(pg => pg.sb && pg.sb.some(p => p.sec === sec && p.i === i)));
+  function sbPageHtml(k, s, p, Q, side, cls) {
+    const m = sbModel(k, s), ps = sbPages(k, s, Q), U = sbUnits(m);
+    return '<article class="rdPage tal tur study sb ' + side + (cls || '') + '" data-s="' + s + '" aria-label="' + h(T('סימן') + ' ' + num(s)) + '">' + sbInner(m, U, ps[p].sb, ps[p].first) + '<div class="rdNum">' + h(tsLbl(s, p, ps.length)) + '</div></article>';
   }
   const tsLbl = (s, p, n) => (s ? num(s) : T('הקדמה')) + (n > 1 ? ' · ' + num(p + 1) : '');
   function tsPageHtml(k, s, p, Q, side, cls) {
@@ -2178,7 +2262,7 @@
     const vis = R.querySelector('.rdBook article[data-s="' + z0.s + '"] [data-x="' + z0.x + '"][data-i="' + i + '"]');
     if (!vis) { // מדפדפים לעמוד שבו מתחיל הדיבור
       const ps = turPages(S.rk, z0.s, trGeo(geo)), st = m.st[z0.x].cs[i], r = z0.x === 'y' ? 'y' : 'c';
-      const pi = ps.findIndex(pg => pg.wide ? pg.wide === r && pg.w[1] > st : pg[r][1] > st);
+      const pi = isSB() ? sbPageOf(ps, r, i) : ps.findIndex(pg => pg.wide ? pg.wide === r && pg.w[1] > st : pg[r][1] > st);
       if (pi >= 0) { S.rs = z0.s; S.rp = pi; render(); }
     }
     openTurCm(z0.s, z0.x, i);
@@ -2224,6 +2308,7 @@
   }
   // העמוד בסימן שבו נמצאת ההתאמה של התוצאה x
   function turHitPage(x, ps) {
+    if (turTOf(x.k).sa && S.rview === 'study') return sbPageOf(ps, x.x, x.x === 't' ? Math.max(0, x.i - (sbModel(x.k, x.s).hd ? 1 : 0)) : x.i);
     const m = turModel(x.k, x.s), mk = turHl(m);
     if (x.x === 't') {
       const p = x.i - (m.hd ? 1 : 0); if (p < 0) return 0; // הכותרת ("הלכות …") מוצגת בראש העמוד הראשון
@@ -2299,7 +2384,7 @@
       const opt = (key, val, label, note) => '<button type="button" class="rdOpt' + (S[key] === val ? ' on' : '') + '" data-pset="' + key + '" data-val="' + val + '" aria-pressed="' + (S[key] === val) + '"><span class="dot"></span><span class="lb">' + T(label) + '</span><span class="nt">' + note + '</span></button>';
       const n = (() => { const saved = geo; geo = printGeo(); setVars(geo); const len = turPages(S.rk, S.rs, trGeo(geo)).length; geo = saved; if (geo) setVars(geo); return Math.ceil(len / 2); })();
       $r('#rdPrintPop').innerHTML = '<div class="rdPopHd"><span>' + T('הדפסה / PDF') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
-        '<div class="rdSec"><span class="rdSecT">' + T('מה להדפיס') + '</span><p class="rdNote">' + h(turRefLabel(S.rk, S.rs)) + ' · ' + T('הסימן כולו') + ' · ' + T(S.rview === 'study' ? 'טור ומפרשים' : 'צורת הדף') + ' · ' + num(n) + ' ' + T(n === 1 ? 'דף' : 'דפים') + '</p></div>' +
+        '<div class="rdSec"><span class="rdSecT">' + T('מה להדפיס') + '</span><p class="rdNote">' + h(turRefLabel(S.rk, S.rs)) + ' · ' + T('הסימן כולו') + ' · ' + T(S.rview === 'study' ? (turT().sa ? 'הלכות ומפרשים' : 'טור ומפרשים') : 'צורת הדף') + ' · ' + num(n) + ' ' + T(n === 1 ? 'דף' : 'דפים') + '</p></div>' +
         '<div class="rdSec"><span class="rdSecT">' + T('צבע') + '</span>' + opt('prColor', 'color', 'צבעוני', T('רקע נייר וצבעים')) + opt('prColor', 'bw', 'שחור-לבן', T('רקע לבן, לחיסכון בדיו')) + '</div>' +
         '<p class="rdNote">' + T('שני עמודים בכל דף A4 לרוחב.') + ' ' + T('ליצוא PDF בחרו בחלון ההדפסה ״שמירה כ-PDF״.') + '</p>' +
         '<button type="button" class="rdGo rdPrintGo" data-print>' + ICON.print + ' ' + T('הדפסה') + '</button>';
@@ -2386,8 +2471,8 @@
     const on = ['y', 'c'].filter(x => !S.rOff.includes(x));
     $r('#rdSet').innerHTML = '<div class="rdPopHd"><span>' + T('הגדרות תצוגה') + '</span><button type="button" class="rdX" data-close aria-label="' + T('סגירה') + '">' + ICON.x + '</button></div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('סוג תצוגה') + '</span><div class="rdCards">' +
-      card('daf', '<span class="pv pvDaf"><i></i><i class="m"></i><i></i></span>', 'צורת הדף') + card('study', '<span class="pv pvRows"><i></i><i></i><i></i></span>', 'טור ומפרשים') + '</div></div>' +
-      '<div class="rdSec"><span class="rdSecT">' + T('מפרשים') + '</span>' + chk('y') + chk('c') + '</div>' +
+      card('daf', '<span class="pv pvDaf"><i></i><i class="m"></i><i></i></span>', 'צורת הדף') + card('study', '<span class="pv pvRows"><i></i><i></i><i></i></span>', turT().sa ? 'הלכות ומפרשים' : 'טור ומפרשים') + '</div></div>' +
+      '<div class="rdSec"><span class="rdSecT">' + T('מפרשים') + '</span>' + (turT().xs || []).map(x => chk(x[0])).join('') + chk('y') + chk('c') + '</div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('כתב הפירוש') + ' (' + turCmName('y') + ', ' + turCmName('c') + ')</span><div class="rdFonts">' + fontPair('cmFont', 'ומ״ש רבינו') + '</div></div>' +
       '<div class="rdSec"><span class="rdSecT">' + T('גודל אותיות') + '</span><div class="rdSizes">' + [-1, 0, 1, 2].map(z => '<button type="button" class="' + (S.size === z ? 'on' : '') + '" data-set="size" data-val="' + z + '" aria-pressed="' + (S.size === z) + '" style="font-size:' + (13 + z * 2.5) + 'px">א</button>').join('') + '</div></div>' +
       '<p class="rdNote">' + (S.rview === 'study' ? T('קטעים מהטור, ומתחת לכל אחד הדיבורים שלו.') : on.length === 2 ? T('הטור באמצע, ב״ח מימין ובית יוסף משמאל.') : on.length ? T('הטור מימין, והפירוש מקיף אותו וממשיך מתחתיו.') : T('הטור לבדו, ברוחב מלא.')) + ' ' + (on.length ? T('לחצו על סימן בטור או על דיבור כדי לקרוא אותו באותיות גדולות.') : '') + ' ' + T('ההגדרות נשמרות לפעם הבאה.') + '</p>';
@@ -3181,7 +3266,7 @@
      MutationObserver (tipsWatch) מעדכן אחרי כל ציור של הסרגל, הדף והחלונות — גם כפתורים שנוצרים מחדש מקבלים הסבר. */
   function viewTip(v) {
     if (v === 'daf') return T(isTur() ? 'צורת הדף: הטור באמצע, וב״ח ובית יוסף מקיפים אותו' : isZ() ? 'דף מול תרגום: עמוד הזוהר בארמית מימין, והתרגום (או הסולם) מולו משמאל' : 'צורת הדף: פריסת דף וילנא — הגמרא באמצע, רש״י ותוספות מסביב');
-    if (v === 'study') return T(isTur() ? 'טור ומפרשים: קטעים מהטור, ומתחת לכל אחד הדיבורים שלו' : isZ() ? 'זוהר והסולם: פסקאות הזוהר ברצף, ומתחת להן התרגום וביאור הסולם' : 'גמרא ומפרשים: קטעי הגמרא ברצף; לחיצה על קטע פותחת את פירושיו');
+    if (v === 'study') return T(isTur() ? (turT().sa ? 'הלכות ומפרשים: סעיפי הסימן מלמעלה, ומתחתם כל המפרשים בסדר הדפוס' : 'טור ומפרשים: קטעים מהטור, ומתחת לכל אחד הדיבורים שלו') : isZ() ? 'זוהר והסולם: פסקאות הזוהר ברצף, ומתחת להן התרגום וביאור הסולם' : 'גמרא ומפרשים: קטעי הגמרא ברצף; לחיצה על קטע פותחת את פירושיו');
     if (isRambam(S.b)) return T(v === 'book' ? 'ספר: עיצוב מהדורת פרנקל — ההלכות ברצף, והשגות הראב״ד בתוך הטקסט' : 'הלכה הלכה: כל הלכה בנפרד עם כותרת, והמפרשים בתחתית הדף');
     return T(v === 'book' ? 'ספר: הטקסט ברצף כמו בספר מודפס, והתרגום בטור צד' : 'פסוק מול תרגום: כל פסוק בשורה משלו, והתרגום מולו');
   }
