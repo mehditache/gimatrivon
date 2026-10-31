@@ -90,6 +90,12 @@ location.replace('desktop.html'+location.hash)})();</script>
 </div>
 <!-- מסך "קריאה ומפרשים" (reader.js): נבנה בפעם הראשונה שעוברים אליו; מוצג במקום #ws/#mShell כש-body[data-mode=read] -->
 <section class="reader" id="reader" aria-label="קריאה ומפרשים"></section>
+<!-- סרגל ניווט תחתון של הטלפון (v4.12.0): קריאה · חישוב · תוצאות. מוצג רק בטלפון (styles.css); כל לשונית רק "לוחצת" על המנגנונים הקיימים (#modeSw ידית הגיליון) — ראו setupMobileUX. -->
+<nav class="mNav" id="mNav" aria-label="ניווט בין מסכים">
+  <button type="button" class="mNavTab" data-tab="read"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z M20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/></svg><span class="nl" id="mNavLblRead">קריאה</span></button>
+  <button type="button" class="mNavTab" data-tab="calc"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg><span class="nl" id="mNavLblCalc">חישוב</span></button>
+  <button type="button" class="mNavTab" data-tab="res"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h11 M4 12h6 M4 18h6 M16.5 11.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 0 0 0-7z M19 18l2.4 2.4"/></svg><span class="nl" id="mNavLblRes">תוצאות</span><span class="mNavSide" id="mNavSide">א׳</span></button>
+</nav>
 </div>
 <dialog id="dlgMethods" class="dlg"><div class="dh"><h2>שיטות הגימטריה</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="methodsDoc"></div></dialog>
 <dialog id="dlgAbout" class="dlg about"><div class="dh"><h2>אודות גימטריבון</h2><button class="x" data-close aria-label="סגור">✕</button></div><div class="sc doc" id="aboutDoc"></div></dialog>

@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.11.1'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.12.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // שם הענף ותאריך הפריסה (מוצגים רק במצב פיתוח — 5 לחיצות רצופות על מספר הגרסה) אינם קבועים בקוד:
 // קבוע כזה עובר עם כל מיזוג לענף אחר ומתיישן (כך הוצג "v4.8.0 · windows" ב-main). הם נקבעים בזמן ריצה, ראו buildInfo למטה.
 let BRANCH = '…', BUILT = '';
@@ -1099,10 +1099,19 @@ function applyMobileLangStatic() {
   $('#mmAboutTxt').textContent = L('אודות');
   $('#mmContactTxt').textContent = L('צור קשר');
   $('#mMenuVer').textContent = VER_TXT;
+  $('#mNav').setAttribute('aria-label', en ? 'Switch screen' : 'ניווט בין מסכים');
+  $('#mNavLblRead').textContent = en ? 'Read' : 'קריאה'; $('#mNavLblCalc').textContent = en ? 'Calc' : 'חישוב'; $('#mNavLblRes').textContent = en ? 'Results' : 'תוצאות';
+  paintNavSide();
 }
 // mSide: הצד המוצג כרגע בפנל-התוצאות של הנייד — נשלט ע״י #mSummaryBar (למעלה, מתחת לכותרת; גם בורר-צד
 // וגם מציג קטע-מהקלט+ערך-גימטרי של כל צד — ראו renderCenter/index.html).
 let mSide = 'A';
+// תג הצד על לשונית "תוצאות" (במקום פס א׳/ב׳ העליון שהוסר ב-v4.12.0)
+function paintNavSide() {
+  const b = document.getElementById('mNavSide'); if (!b) return;
+  b.textContent = LANG === 'en' ? mSide : (mSide === 'A' ? 'א׳' : 'ב׳');
+  b.style.background = mSide === 'A' ? 'var(--acA)' : 'var(--acB)';
+}
 function setupMobileUX() {
   bindMobileGrid();
   applyMobileLangStatic();
@@ -1110,8 +1119,10 @@ function setupMobileUX() {
   const renderMSide = () => {
     segs().forEach(s => s.classList.toggle('active', s.dataset.side === mSide));
     document.querySelectorAll('.mResPane').forEach(p => p.classList.toggle('on', p.dataset.side === mSide));
+    paintNavSide();
   };
-  segs().forEach(s => { s.onclick = () => { mSide = s.dataset.side; renderMSide(); }; });
+  const setSide = k => { mSide = k; renderMSide(); };
+  segs().forEach(s => { s.onclick = () => setSide(s.dataset.side); });
   renderMSide();
   // גיליון תחתון: פתיחה/סגירה רק ע״י לחיצה על הידית (כפתור "ערוך קלט" נפרד הוסר ב-v3.2.0) או ע״י הקלקה
   // על המסך-הכהה (scrim) כש-פתוח. ראו styles.css להסבר על מנגנון-הכיווץ (max-height על #mSheetBody בלבד).
@@ -1123,6 +1134,28 @@ function setupMobileUX() {
   // מתחיל עם class="collapsed" (כדי שלא "יהבהב" פתוח רגע לפני ש-JS מתחבר), ו-setupMobileUX פותח אותו
   // מיידית כאן ברגע שה-handlers כבר מוכנים.
   setSheetOpen(true);
+  // סרגל ניווט תחתון (v4.12.0): קריאה · חישוב · תוצאות. "חישוב" = גימטריה עם הגיליון פתוח (קלט + שיטות),
+  // "תוצאות" = גימטריה עם הגיליון מכווץ. אותה לוגיקה בדיוק כמו מתג המצב (#modeSw) וידית הגיליון — רק "לוחצים" עליהם.
+  const nav = $('#mNav'), inReadNow = () => document.body.dataset.mode === 'read';
+  const paintNav = () => {
+    const cur = inReadNow() ? 'read' : (sheet.classList.contains('collapsed') ? 'res' : 'calc');
+    nav.querySelectorAll('.mNavTab').forEach(b => { const on = b.dataset.tab === cur; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  };
+  nav.onclick = e => {
+    const b = e.target.closest('.mNavTab'); if (!b) return;
+    const t = b.dataset.tab;
+    if (t === 'read') { if (!inReadNow()) $('#modeSw [data-mode=read]').click(); return; }
+    if (inReadNow()) $('#modeSw [data-mode=gem]').click();
+    setSheetOpen(t === 'calc');
+  };
+  new MutationObserver(paintNav).observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
+  new MutationObserver(paintNav).observe(sheet, { attributes: true, attributeFilter: ['class'] });
+  paintNav();
+  // מעבר בין צד א׳ לצד ב׳ בלי פס עליון: החלקה אופקית על התוצאות, או מיקוד בשורת הקלט של הצד.
+  const stg = $('#mStage'); let tx = 0, ty = 0, tOk = false;
+  stg.addEventListener('touchstart', e => { const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tOk = e.touches.length === 1 && sheet.classList.contains('collapsed') && !e.target.closest('textarea,input,.mSheet,.filtPane'); }, { passive: true });
+  stg.addEventListener('touchend', e => { if (!tOk) return; tOk = false; const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) setSide(dx < 0 ? 'B' : 'A'); }, { passive: true });
+  ['A', 'B'].forEach(k => $('#mInpRow' + k).addEventListener('focusin', () => setSide(k)));
   // תפריט ⋮: לא כפילות-לוגיקה — כל פריט רק "מקליק" על הכפתור המקורי המתאים (שעדיין קיים ב-DOM, רק מוסתר
   // ויזואלית בטלפון), כך שכל הלוגיקה (דיאלוגים, מעבר שפה/מראה) ממשיכה לרוץ ממקום אחד יחיד.
   const menu = $('#mMenuPanel'), menuScrim = $('#mMenuScrim');
@@ -2089,7 +2122,7 @@ function buildMobileTourSteps() {
   if (LANG === 'en') return [
     { popover: { title: 'Welcome to Gimatrivon', description: 'A short tour (skip/exit any time) — two "sides" (A/B) you can compare side by side. Let\'s start with Side A.' } },
     { element: '#tA', popover: { title: 'Typing an expression', description: 'Type a word or expression here — the gematria calculation and the search for matches update instantly as you type.', side: 'bottom', align: 'start' } },
-    { element: '.mSumSeg', popover: { title: 'Switching between sides', description: 'These two buttons switch which side\'s results are shown below — Side A and Side B have independent input and results.', side: 'bottom', align: 'start' } },
+    { element: '#mNav', popover: { title: 'Switching screens and sides', description: 'The bottom bar moves between Reading, Calculation (inputs and methods) and Results. In Results, swipe sideways to switch between Side A and Side B — the badge on the tab shows which side you are on.', side: 'top', align: 'center' } },
     { element: '#mSheetHandle', popover: { title: 'The input & calculation panel', description: 'Drag or tap this handle to show or collapse the panel with both inputs and the combined calculation grid, without leaving the results view.', side: 'top', align: 'center' } },
     { element: '#mgrFirstFam', popover: { title: 'Gematria methods', description: 'Each box here is a calculation method (regular, Atbash, Atbach, milui and more) for both sides at once — scroll down for more methods. Tapping a value turns that method on/off for the search.', side: 'top', align: 'center' } },
     hitsTourStep(true),
@@ -2104,7 +2137,7 @@ function buildMobileTourSteps() {
   return [
     { popover: { title: 'ברוכים הבאים לגימטריבון', description: 'סיור קצר (אפשר לדלג/לצאת בכל רגע) — שני "צדדים" (א׳/ב׳) שאפשר להשוות ביניהם. נתחיל מצד א׳.' } },
     { element: '#tA', popover: { title: 'הקלדת ביטוי', description: 'מקלידים כאן מילה או ביטוי — החישוב הגימטרי וחיפוש ההתאמות מתעדכנים מיד, תוך כדי ההקלדה.', side: 'bottom', align: 'start' } },
-    { element: '.mSumSeg', popover: { title: 'מעבר בין הצדדים', description: 'שני הכפתורים האלה מחליפים איזה צד מוצג למטה — לצד א׳ ולצד ב׳ יש קלט ותוצאות עצמאיים משלהם.', side: 'bottom', align: 'start' } },
+    { element: '#mNav', popover: { title: 'מעבר בין מסכים וצדדים', description: 'הסרגל התחתון עובר בין קריאה, חישוב (קלט ושיטות) ותוצאות. בתוצאות מחליקים הצידה כדי לעבור בין צד א׳ לצד ב׳ — התג על הלשונית מראה באיזה צד אתם.', side: 'top', align: 'center' } },
     { element: '#mSheetHandle', popover: { title: 'פנל הקלט והחישוב', description: 'גוררים או לוחצים על הידית הזו כדי להציג או לכווץ את הפנל עם הקלט של שני הצדדים ולוח-החישוב המשולב, בלי לצאת מתצוגת התוצאות.', side: 'top', align: 'center' } },
     { element: '#mgrFirstFam', popover: { title: 'שיטות גימטריה', description: 'כל תא כאן הוא שיטת-חישוב (רגילה, אתב״ש, אטב״ח, מילוי ועוד) לשני הצדדים יחד — גוללים למטה לעוד שיטות. לחיצה על ערך מדליקה/מכבה את השיטה הזו לחיפוש.', side: 'top', align: 'center' } },
     hitsTourStep(true),
