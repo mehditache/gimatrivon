@@ -1212,6 +1212,18 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTxt.trStudy p{line-height:1.85}
 .rdTxt.trStudy .ra{font-size:.55em;vertical-align:.35em}
 .rdPage.tur.study .rdCm p.rcm{padding:0 2px}
+/* שולחן ערוך — "הלכות ומפרשים" (דף בסגנון הדפוס) */
+.rdTxt.trStudy.sb p.sbSf{margin:0 0 .5em;line-height:1.8;text-align:justify}
+.sbSn{display:inline-block;min-width:1.3em;margin-inline-end:.3em;font:800 .92em "GimFrank",var(--tf);color:var(--rdGold)}
+.rdTxt.trStudy.sb .ra.rsb{font-size:.62em;font-weight:800;vertical-align:.28em;margin:0 .14em}
+.sbx{font-size:.55em;font-weight:700;vertical-align:.5em;margin:0 .1em;color:var(--rdMu);white-space:nowrap}
+.sbx-g{color:var(--rdGold)}
+.rdPage.sb .rdCm.sbS{margin-top:.45em}
+.rdPage.sb .rdCm.sb-y .rdCmBody,.rdPage.sb .rdCm.sb-c .rdCmBody{columns:1}
+.rdPage.sb .rdCm.sb-g,.rdPage.sb .rdCm.sb-t,.rdPage.sb .rdCm.sb-s,.rdPage.sb .rdCm.sb-m,.rdPage.sb .rdCm.sb-r{font-size:.9em}
+.rdPage.sb .sbn{color:var(--rdGold);font-weight:700;margin-inline-end:.2em}
+.rdPage.sb .rdCm p.sbc{margin:0 0 .45em}
+
 /* רמב״ם בעיצוב מהדורת פרנקל (reader.js, ramBody): כותרת בקו כפול, "פרק שמיני", אות הלכה מודגשת, ראב״ד בתוך הטקסט */
 .rdPage{--rdRam:#7a2e3b}
 .rdHead.ram{border-bottom:3px double var(--rdGold);padding-bottom:5px}

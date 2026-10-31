@@ -93,6 +93,24 @@ daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICEN
 שמות ההלכות וטווחי הסימנים מתוך `schemas/Tur.json` של אותו יצוא (מבנה "Topic"). בחושן משפט, מקום הדיבורים בטור
 נלקח מקובצי הקישורים של היצוא (`links/links*.csv`). הנתונים נבנים ב-`scripts/build-tur.py`.
 
+## שולחן ערוך, משנה ברורה, ביאור הלכה, כף החיים ומפרשים (`generated/sa/`, נוסף ב-v4.13.0)
+
+מקור: יצוא הנתונים של ספריא (Sefaria-Export), נבדק ב-2026-10-31 מול `books.json` (שדה `license` בכל קובץ):
+
+| טקסט | גרסה | רישיון |
+|---|---|---|
+| שולחן ערוך, אורח חיים | Torat Emet 363 (מנוקד) | **Public Domain** |
+| שולחן ערוך, יורה דעה ואבן העזר | Torat Emet 357 (מנוקד) | **Public Domain** |
+| שולחן ערוך, חושן משפט | Torat Emet 363 (מנוקד) | שדה הרישיון `unknown` (אותו טקסט במהדורת Lemberg 1898 הוא Public Domain) |
+| שולחן ערוך (עוגני המפרשים בלבד) | Lemberg 1886-1898 (מהדורות NLI) | **Public Domain** |
+| משנה ברורה, סימנים 187-697 | "On Your Way" (mobile.tora.ws) | **Public Domain** |
+| משנה ברורה, סימנים 2-186 | "eu5 text" (mishnaberura.eu5.org) | שדה הרישיון `unknown` — **לבדוק לפני פרסום פומבי** |
+| ביאור הלכה | Wikisource | **Public Domain** |
+| כף החיים (או״ח, יו״ד) | Kaf Hachayim, Jerusalem 1910-1957 | **Public Domain** |
+| ש״ך, ט״ז, סמ״ע (מאירת עיניים), באר היטב, חלקת מחוקק, בית שמואל | Lemberg / Vilna 1876 / Torat Emet 357 | **Public Domain** |
+
+מבנה סימנים והלכות לפי `schemas/Shulchan_Arukh,_<חלק>.json`; מיקום ביאור הלכה וכף החיים לפי `links/links*.csv`. נבנה ב-`scripts/build-sa.py`.
+
 ## ברטנורא, מילון עברי — **לא נבדק כלל**
 
 שני אלה (63 ספרי ברטנורא על המשנה, ומילון עברי אחד) נוספו גם הם ל-corpus במהלך הפרויקט אך **לא תועדו
