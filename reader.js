@@ -2142,20 +2142,23 @@
       });
       return build(tp, te, cap);
     };
+    // מקומות חיתוך מותרים בטקסט: לא לפני עוגן (כדי שעמוד לא יתחיל בסימנים לבדם)
+    const OK = []; tIdx.forEach(ui => { const u = U[ui]; for (let j = 0; j <= u.toks.length; j++) { const g = u.off + j; if (g <= total && (j === u.toks.length || !SBA.test(u.toks[j]))) OK.push(g); } });
+    const okFrom = x => { let lo = 0, hi = OK.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (OK[mid] >= x) hi = mid; else lo = mid + 1; } return lo; }; // האינדקס הראשון ב-OK שערכו ≥ x
     let tp = 0, first = true, guard = 0;
     const backlog = () => codes.some(x => sp[x] < arr[x].length);
     while ((tp < total || backlog() || first) && guard++ < 600) {
       let te = total, r = build(tp, total, null);
       if (tp < total && !fits(r, first)) {
-        const minTe = Math.min(total, tp + 6);
-        te = minTe + maxOkF(0, total - minTe, n => fits(build(tp, minTe + n, null), first)); r = build(tp, te, null);
+        const i0 = okFrom(Math.min(total, tp + 6)), minTe = OK[i0];
+        te = OK[i0 + maxOkF(0, OK.length - 1 - i0, n => fits(build(tp, OK[i0 + n], null), first))]; r = build(tp, te, null);
         if (te === minTe && !fits(r, first)) { // גם הטקסט המינימלי לא נכנס עם כל ההערות שלו: כל מפרש מקבל אחוז, ואז ממלאים
           const f = maxOkF(0, 99, n => { const c = {}; codes.forEach(x => { c[x] = Math.floor(r.wd[x] * Math.max(0.005, n / 100)); }); return fits(build(tp, te, c), first); });
           const c = {}; codes.forEach(x => { c[x] = Math.max(1, Math.floor(r.wd[x] * Math.max(0.005, f / 100))); }); r = refine(tp, te, c, first);
         } else if (te < total) { // העמוד מלא עד המילה הבאה: אם היא מעגנת הערה — נכנס ממנה כמה שנכנס, והיא ממשיכה בעמוד הבא
           const base = {}; codes.forEach(x => { base[x] = words(r.rest[x]); });
-          const nx = build(tp, te + 1, null);
-          if (codes.some(x => nx.wd[x] > base[x]) && fits(build(tp, te + 1, base), first)) { te++; r = refine(tp, te, base, first); }
+          const ne = OK[okFrom(te + 1)], nx = build(tp, ne, null);
+          if (codes.some(x => nx.wd[x] > base[x]) && fits(build(tp, ne, base), first)) { te = ne; r = refine(tp, te, base, first); }
         }
       } else if (tp >= total && !fits(r, first)) { // נשארו רק הערות: ממלאים עמוד אחרי עמוד
         const c = {}; codes.forEach(x => { c[x] = 0; }); r = refine(tp, te, c, first);
