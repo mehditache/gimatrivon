@@ -1212,17 +1212,33 @@ html.forcePhone .modeSw button{padding:.2rem .6rem;font-size:.85rem}
 .rdTxt.trStudy p{line-height:1.85}
 .rdTxt.trStudy .ra{font-size:.55em;vertical-align:.35em}
 .rdPage.tur.study .rdCm p.rcm{padding:0 2px}
-/* שולחן ערוך — "הלכות ומפרשים" (דף בסגנון הדפוס) */
-.rdTxt.trStudy.sb p.sbSf{margin:0 0 .5em;line-height:1.8;text-align:justify}
-.sbSn{display:inline-block;min-width:1.3em;margin-inline-end:.3em;font:800 .92em "GimFrank",var(--tf);color:var(--rdGold)}
-.rdTxt.trStudy.sb .ra.rsb{font-size:.62em;font-weight:800;vertical-align:.28em;margin:0 .14em}
-.sbx{font-size:.55em;font-weight:700;vertical-align:.5em;margin:0 .1em;color:var(--rdMu);white-space:nowrap}
+/* שולחן ערוך, משנה ברורה וכף החיים — דף מודפס (reader.js: sbInner) */
+.rdPage.sb>*{flex-shrink:0}
+.rdPage.sb .ppTop{display:block}
+.rdPage.sb .ppTop.hasG{display:grid;grid-template-columns:minmax(0,1fr) 27%;gap:0 14px;align-items:start}
+.rdTxt.trStudy.sb p.sbSf{margin:0 0 .35em;line-height:1.75;text-align:justify}
+.sbSn{display:inline-block;margin-inline-end:.3em;font:800 .9em "GimFrank",var(--tf);color:var(--rdGold)}
+.rdTxt.trStudy.sb .ra.rsb{font-size:.6em;font-weight:800;vertical-align:.3em;margin:0 .12em}
+.sbx{font-size:.52em;font-weight:700;vertical-align:.5em;margin:0 .08em;color:var(--rdMu);white-space:nowrap}
 .sbx-g{color:var(--rdGold)}
-.rdPage.sb .rdCm.sbS{margin-top:.45em}
-.rdPage.sb .rdCm.sb-y .rdCmBody,.rdPage.sb .rdCm.sb-c .rdCmBody{columns:1}
-.rdPage.sb .rdCm.sb-g,.rdPage.sb .rdCm.sb-t,.rdPage.sb .rdCm.sb-s,.rdPage.sb .rdCm.sb-m,.rdPage.sb .rdCm.sb-r{font-size:.9em}
-.rdPage.sb .sbn{color:var(--rdGold);font-weight:700;margin-inline-end:.2em}
-.rdPage.sb .rdCm p.sbc{margin:0 0 .45em}
+.rdPage.sb .ppSide{font-size:.74em;line-height:1.5;border-inline-start:1px solid var(--rdLine);padding-inline-start:9px;text-align:justify}
+.rdPage.sb .ppSide .rdCmHd{justify-content:center;margin-bottom:3px;font-size:.95em}
+.rdPage.sb .rdCm.sbS{margin-top:.5em;font-size:.84em;line-height:1.55}
+.rdPage.sb .rdCm.sbS .rdCmHd{justify-content:center;gap:8px;margin-bottom:3px}
+.rdPage.sb .rdCm.sbS .rdCmHd .ln{display:none}
+.rdPage.sb .rdCm.sbS .rdCmHd span{order:0;position:relative;padding:0 10px}
+.rdPage.sb .rdCm.sbS .rdCmHd span::before,.rdPage.sb .rdCm.sbS .rdCmHd span::after{content:"";position:absolute;top:50%;width:26px;height:1px;background:var(--rdLine)}
+.rdPage.sb .rdCm.sbS .rdCmHd span::before{inset-inline-start:100%}
+.rdPage.sb .rdCm.sbS .rdCmHd span::after{inset-inline-end:100%}
+.rdPage.sb .rdCm.sb-y,.rdPage.sb .rdCm.sb-c{font-size:.92em}
+.rdPage.sb .rdCmBody{columns:2;column-gap:20px;column-rule:1px solid var(--rdLine);text-align:justify;hyphens:none}
+.rdPage.sb.narrow .rdCmBody{columns:1}
+.rdPage.sb .ppPair{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;margin-top:.5em}
+.rdPage.sb .ppPair .rdCm.sbS{margin-top:0}
+.rdPage.sb .ppPair .rdCmBody{columns:1;column-rule:0}
+.rdPage.sb.narrow .ppPair{grid-template-columns:1fr}
+.rdPage.sb .sbn{color:var(--rdGold);font-weight:700;margin-inline-end:.15em}
+.rdPage.sb .rcm.sbc{display:inline;border-radius:2px}
 
 /* רמב״ם בעיצוב מהדורת פרנקל (reader.js, ramBody): כותרת בקו כפול, "פרק שמיני", אות הלכה מודגשת, ראב״ד בתוך הטקסט */
 .rdPage{--rdRam:#7a2e3b}
