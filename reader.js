@@ -1773,25 +1773,8 @@
   const turRow = (k, s) => { const t = turTOf(k), p = turPart(t, s), d = (G.GIM_TUR_P || {})[dkOf(t) + '.' + p]; return d ? d.s[s - d.from] || ['', [], []] : null; };
   const rowsReady = (k, ss) => { const t = turTOf(k); return ss.every(s => s < minS(t) || s >= t.n || turRow(k, s)); };
   const turPartName = t => isEn() ? t.en : t.he;
-  /* v4.16.1: שם המקום בכפתור בחירת הספר (#rdWhereTxt). כשאין מקום מקצרים בהדרגה בראשי תיבות — קודם "שולחן ערוך", אחר כך
-     שם החלק (או״ח, יו״ד, אה״ע, חו״מ), ואחר כך "סימן" (ס׳, ובצר מאוד בלי המילה); "כף החיים" ו"משנה ברורה" לעולם במלואם. ואם גם זה לא נכנס — "…" (CSS).
-     השם המלא נשמר ב-data-full (עובר גם לעותק שבבנר של שולחן העבודה, ששם desktop.js מתאים אותו לרוחב הבנר בעזרת GT_fitWhere) */
-  const WHERE_AB = [
-    [[/שולחן ערוך/g, 'שו״ע'], [/Shulchan Arukh,? ?/g, 'SA ']],
-    [[/אורח חיים/g, 'או״ח'], [/יורה דעה/g, 'יו״ד'], [/אבן העזר/g, 'אה״ע'], [/חושן משפט/g, 'חו״מ'], [/Orach Chayim/g, 'OC'], [/Yoreh De'ah/g, 'YD'], [/Even HaEzer/g, 'EH'], [/Choshen Mishpat/g, 'CM']],
-    [[/סימן /g, 'ס׳ '], [/Siman /g, 'Si. ']],
-    [[/ · ס׳ /g, ' '], [/ · Si\. /g, ' ']] // בטלפון צר: "שו״ע יו״ד · כף החיים א"
-  ];
-  function fitWhere(el) {
-    if (!el) return;
-    const full = el.dataset.full != null ? el.dataset.full : el.textContent, put = x => { if (el.textContent !== x) el.textContent = x; };
-    put(full);
-    if (!el.clientWidth) { el.removeAttribute('title'); return; } // מוסתר (למשל הסרגל שבתוך חלון בשולחן העבודה) — השם המלא
-    let s = full;
-    for (const st of WHERE_AB) { if (el.scrollWidth <= el.clientWidth) break; s = st.reduce((a, r) => a.replace(r[0], r[1]), s); put(s); }
-    if (s !== full || el.scrollWidth > el.clientWidth) el.title = full; else el.removeAttribute('title');
-  }
-  G.GT_fitWhere = fitWhere;
+  // v4.16.2: התאמת שם המקום לרוחב (ראשי תיבות לפי הצורך) — where-fit.js (משותף לקורא ולבנר של שולחן העבודה)
+  const fitWhere = el => { if (G.GT_fitWhere) G.GT_fitWhere(el); else if (el && el.dataset.full != null) el.textContent = el.dataset.full; };
   try { document.fonts.addEventListener('loadingdone', () => fitWhere($r('#rdWhereTxt'))); } catch (e) {} // הגופן משנה את הרוחב
   function setWhere(x) { const el = $r('#rdWhereTxt'); if (!el) return; el.dataset.full = x; fitWhere(el); }
   const hilOf = (t, s) => { let n = ''; (t.hil || []).forEach(x => { if (x[0] <= s) n = x[1]; }); return s ? n : ''; };

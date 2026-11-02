@@ -578,8 +578,8 @@
     const stop = () => b.classList.remove('attract');
     setTimeout(stop, 10000); b.addEventListener('pointerdown', stop, { once: true });
   }
-  // v4.16.1: שם המקום בבורר הספר מותאם לרוחב שלו בבנר (ראשי תיבות לפי הצורך, ואז "…") — אותה פונקציה של הקורא (reader.js: fitWhere)
-  function fitNav() { const f = readerF(), fw = f && f.win && f.win.GT_fitWhere, sp = nav.querySelector('[data-src-id=rdWhereTxt]'); if (fw && sp) try { fw(sp); } catch (e) {} }
+  // v4.16.1: שם המקום בבורר הספר מותאם לרוחב שלו בבנר (ראשי תיבות לפי הצורך, ואז "…") — where-fit.js, שנטען גם כאן
+  function fitNav() { const f = readerF(), fw = window.GT_fitWhere || (f && f.win && f.win.GT_fitWhere), sp = nav.querySelector('[data-src-id=rdWhereTxt]'); if (fw && sp) try { fw(sp); } catch (e) {} }
   addEventListener('resize', fitNav); try { document.fonts.addEventListener('loadingdone', fitNav); document.fonts.ready.then(fitNav); } catch (e) {} // הגופן משנה את הרוחב
   function banner() {
     const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
