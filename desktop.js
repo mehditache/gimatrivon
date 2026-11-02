@@ -746,6 +746,8 @@
     if (e.key === 'Escape') q.value = H.doc.getElementById('rdQ').value; // Esc כשהרשימה סגורה מנקה את התיבה בקורא — וגם בבנר, כדי שלא יתפרדו
     if (e.key === 'Enter') setTimeout(() => q.blur(), 80);
   });
+  // v4.17.5: כפתור "פתיחה בחלון" ברשימה הנפתחת — בדיוק כמו Enter
+  window.dkOpenResults = () => { if (q.value.trim().length < 2) return; const sc = hostScope(); closeSearch(); killHost(); openResults(q.value.trim(), sc); q.blur(); };
   // טווח החיפוש (אפשרות א בקנבס): הכפתור שבתיבה מראה את ההיקף הנוכחי ופותח תפריט — איפה לחפש (בחירה אחת) ומה לכלול (סימון).
   // המודל והפעולות של הקורא (GimReader) נשארים המקור היחיד; הבועות של הרשימה הנפתחת מוסתרות במארח.
   const gr = () => H && H.win && H.win.GimReader && H.win.GimReader.scopeModel ? H.win.GimReader : null;
@@ -1088,6 +1090,7 @@
   addEventListener('message', e => {
     const m = e.data; if (!m || !m.gtDesk || e.origin !== location.origin) return;
     if (m.gtDesk === 'res') return fromResults(m);
+    if (m.gtDesk === 'resopen') return window.dkOpenResults && window.dkOpenResults();
     if (m.gtDesk === 'results' && typeof m.q === 'string' && m.q.trim()) openResults(m.q.trim(), null); // חיפוש טקסט שנבחר בחלון קריאה: בכל הספרים
     else if (m.gtDesk === 'gemq' && typeof m.q === 'string') gemText(m.q); // גימטריה של טקסט שנבחר בחלון קריאה: בחלון הגימטריה
     else if (m.gtDesk === 'open') openRead(m.hash, !!m.fresh);
