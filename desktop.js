@@ -266,7 +266,7 @@
       if (chKey(h) === chKey(w.hist[w.hi] || '')) w.hist[w.hi] = h;
       else { w.hist = w.hist.slice(0, w.hi + 1); w.hist.push(h); if (w.hist.length > HMAX) w.hist.shift(); w.hi = w.hist.length - 1; }
     }
-    setTimeout(() => { const t = f.doc && f.doc.getElementById('rdWhereTxt'); if (t && t.textContent.trim()) { w.t = t.textContent.trim(); paint(w); taskbar(); } }, 30);
+    setTimeout(() => { const t = f.doc && f.doc.getElementById('rdWhereTxt'), tx = t && (t.dataset.full || t.textContent).trim(); if (tx) { w.t = tx; paint(w); taskbar(); } }, 30);
     paint(w); if (D.act === id) syncUrl(); saveSoon();
   }
   function go(id, dir) {
@@ -578,6 +578,9 @@
     const stop = () => b.classList.remove('attract');
     setTimeout(stop, 10000); b.addEventListener('pointerdown', stop, { once: true });
   }
+  // v4.16.1: שם המקום בבורר הספר מותאם לרוחב שלו בבנר (ראשי תיבות לפי הצורך, ואז "…") — אותה פונקציה של הקורא (reader.js: fitWhere)
+  function fitNav() { const f = readerF(), fw = f && f.win && f.win.GT_fitWhere, sp = nav.querySelector('[data-src-id=rdWhereTxt]'); if (fw && sp) try { fw(sp); } catch (e) {} }
+  addEventListener('resize', fitNav); try { document.fonts.addEventListener('loadingdone', fitNav); document.fonts.ready.then(fitNav); } catch (e) {} // הגופן משנה את הרוחב
   function banner() {
     const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
     document.body.classList.toggle('dkGem', gem); document.body.classList.toggle('dkOther', other);
@@ -596,6 +599,7 @@
     { const src = d && w && !other && d.querySelector('#rdTop .rdTools'); if (!keep(tools, src)) cloneInto(tools, src); } // בלי חלון פעיל (הכול ממוזער) אין פקדי קריאה
     if (kept) setTimeout(banner, 400); /* נבדק שוב עד שהפקדים החדשים מוכנים (החלון "נטען הרגע" רק 6 שניות) */
     if (!nav.childNodes.length) { nav.dataset.stub = '1'; nav.innerHTML = NAV_STUB(); } // בורר הספר לעולם לא נעלם (גם כשהקורא האחרון ישן)
+    fitNav();
     nav.classList.toggle('dim', other && !stub);
     nav.title = other && !stub ? T('חלון הקריאה האחרון', 'Last reader window') : '';
     scopeLabel();

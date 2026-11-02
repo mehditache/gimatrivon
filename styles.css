@@ -861,6 +861,11 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .reader .rdIco.sm{width:24px;height:24px;border:0}
 .reader .rdWhere{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;background:var(--rdG1);border:1px solid var(--rdG3);font:600 15px "GimFrank",var(--tf);white-space:nowrap}
 .reader .rdWhere:hover,.reader .rdWhere[aria-expanded=true]{border-color:var(--rdOn);background:var(--rdG2)}
+/* v4.16.1: שם ספר ארוך לא דורס את הכפתורים: הכפתור מתכווץ, השם מתקצר בראשי תיבות (reader.js: fitWhere) ואם צריך — "…" */
+.rdOmni .rdNav{flex:0 1 auto;min-width:0;max-width:66%}
+.reader .rdWhere{min-width:0;max-width:100%;box-sizing:border-box}
+.reader .rdWhere>svg,.rdNav .rdIco{flex:none}
+.reader .rdWhere>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .rdSearch{flex:1;min-width:0;max-width:520px;position:relative;display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:9px;background:var(--rdG1);border:1px solid var(--rdG3);color:var(--rdBarMu)}
 .rdSearch:focus-within{border-color:var(--rdOn);background:var(--rdG2)}
 .rdSearch input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--rdBarTx);font:15px "GimFrank",var(--ui);padding:0}
