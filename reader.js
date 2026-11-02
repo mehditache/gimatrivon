@@ -417,7 +417,7 @@
     'רש״י': 'Rashi', 'ברטנורא': 'Bartenura', 'פרק': 'Chapter', 'פסוק': 'Verse', 'משנה': 'Mishnah', 'תנ״ך': 'Tanakh', 'מקרא': 'Text',
     'פרק קודם': 'Previous chapter', 'פרק הבא': 'Next chapter', 'עמוד קודם': 'Previous page', 'עמוד הבא': 'Next page',
     'חיפוש, או קפיצה: ״שמות יב ב״': 'Search, or jump: "Exodus 12 2"', 'חיפוש מהיר או קפיצה למקום': 'Quick search or jump to a place',
-    'בפרק': 'Chapter', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'חיפוש ב': 'Search in', 'פסוקים': 'Verses', 'משניות': 'Mishnayot', 'תרגום': 'Targum', 'הכל': 'All', 'מציג': 'showing', 'אין תוצאות': 'No results',
+    'בפרק': 'Chapter', 'בפרשה': 'Parsha', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'חיפוש ב': 'Search in', 'פסוקים': 'Verses', 'משניות': 'Mishnayot', 'תרגום': 'Targum', 'הכל': 'All', 'מציג': 'showing', 'אין תוצאות': 'No results',
     'מעבר אל': 'Go to', 'פתיחת': 'Open', 'מעבר לפרק ופסוק': 'Go to chapter and verse', 'סגירה': 'Close',
     'אפשר גם להקליד מקום בתיבת החיפוש': 'You can also type a place in the search box', 'דפדוף': 'turn pages',
     'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ממשיך ל': 'continues to ', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
@@ -1746,13 +1746,15 @@
     openSeg(j, s);
   }
 
+  // המקורות המסומנים במסכת / בפרשת הזוהר (S.tsrc: 'all' / 'none' / 'g' / 'g+t' ...)
+  const tsrcSet = () => !S.tsrc || S.tsrc === 'all' ? new Set(['g', 'r', 't']) : S.tsrc === 'none' ? new Set() : new Set(String(S.tsrc).split('+'));
   /* חיפוש במסכת הפתוחה: גמרא, רש״י/רשב״ם, תוספות או הכל */
   function searchTal(q) {
-    const nq = norm(q), hits = [], k = S.tk, all = S.tsrc === 'all';
+    const nq = norm(q), hits = [], k = S.tk, set = tsrcSet(), on = x => set.has(x); // בזוהר אפשר כמה מקורות יחד ("g+t"), מתפריט הטווח בבנר
     if (nq.length < 2 || !TD[k]) return { hits, q: nq };
     TD[k].forEach((a, j) => {
-      if (all || S.tsrc === 'g') a[0].forEach((s, i) => { if ((' ' + norm(plainT(s)) + ' ').includes(nq)) hits.push({ j, s: i, src: 'g', t: s }); });
-      [['r', 1], ['t', 2]].forEach(([src, n]) => { if (all || S.tsrc === src) a[n].forEach(e => { const tx = (e[1] ? e[1] + ' ' : '') + e[2]; if ((' ' + norm(plainT(tx)) + ' ').includes(nq)) hits.push({ j, s: e[0], src, t: tx }); }); });
+      if (on('g')) a[0].forEach((s, i) => { if ((' ' + norm(plainT(s)) + ' ').includes(nq)) hits.push({ j, s: i, src: 'g', t: s }); });
+      [['r', 1], ['t', 2]].forEach(([src, n]) => { if (on(src)) a[n].forEach(e => { const tx = (e[1] ? e[1] + ' ' : '') + e[2]; if ((' ' + norm(plainT(tx)) + ' ').includes(nq)) hits.push({ j, s: e[0], src, t: tx }); }); });
     });
     return { hits, q: nq };
   }
@@ -2695,8 +2697,9 @@
     let html = refsHtml();
     const sq = sqOn(), res = sq ? sqSearch(q) : searchTal(q), n = sq ? res.total : res.hits.length;
     const cntTxt = res.q.length < 2 ? '' : res.wait ? spin() : n ? resN(n) : T('אין תוצאות');
+    const zAll = !S.tsrc || S.tsrc === 'all', zOn = v => v === 'all' ? zAll : !zAll && tsrcSet().has(v);
     if (talT().z) { // בזוהר: מקורות החיפוש בפרשה — הזוהר, התרגום, הסולם או הכל
-      html += '<div class="rdDScope" role="group"><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + [['g', 'זוהר'], ['t', 'תרגום'], ['r', 'הסולם'], ['all', 'הכל']].map(([v, l]) => '<button type="button" data-tsrc="' + v + '" class="' + (S.tsrc === v ? 'on' : '') + '" aria-pressed="' + (S.tsrc === v) + '">' + T(l) + '</button>').join('') + '</span><span class="cnt">' + cntTxt + '</span></div>';
+      html += '<div class="rdDScope" role="group"><span class="rdSrc" role="group" aria-label="' + T('חיפוש ב') + '">' + [['g', 'זוהר'], ['t', 'תרגום'], ['r', 'הסולם'], ['all', 'הכל']].map(([v, l]) => '<button type="button" data-tsrc="' + v + '" class="' + (zOn(v) ? 'on' : '') + '" aria-pressed="' + zOn(v) + '">' + T(l) + '</button>').join('') + '</span>' + (sqGlobOn() ? '<button type="button" data-glob="1" aria-pressed="false">' + T('בכל הספרים') + '</button>' : '') + '<span class="cnt">' + cntTxt + '</span></div>';
     } else html += dropBar('talmud', cntTxt);
     // כל ההתאמות במסכת, ברשימה הווירטואלית עם פס הגלילה המהיר: קבוצה לכל דף (עמוד), וסימון על הפס בכל עשרה דפים
     const start = dropItems.length, t0 = talT();
@@ -2756,6 +2759,7 @@
   const isTL = d => d === 'talmud' || d === 'zohar'; // גמרא וזוהר (רק בחיפוש בכל הספרים): אותה צורת תוצאה (tk, j, s, src)
   const sqDomOf = () => { if (isTur()) return turT().sa ? 'sa' : 'tur'; if (isTal()) return isZ() ? null : 'talmud'; const c = IX.books[S.b].cat; return c === 0 ? 'tanakh' : c === 1 ? 'mishnah' : c === 7 ? 'rambam' : null; }; // בזוהר: חיפוש בפרשה הפתוחה, בלי מסד SQLite
   const sqPhone = () => G.matchMedia && G.matchMedia('(hover: none) and (pointer: coarse)').matches; // טלפון / טאבלט (מסך מגע בלי עכבר)
+  const sqGlobOn = () => !!G.GimSq && /^https?:$/.test(location.protocol) && !sqPhone() && typeof Worker !== 'undefined'; // חיפוש בכל הספרים: לא תלוי בתחום הנוכחי (גם בזוהר)
   const sqOn = () => { const d = sqDomOf(); return !!d && !(SQD[d] && SQD[d].fail) && !!G.GimSq && /^https?:$/.test(location.protocol) && !sqPhone() && typeof Worker !== 'undefined'; };
   const sqScript = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = no; document.head.appendChild(e); });
   const sqAbs = p => new URL(p, location.href).href;
@@ -3116,7 +3120,7 @@
     if (dropItems.length) setAct(lastAct());
   }
   function renderDrop() {
-    if (S.glob && sqOn()) return renderDropGlob();
+    if (S.glob && (sqOn() || isZ() && sqGlobOn())) return renderDropGlob();
     if (isTur()) return renderDropTur();
     if (isTal()) return renderDropTal();
     const q = $r('#rdQ').value, d = $r('#rdDrop'); dropItems = []; dropAct = -1; dropQ = q; RS = null;
@@ -3279,7 +3283,12 @@
      אחרונה — באמצע החלון — ולא בראש, כדי שאפשר יהיה להמשיך לתוצאה הבאה (חץ למטה + Enter). */
   let LP = null;
   // מודל הבורר (משותף לרשימה הנפתחת ולשולחן העבודה): רמות היקף ומקורות מסומנים לתחום הנוכחי
+  const ZSRC = [['g', 'זוהר'], ['t', 'תרגום'], ['r', 'הסולם']];
   function scopeModel() {
+    if (isZ()) { // בזוהר (v4.17.4): חיפוש בפרשה הפתוחה (בלי SQLite) או בכל הספרים; המקורות — הזוהר, התרגום והסולם
+      const gl = !!S.glob && sqGlobOn(), set = tsrcSet();
+      return { dom: 'zohar', glob: gl, noGlob: !sqGlobOn(), levels: [{ k: 'par', label: T('בפרשה'), name: talName(talT()), on: !gl }], srcs: ZSRC.map(x => ({ k: x[0], label: T(x[1]), on: set.has(x[0]) })) };
+    }
     const dom = sqDomOf(); if (!dom) return null;
     const sq = sqOn(), es = effScope(dom), on = srcSet(dom, S[srcProp(dom)]);
     return { dom, glob: !!S.glob, levels: scopeLevels(dom, sq).map(l => ({ k: l[0], label: T(l[1]), name: l[2], on: !S.glob && l[0] === es })),
@@ -3287,9 +3296,10 @@
   }
   function setScope(k) {
     if (k === 'glob') { S.glob = true; save(); return renderDrop(); }
-    const dom = sqDomOf(); S.glob = false; S[scopeProp(dom || 'tanakh')] = k; save(); renderDrop();
+    const dom = sqDomOf(); S.glob = false; if (dom) S[scopeProp(dom)] = k; save(); renderDrop(); // בזוהר (אין תחום) — רק יציאה מ"בכל הספרים", בלי לדרוס את ההיקף של התנ״ך
   }
   function toggleSrc(k) {
+    if (isZ()) { const set = tsrcSet(); if (set.has(k)) set.delete(k); else set.add(k); S.tsrc = set.size === 3 ? 'all' : set.size ? ['g', 't', 'r'].filter(x => set.has(x)).join('+') : 'none'; save(); return renderDrop(); }
     const dom = sqDomOf(); if (!dom) return; const set = srcSet(dom, S[srcProp(dom)]);
     if (set.has(k)) set.delete(k); else set.add(k); // אפשר גם בלי אף מקור מסומן ('none')
     S[srcProp(dom)] = srcStr(dom, set); save(); renderDrop();
