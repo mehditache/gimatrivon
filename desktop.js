@@ -775,7 +775,7 @@
     const row = (cls, k, ic, l, n) => '<button type="button" class="' + cls + '" data-' + k + '>' + ic + '<span>' + l + '</span>' + (n ? '<small>' + n + '</small>' : '') + '</button>';
     const ck = '<i class="ck"></i>', bx = '<i class="bx"></i>';
     scm.innerHTML = '<h5>' + T('איפה לחפש', 'Search in') + '</h5>' + m.levels.map(l => row(l.on ? 'on' : '', 'sc="' + l.k + '"', ck, l.label, l.name)).join('') +
-      row(m.glob ? 'on' : '', 'sc="glob"', ck, T('בכל הספרים', 'All books'), '') + '<hr><h5>' + T('מה לכלול', 'Include') + '</h5>' +
+      (m.noGlob ? '' : row(m.glob ? 'on' : '', 'sc="glob"', ck, T('בכל הספרים', 'All books'), '')) + '<hr><h5>' + T('מה לכלול', 'Include') + '</h5>' +
       m.srcs.map(x => row('cb' + (x.on ? ' on' : ''), 'tg="' + x.k + '"', bx, x.label, '')).join('');
   }
   function openScMenu() {
