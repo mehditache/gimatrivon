@@ -882,7 +882,7 @@
     $r('#rdPrevCh').setAttribute('aria-label', T('פרק קודם')); $r('#rdNextCh').setAttribute('aria-label', T('פרק הבא')); $r('#rdPrevCh').title = T('פרק קודם'); $r('#rdNextCh').title = T('פרק הבא');
     if (!ensure([].concat(...nearBooks(S.b).map(need)), ok => { if (!ok) { geo = geometry(); $r('#rdBook').innerHTML = '<article class="rdPage single rdLoading' + geo.cls + '"><p>' + T('לא ניתן לטעון את הספר.') + '</p></article>'; } else render(); }, f => loadProg('b' + S.b, f))) {
       $r('#rdBook').innerHTML = loadingHtml('b' + S.b, bkName(IX.books[S.b].heTitle), geo);
-      $r('#rdWhereTxt').textContent = bkName(IX.books[S.b].heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
+      setWhere(bkName(IX.books[S.b].heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch));
       return;
     }
     keepBooks([].concat(...nearBooks(S.b).map(need)));
@@ -912,7 +912,7 @@
     else if (flashOn && flashOn.at === S.b + ':' + S.ch) flashEls(flashOn.v).forEach(e => e.classList.add('flash'));
     else if (flashOn) { clearTimeout(hlTimer); flashOn = null; } // עברו לפרק אחר — הדגשה מקישור לא חוזרת כשחוזרים
     const bk = IX.books[S.b], chs = chaptersOf(IX, S.b);
-    $r('#rdWhereTxt').textContent = bkName(bk.heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch);
+    setWhere(bkName(bk.heTitle) + ' · ' + T('פרק') + ' ' + num(S.ch));
     $r('#rdPos').textContent = (shown.length > 1 ? T('עמודים') + ' ' + num(S.p + 1) + '–' + num(S.p + 2) : T('עמוד') + ' ' + num(S.p + 1)) + ' ' + T('מתוך') + ' ' + (all ? num(pages.length) : '…') +
       (nxPg ? ' · ' + T('ממשיך ל') + (nx.b !== S.b ? bkName(IX.books[nx.b].heTitle) + ' ' : '') + T('פרק') + ' ' + num(nx.ch) : '');
     $r('#rdChPos').textContent = T('פרק') + ' ' + num(S.ch) + ' ' + T('מתוך') + ' ' + num(chs.length);
@@ -1507,7 +1507,7 @@
     const t = talT(), k = t.k, book = $r('#rdBook'), zd = !!t.z && S.tview === 'daf';
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
     const setBar = () => {
-      $r('#rdWhereTxt').textContent = (t.z ? T('זוהר') + ' ' + talName(t) + ' · ' : talName(t) + ' · ' + T('דף') + ' ') + dafTxt(S.tj, k);
+      setWhere((t.z ? T('זוהר') + ' ' + talName(t) + ' · ' : talName(t) + ' · ' + T('דף') + ' ') + dafTxt(S.tj, k));
       $r('#rdPrevCh').setAttribute('aria-label', T('דף קודם')); $r('#rdNextCh').setAttribute('aria-label', T('דף הבא'));
       $r('#rdPrevCh').title = T('דף קודם'); $r('#rdNextCh').title = T('דף הבא');
       $r('#rdChPos').textContent = talTitle(t);
@@ -1773,6 +1773,27 @@
   const turRow = (k, s) => { const t = turTOf(k), p = turPart(t, s), d = (G.GIM_TUR_P || {})[dkOf(t) + '.' + p]; return d ? d.s[s - d.from] || ['', [], []] : null; };
   const rowsReady = (k, ss) => { const t = turTOf(k); return ss.every(s => s < minS(t) || s >= t.n || turRow(k, s)); };
   const turPartName = t => isEn() ? t.en : t.he;
+  /* v4.15.4: שם המקום בכפתור בחירת הספר (#rdWhereTxt). כשאין מקום מקצרים בהדרגה בראשי תיבות — קודם "שולחן ערוך", אחר כך
+     שם החלק (או״ח, יו״ד, אה״ע, חו״מ), ואחר כך "סימן" (סי׳, ובצר מאוד בלי המילה); "כף החיים" ו"משנה ברורה" לעולם במלואם. ואם גם זה לא נכנס — "…" (CSS).
+     השם המלא נשמר ב-data-full (עובר גם לעותק שבבנר של שולחן העבודה, ששם desktop.js מתאים אותו לרוחב הבנר בעזרת GT_fitWhere) */
+  const WHERE_AB = [
+    [[/שולחן ערוך/g, 'שו״ע'], [/Shulchan Arukh,? ?/g, 'SA ']],
+    [[/אורח חיים/g, 'או״ח'], [/יורה דעה/g, 'יו״ד'], [/אבן העזר/g, 'אה״ע'], [/חושן משפט/g, 'חו״מ'], [/Orach Chayim/g, 'OC'], [/Yoreh De'ah/g, 'YD'], [/Even HaEzer/g, 'EH'], [/Choshen Mishpat/g, 'CM']],
+    [[/סימן /g, 'סי׳ '], [/Siman /g, 'Si. ']],
+    [[/ · סי׳ /g, ' '], [/ · Si\. /g, ' ']] // בטלפון צר: "שו״ע יו״ד · כף החיים א"
+  ];
+  function fitWhere(el) {
+    if (!el) return;
+    const full = el.dataset.full != null ? el.dataset.full : el.textContent, put = x => { if (el.textContent !== x) el.textContent = x; };
+    put(full);
+    if (!el.clientWidth) { el.removeAttribute('title'); return; } // מוסתר (למשל הסרגל שבתוך חלון בשולחן העבודה) — השם המלא
+    let s = full;
+    for (const st of WHERE_AB) { if (el.scrollWidth <= el.clientWidth) break; s = st.reduce((a, r) => a.replace(r[0], r[1]), s); put(s); }
+    if (s !== full || el.scrollWidth > el.clientWidth) el.title = full; else el.removeAttribute('title');
+  }
+  G.GT_fitWhere = fitWhere;
+  try { document.fonts.addEventListener('loadingdone', () => fitWhere($r('#rdWhereTxt'))); } catch (e) {} // הגופן משנה את הרוחב
+  function setWhere(x) { const el = $r('#rdWhereTxt'); if (!el) return; el.dataset.full = x; fitWhere(el); }
   const hilOf = (t, s) => { let n = ''; (t.hil || []).forEach(x => { if (x[0] <= s) n = x[1]; }); return s ? n : ''; };
   const RL = (x, i) => x === 'y' ? '(' + toHeb(i + 1) + ')' : '[' + toHeb(i + 1) + ']';
   const turCmName = x => { const t = S.rk && RX && RX.byK[S.rk] != null ? turT() : null; const e = t && t.xs && t.xs.find(z => z[0] === x); return e ? T(e[1]) : t && t.cm ? T(t.cm[x === 'y' ? 0 : 1]) : T(x === 'y' ? 'בית יוסף' : 'ב״ח'); };
@@ -2236,7 +2257,7 @@
     const t = turT(), k = t.k, book = $r('#rdBook');
     book.className = 'rdBook' + (geo.two ? ' two' : ' one');
     S.rs = Math.max(minS(t), Math.min(S.rs, t.n - 1));
-    $r('#rdWhereTxt').textContent = turPartName(t) + ' · ' + (S.rs ? T('סימן') + ' ' + num(S.rs) : T('הקדמה'));
+    setWhere(turPartName(t) + ' · ' + (S.rs ? T('סימן') + ' ' + num(S.rs) : T('הקדמה')));
     $r('#rdPrevCh').setAttribute('aria-label', T('סימן קודם')); $r('#rdNextCh').setAttribute('aria-label', T('סימן הבא'));
     $r('#rdPrevCh').title = T('סימן קודם'); $r('#rdNextCh').title = T('סימן הבא');
     $r('#rdPrevCh').disabled = S.rs <= minS(t); $r('#rdNextCh').disabled = S.rs + 1 >= t.n;
