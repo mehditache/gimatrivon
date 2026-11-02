@@ -2102,7 +2102,7 @@
       const one = '<span class="rcm sbc r' + u.sec + (p.a ? ' cont' : '') + '"' + (cl ? ' data-x="' + u.sec + '"' : '') + ' data-i="' + u.i + '">' + pre + lb + body + post + '</span> ';
       if (u.sec === 'g') { aside += one; return; }
       if (!cur || cur.c !== u.sec) secs.push(cur = { c: u.sec, cont: p.a > 0, html: '' });
-      cur.html += one;
+      cur.html += (t.kh && u.sec === 'y' && cur.html ? '<br>' : '') + one; // בכף החיים כל הערה בשורה חדשה
     });
     if (txt || first || aside) html += '<div class="rdBody"><div class="ppTop' + (aside ? ' hasG' : '') + '"><div class="rdTxt trStudy sb">' + (first ? turHeadHtml(t, m.s, m.hd) : '') + txt + '</div>' + (aside ? '<aside class="ppSide rdCm sb-g ' + cls + '" aria-label="' + h(turCmName('g')) + '"><div class="rdCmHd"><span>' + h(turCmName('g')) + '</span></div><div class="ppSB">' + aside + '</div></aside>' : '') + '</div></div>';
     html += '<div class="rdSp"></div>';
@@ -2144,20 +2144,23 @@
     };
     // מקומות חיתוך מותרים בטקסט: לא לפני עוגן (כדי שעמוד לא יתחיל בסימנים לבדם)
     const OK = []; tIdx.forEach(ui => { const u = U[ui]; for (let j = 0; j <= u.toks.length; j++) { const g = u.off + j; if (g <= total && (j === u.toks.length || !SBA.test(u.toks[j]))) OK.push(g); } });
-    const okFrom = x => { let lo = 0, hi = OK.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (OK[mid] >= x) hi = mid; else lo = mid + 1; } return lo; }; // האינדקס הראשון ב-OK שערכו ≥ x
+    // גבולות סעיפים: סעיף לא נחתך בין עמודים אלא אם הוא לבדו לא נכנס בעמוד
+    const OKS = []; tIdx.forEach(ui => { const g = Math.min(U[ui].off + U[ui].toks.length, total); if (g > (OKS[OKS.length - 1] || 0) || !OKS.length) OKS.push(g); }); if (OKS[OKS.length - 1] !== total) OKS.push(total);
+    const okFromL = (L, x) => { let lo = 0, hi = L.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (L[mid] >= x) hi = mid; else lo = mid + 1; } return lo; }; // האינדקס הראשון ב-OK שערכו ≥ x
     let tp = 0, first = true, guard = 0;
     const backlog = () => codes.some(x => sp[x] < arr[x].length);
     while ((tp < total || backlog() || first) && guard++ < 600) {
       let te = total, r = build(tp, total, null);
       if (tp < total && !fits(r, first)) {
-        const i0 = okFrom(Math.min(total, tp + 6)), minTe = OK[i0];
-        te = OK[i0 + maxOkF(0, OK.length - 1 - i0, n => fits(build(tp, OK[i0 + n], null), first))]; r = build(tp, te, null);
+        const zero = {}; codes.forEach(x => { zero[x] = 0; });
+        const sb = OKS[okFromL(OKS, tp + 1)], L = fits(build(tp, sb, zero), first) ? OKS : OK, i0 = L === OKS ? okFromL(L, tp + 1) : okFromL(L, Math.min(total, tp + 6)), minTe = L[i0];
+        te = L[i0 + maxOkF(0, L.length - 1 - i0, n => fits(build(tp, L[i0 + n], null), first))]; r = build(tp, te, null);
         if (te === minTe && !fits(r, first)) { // גם הטקסט המינימלי לא נכנס עם כל ההערות שלו: כל מפרש מקבל אחוז, ואז ממלאים
           const f = maxOkF(0, 99, n => { const c = {}; codes.forEach(x => { c[x] = Math.floor(r.wd[x] * Math.max(0.005, n / 100)); }); return fits(build(tp, te, c), first); });
           const c = {}; codes.forEach(x => { c[x] = Math.max(1, Math.floor(r.wd[x] * Math.max(0.005, f / 100))); }); r = refine(tp, te, c, first);
         } else if (te < total) { // העמוד מלא עד המילה הבאה: אם היא מעגנת הערה — נכנס ממנה כמה שנכנס, והיא ממשיכה בעמוד הבא
           const base = {}; codes.forEach(x => { base[x] = words(r.rest[x]); });
-          const ne = OK[okFrom(te + 1)], nx = build(tp, ne, null);
+          const ne = L[okFromL(L, te + 1)], nx = build(tp, ne, null);
           if (codes.some(x => nx.wd[x] > base[x]) && fits(build(tp, ne, base), first)) { te = ne; r = refine(tp, te, base, first); }
         }
       } else if (tp >= total && !fits(r, first)) { // נשארו רק הערות: ממלאים עמוד אחרי עמוד
