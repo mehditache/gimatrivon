@@ -97,14 +97,17 @@
       const j = { sql, args, ok, no, n: st.n++, pri: o && o.pri != null ? o.pri : 0, alive: o && o.alive }, m = st.m || memOpen();
       if (m && m.ready) memSend(m, j);
       // אחרי שחרור סרק (v4.6.39): המסד נטען שוב מ-OPFS בפחות משנייה, אז מחכים לו (עד 3 שניות) במקום מאגר טווחים קר מהשרת
-      else if (m) m.first.then(s => s === 'cached' && !m.ready ? new Promise(r => { m.hold.push(r); setTimeout(r, 3000); }) : 0).then(() => m.ready ? memSend(m, j) : viaRange(j));
+      // תחום בלי קריאת טווחים (שולחן ערוך, זוהר): אין מאגר טווחים לחזור אליו — מחכים להורדה הראשונה עד הסוף (v4.17.4)
+      else if (m) m.first.then(s => (s === 'cached' || (D && D.noRange)) && !m.ready && st.m === m ? new Promise(r => { m.hold.push(r); if (!(D && D.noRange)) setTimeout(r, 3000); }) : 0).then(() => m.ready ? memSend(m, j) : viaRange(j));
       else viaRange(j);
     }) };
     const P = st.P = Promise.all([G.createDbWorker || script('vendor/sql.js-httpvfs/index.js'), (G.GIM_SQ_DBS && G.GIM_SQ_DBS[name]) || script('generated/sqlite/' + name + '.js')]).then(async () => {
       D = G.GIM_SQ_DBS[name];
       // המסד כבר ב-OPFS (ביקור חוזר): מחכים לו (עד 10 שניות) במקום לפתוח מאגר טווחים; אחרת מאגר הטווחים עובד בזמן ההורדה
-      const m = memOpen(), s0 = m ? await m.first : '';
-      if (m && (s0 === 'cached' || s0 === 'ready') && !m.ready) await new Promise(r => { m.onReady = r; setTimeout(r, 10000); });
+      // בלי קריאת טווחים (שולחן ערוך, זוהר) מחכים להורדה הראשונה עד הסוף — אחרת החיפוש נכשל ב-"no range" ולא חוזר לבד כשהמסד מוכן (v4.17.4).
+      // st.m: גם בניסיון חוזר אחרי כשל (memOpen מחזיר null כשכבר יש חיבור פתוח)
+      const m = st.m || memOpen(), s0 = m ? await m.first : '';
+      if (m && (s0 === 'cached' || s0 === 'ready' || D.noRange) && !m.ready && st.m === m) await new Promise(r => { m.onReady = r; if (!D.noRange) setTimeout(r, 10000); });
       if (!st.m || !st.m.ready) await start();
       const E = G.GimSq.create(backend, D.bk ? D.bk.map(x => ({ cat: DM.cat, cv: x.cv })) : books, name);
       // מטמון חיפושים אחרונים (8 לכל תחום): חזרה לאותה שאילתה, או חלון תוצאות שנפתח אחרי רשימה נפתחת שחיפשה אותה, מיידיים
