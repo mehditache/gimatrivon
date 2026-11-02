@@ -2156,7 +2156,7 @@
     while ((tp < total || backlog() || first) && guard++ < 600) {
       let te = total, r = build(tp, total, null);
       if (tp < total && !fits(r, first)) {
-        const zero = {}; codes.forEach(x => { zero[x] = 0; });
+        const zero = {}; codes.forEach(x => { zero[x] = 1; }); // לפחות מילה אחת מכל מפרש: סעיף שלם שנכנס רק בלי ההערות לא נחשב (אחרת העמוד עולה על גדותיו ומופיע בו סרגל גלילה)
         const sb = OKS[okFromL(OKS, tp + 1)], L = fits(build(tp, sb, zero), first) ? OKS : OK, i0 = L === OKS ? okFromL(L, tp + 1) : okFromL(L, Math.min(total, tp + 6)), minTe = L[i0];
         te = L[i0 + maxOkF(0, L.length - 1 - i0, n => fits(build(tp, L[i0 + n], null), first))]; r = build(tp, te, null);
         if (te === minTe && !fits(r, first)) { // גם הטקסט המינימלי לא נכנס עם כל ההערות שלו: כל מפרש מקבל אחוז, ואז ממלאים
@@ -2170,6 +2170,11 @@
       } else if (tp >= total && !fits(r, first)) { // נשארו רק הערות: ממלאים עמוד אחרי עמוד
         const c = {}; codes.forEach(x => { c[x] = 0; }); r = refine(tp, te, c, first);
         if (!r.ps.length) { codes.some(x => { if (sp[x] < arr[x].length) { c[x] = 1; return true; } }); r = build(tp, te, c); }
+      }
+      // אימות אחרון: החיפוש הבינארי מניח שהמדידה מונוטונית, וזה לא תמיד נכון (עמודות מאוזנות). אם העמוד בכל זאת עולה על גדותיו — מקצרים את המפרש הארוך ביותר עד שנכנס
+      for (let t = 0; t < 120 && r.ps.length && !fits(r, first); t++) {
+        const cp = {}; let big = null; codes.forEach(x => { cp[x] = words(r.rest[x]); if (cp[x] > 0 && (big == null || cp[x] > cp[big])) big = x; });
+        if (big == null) break; cp[big] = cp[big] <= 4 ? 0 : cp[big] - Math.ceil(cp[big] * 0.15); r = build(tp, te, cp);
       }
       // מתקדמים: הטקסט עד te, וכל מפרש עד מה שהוצג
       Object.keys(r.rest).forEach(x => r.rest[x].forEach(q => { if (q.b >= U[q.u].toks.length) { sp[x]++; so[x] = 0; } else so[x] = q.b; }));
