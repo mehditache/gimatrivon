@@ -3647,22 +3647,49 @@
     const stz0 = { stz: S.stz, tview: S.tview, tp: S.tp };
     if (deskTal) lazyJs('gloss', () => lazyJs('arukh', () => {})); // המילון מוכן מראש, כדי שהכרטיס ייפתח מלא
     const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth; };
+    // v4.18.2: סימון קטע (כמה מילים, לא מילה אחת) ופתיחת כל האפשרויות (⋯) מתחתיו
+    let selRange = null;
     const selDemo = () => {
-      if (SEL && selUI.bar && !selUI.bar.hidden && selUI.card.hidden) return selUI.bar;
+      if (SEL && selUI.bar && !selUI.bar.hidden && selUI.card.hidden && selUI.menu && !selUI.menu.hidden) return selUI.menu;
       const bk = $r('#rdBook'); if (!bk) return null;
       let hit = null;
-      for (const w of ['היכא קאי', 'אמר רב', 'תנא', 'מאי']) {
+      for (const w of ['תנא היכא קאי', 'היכא קאי', 'אמר רב', 'תנא', 'מאי']) {
         const tw = document.createTreeWalker(bk, NodeFilter.SHOW_TEXT); let n;
-        while ((n = tw.nextNode())) { const k = n.data.indexOf(w); if (k >= 0 && vis(n.parentNode)) { hit = [n, k, w]; break; } }
+        while ((n = tw.nextNode())) { const p = n.parentNode, k = n.data.indexOf(w); if (k >= 0 && vis(p) && p.closest('.tg')) { hit = [tw, n, k]; break; } }
         if (hit) break;
       }
       if (!hit) return null;
-      selDemo.w = hit[2];
-      const r = document.createRange(); r.setStart(hit[0], hit[1]); r.setEnd(hit[0], hit[1] + hit[2].length);
+      const [tw, n0, k0] = hit, r = document.createRange(); r.setStart(n0, k0);
+      let left = 6, n = n0, off = k0, ok = false; // שש מילים מהמקום שנמצא, גם אם הן מפוצלות לכמה צמתים
+      while (n && left > 0) {
+        const re = /\S+/g, t = n.data.slice(off); let m, end = -1;
+        while (left > 0 && (m = re.exec(t))) { left--; end = m.index + m[0].length; }
+        if (!left) { r.setEnd(n, off + end); ok = true; break; }
+        if (end >= 0) r.setEnd(n, off + end);
+        n = tw.nextNode(); off = 0; if (n && !(n.parentNode.closest && n.parentNode.closest('.tg'))) break;
+      }
+      if (!ok && r.collapsed) return null;
       const sl = G.getSelection(); sl.removeAllRanges(); sl.addRange(r);
-      const c = selCur(); if (!c) return null; selShow(c); return selUI.bar;
+      const c = selCur(); if (!c) return null;
+      selDemo.w = c.text; selRange = r; selShow(c); selMenuShow(c.rect.l, c.rect.b + 6);
+      return selUI.menu && !selUI.menu.hidden ? selUI.menu : selUI.bar;
     };
-    selDemo.w = 'היכא קאי';
+    // הסימון עצמו (טווח, לא אלמנט): הסיור מדגיש גם אותו
+    const selRect = { ownerDocument: document, parentElement: null, get isConnected() { return !!selRange; }, getBoundingClientRect: () => selRange ? selRange.getBoundingClientRect() : new DOMRect() };
+    // v4.18.2: "הדף" בגמרא — לחצנו על קטע: הקטע מסומן בדף והחלון שלו פתוח (שני מוקדים)
+    const segDemo = () => {
+      const bk = $r('#rdBook'); if (!bk) return null; const box = $r('#rdSeg');
+      let el = box && !box.hidden && bk.querySelector('.tg.sel');
+      if (!el) {
+        const segs = [...bk.querySelectorAll('.tg[data-j][data-s]')].filter(vis);
+        const pick = segs.find(e => /היכא קאי/.test(e.textContent)) || segs[0];
+        if (!pick) return null;
+        openSeg(+pick.dataset.j, +pick.dataset.s);
+        el = bk.querySelector('.tg.sel') || pick;
+      }
+      return el;
+    };
+    selDemo.w = 'תנא היכא קאי';
     const cardDemo = () => { if (!SEL || !selUI.card || selUI.card.hidden) { selDemo(); if (SEL) selCardShow(0); } return selUI.card && !selUI.card.hidden ? selUI.card : null; };
     let stzRetry = 0;
     const stzDemo = () => {
@@ -3698,11 +3725,16 @@
         'Display settings (אָ)', 'The אָ button opens this window: letter size, which commentaries and translation are shown, the commentary font, vowels in the Rambam and more. Settings are saved for next time. We opened it for you; it closes at the next step.', 'bottom', 'center', { onDeselected: () => closePops() }),
       st('#rdPrintBtn', 'הדפסה / PDF', 'בוחרים מה להדפיס, ברקע נייר וצבעים או ברקע לבן לחיסכון בדיו, ומדפיסים או שומרים כ-PDF. קיצור: Ctrl P.',
         'Print / PDF', 'Choose what to print, with a paper background and colours or a white background to save ink, then print or save as PDF. Shortcut: Ctrl P.', 'bottom', 'center', { shell: '#dkTools [data-src-id=rdPrintBtn]' }),
-      st('#rdBook', 'הדף', bookTip[0] + ' דפדוף: החצים בצדי הדף, מקשי החצים במקלדת, או החלקה בטלפון.',
+      deskTal
+        ? st(segDemo, 'הדף', 'לחיצה על קטע בגמרא פותחת חלון עם הקטע, ועם רש״י, תוספות וביאור הרב שטיינזלץ עליו. לחצנו בשבילכם על קטע: הוא מסומן בדף, והחלון שלו פתוח. דפדוף: החצים בצדי הדף, מקשי החצים במקלדת, או החלקה בטלפון.',
+          'The page', 'Clicking a passage of Gemara opens a window with the passage and its Rashi, Tosafot and Rabbi Steinsaltz\'s commentary. We clicked a passage for you: it is marked on the page and its window is open. Turning pages: the arrows beside the page, the arrow keys, or a swipe on a phone.', 'left', 'center',
+          { also: () => [$r('#rdSeg')], onDeselected: () => closeSeg() })
+        : st('#rdBook', 'הדף', bookTip[0] + ' דפדוף: החצים בצדי הדף, מקשי החצים במקלדת, או החלקה בטלפון.',
         'The page', bookTip[1] + ' Turning pages: the arrows beside the page, the arrow keys, or a swipe on a phone.', 'top', 'center'),
       ...(deskTal ? [
-        st(selDemo, 'סימון טקסט', 'מסמנים מילה או משפט בדף, וגם בארמית, ומעל הסימון מופיע סרגל קטן. סימנו בשבילכם "' + selDemo.w + '". בסרגל: תרגם (מילון ארמי), הערך הגימטרי של מה שסומן, חיפוש שלו בכל הספרים, העתקה, ו-⋯ לעוד אפשרויות. גם קליק ימני על מילה פותח את כל האפשרויות.',
-          'Selecting text', 'Select a word or a sentence on the page, Aramaic too, and a small bar appears above it. We selected "' + selDemo.w + '" for you. The bar has: Translate (Aramaic dictionary), the gematria value of the selection, a search for it in all the books, copy, and ⋯ for more. A right click on a word opens all the options too.', 'bottom', 'center'),
+        st(selDemo, 'סימון טקסט', 'מסמנים מילה או קטע בדף, וגם בארמית, ומעל הסימון מופיע סרגל קטן: תרגם (מילון ארמי), הערך הגימטרי של מה שסומן, חיפוש שלו בכל הספרים, העתקה, ו-⋯ לכל האפשרויות. סימנו בשבילכם קטע ופתחנו את ⋯: תרגום מלא, גימטריה, חיפוש גימטריה זהה, חיפוש בכל הספרים, והעתקה עם המקור. גם קליק ימני על מילה פותח את התפריט הזה.',
+          'Selecting text', 'Select a word or a passage on the page, Aramaic too, and a small bar appears above it: Translate (Aramaic dictionary), the gematria value of the selection, a search for it in all the books, copy, and ⋯ for all the options. We selected a passage for you and opened ⋯: full translation, gematria, search for the same value, search all the books, and copy with the source. A right click on a word opens this menu too.', 'left', 'center',
+          { also: () => [selUI.bar, selRect] }),
         st(cardDemo, 'המילון הארמי', 'לחיצה על "תרגם" פותחת את התרגום של כל מילה: פירוש עברי לכל מילה ארמית, מתוך מילון שנבנה מביאור הרב שטיינזלץ, ולצדו הערך המתאים בספר הערוך. כך אפשר להבין מילה קשה בלי לעזוב את הדף. הלשונית השנייה מציגה את הגימטריה של מה שסומן בכל השיטות.',
           'The Aramaic dictionary', '"Translate" opens a translation of every word: a Hebrew meaning for each Aramaic word, from a dictionary built from Rabbi Steinsaltz\'s commentary, with the matching entry in Sefer HeArukh beside it. So you can understand a hard word without leaving the page. The second tab shows the gematria of the selection in every method.', 'bottom', 'center'),
         st(stzDemo, 'ביאור הרב שטיינזלץ', 'בתצוגת "גמרא ומפרשים" אפשר להציג את ביאור הרב שטיינזלץ שורה מול שורה: הגמרא מימין והביאור בעברית משמאל, קטע מול קטע. הפעלנו אותו בשבילכם. מפעילים ומכבים בחלון "תצוגה" (אָ), או בקליק ימני: "הצג ביאור שטיינזלץ". לחיצה על קטע פותחת גם לשונית "שטיינזלץ" ליד רש״י ותוספות.',
@@ -3721,7 +3753,7 @@
     ].filter(x => !x.element || typeof x.element === 'function' || shown(x.element) || (desk && x.shell && deskShown(x.shell)));
     const stzIx = steps.findIndex(x => x.element === stzDemo);
     const cfg = Object.assign(APP.tourBase(), { steps, onDestroyed: () => {
-      closePops(); if (SEL) selHide(); try { G.getSelection().removeAllRanges(); } catch (e) {}
+      closePops(); if (SEL) selHide(); selRange = null; try { G.getSelection().removeAllRanges(); } catch (e) {} if (deskTal) closeSeg();
       if (deskTal && (S.stz !== stz0.stz || S.tview !== stz0.tview)) { Object.assign(S, stz0); save(); render(); }
     } });
     const d = APP.tourDriver ? APP.tourDriver(cfg) : G.driverjs.driver(cfg);

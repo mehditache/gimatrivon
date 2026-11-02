@@ -1239,10 +1239,38 @@
     const rd = () => { try { if (s.rd == null) localStorage.removeItem('gimatrivonReader'); else localStorage.setItem('gimatrivonReader', s.rd); } catch (e) {} };
     rd(); setTimeout(rd, 400);
   }
+  // v4.18.2: צעד עם כמה מוקדים (step.also = () => [אלמנטים]): ההחשכה נפתחת גם מעליהם. driver.js מצייר חור אחד,
+  // ולכן הנתיב של שכבת ההחשכה נכתב מחדש עם כל החורים (חורים שנוגעים זה בזה מתאחדים), ונשמר כש-driver.js מצייר אותו שוב
+  function rectIn(el) {
+    if (!el) return null; let r; try { r = el.getBoundingClientRect(); } catch (e) { return null; }
+    if (!r || r.width < 2 || r.height < 2) return null;
+    let fe = null; try { fe = el.ownerDocument !== document && el.ownerDocument.defaultView.frameElement; } catch (e) {}
+    if (!fe) return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+    const fr = fe.getBoundingClientRect(), fw = fe.contentWindow;
+    const l = Math.max(r.left, 0), t = Math.max(r.top, 0), rr = Math.min(r.right, fw.innerWidth), b = Math.min(r.bottom, fw.innerHeight);
+    return rr - l < 2 || b - t < 2 ? null : { l: fr.left + l, t: fr.top + t, r: fr.left + rr, b: fr.top + b };
+  }
+  function tourHoles() {
+    const d = tourDrv; if (!d) return; let a = null; try { a = d.getActiveElement && d.getActiveElement(); } catch (e) {}
+    const path = document.querySelector('svg.driver-overlay path'); if (!path) return;
+    if (!path._dkMo) { path._dkMo = new MutationObserver(() => { if (path.getAttribute('d') !== path._dkD) tourHoles(); }); path._dkMo.observe(path, { attributes: true, attributeFilter: ['d'] }); }
+    if (!a || typeof a._also !== 'function') return;
+    let extra = []; try { extra = a._also() || []; } catch (e) {}
+    const P = 6, rs = [rectIn(a), ...extra.map(rectIn)].filter(Boolean).map(r => ({ l: r.l - P, t: r.t - P, r: r.r + P, b: r.b + P }));
+    if (rs.length < 2) return;
+    for (let k = 0; k < rs.length; k++) for (let m = k + 1; m < rs.length; m++) { const x = rs[k], y = rs[m];
+      if (x.l <= y.r && y.l <= x.r && x.t <= y.b && y.t <= x.b) { rs[k] = { l: Math.min(x.l, y.l), t: Math.min(x.t, y.t), r: Math.max(x.r, y.r), b: Math.max(x.b, y.b) }; rs.splice(m, 1); k = -1; break; } }
+    const W0 = innerWidth, H0 = innerHeight, R0 = 8;
+    const hole = r => { const w = r.r - r.l, h = r.b - r.t, c = Math.min(R0, w / 2, h / 2);
+      return `M${r.l + c},${r.t} h${w - 2 * c} a${c},${c} 0 0 1 ${c},${c} v${h - 2 * c} a${c},${c} 0 0 1 -${c},${c} h-${w - 2 * c} a${c},${c} 0 0 1 -${c},-${c} v-${h - 2 * c} a${c},${c} 0 0 1 ${c},-${c} z`; };
+    const dStr = `M${W0},0L0,0L0,${H0}L${W0},${H0}L${W0},0Z ` + rs.map(hole).join(' ');
+    if (path.getAttribute('d') === dStr) return;
+    path._dkD = dStr; path.setAttribute('d', dStr);
+  }
   // יעדים זזים (תיבת החיפוש מתכווצת כשהפוקוס עובר לחלון הסיור, הרשימה נטענת, חלון קופץ ממוקם): הרוח של הצעד הנוכחי נמדדת שוב כל 300ms
   let tourTickT = 0;
   function tourTick() {
-    const d = tourDrv; if (!d) return; let g = null;
+    const d = tourDrv; if (!d) return; let g = null; tourHoles();
     if (tourKeep && H && H.fr && !H.fr.hidden) placeHost(); // הרשימה הנפתחת זזה עם התיבה
     try { g = d.getActiveElement && d.getActiveElement(); } catch (e) {}
     if (!g || !g.classList || !g.classList.contains('dkTourGhost')) return;
@@ -1276,7 +1304,9 @@
       if (st.shell) { const g = shellGhost(st.shell, 'f' + i); if (g) return g; }
       let el = st.element;
       try { el = typeof el === 'function' ? el() : typeof el === 'string' ? fd.querySelector(el) : el; } catch (e) { el = null; }
-      return tourTarget(el, 'f' + i);
+      const g = tourTarget(el, 'f' + i);
+      if (g) g._also = st.also || null; // מוקדים נוספים של הצעד (tourHoles)
+      return g;
     };
     const steps = (cfg.steps || []).map((st, i) => st.element || st.shell ? Object.assign({}, st, { element: resolve(st, i) }) : st);
     // אנימציה כבויה (gtNoAnim) עוברת מהחלון לשולחן
@@ -1291,7 +1321,7 @@
     const h = cfg;
     const d = window.driverjs.driver(Object.assign({}, cfg, { steps, smoothScroll: false,
       onHighlightStarted: (el, st, o) => { mirrorClear(); if (h.onHighlightStarted) h.onHighlightStarted(el, st, o); },
-      onHighlighted: (el, st, o) => { if (h.onHighlighted) h.onHighlighted(el, st, o); mirror(fw); setTimeout(onScroll, 250); setTimeout(onScroll, 800); }, // יעד שזז רגע אחרי שנפתח (חלון קופץ שממוקם מתחת לכפתור בבנר)
+      onHighlighted: (el, st, o) => { if (h.onHighlighted) h.onHighlighted(el, st, o); mirror(fw); tourHoles(); setTimeout(onScroll, 250); setTimeout(onScroll, 800); }, // יעד שזז רגע אחרי שנפתח (חלון קופץ שממוקם מתחת לכפתור בבנר)
       onDestroyed: (el, st, o) => { tourCleanup(); if (h.onDestroyed) h.onDestroyed(el, st, o); },
     }));
     tourDrv = d; document.documentElement.classList.add('dkTouring'); clearInterval(tourTickT); tourTickT = setInterval(tourTick, 300);
