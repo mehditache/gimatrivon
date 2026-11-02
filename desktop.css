@@ -10,7 +10,7 @@ body{margin:0;display:flex;flex-direction:column;overflow:hidden;background:var(
 .dkNav.dim{opacity:.55}
 .dkOmni{flex:0 1 708px!important;width:708px;min-width:0!important;max-width:708px!important}
 .dkSearch{flex:1;min-width:0}
-.dkScope{flex:none;height:28px;padding:0 10px;margin-inline-start:4px;border:0;border-inline-start:1px solid var(--ln);background:none;color:var(--mu);font:12px var(--ui);white-space:nowrap;cursor:pointer}
+.dkScope{flex:none;height:28px;padding:0 10px;margin-inline-end:4px;border:0;border-inline-end:1px solid var(--ln);background:none;color:var(--mu);font:12px var(--ui);white-space:nowrap;cursor:pointer}
 .dkScope:hover{color:var(--tx)}
 .dkTools:empty{display:none}
 .dkGemTools{display:flex;gap:6px;align-items:center}

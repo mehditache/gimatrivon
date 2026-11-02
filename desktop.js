@@ -354,7 +354,7 @@
   let spare = null;
   function prewarm() {
     if (spare || others().length >= MAXW || !/^https?:$/.test(location.protocol)) return;
-    const w0 = { id: 's' + (D.seq++), k: 'search', x: 0, y: 0, w: 900, h: 600, max: false, min: true, z: 0, q: '', fs: {} };
+    const w0 = { id: 's' + (D.seq++), k: 'search', x: 0, y: 0, w: 900, h: 600, max: false, min: true, z: 0, q: '', fs: {}, hist: [], hi: 0 };
     build(w0); const f = F.get(w0.id), fr = document.createElement('iframe');
     fr.title = T('תוצאות חיפוש', 'Search results'); fr.src = 'index.html?embed=results&spare=1&wid=' + w0.id;
     fr.addEventListener('load', () => { if (spare && spare.w === w0) spare.ready = true; });
@@ -726,7 +726,12 @@
   }
   function closeSearch() { if (H && H.doc && !H.doc.getElementById('rdDrop').hidden) fire('keydown', { key: 'Escape' }); }
   document.addEventListener('pointerdown', e => { if (!e.target.closest('#dkSearch,.dkHost,#dkScMenu')) closeSearch(); }, true);
-  q.addEventListener('focus', () => { host(); syncHost(); ctxApply(); fire('focus'); setTimeout(prewarm, 1200); });
+  // פתיחה מחדש של הרשימה: ההקלדה שבבנר היא המקור; ערך תיבת המארח (שנמחק ב-Esc, בהחלפת חלון או בטעינה מחדש) מסונכרן אליה לפני שהרשימה מצוירת
+  function reopenDrop() { host(); syncHost(); ctxApply(); if (H.doc) { const rq = H.doc.getElementById('rdQ'); if (rq.value !== q.value) rq.value = q.value; } fire('focus'); }
+  q.addEventListener('focus', () => { reopenDrop(); setTimeout(prewarm, 1200); });
+  // לחיצה על תיבה שכבר בפוקוס (אחרי Esc, או אחרי שהרשימה נסגרה) לא מעוררת focus — פותחים מחדש
+  window.reopenDropIfFocused = () => { if (q.value.trim() && (!H || !H.doc || H.doc.getElementById('rdDrop').hidden)) reopenDrop(); };
+  q.addEventListener('mousedown', () => { if (document.activeElement === q && q.value.trim() && (!H || !H.doc || H.doc.getElementById('rdDrop').hidden)) setTimeout(reopenDrop, 0); });
   q.addEventListener('input', () => { host(); syncHost(); if (!H.doc) return; H.doc.getElementById('rdQ').value = q.value; fire('input'); });
   let arrowed = false; q.addEventListener('input', () => { arrowed = false; });
   q.addEventListener('keydown', e => {
@@ -735,6 +740,7 @@
     if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); const sc = hostScope(); closeSearch(); killHost(); openResults(q.value.trim(), sc); q.blur(); return; }
     if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key) || !H || !H.doc) return;
     e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
+    if (e.key === 'Escape') q.value = H.doc.getElementById('rdQ').value; // Esc כשהרשימה סגורה מנקה את התיבה בקורא — וגם בבנר, כדי שלא יתפרדו
     if (e.key === 'Enter') setTimeout(() => q.blur(), 80);
   });
   // טווח החיפוש (אפשרות א בקנבס): הכפתור שבתיבה מראה את ההיקף הנוכחי ופותח תפריט — איפה לחפש (בחירה אחת) ומה לכלול (סימון).
@@ -777,10 +783,10 @@
     if (!gr()) { H.fr.addEventListener('load', () => setTimeout(openScMenu, 200), { once: true }); return; }
     ctxApply(); scMenu(); setTimeout(() => { if (!scm.hidden) scMenu(); }, 400);
     const r = $('#dkScope').getBoundingClientRect(); scm.hidden = false;
-    scm.style.top = Math.round(r.bottom + 6) + 'px'; scm.style.left = Math.max(8, Math.min(Math.round(r.left), innerWidth - scm.offsetWidth - 8)) + 'px';
+    scm.style.top = Math.round(r.bottom + 6) + 'px'; scm.style.left = Math.max(8, Math.min(Math.round(r.right - scm.offsetWidth), innerWidth - scm.offsetWidth - 8)) + 'px'; // הכפתור בצד ימין של התיבה: התפריט מיושר לקצה הימני שלו
   }
   scm.addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b || !gr()) return; const g = gr();
+    const b = e.target.closest('button'); if (!b || !gr()) return; const g = gr(); if (H && H.doc && q.value) { const rq = H.doc.getElementById('rdQ'); if (rq.value !== q.value) rq.value = q.value; }
     if (b.dataset.sc) { g.setScope(b.dataset.sc); scm.hidden = true; } else if (b.dataset.tg) g.toggleSrc(b.dataset.tg);
     scopeLabel(); if (b.dataset.tg) scMenu();
   });
@@ -1051,7 +1057,7 @@
   /* ---------- מקלדת, מראה, שפה ---------- */
   function keys(e, id) {
     const mod = e.ctrlKey || e.metaKey;
-    if (mod && e.shiftKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); e.stopImmediatePropagation(); q.focus(); q.select(); }
+    if (mod && e.shiftKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); e.stopImmediatePropagation(); q.focus(); q.select(); reopenDropIfFocused(); }
     else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { const w = W(id || D.act); if (w && w.k !== 'gem') { e.preventDefault(); e.stopImmediatePropagation(); go(w.id, e.key === 'ArrowRight' ? -1 : 1); } }
   }
   document.addEventListener('keydown', e => keys(e));
