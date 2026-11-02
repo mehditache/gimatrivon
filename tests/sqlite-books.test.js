@@ -1,5 +1,5 @@
-/* בדיקות חיפוש בכל התחומים (תנ״ך, משנה, רמב״ם, גמרא, טור) מול המסדים הבנויים: לכל תחום כמה שאילתות, בכל מקור (טקסט / מפרשים), ובדיקה שבכל תוצאה
-   נמצאות המילים שחיפשנו (בכל צורה שהאינדקס מכיר). node tests/sqlite-books.test.js */
+/* בדיקות חיפוש בכל התחומים (תנ״ך, משנה, רמב״ם, גמרא, טור, זוהר) מול המסדים הבנויים: לכל תחום כמה שאילתות, בכל מקור (טקסט / מפרשים), ובדיקה שבכל תוצאה
+   נמצאות המילים שחיפשנו (בכל צורה שהאינדקס מכיר). node tests/sqlite-books.test.js [תחום…] */
 process.removeAllListeners('warning');
 const fs = require('fs'), vm = require('vm'), path = require('path'), os = require('os');
 const { DatabaseSync } = require('node:sqlite');
@@ -10,23 +10,27 @@ const corpus = w0.GIM_CORPUS_INDEX.books;
 function open(name) {
   const w = {}; vm.runInNewContext(fs.readFileSync(path.join(dir, name + '.js'), 'utf8'), { window: w }); const m = w.GIM_SQ_DBS[name];
   const f = path.join(os.tmpdir(), 'gim-' + name + '-' + m.hash + '.sqlite3');
-  if (!fs.existsSync(f) || fs.statSync(f).size !== m.bytes) fs.writeFileSync(f, Buffer.concat(Array.from({ length: m.parts }, (_, i) => fs.readFileSync(path.join(dir, name + '.sqlite3.' + String(i).padStart(3, '0'))))));
+  // בלי עותק לקריאת טווחים (noRange: שולחן ערוך, זוהר) — מהקבצים הדחוסים
+  const part = (ext, n) => Buffer.concat(Array.from({ length: n }, (_, i) => fs.readFileSync(path.join(dir, name + '.sqlite3.' + ext + String(i).padStart(3, '0')))));
+  if (!fs.existsSync(f) || fs.statSync(f).size !== m.bytes) fs.writeFileSync(f, m.noRange ? require('zlib').gunzipSync(part('gz.', m.gz.parts)) : part('', m.parts));
   const db = new DatabaseSync(f, { readOnly: true });
   return { db, m, E: SQ.create({ all: (sql, args) => db.prepare(sql).all(...args).map(r => Object.values(r)) }, m.bk ? m.bk.map(x => ({ cat: SQ.DOMAINS[name].cat, cv: x.cv })) : corpus, name) };
 }
-const SRC_NAME = { tanakh: ['פסוקים', 'רש״י', 'אונקלוס', 'יונתן'], mishnah: ['משניות', 'ברטנורא'], rambam: ['הלכות', 'כסף משנה', 'השגות', 'משנה למלך'], talmud: ['גמרא', 'רש״י', 'תוספות'], tur: ['טור', 'בית יוסף', 'ב״ח'] };
+const SRC_NAME = { tanakh: ['פסוקים', 'רש״י', 'אונקלוס', 'יונתן'], mishnah: ['משניות', 'ברטנורא'], rambam: ['הלכות', 'כסף משנה', 'השגות', 'משנה למלך'], talmud: ['גמרא', 'רש״י', 'תוספות'], tur: ['טור', 'בית יוסף', 'ב״ח'], zohar: ['זוהר', 'הסולם', 'תרגום'] };
 // שאילתות לכל תחום: מילה, שתי מילים (קרובות), ביטוי, תחילית, NOT, OR
 const Q = {
   tanakh: ['אברהם', 'משה אהרן', '"ויאמר אלהים"', 'שמע*', 'ארץ -שמים', 'יעקב OR ישראל'],
   mishnah: ['שבת', 'חייב פטור', '"מאימתי קורין"', 'קורי*', 'שור -חמור', 'ביכורים OR תרומה'],
   rambam: ['ברכה', 'שבת עירוב', '"קריאת שמע"', 'תפיל*', 'ברכה -שבת', 'מזוזה OR תפילין'],
   talmud: ['ברכה', 'מאי טעמא', '"מאימתי קורין"', 'תנו*', 'שבת -עירוב', 'רב OR שמואל'],
-  tur: ['ברכה', 'תפילה שבת', '"בית הכנסת"', 'ציצי*', 'שבת -יום', 'יין OR שכר']
+  tur: ['ברכה', 'תפילה שבת', '"בית הכנסת"', 'ציצי*', 'שבת -יום', 'יין OR שכר'],
+  zohar: ['קודשא', 'רעיא מהימנא', '"בעבור העשרה"', 'שכינ*', 'אורייתא -ישראל', 'נשמתא OR רוחא']
 };
+const ONLY = process.argv.slice(2); // node tests/sqlite-books.test.js zohar — רק התחומים האלה
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { if (c) pass++; else { fail++; console.log('FAIL ' + n + (i ? ' — ' + i : '')); } };
 (async () => {
-  for (const name of Object.keys(Q)) {
+  for (const name of Object.keys(Q).filter(n => !ONLY.length || ONLY.includes(n))) {
     const { db, E, m } = open(name), D = SQ.DOMAINS[name], N = D.tab.length, row = id => (db.prepare('SELECT t FROM d WHERE id = ?').get(id) || {}).t;
     ok(name + ': מסד', m.units > 5000 && m.parts >= 1);
     const perSrc = Array(N).fill(0);
@@ -45,7 +49,7 @@ const ok = (n, c, i) => { if (c) pass++; else { fail++; console.log('FAIL ' + n 
     }
     // כל מקור בנפרד (טקסט, כל מפרש): מילה נפוצה נמצאת בו
     for (let s = 0; s < N; s++) {
-      const q = { tanakh: 'אשר', mishnah: 'אשר', rambam: 'דבר', talmud: 'דבר', tur: 'דבר' }[name], r = await E.search(q, { srcs: [s] });
+      const q = { tanakh: 'אשר', mishnah: 'אשר', rambam: 'דבר', talmud: 'דבר', tur: 'דבר', zohar: 'דבר' }[name], r = await E.search(q, { srcs: [s] });
       ok(name + ': מקור ' + SRC_NAME[name][s], r.total > 20 && r.res.every(x => x.src === s), 'total=' + r.total);
     }
     // טקסט להצגה לכל התוצאות הראשונות
