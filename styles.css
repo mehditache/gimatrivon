@@ -1589,3 +1589,5 @@ html.forcePhone #mNav{flex:none;gap:10px;padding:7px 18px 9px;background:var(--b
 .mNavTab.on{background:var(--tile);box-shadow:var(--tileSh);color:var(--gm)}
 .mNavSide{position:absolute;top:5px;inset-inline-end:calc(50% - 26px);min-width:16px;height:16px;border-radius:8px;padding:0 4px;box-sizing:border-box;display:none;align-items:center;justify-content:center;font:700 10px var(--ui);color:#fff;background:var(--acA)}
 .mNavTab[data-tab=res] .mNavSide{display:flex}
+/* v4.18.0: בשולחן העבודה חלונות-העזר של הסיור מועתקים לשולחן (desktop.js: mirror) — המקור שבתוך החלון מוסתר */
+html.gtTourMirrored .gtTourWin,html.gtTourMirrored .gtTourRing,html.gtTourMirrored .gtTourDim{visibility:hidden!important}

@@ -521,3 +521,12 @@ html body .driver-popover button.driver-popover-prev-btn{background:var(--pgTint
 /* v4.16.1: בנר צר (מחשב נייד): עד 1440 רמז המקלדת בתיבת החיפוש מוסתר; עד 1200 גם חיצי הפרק הקודם/הבא יוצאים מהבנר (נשארים בשורה התחתונה של החלון) והמקום השמור לפקדי החלון כשהם מוסתרים מתפנה, כדי שלא יגלוש דבר על הכפתורים */
 @media (max-width:1440px){.dkOmni kbd{display:none}} /* תיבת חיפוש צרה: הרמז היה גולש ממנה אל הבורר */
 @media (max-width:1200px){.dkNav .rdIco{display:none}.dkWg[hidden]{display:none!important}}
+/* v4.18.0: סיורים מודרכים בשולחן — "רוח" מעל יעד שבתוך חלון (driver.js מסמן אותה), ותפריט הסיורים מתחת לכפתור */
+.dkTourGhost{position:fixed;pointer-events:none;z-index:1}
+html.dkTouring .dkHost{z-index:10002}
+.dkTourMenu{width:300px}
+.dkTourMenu button{height:auto;min-height:52px;padding:6px 10px}
+.dkTourMenu .ic{width:22px;flex:none;font:600 16px var(--ui);font-style:normal;text-align:center;color:var(--gold)}
+.dkTourMenu button>span{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.dkTourMenu small{margin:0;font:400 12px/1.35 var(--ui);color:var(--mu);text-align:start}
+.driver-popover.dkTourBusy .driver-popover-next-btn{opacity:.55;cursor:progress}

@@ -585,9 +585,7 @@
     const w = W(D.act), gem = !!w && w.k === 'gem', other = !!w && w.k !== 'read';
     document.body.classList.toggle('dkGem', gem); document.body.classList.toggle('dkOther', other);
     try { ctxSync(); } catch (e) {} // לפני אתחול המשתנים (טעינה ראשונה) — מדלגים
-    const tourOn = !!w && !w.min && (w.k === 'gem' || w.k === 'read'); // לגימטריה ולקריאה יש סיור; לתוצאות אין
-    $('#dkGemTools').hidden = !tourOn;
-    if (tourOn) attractTour();
+    $('#dkGemTools').hidden = false; attractTour(); // v4.18.0: הכפתור פותח תפריט של שלושה סיורים (גימטריה, קריאה, חיפוש), ולכן מוצג תמיד
     const f = readerF(), d = f && f.doc;
     // בלי חלון פעיל (או בלי אף חלון קריאה): הפקד לא נעלם אלא מאופס — "בחר ספר לקריאה"; לחיצה פותחת חלון קריאה חדש
     const stub = !w || (w.k !== 'read' && !(D.last && W(D.last)));
@@ -623,10 +621,7 @@
   nav.addEventListener('click', e => fwdClick(nav, '#rdTop .rdNav', e));
   nav.addEventListener('pointerover', e => { if (nav.dataset.stub && e.target.closest('.rdWhere') && others().length < MAXW) { host(); clearTimeout(hostT); idleHost(); } });
   tools.addEventListener('click', e => fwdClick(tools, '#rdTop .rdTools', e));
-  $('#dkGemTools').addEventListener('click', e => {
-    const w = W(D.act), b = e.target.closest('[data-fwd]'), f = w && F.get(w.id);
-    if (b && f && f.doc) { const o = f.doc.querySelector(b.dataset.fwd); if (o) o.click(); }
-  });
+  $('#dkGemTools').addEventListener('click', e => { if (e.target.closest('.tourBtn')) tourMenu(); });
   // תפריט ⋯: עם חלון פעיל — התפריט של החלון; בלי חלון פעיל (הכול ממוזער) — תפריט של השולחן עצמו, בלי להחזיר חלון.
   // מראה ושפה פועלים ישר; סיור / שיטות / אודות / צור קשר הם דיאלוגים בתוך חלון, ולכן הלחיצה עליהם מחזירה את החלון האחרון
   const kb = document.createElement('div'); kb.className = 'dkScMenu dkKb'; kb.hidden = true; document.body.appendChild(kb);
@@ -678,6 +673,7 @@
   // הנפתחת, מתחת לתיבה כמו במסך הרגיל. המארח נוצר רק כשמתחילים לחפש ולא פותח שום חלון; בחירת תוצאה פותחת אותה
   // בחלון הקריאה הפעיל, ואם אין כזה — בחלון חדש. אחרי דקה בלי חיפוש המארח נמחק (שחרור זיכרון).
   let H = null, hostBase = '', hostT = 0;
+  let tourKeep = 0; // סיור החיפוש: הרשימה הנפתחת נשארת פתוחה גם כשהפוקוס בחלון הסיור
   const hostHash = () => { const w = W(D.act); if (w && w.k === 'gem') return '#read/TN/Gen/1'; const r = w && w.k === 'read' ? w : (W(D.last) || reads()[0]); return r ? curHash(r) : '#read'; };
   const dec = h => { try { return decodeURI(h || ''); } catch (e) { return h || ''; } };
   function host() {
@@ -693,7 +689,7 @@
       fw.addEventListener('hashchange', hostChanged);
       const drop = d.getElementById('rdDrop');
       // הרשימה נפתחת רק כשתיבת החיפוש (או הרשימה עצמה) בפוקוס: מעבר בין חלונות מחליף את ההקשר של המארח, והקורא מרנדר אותה מחדש (v4.6.3)
-      if (drop) new fw.MutationObserver(() => { const ae = document.activeElement; if (!drop.hidden && ae !== fr && !(ae && ae.closest && ae.closest('.dkOmni,#dkScMenu'))) drop.hidden = true; fr.hidden = drop.hidden; if (!drop.hidden) placeHost(); scopeLabel(); if (drop.hidden) idleHost(); }).observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
+      if (drop) new fw.MutationObserver(() => { const ae = document.activeElement; if (!drop.hidden && !tourKeep && ae !== fr && !(ae && ae.closest && ae.closest('.dkOmni,#dkScMenu'))) drop.hidden = true; fr.hidden = drop.hidden; if (!drop.hidden) placeHost(); scopeLabel(); if (drop.hidden) idleHost(); }).observe(drop, { childList: true, attributes: true, attributeFilter: ['hidden'] });
       themeTo(H); ctxApply(); scopeLabel();
       // רשימת ההצעות של החיפוש חיה בתוך המארח: אותו זכוכית לבנה וזהב כמו שאר החלונות שנפתחים מהבנר (v4.6.23)
       try { const st = d.createElement('style'); st.textContent = '.rdDrop{--rdPaper:#fff;--rdInk:#4a3b22;--rdRow:#f8f0dc;background:rgba(255,255,255,.94)!important;box-shadow:0 0 0 .5px #e3d3ad,0 22px 56px rgba(120,90,30,.2)!important;border:0!important;border-radius:16px!important}' +
@@ -725,7 +721,7 @@
     let n = 0; const tick = () => { const f = F.get(t.id); const gr = f && f.win && f.win.GimReader; if (gr && gr.highlight) setTimeout(() => gr.highlight(qv), 400); else if (++n < 30) setTimeout(tick, 300); }; tick();
   }
   function closeSearch() { if (H && H.doc && !H.doc.getElementById('rdDrop').hidden) fire('keydown', { key: 'Escape' }); }
-  document.addEventListener('pointerdown', e => { if (!e.target.closest('#dkSearch,.dkHost,#dkScMenu')) closeSearch(); }, true);
+  document.addEventListener('pointerdown', e => { if (tourKeep) return; if (!e.target.closest('#dkSearch,.dkHost,#dkScMenu')) closeSearch(); }, true);
   // פתיחה מחדש של הרשימה: ההקלדה שבבנר היא המקור; ערך תיבת המארח (שנמחק ב-Esc, בהחלפת חלון או בטעינה מחדש) מסונכרן אליה לפני שהרשימה מצוירת
   function reopenDrop() { host(); syncHost(); ctxApply(); if (H.doc) { const rq = H.doc.getElementById('rdQ'); if (rq.value !== q.value) rq.value = q.value; } fire('focus'); }
   q.addEventListener('focus', () => { reopenDrop(); setTimeout(prewarm, 1200); });
@@ -1164,6 +1160,206 @@
   D.wins.forEach(w => { if (w.k === 'read' && (!Array.isArray(w.hist) || !w.hist.length)) { w.hist = ['#read']; w.hi = 0; } if (w.k === 'search' && (!Array.isArray(w.hist) || !w.hist.length)) { w.hist = [findEntry(w.q, w.fs)]; w.hi = 0; } w.navTo = null; });
   D.wins.forEach(build);
   D.wins.forEach(w => { if (!w.min && w.id !== D.act) sleepFrame(w); });
+  /* ---------- סיורים מודרכים (v4.18.0) ----------
+     כל הסיורים רצים כאן, בשולחן עצמו (driver.js של השולחן): שכבת ההחשכה מכסה את כל המסך (גם הבנר ושורת החלונות), חלון ההסבר
+     לא נחתך בגבולות החלון, וצעד יכול להצביע על פקד בבנר. הסיורים של הגימטריה והקריאה מוגדרים בתוך החלון (app.js / reader.js)
+     ונשלחים לכאן (GT_tourDriver): יעד שבתוך החלון מסומן דרך "רוח" — div שקוף בשולחן בדיוק מעליו; step.shell = פקד בשולחן.
+     סיור החיפוש (searchTour) מוגדר כאן. הכפתור "? סיור מודרך" פותח תפריט של שלושת הסיורים. */
+  const tourVis = e => { if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+  let tourDrv = null, tourEndFn = null;
+  const ghosts = [];
+  function ghostOf(el, key, noScroll) {
+    let fw = null, fe = null; try { fw = el.ownerDocument.defaultView; fe = fw.frameElement; } catch (e) {}
+    if (el.ownerDocument === document) { // חלון קופץ של הקורא שהורם לשכבה של השולחן (syncPops) אחרי שהצעד כבר התחיל
+      if (!tourVis(el)) return null; const r = el.getBoundingClientRect();
+      let g = ghosts.find(x => x.dataset.k === key);
+      if (!g) { g = document.createElement('div'); g.className = 'dkTourGhost'; g.dataset.k = key; document.body.appendChild(g); ghosts.push(g); }
+      Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); g._src = el; return g;
+    }
+    if (!fe) return null;
+    let r = el.getBoundingClientRect();
+    if (!noScroll && (r.top < 0 || r.bottom > fw.innerHeight)) { try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {} r = el.getBoundingClientRect(); }
+    const fr = fe.getBoundingClientRect();
+    const l = Math.max(r.left, 0), t = Math.max(r.top, 0), rr = Math.min(r.right, fw.innerWidth), b = Math.min(r.bottom, fw.innerHeight);
+    if (rr - l < 2 || b - t < 2) return null;
+    let g = ghosts.find(x => x.dataset.k === key);
+    if (!g) { g = document.createElement('div'); g.className = 'dkTourGhost'; g.dataset.k = key; document.body.appendChild(g); ghosts.push(g); }
+    Object.assign(g.style, { left: fr.left + l + 'px', top: fr.top + t + 'px', width: rr - l + 'px', height: b - t + 'px' });
+    g._src = el; return g;
+  }
+  // פקד בבנר: גם עליו רוח, כי הבנר נבנה מחדש (cloneInto) כשחלון קופץ נסגר — והאלמנט ש-driver.js סימן היה נעלם באמצע הצעד
+  function shellGhost(sel, key) {
+    const el = $(sel); if (!tourVis(el)) return null; const r = el.getBoundingClientRect();
+    let g = ghosts.find(x => x.dataset.k === key);
+    if (!g) { g = document.createElement('div'); g.className = 'dkTourGhost'; g.dataset.k = key; document.body.appendChild(g); ghosts.push(g); }
+    Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    g.dataset.shell = sel; g._src = null; return g;
+  }
+  // יעד של צעד: פקד בשולחן (shell), אלמנט בשולחן, או אלמנט בתוך חלון (רוח מעליו)
+  function tourTarget(el, key) {
+    if (!el) return null;
+    if (el.ownerDocument === document) return tourVis(el) ? el : null;
+    return ghostOf(el, key);
+  }
+  // חלונות-עזר של סיור הגימטריה (חלון שני, טבעת, החשכות) נוצרים בתוך החלון — מועתקים לשולחן, מעל שכבת ההחשכה
+  let mirrors = [];
+  const mirrorClear = () => { mirrors.forEach(m => m.remove()); mirrors = []; };
+  function mirror(fw) {
+    mirrorClear(); let fe = null; try { fe = fw.frameElement; } catch (e) {} if (!fe) return;
+    const fr = fe.getBoundingClientRect();
+    fw.document.querySelectorAll('.gtTourWin,.gtTourRing,.gtTourDim').forEach(x => {
+      const c = x.cloneNode(true); c.style.left = fr.left + parseFloat(x.style.left || 0) + 'px'; c.style.top = fr.top + parseFloat(x.style.top || 0) + 'px';
+      document.body.appendChild(c); mirrors.push(c);
+    });
+  }
+  function tourCleanup() {
+    const f = tourEndFn; tourEndFn = null; tourDrv = null;
+    ghosts.splice(0).forEach(g => g.remove()); mirrorClear();
+    document.documentElement.classList.remove('gtNoAnim', 'dkTouring');
+    if (f) try { f(); } catch (e) {}
+  }
+  function endTour() { const d = tourDrv; if (d) { try { d.destroy(); } catch (e) {} } tourCleanup(); }
+  function shellTourBase() {
+    return { showProgress: true, progressText: T('{{current}} מתוך {{total}}', '{{current}} of {{total}}'), nextBtnText: T('הבא', 'Next'), prevBtnText: T('הקודם', 'Previous'),
+      doneBtnText: T('סיום', 'Done'), closeBtnText: T('סגור', 'Close'), allowClose: true, overlayOpacity: dark() ? 0.55 : 0.5, stagePadding: 6, stageRadius: 8, animate: true, popoverClass: 'gtTourPopover' };
+  }
+  // סיור שהוגדר בתוך חלון (app.js: tourDriver)
+  window.GT_tourDriver = (fw, cfg) => {
+    endTour();
+    const fd = fw.document, fe = fw.frameElement;
+    const ent = [...F.entries()].find(([, v]) => v.win === fw), wid = ent && ent[0];
+    if (wid && D.act !== wid) focusWin(wid);
+    const resolve = (st, i) => () => {
+      if (st.shell) { const g = shellGhost(st.shell, 'f' + i); if (g) return g; }
+      let el = st.element;
+      try { el = typeof el === 'function' ? el() : typeof el === 'string' ? fd.querySelector(el) : el; } catch (e) { el = null; }
+      return tourTarget(el, 'f' + i);
+    };
+    const steps = (cfg.steps || []).map((st, i) => st.element || st.shell ? Object.assign({}, st, { element: resolve(st, i) }) : st);
+    // אנימציה כבויה (gtNoAnim) עוברת מהחלון לשולחן
+    const mo = new fw.MutationObserver(() => document.documentElement.classList.toggle('gtNoAnim', fd.documentElement.classList.contains('gtNoAnim')));
+    mo.observe(fd.documentElement, { attributes: true, attributeFilter: ['class'] });
+    fd.documentElement.classList.add('gtTourMirrored');
+    fw.GT_tourAvoid = () => { const fr = fe.getBoundingClientRect(); return [...document.querySelectorAll('.driver-popover,.driver-active-element')].map(e => { const r = e.getBoundingClientRect(); return { left: r.left - fr.left, right: r.right - fr.left, top: r.top - fr.top, bottom: r.bottom - fr.top }; }); };
+    // גלילה בתוך החלון: הרוח של הצעד הנוכחי זזה עם היעד
+    const onScroll = () => { const d = tourDrv; if (!d) return; const g = ghosts.find(x => x.dataset.k === 'f' + d.getActiveIndex()); if (!g) return; if (g.dataset.shell) shellGhost(g.dataset.shell, g.dataset.k); else if (g._src && g._src.isConnected) ghostOf(g._src, g.dataset.k, true); else return; try { d.refresh(); } catch (e) {} };
+    fw.addEventListener('scroll', onScroll, true);
+    try { const a = fd.activeElement; if (a && a.blur) a.blur(); } catch (e) {} window.focus();
+    const h = cfg;
+    const d = window.driverjs.driver(Object.assign({}, cfg, { steps, smoothScroll: false,
+      onHighlightStarted: (el, st, o) => { mirrorClear(); if (h.onHighlightStarted) h.onHighlightStarted(el, st, o); },
+      onHighlighted: (el, st, o) => { if (h.onHighlighted) h.onHighlighted(el, st, o); mirror(fw); setTimeout(onScroll, 250); setTimeout(onScroll, 800); }, // יעד שזז רגע אחרי שנפתח (חלון קופץ שממוקם מתחת לכפתור בבנר)
+      onDestroyed: (el, st, o) => { tourCleanup(); if (h.onDestroyed) h.onDestroyed(el, st, o); },
+    }));
+    tourDrv = d; document.documentElement.classList.add('dkTouring');
+    tourEndFn = () => { mo.disconnect(); fw.removeEventListener('scroll', onScroll, true); try { fd.documentElement.classList.remove('gtTourMirrored', 'gtNoAnim'); delete fw.GT_tourAvoid; } catch (e) {} };
+    return d;
+  };
+  // חלון קופץ של הקורא (מעבר / תצוגה) שהסיור פותח: ממוקם מתחת לכפתור שלו בבנר, כמו בלחיצה רגילה
+  window.GT_tourPop = (fw, sel) => {
+    if (sel) { const b = $(sel); if (b) { lastBtn = b; lastR = b.getBoundingClientRect().right; lastRc = rectOf(b); } return; }
+    const e = [...F.entries()].find(([, x]) => x.win === fw); if (!e) return; syncPops(W(e[0]), e[1]); placePops(e[1]); // מרימים מיד (בלי לחכות ל-MutationObserver), כדי שהיעד יימדד במקומו הסופי
+  };
+
+  // תפריט הסיורים (מתחת לכפתור "? סיור מודרך")
+  const tmenu = document.createElement('div'); tmenu.className = 'dkScMenu dkTourMenu'; tmenu.hidden = true; document.body.appendChild(tmenu);
+  function tourMenu() {
+    if (!tmenu.hidden) { tmenu.hidden = true; return; }
+    const row = (k, ic, l, sub) => '<button type="button" data-tour="' + k + '"><i class="ic">' + ic + '</i><span>' + l + '<small>' + sub + '</small></span></button>';
+    tmenu.innerHTML = '<h5>' + T('סיור מודרך', 'Guided tour') + '</h5>' +
+      row('search', '⌕', T('חיפוש בספרים', 'Searching the books'), T('חיפוש חכם בכל הספרים וקפיצה למקום', 'Smart search in all the books, and jumping to a place')) +
+      row('read', '📖', T('קריאה', 'Reading'), T('הספר, החלונות, התצוגה וההדפסה', 'The book, windows, display and printing')) +
+      row('gem', 'Σ', T('גימטריה', 'Gematria'), T('ביטויים, שיטות, התאמות ותוצאות', 'Expressions, methods, matches and results'));
+    const r = $('#dkGemTools .tourBtn').getBoundingClientRect(); tmenu.hidden = false;
+    tmenu.style.top = Math.round(r.bottom + 6) + 'px'; tmenu.style.left = Math.max(8, Math.min(Math.round(r.left), innerWidth - tmenu.offsetWidth - 8)) + 'px';
+  }
+  tmenu.addEventListener('click', e => { const b = e.target.closest('[data-tour]'); if (!b) return; tmenu.hidden = true; runTour(b.dataset.tour); });
+  document.addEventListener('pointerdown', e => { if (!tmenu.hidden && !e.target.closest('.dkTourMenu,#dkGemTools')) tmenu.hidden = true; }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape') tmenu.hidden = true; });
+  // הסיור של חלון גימטריה / קריאה: מביאים (או פותחים) את החלון, מחכים שייטען, ומפעילים את הסיור שלו מבפנים
+  function runTour(k) {
+    endTour();
+    if (k === 'search') { searchTour(); return; }
+    let w;
+    if (k === 'gem') { w = gemW(); focusWin(w.id); }
+    else {
+      const a = W(D.act); w = a && a.k === 'read' && !a.min ? a : W(D.last) || reads().sort((x, y) => y.z - x.z)[0];
+      if (w) focusWin(w.id); else w = openRead('#read/TN/Gen/1/1', true);
+    }
+    let n = 0;
+    const tick = () => {
+      const f = F.get(w.id); let ok = false;
+      try { ok = !!(f && f.doc && f.win && f.win.GimApp && f.doc.getElementById('startTour') && (k === 'gem' ? f.win.GimApp.ready() : f.doc.querySelector('#rdBook article,#rdBook .rdPg,#rdBook section'))); } catch (e) {}
+      if (ok) { setTimeout(() => { try { f.doc.getElementById('startTour').click(); } catch (e) {} }, k === 'gem' ? 600 : 500); return; }
+      if (++n < 150) setTimeout(tick, 200); else toast(T('החלון עוד נטען — נסו שוב בעוד רגע', 'The window is still loading — try again in a moment'));
+    };
+    tick();
+  }
+
+  /* סיור החיפוש: מדגים בפועל — מקליד בתיבה (הרשימה נפתחת), פותח את תפריט הטווח, קופץ למקום ופותח חלון תוצאות.
+     בסוף הכול חוזר: התיבה, הטווח, והחלון שנפתח לסיור נסגר. */
+  function searchTour() {
+    const DEMO = 'גר בארץ', JUMP = 'שמות יב ב';
+    const q0 = q.value; let resW = null, hadRes = false, full = false;
+    const wait = (fn, ms) => new Promise(res => { const t0 = Date.now(); const tk = () => { let v = null; try { v = fn(); } catch (e) {} if (v || Date.now() - t0 > ms) res(v); else setTimeout(tk, 120); }; tk(); });
+    const drop = () => H && H.doc && H.doc.getElementById('rdDrop');
+    const dropOk = () => { const d = drop(); return d && !d.hidden && d.querySelector('.rdDI') && !(H.doc.querySelector('.rdOmni.rdBusy')) ? d : null; };
+    const typeQ = async v => {
+      scm.hidden = true; tourKeep = 1;
+      if (q.value !== v || !dropOk()) { q.value = v; q.focus(); host(); syncHost(); await wait(() => H && H.doc, 6000); q.dispatchEvent(new Event('input', { bubbles: true })); reopenDrop(); }
+      await wait(dropOk, 8000); await new Promise(r => setTimeout(r, 250));
+    };
+    const noDrop = () => { tourKeep = 0; scm.hidden = true; closeSearch(); };
+    const hostEl = () => { if (!H || !H.fr || H.fr.hidden || !H.doc) return null; return tourTarget(H.doc.getElementById('rdDrop'), 'drop') || H.fr; }; // הרשימה עצמה (המארח גבוה ממנה ושקוף)
+    const resF = () => resW && F.get(resW.id);
+    const st = (el, he, heD, enT, enD, side, align, prep) => ({ element: el, prep, popover: { title: T(he, enT), description: T(heD, enD), side: side || 'bottom', align: align || 'center' } });
+    const steps = [
+      st(null, 'חיפוש בכל הספרים', 'מנוע החיפוש של תורה אחת מחפש בבת אחת בתנ״ך, במשנה, ברמב״ם, בש״ס, בזוהר, בטור ובשולחן ערוך, יחד עם המפרשים והתרגומים, ומחזיר תוצאות בתוך שברירי שנייה. הוא מבין עברית: בלי ניקוד, בכתיב מלא או חסר, ועם אותיות השימוש. סיור קצר על היכולות שלו.',
+        'Searching all the books', 'The Torah One search engine searches the Tanakh, Mishnah, Rambam, Talmud, Zohar, Tur and Shulchan Aruch at once, with their commentaries and translations, and returns results in a fraction of a second. It understands Hebrew: without vowels, in full or short spelling, and with prefixes. A short tour of what it can do.', null, null, noDrop),
+      st('#dkSearch', 'תיבה אחת לחיפוש ולקפיצה', 'מקלידים מילים, והתוצאות מופיעות כבר תוך כדי הקלדה. מקלידים מקום, וקופצים אליו. מכל מקום באפליקציה מגיעים לתיבה בקיצור Ctrl+Shift+K.',
+        'One box to search and to jump', 'Type words and the results appear as you type. Type a place and jump straight to it. From anywhere in the app, Ctrl+Shift+K brings you here.', 'bottom', 'center', noDrop),
+      st(() => hostEl(), 'חיפוש חכם', 'חיפשנו "' + DEMO + '". המנוע מוצא כל צורה של המילים: "ארץ" מוצא גם "הארץ", "בארץ" ו"והארץ", ו"וחושך" מוצא "וחשך". המילים לא חייבות להיות צמודות, ואפילו לא באותו פסוק (עד כשלושה פסוקים). הדירוג חכם: ביטוי רצוף קודם, אחריו מילים באותו פסוק, וכתיב מדויק לפני כתיב אחר.',
+        'Smart search', 'We searched for "' + DEMO + '". The engine finds every form of the words: "ארץ" also finds "הארץ", "בארץ" and "והארץ", and "וחושך" finds "וחשך". The words need not be adjacent, or even in the same verse (up to about three verses). The ranking is smart: an exact phrase first, then words in the same verse, and exact spelling before other spellings.', 'left', 'start', () => typeQ(DEMO)),
+      st(() => hostEl(), 'חיפוש מתקדם', 'למי שרוצה לדייק: "ביטוי מדויק" במירכאות, תחילית* בכוכבית, ^ לתחילת פסוק, ‎-מילה כדי להוציא מילה, OR כדי למצוא אחת מכמה מילים, ו-NEAR(א ב, 5) למילים במרחק שתבחרו.',
+        'Advanced search', 'For precision: "an exact phrase" in quotes, prefix* with an asterisk, ^ for the start of a verse, -word to exclude a word, OR to find any of several words, and NEAR(a b, 5) for words within a chosen distance.', 'left', 'start', () => typeQ(DEMO)),
+      st(() => tourTarget(H && H.doc && H.doc.querySelector('[data-owin]'), 'owin') || hostEl(), 'כל התוצאות בחלון', 'הרשימה מציגה את התוצאות הראשונות. Enter, או הכפתור הזה, פותח את כל התוצאות בחלון "תוצאות חיפוש", עם סינון לפי ספר ולפי מקור.',
+        'All the results in a window', 'The list shows the first results. Enter, or this button, opens all of them in a "Search results" window, with filters by book and by source.', 'bottom', 'end', () => typeQ(DEMO)),
+      st(() => tourVis(scm) ? scm : $('#dkScope'), 'איפה לחפש ומה לכלול', 'הכפתור שבתוך התיבה קובע את טווח החיפוש: בפרק, בספר, בכל האוסף, או בכל הספרים יחד. וגם מה לכלול: הכתוב עצמו, המפרשים, התרגומים. ברירת המחדל מתאימה את עצמה לחלון שבו אתם קוראים.',
+        'Where to search and what to include', 'The button inside the box sets the search range: the chapter, the book, the whole collection, or all the books together. And what to include: the text itself, the commentaries, the translations. The default adapts to the window you are reading.', 'left', 'start',
+        async () => { tourKeep = 1; closeSearch(); openScMenu(); await wait(() => tourVis(scm) && scm.querySelector('button'), 6000); }),
+      st(() => hostEl(), 'קפיצה למקום', 'הקלדנו "' + JUMP + '". מקלידים מקום בכל צורה, והמנוע מבין: "ב״מ נט:", "או״ח ס", "שוע יוד קי", "ברכות ב ג", גם בראשי תיבות ובלי גרשיים. Enter קופץ ישר לשם בחלון הקריאה.',
+        'Jump to a place', 'We typed "' + JUMP + '". Type a place in any form and the engine understands: "BM 59b", "OC 60", "Berakhot 2 3", abbreviations too. Enter jumps straight there in the reading window.', 'left', 'start', () => typeQ(JUMP)),
+      st(() => resF() ? resF().el : null, 'חלון התוצאות', 'כאן פתחנו את אותו חיפוש בכל הספרים יחד: תנ״ך, משנה, רמב״ם, ש״ס, זוהר, טור ושולחן ערוך, עם המפרשים, וכל התוצאות ממוזגות לפי הדירוג עם המניין המלא. הגלילה מהירה גם באלפי תוצאות.',
+        'The results window', 'Here we opened the same search in all the books together: Tanakh, Mishnah, Rambam, Talmud, Zohar, Tur and Shulchan Aruch, with their commentaries, all results merged by rank with the full count. Scrolling stays fast even with thousands of results.', 'left', 'start',
+        async () => {
+          noDrop(); q.value = DEMO; hadRes = searches().some(x => x.q === DEMO); full = others().length >= MAXW; // חלון התוצאות נפתח בכל הספרים (בלי הטווח של התיבה), כדי להראות את כל המקורות יחד
+          resW = openResults(DEMO, null) || searches().find(x => x.q === DEMO) || null; killHost();
+          await wait(() => { const f = resF(); return f && f.doc && f.doc.querySelector('.rsRow:not(.ph)'); }, 12000); await new Promise(r => setTimeout(r, 300));
+        }),
+      st(() => { const f = resF(); return f && f.doc ? tourTarget(f.doc.getElementById('rsSide'), 'side') : null; }, 'סינון לפי ספר ומקור', 'מסמנים ספרים, מסכתות או מקורות (כתוב, מפרשים, תרגום), והתוצאות מסתננות מיד. ליד כל אחד מוצג כמה תוצאות יש בו.',
+        'Filter by book and source', 'Tick books, tractates or sources (text, commentaries, translation), and the results filter at once. Each one shows how many results it has.', 'left', 'center'),
+      st(() => { const f = resF(); return f && f.doc ? tourTarget(f.doc.querySelector('.rsRow:not(.ph)'), 'row') : null; }, 'מתוצאה לספר', 'לחיצה על תוצאה פותחת אותה בחלון קריאה, במקום המדויק, והמילים שחיפשתם מודגשות בדף בכל הצורות שלהן.',
+        'From a result to the book', 'Clicking a result opens it in a reading window at the exact place, and the words you searched for are highlighted on the page in all their forms.', 'bottom', 'center'),
+      st('#dkGemTools .tourBtn', 'גם מתוך הטקסט', 'מסמנים מילים בדף, ובסרגל שמופיע מעל הסימון לוחצים "חיפוש". אפשר להפעיל את הסיור הזה ואת הסיורים של הקריאה והגימטריה שוב בכל רגע, מכאן.',
+        'Right from the text', 'Select words on the page and click "Search" in the bar that appears above them. You can start this tour, and the reading and gematria tours, again any time from here.', 'bottom', 'end'),
+    ];
+    let busy = 0, d = null;
+    const go = async i => {
+      if (busy || i < 0 || i >= steps.length) return; busy = 1;
+      const pop = document.querySelector('.driver-popover'); if (pop) pop.classList.add('dkTourBusy'); // ההדגמה (הקלדה, חלון תוצאות) לוקחת רגע
+      const s = steps[i]; try { if (s.prep) await s.prep(); } catch (e) {}
+      busy = 0; if (pop) pop.classList.remove('dkTourBusy'); if (tourDrv !== d) return;
+      d.moveTo(i);
+    };
+    steps.forEach(s => { s.popover.onNextClick = () => { const i = d.getActiveIndex(); if (i >= steps.length - 1) d.destroy(); else go(i + 1); }; s.popover.onPrevClick = () => go(d.getActiveIndex() - 1); });
+    d = window.driverjs.driver(Object.assign(shellTourBase(), { steps, smoothScroll: false, onDestroyed: () => tourCleanup() }));
+    tourDrv = d; document.documentElement.classList.add('dkTouring');
+    tourEndFn = () => {
+      tourKeep = 0; scm.hidden = true; closeSearch(); q.value = q0; q.blur();
+      if (resW && !hadRes && !full && W(resW.id)) closeWin(resW.id); // ב-6 חלונות התוצאות נפתחו בחלון קיים של המשתמש — הוא לא נסגר
+    };
+    d.drive(0);
+  }
   if (!W(D.act) || W(D.act).min) { const n = topVisible(); D.act = n ? n.id : ''; }
   if (D.act) focusWin(D.act);
   if (location.hash) fromUrl(); else syncUrl();
