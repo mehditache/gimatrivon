@@ -2747,6 +2747,7 @@
   const SQD = {}; // תחום ('tanakh' / 'mishnah') → {P: הבטחה, E: המנוע, fail}
   let SQ = null, SQHL = null;
   const isTD = d => d === 'tur' || d === 'sa'; // תחומי SQLite של הטור ושל השולחן ערוך: אותה צורת תוצאה (k, s, x, i)
+  const isTL = d => d === 'talmud' || d === 'zohar'; // גמרא וזוהר (רק בחיפוש בכל הספרים): אותה צורת תוצאה (tk, j, s, src)
   const sqDomOf = () => { if (isTur()) return turT().sa ? 'sa' : 'tur'; if (isTal()) return isZ() ? null : 'talmud'; const c = IX.books[S.b].cat; return c === 0 ? 'tanakh' : c === 1 ? 'mishnah' : c === 7 ? 'rambam' : null; }; // בזוהר: חיפוש בפרשה הפתוחה, בלי מסד SQLite
   const sqPhone = () => G.matchMedia && G.matchMedia('(hover: none) and (pointer: coarse)').matches; // טלפון / טאבלט (מסך מגע בלי עכבר)
   const sqOn = () => { const d = sqDomOf(); return !!d && !(SQD[d] && SQD[d].fail) && !!G.GimSq && /^https?:$/.test(location.protocol) && !sqPhone() && typeof Worker !== 'undefined'; };
@@ -2976,9 +2977,9 @@
     const E = SQD[dom].E, M = E.map, DM = G.GimSq.DOMAINS[dom], bk = G.GIM_SQ_DBS[dom].bk, us = E.unitsOf(r).filter(u => tx.get(u) != null), u0 = us[0] != null ? us[0] : E.unitsOf(r)[0], ord = G.GimSq.rOrd(u0);
     const k = bk[M.ob[ord]].k, ch = M.oc[ord], v = M.ov[ord], t = sqSegText(us, r, tx, DM, isTD(dom) ? (r.src === 1 || r.src === 2 ? RASHI_FAM : '') : r.src ? (S.cmFont === 'rashi' ? RASHI_FAM : '') : ''), x = { sq: true, sc: r.sc, pt: t.pt, html: t.html };
     let e = r.e > r.s ? (DM.multi.includes(r.src) ? G.GimSq.rOrd(us[us.length - 1]) : r.e) : ord;
-    if (dom === 'talmud') {
+    if (isTL(dom)) {
       const tt = TX.list[TX.byK[k]], j = ch - 1; Object.assign(x, { tk: k, j, s: v - 1, src: ['g', 'r', 't'][r.src], t: t.pt });
-      x.ref = talName(tt) + ' ' + dafTxt(j) + ' · ' + T('קטע') + ' ' + num(v) + (e > ord ? '–' + (M.oc[e] === ch ? num(M.ov[e]) : dafTxt(M.oc[e] - 1) + ' · ' + num(M.ov[e])) : '');
+      x.ref = talName(tt) + ' ' + dafTxt(j, k) + ' · ' + T(tt.z ? 'פסקה' : 'קטע') + ' ' + num(v) + (e > ord ? '–' + (M.oc[e] === ch ? num(M.ov[e]) : dafTxt(M.oc[e] - 1, k) + ' · ' + num(M.ov[e])) : '');
     } else {
       const tt = turTOf(k), sL = s => s ? T('סימן') + ' ' + num(s) : T('הקדמה');
       Object.assign(x, { k, s: ch - 1, x: ['t', 'y', 'c', 't'][r.src], i: v - 1 });
@@ -2987,7 +2988,7 @@
     return x;
   }
   function sqHit(r, tx, dom) {
-    if (dom === 'talmud' || isTD(dom)) return sqHitBk(r, tx, dom);
+    if (isTL(dom) || isTD(dom)) return sqHitBk(r, tx, dom);
     const E = SQD[dom].E, M = E.map, us = E.unitsOf(r).filter(u => tx.get(u) != null), u0 = us[0] != null ? us[0] : E.unitsOf(r)[0], ord = G.GimSq.rOrd(u0);
     const x = { b: M.ob[ord], ch: M.oc[ord], v: M.ov[ord], sq: true, sc: r.sc };
     const DM = G.GimSq.DOMAINS[dom];
@@ -2999,12 +3000,12 @@
   }
   /* הרשימה בגודל כל התוצאות (פס הגלילה המהיר מדויק מהרגע הראשון); שורות שעוד לא נטענו הן {ph:true}. הטקסטים נטענים לפי החלון
      הנראה (sqLoad מ-resWin), והשורה מתעדכנת במקומה (sqPaint) בלי לבנות את הרשימה מחדש ובלי לאבד את מקום הגלילה. */
-  const sqItem = (x, dom) => x.ph ? { kind: 'ph' } : (x.dom || dom) === 'talmud' ? { kind: 'thit', x } : isTD(x.dom || dom) ? { kind: 'rhit', x } : { kind: 'hit', r: x };
+  const sqItem = (x, dom) => x.ph ? { kind: 'ph' } : isTL(x.dom || dom) ? { kind: 'thit', x } : isTD(x.dom || dom) ? { kind: 'rhit', x } : { kind: 'hit', r: x };
   const sqPh = n => Array.from({ length: n }, (_, i) => ({ ph: true, i }));
   function sqMeta(me, i) { // מקום התוצאה (לבועה) — מהמנוע, בלי הטקסט
     const e = me.r && me.r.res[i]; if (!e) return {};
     const d = me.dom === 'glob' ? e.d : me.dom, r = me.dom === 'glob' ? e.r : e, E = SQD[d].E, M = E.map, ord = G.GimSq.rOrd(E.unitsOf(r)[0]), bi = M.ob[ord], ch = M.oc[ord];
-    if (d === 'talmud' || isTD(d)) { const k = G.GIM_SQ_DBS[d].bk[bi].k; return d === 'talmud' ? { dom: d, tk: k, j: ch - 1 } : { dom: d, k, s: ch - 1 }; }
+    if (isTL(d) || isTD(d)) { const k = G.GIM_SQ_DBS[d].bk[bi].k; return isTL(d) ? { dom: d, tk: k, j: ch - 1 } : { dom: d, k, s: ch - 1 }; }
     return { dom: d, b: bi, ch };
   }
   function sqPaint(me, idx) {
@@ -3094,14 +3095,11 @@
     let html = '<div class="rdDScope" role="group">' + btn(0, 'חיפוש בספר', false) + btn(1, 'בכל הספרים', true) + '<span class="cnt">' + (res.q.length < 2 ? '' : res.wait ? spin() : res.total ? resN(res.total) + (res.part ? ' ' + spin() : '') : T('אין תוצאות')) + '</span></div>';
     const start = 0;
     res.hits.forEach(x => dropItems.push(sqItem(x, 'glob')));
-    const DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור', sa: 'שולחן ערוך' };
+    const DL = RES_DL;
     if (res.hits.length) html += resList(res.hits, start, q, {
-      sq: true, key: null, gh: () => '', bub: x => T(DL[x.dom]) + ' · ' + (x.dom === 'talmud' ? talName(TX.list[TX.byK[x.tk]]) + ' ' + dafTxt(x.j) : isTD(x.dom) ? turPartName(turTOf(x.k)) + ' · ' + (x.s ? T('סימן') + ' ' + num(x.s) : T('הקדמה')) : refLabel({ b: x.b, ch: x.ch, v: 0 })),
+      sq: true, key: null, gh: () => '', bub: x => T(DL[x.dom]) + ' · ' + (isTL(x.dom) ? talName(TX.list[TX.byK[x.tk]]) + ' ' + dafTxt(x.j, x.tk) : isTD(x.dom) ? turPartName(turTOf(x.k)) + ' · ' + (x.s ? T('סימן') + ' ' + num(x.s) : T('הקדמה')) : refLabel({ b: x.b, ch: x.ch, v: 0 })),
       row: x => {
-        if (x.dom === 'talmud') {
-          const tt = TX.list[TX.byK[x.tk]], tag = x.src === 'g' ? '' : x.src === 'r' ? T('רש״י') : T('תוספות');
-          return { tag, fc: tag ? S.cmFont : '', ref: talName(tt) + ' ' + x.ref, t: plainT(x.t), html: x.html };
-        }
+        if (isTL(x.dom)) { const r = resRow(x); return { tag: r.tag, fc: r.tag && x.dom === 'talmud' ? S.cmFont : '', ref: r.ref, t: plainT(x.t), html: x.html }; }
         if (isTD(x.dom)) return { tag: x.x === 't' ? '' : turCmName(x.x, x.k) + ' ' + RL(x.x, x.i), fc: x.x === 't' ? '' : 'rashi', ref: x.ref, t: x.pt, html: x.html };
         const cm = x.cm != null, tr = !!x.tr;
         return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', fc: cm ? S.cmFont : tr ? S.trFont : '', ref: x.ref || refLabel(x), t: x.pt, html: x.html };
@@ -3156,7 +3154,7 @@
      row(x) = {tag, fc, ref, t} לשורה. */
   /* פסי צבע על פס הגלילה: לכל תוצאה צבע לפי המקור (טקסט, רש״י/מפרשים, תרגום…) ובחיפוש בכל הספרים — לפי התחום; רצף של אותו צבע הוא פס אחד */
   function sqBands(me, a, b) {
-    const res = me.r ? me.r.res.slice(a || 0, b == null ? undefined : b) : [], n = res.length, DI = { tanakh: 0, mishnah: 1, rambam: 2, talmud: 3, tur: 4, sa: 5 };
+    const res = me.r ? me.r.res.slice(a || 0, b == null ? undefined : b) : [], n = res.length, DI = { tanakh: 0, mishnah: 1, rambam: 2, talmud: 3, tur: 4, sa: 5, zohar: 6 };
     if (!n) return '';
     const cls = i => me.dom === 'glob' ? DI[res[i].d] : res[i].src, B = Math.min(n, 160); let out = '', prev = -1, from = 0;
     const put = (a, b, c) => { out += '<i class="rdFsBand b' + c + '" style="top:' + (100 * a / n).toFixed(2) + '%;height:' + (100 * (b - a) / n).toFixed(2) + '%"></i>'; };
@@ -3634,10 +3632,11 @@
   /* ---------- חלון "תוצאות חיפוש" של שולחן העבודה (results.js): חיפוש בכל הספרים עם סינון לפי ספר / מקור ----------
      אותו מנוע ואותן תוצאות כמו הרשימה הנפתחת של החיפוש; מכאן רק ממשק קטן: הרצת החיפוש, אינדקס (תחום, ספר, מקור, מקום)
      לכל התוצאות בלי לטעון טקסט, טעינת טקסט לשורות שנראות, ושורה / כתובת של תוצאה שנטענה. */
-  const RES_DOMS = ['tanakh', 'mishnah', 'rambam', 'talmud', 'tur', 'sa'], RES_DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור', sa: 'שולחן ערוך' };
-  const RES_SRC = { tanakh: ['פסוקים', 'רש״י', 'אונקלוס', 'יונתן'], mishnah: ['משנה', 'ברטנורא'], rambam: ['רמב״ם', 'כסף משנה', 'השגות', 'משנה למלך'], talmud: ['גמרא', 'רש״י', 'תוספות'], tur: ['טור', 'בית יוסף', 'ב״ח'], sa: ['שולחן ערוך', 'משנה ברורה · ש״ך · סמ״ע · כף החיים', 'ביאור הלכה · ט״ז · ב״ח…', 'שולחן ערוך (בכף החיים)'] };
+  const RES_DOMS = ['tanakh', 'mishnah', 'rambam', 'talmud', 'tur', 'sa', 'zohar'] /* זוהר בסוף: מפתחות הסינון (d:<מספר>) של התחומים הקודמים לא זזים */, RES_DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', zohar: 'זוהר', tur: 'טור', sa: 'שולחן ערוך' };
+  const RES_SRC = { tanakh: ['פסוקים', 'רש״י', 'אונקלוס', 'יונתן'], mishnah: ['משנה', 'ברטנורא'], rambam: ['רמב״ם', 'כסף משנה', 'השגות', 'משנה למלך'], talmud: ['גמרא', 'רש״י', 'תוספות'], zohar: ['זוהר', 'הסולם', 'תרגום הזוהר'], tur: ['טור', 'בית יוסף', 'ב״ח'], sa: ['שולחן ערוך', 'משנה ברורה · ש״ך · סמ״ע · כף החיים', 'ביאור הלכה · ט״ז · ב״ח…', 'שולחן ערוך (בכף החיים)'] };
   function resRow(x) { // כמו row ברשימה הנפתחת של "בכל הספרים"
     if (x.dom === 'talmud') { const tt = TX.list[TX.byK[x.tk]], tag = x.src === 'g' ? '' : x.src === 'r' ? T('רש״י') : T('תוספות'); return { tag, ref: talName(tt) + ' ' + x.ref, html: x.html }; }
+    if (x.dom === 'zohar') return { tag: x.src === 'g' ? '' : srcLabel(x.tk, x.j, x.src), ref: T('זוהר') + ' ' + x.ref, html: x.html };
     if (isTD(x.dom)) return { tag: x.x === 't' ? '' : turCmName(x.x, x.k) + ' ' + RL(x.x, x.i), ref: x.ref, html: x.html };
     const cm = x.cm != null, tr = !!x.tr;
     return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', ref: x.ref || refLabel(x), html: x.html };
@@ -3677,7 +3676,7 @@
     // שם ספר / קבוצה (תורה, סדר זרעים…) של תוצאה
     book(d, bi) {
       ensureIndex();
-      if (d === 'talmud') { const k = G.GIM_SQ_DBS.talmud.bk[bi].k, tt = TX.list[TX.byK[k]]; return { name: talName(tt), group: tt.g || '' }; }
+      if (isTL(d)) { const k = G.GIM_SQ_DBS[d].bk[bi].k, tt = TX.list[TX.byK[k]]; return { name: talName(tt), group: tt.g || '' }; }
       if (isTD(d)) { const k = G.GIM_SQ_DBS[d].bk[bi].k; return { name: turPartName(turTOf(k)), group: '' }; }
       const b = IX.books[bi]; return { name: bkName(b.heTitle), group: b.g || '' };
     },
@@ -3685,7 +3684,7 @@
     row: resRow,
     hashOf(x) {
       ensureIndex();
-      if (x.dom === 'talmud') return hashOfRef(IX, { kind: 'tal', k: x.tk, j: x.j, s: x.s });
+      if (isTL(x.dom)) { const tt = TX.list[TX.byK[x.tk]]; return hashOfRef(IX, Object.assign({ kind: 'tal', k: x.tk, j: x.j, s: x.s }, tt && tt.z ? { z: 1, d0: tt.d0 } : {})); }
       if (isTD(x.dom)) return hashOfRef(IX, { kind: 'tur', k: x.k, s: x.s, x: x.x, i: x.i });
       return hashOfRef(IX, { kind: 'ref', b: x.b, ch: x.ch, v: x.v });
     }

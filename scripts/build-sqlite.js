@@ -1,7 +1,7 @@
 // בונה את מסדי החיפוש (generated/sqlite/<תחום>.sqlite3 + <תחום>.js) מהקורפוס שב-generated/corpus, generated/talmud ו-generated/tur.
 // מסד לכל תחום (SQ.DOMAINS): תנ״ך = פסוקים (cat 0), רש״י (cat 2, דיבור לכל שורה), אונקלוס (cat 3) ויונתן (cat 4);
 // משנה = משניות (cat 1) וברטנורא (cat 5, דיבור לכל שורה); רמב״ם = הלכות (cat 7), כסף משנה, השגות הראב״ד ומשנה למלך;
-// גמרא = קטעי הגמרא, רש״י ותוספות לכל עמוד; טור = הטור, בית יוסף וב״ח לכל סימן. המבנה והנרמול: ראו sqlite-search.js.
+// גמרא = קטעי הגמרא, רש״י ותוספות לכל עמוד; זוהר = פסקאות הזוהר, הסולם והתרגום לכל עמוד; טור = הטור, בית יוסף וב״ח לכל סימן. המבנה והנרמול: ראו sqlite-search.js.
 // <תחום>.js = window.GIM_SQ_DBS.<תחום>: גודל המסד ו-hash שלו (לעקיפת מטמון הדפדפן אחרי בנייה חדשה), נטען כ-script.
 // <תחום>.sqlite3.gz.000… = אותו מסד דחוס ב-gzip, בחלקים של 32MB: sqmem.js מוריד אותו פעם אחת לזיכרון ול-OPFS (v4.6.0).
 // הרצה: node scripts/build-sqlite.js [תחום…]  (ברירת מחדל: כל התחומים; Node 22.5 ומעלה, עם node:sqlite)
@@ -50,10 +50,11 @@ function collectCorpus(name) {
   return { units, miss };
 }
 // גמרא: ספר = מסכת, פרק = עמוד (j + 1), פסוק = קטע (s + 1). src 0 גמרא, 1 רש״י, 2 תוספות (k = מספר הפירוש באותו קטע)
-function collectTalmud() {
-  const tdir = path.join(root, 'generated', 'talmud') + path.sep, w = {};
+// זוהר (zohar = true): אותו מבנה (generated/zohar, scripts/build-zohar.py) — ספר = פרשה, פרק = עמוד, פסוק = פסקה; src 1 הסולם, 2 התרגום
+function collectTalmud(zohar) {
+  const tdir = path.join(root, 'generated', zohar ? 'zohar' : 'talmud') + path.sep, w = {}, cat = zohar ? 103 : 100;
   vm.runInNewContext(fs.readFileSync(tdir + 'index.js', 'utf8'), { window: w });
-  const T = w.GIM_TALMUD_INDEX, bk = [], rows = [];
+  const T = zohar ? w.GIM_ZOHAR_INDEX : w.GIM_TALMUD_INDEX, bk = [], rows = [];
   T.forEach((t, b) => {
     const A = []; // j → [קטעים, רש״י, תוספות]
     t.parts.forEach(p => { const g = {}; vm.runInNewContext(fs.readFileSync(tdir + p.f, 'utf8'), { window: g }); const d = Object.values(g.GIM_TP)[0]; d.a.forEach((a, i) => { A[d.from + i] = a; }); });
@@ -62,7 +63,7 @@ function collectTalmud() {
     bk.push({ k: t.k, he: t.he, cv });
     rows.push({ b, A, t });
   });
-  const map = SQ.mapOf(bk.map(x => ({ cat: 100, cv: x.cv })), 100), units = new Map();
+  const map = SQ.mapOf(bk.map(x => ({ cat, cv: x.cv })), cat), units = new Map();
   rows.forEach(({ b, A, t }) => {
     for (let j = 0; j < t.n; j++) {
       const a = A[j]; if (!a) continue;
@@ -100,7 +101,7 @@ function collectTur(sa) {
 }
 
 function build(name) {
-  const D = SQ.DOMAINS[name], C = name === 'talmud' ? collectTalmud() : name === 'tur' ? collectTur() : name === 'sa' ? collectTur(true) : collectCorpus(name);
+  const D = SQ.DOMAINS[name], C = name === 'talmud' ? collectTalmud() : name === 'zohar' ? collectTalmud(true) : name === 'tur' ? collectTur() : name === 'sa' ? collectTur(true) : collectCorpus(name);
   const units = C.units, TABS = D.tabs;
   fs.mkdirSync(out, { recursive: true });
   const file = path.join(out, name + '.sqlite3');
@@ -134,7 +135,7 @@ function build(name) {
   fs.unlinkSync(file);
   const meta = { file: 'generated/sqlite/' + name + '.sqlite3', chunk: CHUNK, parts, bytes: buf.length, page: PAGE, hash, units: ids.length, words: nw };
   if (C.bk) meta.bk = C.bk; // ספרים סינתטיים (גמרא וטור): שם ומספר הקטעים בכל פרק, למיפוי מקום ← מספר סידורי
-  if (name === 'sa') { // רק קבצים דחוסים (חוסך כ-2/3 ממקום האתר): בלי קריאת טווחים; בכשל — החיפוש בזיכרון
+  if (name === 'sa' || (name === 'zohar' && !process.env.SQ_RANGE)) { // (SQ_RANGE=1: גם עותק לקריאת טווחים לזוהר, לבדיקה מקומית בדפדפן בלי OPFS) רק קבצים דחוסים (חוסך כ-2/3 ממקום האתר): בלי קריאת טווחים; בכשל — החיפוש בזיכרון
     meta.noRange = true; fs.readdirSync(out).filter(f => f.startsWith(name + '.sqlite3.') && !f.includes('.gz.')).forEach(f => fs.unlinkSync(path.join(out, f)));
   }
   gzOut(name, buf, meta);
