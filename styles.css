@@ -954,6 +954,9 @@ mark.rdHl{background:var(--rdHl);color:inherit;border-radius:3px;padding:0 1px}
 .rdPage.right::before{content:"";position:absolute;top:-2px;left:16px;width:14px;height:58px;background:#8a2f40;clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%)}
 .rdPage.narrow{padding:16px 16px 10px}
 .rdPage.tight{overflow:auto}
+/* בתוך הספר אסור שיופיע סרגל גלילה (בשום ספר ובשום גודל חלון): אם בכל זאת משהו עולה על גדות העמוד — הוא ממשיך להיגלל בגלגל העכבר ובמגע, בלי סרגל */
+.rdPage,.rdPage *,.rdTxt.zCols,#rdBook{scrollbar-width:none}
+.rdPage::-webkit-scrollbar,.rdPage *::-webkit-scrollbar,.rdTxt.zCols::-webkit-scrollbar,#rdBook::-webkit-scrollbar{display:none;width:0;height:0}
 .rdPage>*{flex:none}
 .rdHead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:12px var(--ui);color:var(--rdMu);border-bottom:1px solid var(--rdLine);padding-bottom:6px;margin-bottom:12px}
 .rdHead span:first-child{font:600 13px "GimFrank",var(--tf);color:var(--rdGold)}
