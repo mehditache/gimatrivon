@@ -733,11 +733,14 @@
   window.reopenDropIfFocused = () => { if (q.value.trim() && (!H || !H.doc || H.doc.getElementById('rdDrop').hidden)) reopenDrop(); };
   q.addEventListener('mousedown', () => { if (document.activeElement === q && q.value.trim() && (!H || !H.doc || H.doc.getElementById('rdDrop').hidden)) setTimeout(reopenDrop, 0); });
   q.addEventListener('input', () => { host(); syncHost(); if (!H.doc) return; H.doc.getElementById('rdQ').value = q.value; fire('input'); });
+  // הפענוח של הקורא (GimReader.placeOf) — ממארח החיפוש, ואם הוא עוד לא נטען, מכל חלון קריאה פתוח
+  const placeOfQ = v => { for (const w of [H && H.win].concat([...F.values()].map(f => f.win))) { try { const g = w && w.GimReader; if (g && g.placeOf) return g.placeOf(v, true) || ''; } catch (e) {} } return ''; };
   let arrowed = false; q.addEventListener('input', () => { arrowed = false; });
   q.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') arrowed = true;
     // Enter אחרי מילות חיפוש (בלי לבחור תוצאה בחצים) פותח חלון "תוצאות חיפוש"; עם בחירה בחצים — פותח את התוצאה
-    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); const sc = hostScope(); closeSearch(); killHost(); openResults(q.value.trim(), sc); q.blur(); return; }
+    // מקום מפורש ("שמות יב ב", "ברכות ב.", "או״ח ס") — Enter קופץ אליו בחלון הקריאה, כמו שכתוב בתיבה ("או קפיצה"); ספר לבד ומילים — חלון תוצאות (v4.17.4)
+    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); const qv = q.value.trim(), ph = placeOfQ(qv); closeSearch(); if (ph) { killHost(); openRead(ph); q.blur(); return; } const sc = hostScope(); killHost(); openResults(qv, sc); q.blur(); return; }
     if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key) || !H || !H.doc) return;
     e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
     if (e.key === 'Escape') q.value = H.doc.getElementById('rdQ').value; // Esc כשהרשימה סגורה מנקה את התיבה בקורא — וגם בבנר, כדי שלא יתפרדו
