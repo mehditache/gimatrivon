@@ -578,7 +578,7 @@
     const stop = () => b.classList.remove('attract');
     setTimeout(stop, 10000); b.addEventListener('pointerdown', stop, { once: true });
   }
-  // v4.15.4: שם המקום בבורר הספר מותאם לרוחב שלו בבנר (ראשי תיבות לפי הצורך, ואז "…") — אותה פונקציה של הקורא (reader.js: fitWhere)
+  // v4.16.1: שם המקום בבורר הספר מותאם לרוחב שלו בבנר (ראשי תיבות לפי הצורך, ואז "…") — אותה פונקציה של הקורא (reader.js: fitWhere)
   function fitNav() { const f = readerF(), fw = f && f.win && f.win.GT_fitWhere, sp = nav.querySelector('[data-src-id=rdWhereTxt]'); if (fw && sp) try { fw(sp); } catch (e) {} }
   addEventListener('resize', fitNav); try { document.fonts.addEventListener('loadingdone', fitNav); document.fonts.ready.then(fitNav); } catch (e) {} // הגופן משנה את הרוחב
   function banner() {
@@ -1116,7 +1116,7 @@
      תג בפינה (שמאל למטה): לכל תחום — זיכרון (sqmem.js, ירוק), בטעינה לזיכרון (כתום, עם אחוזים) או טווחים מהשרת (אפור); מספר השאילתות מכל מקור,
      והבקשות והבתים שנשלחו לשרת. שורה מהבהבת כששאילתה יוצאת לשרת. מצב הפיתוח נדלק ב-5 לחיצות על הגרסה (app.js, בתוך החלונות). */
   {
-    const DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור' };
+    const DL = { tanakh: 'תנ״ך', mishnah: 'משנה', rambam: 'רמב״ם', talmud: 'גמרא', tur: 'טור', sa: 'שולחן ערוך' };
     let el = null, tm = 0, NET = {}; const prev = {};
     const on = devOn;
     const paint = () => {
@@ -1131,7 +1131,6 @@
         const hit = prev[k] != null && cr > prev[k]; prev[k] = cr;
         h += '<tr class="' + c + (hit ? ' hit' : '') + '"><td><i></i></td><td class="n">' + DL[k] + '</td><td>' + lbl + '</td><td>' + (nw || '') + '</td><td>' + cm + '</td><td>' + cr + '</td><td>' + nt[0] + '</td><td>' + (nt[1] / 1048576).toFixed(1) + '</td></tr>';
       });
-      h += '<tr class="x"><td><i></i></td><td class="n">שו״ע</td><td colspan="6" title="שולחן ערוך עדיין לא במסד SQLite: חיפוש בסימן ובחלק הפתוח, בזיכרון">אין SQLite · חיפוש בזיכרון</td></tr>';
       el.innerHTML = h + '</table>';
     };
     const sync = () => {
