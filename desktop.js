@@ -948,7 +948,8 @@
         if (i >= 0) m.splice(i, 1); else m.unshift({ h, t: label(h) || w.t || h });
         setMarks(m.slice(0, 30)); star(); listMarks(); markPaint();
       } else {
-        const h0 = cur(); go.click();
+        // החלון הזה נשאר במקומו: h0 = המקום הפתוח לפני הלחיצה (לא cur(), שמחזיר את המקום שנבחר בבורר — אחרת גם החלון הזה עבר אליו)
+        const h0 = curHash(w); go.click();
         setTimeout(() => { const h1 = dec(f.win.location.hash); if (chKey(h1) !== chKey(h0)) { if (w.hi > 0 && w.hist[w.hi] === h1) { w.hist.splice(w.hi, 1); w.hi--; } navTo(w, h0); paint(w); } openRead(h1, true); }, 60);
       }
     });
