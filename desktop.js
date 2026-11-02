@@ -1178,7 +1178,7 @@
     }
     if (!fe) return null;
     let r = el.getBoundingClientRect();
-    if (!noScroll && (r.top < 0 || r.bottom > fw.innerHeight)) { try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {} r = el.getBoundingClientRect(); }
+    if (!noScroll && (r.top < 0 || r.bottom > fw.innerHeight)) { reveal(el, fw); r = el.getBoundingClientRect(); }
     const fr = fe.getBoundingClientRect();
     const l = Math.max(r.left, 0), t = Math.max(r.top, 0), rr = Math.min(r.right, fw.innerWidth), b = Math.min(r.bottom, fw.innerHeight);
     if (rr - l < 2 || b - t < 2) return null;
@@ -1186,6 +1186,16 @@
     if (!g) { g = document.createElement('div'); g.className = 'dkTourGhost'; g.dataset.k = key; document.body.appendChild(g); ghosts.push(g); }
     Object.assign(g.style, { left: fr.left + l + 'px', top: fr.top + t + 'px', width: rr - l + 'px', height: b - t + 'px' });
     g._src = el; return g;
+  }
+  // גלילה ליעד רק בתוך רשימה שנגללת (overflow auto/scroll). לא scrollIntoView: הוא גולל גם עמודה עם overflow:hidden
+  // (למשל עמודת התוצאות כשפנל ההגדרות נכנס), והעמודה נשארת גלולה וריקה אחרי הסיור
+  function reveal(el, fw) {
+    for (let p = el.parentElement; p && p !== fw.document.body; p = p.parentElement) {
+      const cs = fw.getComputedStyle(p); if (!/(auto|scroll)/.test(cs.overflowY) || p.scrollHeight <= p.clientHeight) continue;
+      const r = el.getBoundingClientRect(), pr = p.getBoundingClientRect();
+      if (r.top < pr.top) p.scrollTop -= pr.top - r.top + 8; else if (r.bottom > pr.bottom) p.scrollTop += Math.min(r.bottom - pr.bottom + 8, r.top - pr.top - 8);
+      return;
+    }
   }
   // פקד בבנר: גם עליו רוח, כי הבנר נבנה מחדש (cloneInto) כשחלון קופץ נסגר — והאלמנט ש-driver.js סימן היה נעלם באמצע הצעד
   function shellGhost(sel, key) {
@@ -1212,11 +1222,44 @@
       document.body.appendChild(c); mirrors.push(c);
     });
   }
+  // v4.18.1: כל סיור מחזיר בסופו את השולחן בדיוק כמו שהיה: אילו חלונות פתוחים / ממוזערים / מוגדלים, מיקום וגודל, סדר, החלון הפעיל,
+  // והמקום (היסטוריה) של כל חלון. חלון שהסיור פתח נסגר. runTour מצלם לפני שהוא מביא חלון (pendingSnap); סיור שהתחיל מתוך חלון — כשהוא מתחיל
+  let pendingSnap = null, tourSnap = null;
+  const deskSnap = () => ({ rd: (() => { try { return localStorage.getItem('gimatrivonReader'); } catch (e) { return null; } })(), act: D.act, last: D.last, stage: D.stage, wins: D.wins.map(w => ({ id: w.id, min: w.min, max: w.max, x: w.x, y: w.y, w: w.w, h: w.h, z: w.z, hist: Array.isArray(w.hist) ? w.hist.slice() : w.hist, hi: w.hi })) });
+  function deskRestore(s) {
+    D.wins.filter(w => !s.wins.some(x => x.id === w.id)).forEach(w => closeWin(w.id));
+    s.wins.forEach(x => {
+      const w = W(x.id); if (!w) return;
+      Object.assign(w, { min: x.min, max: x.max, x: x.x, y: x.y, w: x.w, h: x.h, z: x.z });
+      if (Array.isArray(x.hist) && (w.hi !== x.hi || JSON.stringify(w.hist) !== JSON.stringify(x.hist))) { w.hist = x.hist; w.hi = x.hi; navTo(w, w.hist[w.hi]); }
+    });
+    D.stage = s.stage; D.last = W(s.last) ? s.last : ''; D.act = s.act && W(s.act) && !W(s.act).min ? s.act : '';
+    D.wins.forEach(paint); D.wins.forEach(w => { if (!w.min) wake(w); }); banner(); syncUrl(); taskbar(); saveSoon();
+    // הגדרות הקורא והמקום האחרון (משותפים לכל החלונות) — כמו לפני הסיור; שוב אחרי רגע, אם חלון שנסגר שמר ביציאה
+    const rd = () => { try { if (s.rd == null) localStorage.removeItem('gimatrivonReader'); else localStorage.setItem('gimatrivonReader', s.rd); } catch (e) {} };
+    rd(); setTimeout(rd, 400);
+  }
+  // יעדים זזים (תיבת החיפוש מתכווצת כשהפוקוס עובר לחלון הסיור, הרשימה נטענת, חלון קופץ ממוקם): הרוח של הצעד הנוכחי נמדדת שוב כל 300ms
+  let tourTickT = 0;
+  function tourTick() {
+    const d = tourDrv; if (!d) return; let g = null;
+    if (tourKeep && H && H.fr && !H.fr.hidden) placeHost(); // הרשימה הנפתחת זזה עם התיבה
+    try { g = d.getActiveElement && d.getActiveElement(); } catch (e) {}
+    if (!g || !g.classList || !g.classList.contains('dkTourGhost')) return;
+    const before = g.style.cssText;
+    if (g.dataset.shell) shellGhost(g.dataset.shell, g.dataset.k); else if (g._src && g._src.isConnected) ghostOf(g._src, g.dataset.k, true); else return;
+    if (g.style.cssText === before) return;
+    // בסיור החיפוש (בלי hooks של חלון) מציירים את הצעד מחדש כדי שגם חלון ההסבר יזוז; בסיורי החלונות — רק ההחשכה
+    const big = (a, b) => Math.abs(parseFloat(a) - parseFloat(b)) > 16, o = before.match(/[\d.]+px/g) || [], n = g.style.cssText.match(/[\d.]+px/g) || [];
+    try { if (d.dkSearch && n.some((v, i) => big(v, o[i] || 0))) d.moveTo(d.getActiveIndex()); else d.refresh(); } catch (e) {}
+  }
   function tourCleanup() {
-    const f = tourEndFn; tourEndFn = null; tourDrv = null;
+    clearInterval(tourTickT); tourTickT = 0;
+    const f = tourEndFn, snap = tourSnap; tourEndFn = null; tourDrv = null; tourSnap = null;
     ghosts.splice(0).forEach(g => g.remove()); mirrorClear();
     document.documentElement.classList.remove('gtNoAnim', 'dkTouring');
     if (f) try { f(); } catch (e) {}
+    if (snap) setTimeout(() => deskRestore(snap), 0); // אחרי שהסיור עצמו ניקה (הרשימה, חלון הקורא הקופץ)
   }
   function endTour() { const d = tourDrv; if (d) { try { d.destroy(); } catch (e) {} } tourCleanup(); }
   function shellTourBase() {
@@ -1225,7 +1268,7 @@
   }
   // סיור שהוגדר בתוך חלון (app.js: tourDriver)
   window.GT_tourDriver = (fw, cfg) => {
-    endTour();
+    endTour(); tourSnap = pendingSnap || deskSnap(); pendingSnap = null;
     const fd = fw.document, fe = fw.frameElement;
     const ent = [...F.entries()].find(([, v]) => v.win === fw), wid = ent && ent[0];
     if (wid && D.act !== wid) focusWin(wid);
@@ -1251,7 +1294,7 @@
       onHighlighted: (el, st, o) => { if (h.onHighlighted) h.onHighlighted(el, st, o); mirror(fw); setTimeout(onScroll, 250); setTimeout(onScroll, 800); }, // יעד שזז רגע אחרי שנפתח (חלון קופץ שממוקם מתחת לכפתור בבנר)
       onDestroyed: (el, st, o) => { tourCleanup(); if (h.onDestroyed) h.onDestroyed(el, st, o); },
     }));
-    tourDrv = d; document.documentElement.classList.add('dkTouring');
+    tourDrv = d; document.documentElement.classList.add('dkTouring'); clearInterval(tourTickT); tourTickT = setInterval(tourTick, 300);
     tourEndFn = () => { mo.disconnect(); fw.removeEventListener('scroll', onScroll, true); try { fd.documentElement.classList.remove('gtTourMirrored', 'gtNoAnim'); delete fw.GT_tourAvoid; } catch (e) {} };
     return d;
   };
@@ -1280,17 +1323,17 @@
   function runTour(k) {
     endTour();
     if (k === 'search') { searchTour(); return; }
-    let w;
+    pendingSnap = deskSnap(); let w;
     if (k === 'gem') { w = gemW(); focusWin(w.id); }
     else {
-      const a = W(D.act); w = a && a.k === 'read' && !a.min ? a : W(D.last) || reads().sort((x, y) => y.z - x.z)[0];
-      if (w) focusWin(w.id); else w = openRead('#read/TN/Gen/1/1', true);
+      // v4.18.1: סיור הקריאה בחלון משלו, מוגדל, בדף גמרא — כדי להדגים את המילון הארמי ואת ביאור שטיינזלץ. בסוף החלון נסגר (deskRestore)
+      w = openRead('#read/TB/Ber/2a', true); w.max = true; paint(w);
     }
     let n = 0;
     const tick = () => {
       const f = F.get(w.id); let ok = false;
-      try { ok = !!(f && f.doc && f.win && f.win.GimApp && f.doc.getElementById('startTour') && (k === 'gem' ? f.win.GimApp.ready() : f.doc.querySelector('#rdBook article,#rdBook .rdPg,#rdBook section'))); } catch (e) {}
-      if (ok) { setTimeout(() => { try { f.doc.getElementById('startTour').click(); } catch (e) {} }, k === 'gem' ? 600 : 500); return; }
+      try { ok = !!(f && f.doc && f.win && f.win.GimApp && f.doc.getElementById('startTour') && (k === 'gem' ? f.win.GimApp.ready() : (f.doc.getElementById('rdBook') || {}).textContent.length > 400)); } catch (e) {}
+      if (ok) { setTimeout(() => { try { f.doc.getElementById('startTour').click(); } catch (e) {} }, k === 'gem' ? 600 : 1200); return; }
       if (++n < 150) setTimeout(tick, 200); else toast(T('החלון עוד נטען — נסו שוב בעוד רגע', 'The window is still loading — try again in a moment'));
     };
     tick();
@@ -1300,14 +1343,17 @@
      בסוף הכול חוזר: התיבה, הטווח, והחלון שנפתח לסיור נסגר. */
   function searchTour() {
     const DEMO = 'גר בארץ', JUMP = 'שמות יב ב';
-    const q0 = q.value; let resW = null, hadRes = false, full = false;
+    const q0 = q.value; let resW = null;
+    // הסיור מתחיל על שולחן ריק: כל החלונות ממוזערים, ובסוף חוזרים כמו שהיו (בסדר שלהם, והחלון הפעיל למעלה)
+    const snap0 = deskSnap(); if (D.wins.some(w => !w.min)) arrange('minall');
     const wait = (fn, ms) => new Promise(res => { const t0 = Date.now(); const tk = () => { let v = null; try { v = fn(); } catch (e) {} if (v || Date.now() - t0 > ms) res(v); else setTimeout(tk, 120); }; tk(); });
     const drop = () => H && H.doc && H.doc.getElementById('rdDrop');
-    const dropOk = () => { const d = drop(); return d && !d.hidden && d.querySelector('.rdDI') && !(H.doc.querySelector('.rdOmni.rdBusy')) ? d : null; };
+    const dropOk = () => { const d = drop(); return d && !d.hidden && d.querySelector('.rdDI:not(.ph)') && !(H.doc.querySelector('.rdOmni.rdBusy')) ? d : null; }; // שורות אמיתיות (לא שלד), ואחרי שהטעינה נגמרה
     const typeQ = async v => {
       scm.hidden = true; tourKeep = 1;
       if (q.value !== v || !dropOk()) { q.value = v; q.focus(); host(); syncHost(); await wait(() => H && H.doc, 6000); q.dispatchEvent(new Event('input', { bubbles: true })); reopenDrop(); }
-      await wait(dropOk, 8000); await new Promise(r => setTimeout(r, 250));
+      await wait(dropOk, 10000); placeHost();
+      let h0 = -1; await wait(() => { const d = drop(), h = d ? Math.round(d.getBoundingClientRect().height) : 0, same = h === h0; h0 = h; return same && h > 40; }, 4000); // הרשימה הגיעה לגובה הסופי
     };
     const noDrop = () => { tourKeep = 0; scm.hidden = true; closeSearch(); };
     const hostEl = () => { if (!H || !H.fr || H.fr.hidden || !H.doc) return null; return tourTarget(H.doc.getElementById('rdDrop'), 'drop') || H.fr; }; // הרשימה עצמה (המארח גבוה ממנה ושקוף)
@@ -1332,7 +1378,7 @@
       st(() => resF() ? resF().el : null, 'חלון התוצאות', 'כאן פתחנו את אותו חיפוש בכל הספרים יחד: תנ״ך, משנה, רמב״ם, ש״ס, זוהר, טור ושולחן ערוך, עם המפרשים, וכל התוצאות ממוזגות לפי הדירוג עם המניין המלא. הגלילה מהירה גם באלפי תוצאות.',
         'The results window', 'Here we opened the same search in all the books together: Tanakh, Mishnah, Rambam, Talmud, Zohar, Tur and Shulchan Aruch, with their commentaries, all results merged by rank with the full count. Scrolling stays fast even with thousands of results.', 'left', 'start',
         async () => {
-          noDrop(); q.value = DEMO; hadRes = searches().some(x => x.q === DEMO); full = others().length >= MAXW; // חלון התוצאות נפתח בכל הספרים (בלי הטווח של התיבה), כדי להראות את כל המקורות יחד
+          noDrop(); q.value = DEMO; // חלון התוצאות נפתח בכל הספרים (בלי הטווח של התיבה), כדי להראות את כל המקורות יחד
           resW = openResults(DEMO, null) || searches().find(x => x.q === DEMO) || null; killHost();
           await wait(() => { const f = resF(); return f && f.doc && f.doc.querySelector('.rsRow:not(.ph)'); }, 12000); await new Promise(r => setTimeout(r, 300));
         }),
@@ -1353,10 +1399,10 @@
     };
     steps.forEach(s => { s.popover.onNextClick = () => { const i = d.getActiveIndex(); if (i >= steps.length - 1) d.destroy(); else go(i + 1); }; s.popover.onPrevClick = () => go(d.getActiveIndex() - 1); });
     d = window.driverjs.driver(Object.assign(shellTourBase(), { steps, smoothScroll: false, onDestroyed: () => tourCleanup() }));
-    tourDrv = d; document.documentElement.classList.add('dkTouring');
+    d.dkSearch = 1; tourDrv = d; tourSnap = snap0; document.documentElement.classList.add('dkTouring'); clearInterval(tourTickT); tourTickT = setInterval(tourTick, 300);
     tourEndFn = () => {
       tourKeep = 0; scm.hidden = true; closeSearch(); q.value = q0; q.blur();
-      if (resW && !hadRes && !full && W(resW.id)) closeWin(resW.id); // ב-6 חלונות התוצאות נפתחו בחלון קיים של המשתמש — הוא לא נסגר
+      /* החלונות חוזרים למצב שלפני הסיור ב-deskRestore (חלון התוצאות שנפתח לסיור נסגר שם) */
     };
     d.drive(0);
   }

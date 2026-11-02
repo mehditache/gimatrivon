@@ -3642,6 +3642,36 @@
       : tur
         ? ['לחיצה על סימן בטור, (א) או [א], פותחת את הדיבור בבית יוסף או בב״ח.', 'Clicking a marker in the Tur, (א) or [א], opens that comment in the Beit Yosef or the Bach.']
         : ['המפרשים והתרגום מוצגים לצד הטקסט, לפי ההגדרות בחלון "תצוגה".', 'The commentaries and the translation appear beside the text, according to the "Display" settings.'];
+    // v4.18.1: בשולחן, בדף גמרא — הדגמה חיה של סימון טקסט, המילון הארמי וביאור שטיינזלץ. ההגדרות שהסיור משנה חוזרות בסוף
+    const deskTal = !!desk && tal && !talT().z;
+    const stz0 = { stz: S.stz, tview: S.tview, tp: S.tp };
+    if (deskTal) lazyJs('gloss', () => lazyJs('arukh', () => {})); // המילון מוכן מראש, כדי שהכרטיס ייפתח מלא
+    const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth; };
+    const selDemo = () => {
+      if (SEL && selUI.bar && !selUI.bar.hidden && selUI.card.hidden) return selUI.bar;
+      const bk = $r('#rdBook'); if (!bk) return null;
+      let hit = null;
+      for (const w of ['היכא קאי', 'אמר רב', 'תנא', 'מאי']) {
+        const tw = document.createTreeWalker(bk, NodeFilter.SHOW_TEXT); let n;
+        while ((n = tw.nextNode())) { const k = n.data.indexOf(w); if (k >= 0 && vis(n.parentNode)) { hit = [n, k, w]; break; } }
+        if (hit) break;
+      }
+      if (!hit) return null;
+      selDemo.w = hit[2];
+      const r = document.createRange(); r.setStart(hit[0], hit[1]); r.setEnd(hit[0], hit[1] + hit[2].length);
+      const sl = G.getSelection(); sl.removeAllRanges(); sl.addRange(r);
+      const c = selCur(); if (!c) return null; selShow(c); return selUI.bar;
+    };
+    selDemo.w = 'היכא קאי';
+    const cardDemo = () => { if (!SEL || !selUI.card || selUI.card.hidden) { selDemo(); if (SEL) selCardShow(0); } return selUI.card && !selUI.card.hidden ? selUI.card : null; };
+    let stzRetry = 0;
+    const stzDemo = () => {
+      if (SEL) { selHide(); try { G.getSelection().removeAllRanges(); } catch (e) {} }
+      if (!(S.stz === '1' && S.tview === 'study')) { S.stz = '1'; S.tview = 'study'; S.tp = 0; save(); render(); }
+      const el = $r('#rdBook .stzOn'); if (el) return el;
+      if (stzRetry++ < 8) setTimeout(() => { try { if (d.isActive() && d.getActiveIndex() === stzIx) d.moveTo(stzIx); } catch (e) {} }, 500); // הביאור נטען — הצעד נמדד שוב
+      return $r('#rdBook');
+    };
     const steps = [
       st(null, 'מסך הקריאה', 'כאן קוראים את המקורות עצמם, כמו בספר: תנ״ך עם תרגומים ורש״י, משנה, רמב״ם, ש״ס, זוהר וטור, עם המפרשים. סיור קצר, אפשר לדלג או לצאת בכל רגע.',
         'The reading screen', 'Here you read the sources themselves, like a book: Tanakh with translations and Rashi, Mishnah, Rambam, Talmud, Zohar and Tur, with their commentaries. A short tour; skip or exit any time.'),
@@ -3670,15 +3700,30 @@
         'Print / PDF', 'Choose what to print, with a paper background and colours or a white background to save ink, then print or save as PDF. Shortcut: Ctrl P.', 'bottom', 'center', { shell: '#dkTools [data-src-id=rdPrintBtn]' }),
       st('#rdBook', 'הדף', bookTip[0] + ' דפדוף: החצים בצדי הדף, מקשי החצים במקלדת, או החלקה בטלפון.',
         'The page', bookTip[1] + ' Turning pages: the arrows beside the page, the arrow keys, or a swipe on a phone.', 'top', 'center'),
+      ...(deskTal ? [
+        st(selDemo, 'סימון טקסט', 'מסמנים מילה או משפט בדף, וגם בארמית, ומעל הסימון מופיע סרגל קטן. סימנו בשבילכם "' + selDemo.w + '". בסרגל: תרגם (מילון ארמי), הערך הגימטרי של מה שסומן, חיפוש שלו בכל הספרים, העתקה, ו-⋯ לעוד אפשרויות. גם קליק ימני על מילה פותח את כל האפשרויות.',
+          'Selecting text', 'Select a word or a sentence on the page, Aramaic too, and a small bar appears above it. We selected "' + selDemo.w + '" for you. The bar has: Translate (Aramaic dictionary), the gematria value of the selection, a search for it in all the books, copy, and ⋯ for more. A right click on a word opens all the options too.', 'bottom', 'center'),
+        st(cardDemo, 'המילון הארמי', 'לחיצה על "תרגם" פותחת את התרגום של כל מילה: פירוש עברי לכל מילה ארמית, מתוך מילון שנבנה מביאור הרב שטיינזלץ, ולצדו הערך המתאים בספר הערוך. כך אפשר להבין מילה קשה בלי לעזוב את הדף. הלשונית השנייה מציגה את הגימטריה של מה שסומן בכל השיטות.',
+          'The Aramaic dictionary', '"Translate" opens a translation of every word: a Hebrew meaning for each Aramaic word, from a dictionary built from Rabbi Steinsaltz\'s commentary, with the matching entry in Sefer HeArukh beside it. So you can understand a hard word without leaving the page. The second tab shows the gematria of the selection in every method.', 'bottom', 'center'),
+        st(stzDemo, 'ביאור הרב שטיינזלץ', 'בתצוגת "גמרא ומפרשים" אפשר להציג את ביאור הרב שטיינזלץ שורה מול שורה: הגמרא מימין והביאור בעברית משמאל, קטע מול קטע. הפעלנו אותו בשבילכם. מפעילים ומכבים בחלון "תצוגה" (אָ), או בקליק ימני: "הצג ביאור שטיינזלץ". לחיצה על קטע פותחת גם לשונית "שטיינזלץ" ליד רש״י ותוספות.',
+          "Rabbi Steinsaltz's commentary", 'In the "Gemara and commentaries" view you can show Rabbi Steinsaltz\'s commentary row by row: the Gemara on one side and the Hebrew explanation on the other, passage by passage. We turned it on for you. Turn it on and off in the "Display" window (אָ), or with a right click: "Show Steinsaltz commentary". Clicking a passage also opens a "Steinsaltz" tab next to Rashi and Tosafot.', 'left', 'start'),
+      ] : [
       st(null, 'סימון טקסט', 'מסמנים מילה או משפט בדף (גם בארמית), ומעל הסימון מופיע סרגל קטן: ערך גימטרי, חיפוש של מה שסומן, העתקה, ובגמרא ובזוהר גם תרגום ומילון. קליק ימני פותח את כל האפשרויות.',
         'Selecting text', 'Select a word or a sentence on the page (Aramaic too), and a small bar appears above it: gematria value, search for the selection, copy, and in the Talmud and Zohar also translation and dictionary. A right click opens all the options.'),
+      ]),
+      ...(desk ? [] : [ // בשולחן העבודה בלי צעד מיקום בפרק (ביקש M)
       st('.rdFoot', 'מיקום בפרק', 'כאן רואים באיזה עמוד אתם מתוך כמה בפרק, ופס התקדמות. הכפתורים בצדדים מדפדפים גם הם.',
         'Position in the chapter', 'Shows which page you are on out of how many in the chapter, with a progress bar. The buttons at the sides turn pages too.', 'top', 'center'),
+      ]),
       st('.themeSw', 'מראה', 'מעבר בין מראה בהיר ("גוויל") למראה כהה ("לילה").', 'Appearance', 'Switches between the light "parchment" look and the dark "night" look.', 'bottom', 'end', { shell: '#dkBan .themeSw' }),
       st('#mKebab', 'זהו, אפשר לקרוא!', 'בתפריט הזה: שיטות הגימטריה, אודות, צור קשר, והסיור הזה שוב. למסך הגימטריה יש סיור משלו, ומכל תוצאה שם כפתור הספר פותח אותה כאן, במקום המדויק.',
         "That's it, happy reading!", 'This menu has the gematria methods, About, Contact, and this tour again. The gematria screen has its own tour, and from any result there the book button opens it here, at the exact place.', 'bottom', 'end', { shell: '#dkKebab' }),
     ].filter(x => !x.element || typeof x.element === 'function' || shown(x.element) || (desk && x.shell && deskShown(x.shell)));
-    const cfg = Object.assign(APP.tourBase(), { steps, onDestroyed: () => closePops() });
+    const stzIx = steps.findIndex(x => x.element === stzDemo);
+    const cfg = Object.assign(APP.tourBase(), { steps, onDestroyed: () => {
+      closePops(); if (SEL) selHide(); try { G.getSelection().removeAllRanges(); } catch (e) {}
+      if (deskTal && (S.stz !== stz0.stz || S.tview !== stz0.tview)) { Object.assign(S, stz0); save(); render(); }
+    } });
     const d = APP.tourDriver ? APP.tourDriver(cfg) : G.driverjs.driver(cfg);
     d.drive();
     return d;
