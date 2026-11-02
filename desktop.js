@@ -955,7 +955,7 @@
     });
     // עמודת הסימניות: הקצה הימני של הבורר, מקובצת לפי ספר, שורה אחת לכל סימניה (שם ארוך נחתך ב-…)
     const grid = j.querySelector('.rdJGrid'), col = f.doc.createElement('div'); col.className = 'rdJCol dkBmCol';
-    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור'], catOf = h => { const gr = f.win && f.win.GimReader; return (gr && gr.placeCat && gr.placeCat(h)) || ''; };
+    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור', 'שולחן ערוך'], catOf = h => { const gr = f.win && f.win.GimReader; return (gr && gr.placeCat && gr.placeCat(h)) || ''; };
     let flt = '';
     function listMarks() {
       const m = marks(); col.textContent = ''; j.classList.toggle('dkBmOn', !!m.length); if (grid) grid.classList.toggle('dkBm', !!m.length);
@@ -1014,7 +1014,7 @@
   function openMarks(w, anchor) {
     const old = document.getElementById('dkMkPop'); if (old) { old.remove(); if (old._a === anchor && !old._re) return; }
     const m = marks(), gr = mkGr(w), cur = curHash(w), label = x => mkLabel(w, x.h) || x.t || x.h;
-    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור'], catOf = h => (gr && gr.placeCat && gr.placeCat(h)) || '';
+    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור', 'שולחן ערוך'], catOf = h => (gr && gr.placeCat && gr.placeCat(h)) || '';
     const el = document.createElement('div'); el.id = 'dkMkPop'; el.className = 'dkMkPop'; el.dir = document.documentElement.dir || 'rtl'; el._w = w; el._a = anchor;
     const add = (t, h) => { const e = document.createElement(h || 'div'); e.className = t; return e; };
     const hd = add('hd'); hd.innerHTML = SV('<path d="' + STARP + '"/>') + ' '; hd.append(T('סימניות', 'Bookmarks') + ' · ' + m.length); el.appendChild(hd);

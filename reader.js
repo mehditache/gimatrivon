@@ -3769,7 +3769,7 @@
     const m = String(h || '').match(/^#read(?:[\/#]+(.*))?$/i); if (!m || !m[1]) return '';
     try {
       ensureIndex(); const x = parseHashRef(IX, TX, RX, m[1]); if (!x) return '';
-      if (x.kind === 'tur') return 'טור';
+      if (x.kind === 'tur') { const t = RX.list[RX.byK[x.k]]; return t && t.sa ? 'שולחן ערוך' : 'טור'; } // כמו הלשוניות בבורר (שו״ע, משנ״ב וכף החיים — לא תחת טור)
       if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); return t && t.z ? 'זוהר' : 'ש״ס'; }
       return isRambam(x.b) ? 'רמב״ם' : isMishnah(x.b) ? 'משנה' : 'תנ״ך';
     } catch (e) { return ''; }
