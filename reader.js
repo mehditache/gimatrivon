@@ -2102,7 +2102,7 @@
       const one = '<span class="rcm sbc r' + u.sec + (p.a ? ' cont' : '') + '"' + (cl ? ' data-x="' + u.sec + '"' : '') + ' data-i="' + u.i + '">' + pre + lb + body + post + '</span> ';
       if (u.sec === 'g') { aside += one; return; }
       if (!cur || cur.c !== u.sec) secs.push(cur = { c: u.sec, cont: p.a > 0, html: '' });
-      cur.html += one;
+      cur.html += (t.kh && u.sec === 'y' && cur.html ? '<br>' : '') + one; // בכף החיים כל הערה בשורה חדשה
     });
     if (txt || first || aside) html += '<div class="rdBody"><div class="ppTop' + (aside ? ' hasG' : '') + '"><div class="rdTxt trStudy sb">' + (first ? turHeadHtml(t, m.s, m.hd) : '') + txt + '</div>' + (aside ? '<aside class="ppSide rdCm sb-g ' + cls + '" aria-label="' + h(turCmName('g')) + '"><div class="rdCmHd"><span>' + h(turCmName('g')) + '</span></div><div class="ppSB">' + aside + '</div></aside>' : '') + '</div></div>';
     html += '<div class="rdSp"></div>';
