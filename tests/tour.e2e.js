@@ -75,7 +75,12 @@ const rgb = hex => { const n = parseInt(hex.replace('#', ''), 16); return `rgb($
     const clean = await dp.evaluate(() => !document.querySelector('.driver-overlay,.driver-popover,.dkTourGhost') && !document.documentElement.classList.contains('dkTouring') && !document.querySelector('#dkQ').value);
     return { titles, shellHits, clean };
   }
+  const w0 = await dp.$$eval('.dw', x => x.length);
   const dr = await deskWalk('read');
+  // v4.18.1: סיור הקריאה פותח גמרא בחלון מוגדל, מדגים סימון, מילון ארמי וביאור שטיינזלץ, בלי "מיקום בפרק", ומחזיר את השולחן כמו שהיה
+  ok('שולחן: סיור הקריאה מדגים גמרא', ['סימון טקסט', 'המילון הארמי', 'ביאור הרב שטיינזלץ'].every(t => dr.titles.includes(t)) && !dr.titles.includes('מיקום בפרק'), dr.titles.join(' | '));
+  await dp.waitForTimeout(1000);
+  ok('שולחן: אחרי סיור הקריאה מספר החלונות חזר', await dp.$$eval('.dw', x => x.length) === w0);
   ok('שולחן: סיור הקריאה הגיע לסוף', dr.titles[dr.titles.length - 1] === 'זהו, אפשר לקרוא!', dr.titles.join(' | '));
   ok('שולחן: סיור הקריאה מצביע על פקדי הבנר', ['חלונות', 'המקום בספר', 'חיפוש וקפיצה', 'הדפסה / PDF'].every(t => dr.shellHits[dr.titles.indexOf(t)] === 'banner'), dr.shellHits.join(','));
   ok('שולחן: סיור הקריאה ניקה אחריו', dr.clean);
