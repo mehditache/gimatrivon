@@ -120,7 +120,7 @@ def hilchot(k):
     out = []
     for n in d['alts']['Topic']['nodes']:
         he = n.get('heTitle') or next(t['text'] for t in n['titles'] if t['lang'] == 'he' and t.get('primary'))
-        out.append([int(re.search(r'(\d+)(?:-\d+)?$', n['wholeRef']).group(1)), he])
+        out.append([int(re.search(r' (\d+)(?::\d+)?(?:-[\d:]+)?$', n['wholeRef']).group(1)), he])
     return out
 
 def sa_links():
@@ -192,7 +192,8 @@ for f in os.listdir(OUT):
 index, total = [], 0
 for key_, k2, en, he, y, c in PARTS:
     sa = sim(load('SA-' + k2)); lb = sim(load('LB-' + k2)); n_s = len(sa)
-    hil = hilchot(k2); first = {s: nm for s, nm in hil}
+    hil = hilchot(k2); first = {}
+    for s_, nm in hil: first.setdefault(s_, nm)  # שתי הלכות שמתחילות באותו סימן (יו״ד רצז): הכותרת בראש הסימן היא של הראשונה
     S = [stream(x[0], n_s, LINKS) for x in (y, c)]
     XD = {code: sim(load(f, ('Public Domain', 'unknown', None))) for code, f, *_ in (EXTRA.get(k2, []) if key_[0] == 'S' else [])}
     rows = [['', [], []]]

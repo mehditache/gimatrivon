@@ -455,6 +455,7 @@
     'אין תרגום או ביאור לפסקה זו': 'No translation or commentary on this paragraph', 'הפסקה הקודמת': 'Previous paragraph', 'הפסקה הבאה': 'Next paragraph', 'לא ניתן לטעון את הפרשה.': 'Could not load the portion.',
     'דף מול תרגום: עמוד הזוהר בארמית מימין, והתרגום (או הסולם) מולו משמאל': 'Page & translation: the Zohar page in Aramaic on the right, its translation (or the Sulam) facing it on the left',
     'זוהר והסולם: פסקאות הזוהר ברצף, ומתחת להן התרגום וביאור הסולם': 'Zohar & Sulam: the Zohar paragraphs as running text, with the translation and the Sulam commentary below them',
+    'המקום בקישור לא נמצא': 'The place in the link was not found', 'נפתח המקום האחרון שקראת': 'opened the last place you read',
     'בסימן': 'Siman', 'בכל הטור': 'Whole Tur', 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.': 'You can also type a place: "OC 60", "YD 193".',
     'חיפוש': 'Search', 'העתק': 'Copy', 'עוד': 'More', 'הועתק': 'Copied', 'הערך הועתק': 'Value copied', 'ערוך': 'Arukh', 'שטיינזלץ': 'Steinsaltz', 'אין ביאור לקטע זה': 'No commentary for this passage', 'ביאור הרב עדין שטיינזלץ, דרך ספריא · CC BY-NC': 'Rabbi Adin Steinsaltz, via Sefaria · CC BY-NC', 'ביאור הרב עדין שטיינזלץ, מהדורת William Davidson, דרך ספריא. רישיון CC BY-NC 4.0: שימוש לא מסחרי, עם ייחוס.': 'Rabbi Adin Steinsaltz commentary, William Davidson edition, via Sefaria. CC BY-NC 4.0: non-commercial use with attribution.', 'הסתרת רש״י ותוספות': 'Hide Rashi & Tosafot', 'רק גמרא וביאור': 'Gemara and commentary only', 'תרגם': 'Translate', 'תיבות': 'words', 'אותיות': 'letters', 'תרגום מלא ומילון': 'Full translation & dictionary', 'חיפוש גימטריה זהה': 'Same-gematria search', 'חיפוש בכל הספרים': 'Search all books', 'הצג ביאור שטיינזלץ': 'Show Steinsaltz commentary', 'העתק עם מקור': 'Copy with source', 'חפש ערך זהה': 'Find same value', 'לא נמצא תרגום. המילון מכסה בעיקר ארמית של הגמרא.': 'No translation found. The dictionary mainly covers Talmudic Aramaic.', 'מילון מביאור הרב שטיינזלץ (CC BY-NC) וספר הערוך': 'Dictionary from the Steinsaltz commentary (CC BY-NC) and Sefer HaArukh', 'רגילה': 'Regular', 'אתב״ש': 'Atbash', 'עם הכולל': 'With kollel', 'עם מספר תיבות': 'With word count', 'עם מספר אותיות': 'With letter count', 'מילוי': 'Milui'
   };
@@ -1779,7 +1780,7 @@
   const fitWhere = el => { if (G.GT_fitWhere) G.GT_fitWhere(el); else if (el && el.dataset.full != null) el.textContent = el.dataset.full; };
   try { document.fonts.addEventListener('loadingdone', () => fitWhere($r('#rdWhereTxt'))); } catch (e) {} // הגופן משנה את הרוחב
   function setWhere(x) { const el = $r('#rdWhereTxt'); if (!el) return; el.dataset.full = x; fitWhere(el); }
-  const hilOf = (t, s) => { let n = ''; (t.hil || []).forEach(x => { if (x[0] <= s) n = x[1]; }); return s ? n : ''; };
+  const hilOf = (t, s) => { let n = '', a = -1; (t.hil || []).forEach(x => { if (x[0] <= s && x[0] > a) { n = x[1]; a = x[0]; } }); return s ? n : ''; }; // שתי הלכות באותו סימן (יו״ד רצז): הראשונה
   const RL = (x, i) => x === 'y' ? '(' + toHeb(i + 1) + ')' : '[' + toHeb(i + 1) + ']';
   const turCmName = (x, k) => { const t = k && RX && RX.byK[k] != null ? turTOf(k) : S.rk && RX && RX.byK[S.rk] != null ? turT() : null; const e = t && t.xs && t.xs.find(z => z[0] === x); return e ? T(e[1]) : t && t.cm ? T(t.cm[x === 'y' ? 0 : 1]) : T(x === 'y' ? 'בית יוסף' : 'ב״ח'); };
   const turFull = t => t.sa ? turPartName(t) : T('טור') + ' ' + turPartName(t); // שם החלק עם המילה "טור" (בשולחן ערוך השם כולל אותה)
@@ -3574,6 +3575,7 @@
     const m = location.hash.match(/^#read(?:[\/#]+(.*))?$/i); if (!m) return false;
     ensureIndex();
     const x = m[1] ? parseHashRef(IX, TX, RX, m[1]) : null;
+    if (!x && m[1] && m[1].replace(/[\/#]+/g, '')) badLink(m[1]); // מקום שלא קיים: הודעה במקום לפתוח בשקט את המקום הקודם (v4.17.4)
     if (x) {
       closeSeg(); S.lock = null;
       // דיבור בטור: נפתח בחלון אחרי הציור (S.rgo, כמו תוצאת חיפוש); קטע בגמרא: goTal אחרי הציור (linkSeg)
@@ -3582,6 +3584,18 @@
       else { S.tk = ''; S.rk = ''; S.b = x.b; S.ch = x.ch; S.anchor = x.v || versesOf(IX, x.b, x.ch)[0] || 1; flashV = x.v || 0; flashKeep = !!x.v; }
     }
     return true;
+  }
+  // הודעה קצרה בתחתית המסך כשקישור מצביע על מקום שאין (ספר / פרק / דף / סימן שלא קיימים)
+  function badLink(p) {
+    let t = String(p); try { t = decodeURIComponent(t); } catch (e) {}
+    const show = () => {
+      let el = document.getElementById('gtBadLink');
+      if (!el) { el = document.createElement('div'); el.id = 'gtBadLink'; el.setAttribute('role', 'status'); el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99999;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:12px;background:#4a3b22;color:#fff;font:600 14px/1.5 system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.3);text-align:center'; el.onclick = () => el.remove(); document.body.appendChild(el); }
+      el.dir = isEn() ? 'ltr' : 'rtl';
+      el.textContent = T('המקום בקישור לא נמצא') + ' (' + t.replace(/\//g, ' ').trim().slice(0, 60) + ') — ' + T('נפתח המקום האחרון שקראת');
+      clearTimeout(badLink.t); badLink.t = setTimeout(() => el.remove(), 6000);
+    };
+    if (document.body) setTimeout(show, 300); else addEventListener('DOMContentLoaded', () => setTimeout(show, 300));
   }
   let linkSeg = null;
   const openLinkSeg = () => { const x = linkSeg; linkSeg = null; if (x && isTal() && S.tk === x.k) goTal(x.k, x.j, x.s); };
@@ -3774,17 +3788,31 @@
       return hashOfRef(IX, { kind: 'ref', b: J.b, ch: J.ch, v: J.v });
     } catch (e) { return ''; }
   }
+  // מה שהוקלד בתיבת החיפוש כמקום מפורש ("שמות יב ב", "ברכות ב.", "או״ח ס") → הכתובת שלו; '' אם זה לא מקום (לשורת החיפוש בשולחן: Enter קופץ)
+  // strict: רק מקום עם פרק / דף / סימן ("שבת" לבד או "בראשית" לבד הם גם מילים לחיפוש — לא קופצים): בלי המילה האחרונה עדיין נשאר מקום
+  function placeOf(v, strict) {
+    try {
+      ensureIndex(); const q = String(v || '').trim(); if (!q) return '';
+      if (strict) { const w = q.split(/\s+/); if (w.length < 2 || !placeOf(w.slice(0, -1).join(' '))) return ''; }
+      const rr = parseTurRef(RX, q), tr = parseDafRef(TX, q), ref = parseRef(IX, q, S.b);
+      let x = null;
+      if (rr) x = { kind: 'tur', k: rr.k, s: rr.s };
+      else if (tr && (tr.explicit || !ref)) { const t = TX.list[TX.byK[tr.k]]; x = Object.assign({ kind: 'tal', k: tr.k, j: tr.j, s: -1 }, t && t.z ? { z: 1, d0: t.d0 } : {}); }
+      else if (ref) x = { kind: 'ref', b: ref.b, ch: ref.ch, v: ref.v };
+      return x ? hashOfRef(IX, x) : '';
+    } catch (e) { return ''; }
+  }
   // קטגוריית מקום מכתובת (לפי לשוניות בורר הספר) — לקיבוץ הסימניות בשולחן
   function placeCat(h) {
     const m = String(h || '').match(/^#read(?:[\/#]+(.*))?$/i); if (!m || !m[1]) return '';
     try {
       ensureIndex(); const x = parseHashRef(IX, TX, RX, m[1]); if (!x) return '';
-      if (x.kind === 'tur') return 'טור';
+      if (x.kind === 'tur') { const t = RX.list[RX.byK[x.k]]; return t && t.sa ? 'שולחן ערוך' : 'טור'; } // כמו הלשוניות בבורר (שו״ע, משנ״ב וכף החיים — לא תחת טור)
       if (x.kind === 'tal') { const t = TX.list.find(r => r.k === x.k); return t && t.z ? 'זוהר' : 'ש״ס'; }
       return isRambam(x.b) ? 'רמב״ם' : isMishnah(x.b) ? 'משנה' : 'תנ״ך';
     } catch (e) { return ''; }
   }
-  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault, placeLabel, placeShort, jumpHash, placeCat };
+  G.GimReader = { canOpen, openUnit, tour, highlight, dropScope, scopeModel, setScope, toggleSrc, applyDefault, placeLabel, placeShort, jumpHash, placeCat, placeOf };
   function fromHash() {
     if (/^#gim$/i.test(location.hash)) { if (document.body.dataset.mode === 'read') setMode('gem', false, 'link'); return; }
     if (!hashTarget()) return;

@@ -258,7 +258,7 @@
   /* ---------- מיקום בספר והיסטוריה (אחורה / קדימה) ---------- */
   function onHash(id) {
     const w = W(id), f = F.get(id); if (!w || !f || !f.win) return;
-    const h = decodeURI(f.win.location.hash || '');
+    const h = dec(f.win.location.hash);
     if (!/^#read/i.test(h)) return;
     if (f.first) { f.first = false; w.hist[w.hi] = h; w.navTo = null; } // הכתובת הראשונה אחרי טעינה (מנורמלת) מחליפה את הרשומה
     else if (w.navTo != null) { if (chKey(h) === chKey(w.navTo)) { w.hist[w.hi] = h; w.navTo = null; } }
@@ -733,11 +733,14 @@
   window.reopenDropIfFocused = () => { if (q.value.trim() && (!H || !H.doc || H.doc.getElementById('rdDrop').hidden)) reopenDrop(); };
   q.addEventListener('mousedown', () => { if (document.activeElement === q && q.value.trim() && (!H || !H.doc || H.doc.getElementById('rdDrop').hidden)) setTimeout(reopenDrop, 0); });
   q.addEventListener('input', () => { host(); syncHost(); if (!H.doc) return; H.doc.getElementById('rdQ').value = q.value; fire('input'); });
+  // הפענוח של הקורא (GimReader.placeOf) — ממארח החיפוש, ואם הוא עוד לא נטען, מכל חלון קריאה פתוח
+  const placeOfQ = v => { for (const w of [H && H.win].concat([...F.values()].map(f => f.win))) { try { const g = w && w.GimReader; if (g && g.placeOf) return g.placeOf(v, true) || ''; } catch (e) {} } return ''; };
   let arrowed = false; q.addEventListener('input', () => { arrowed = false; });
   q.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') arrowed = true;
     // Enter אחרי מילות חיפוש (בלי לבחור תוצאה בחצים) פותח חלון "תוצאות חיפוש"; עם בחירה בחצים — פותח את התוצאה
-    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); const sc = hostScope(); closeSearch(); killHost(); openResults(q.value.trim(), sc); q.blur(); return; }
+    // מקום מפורש ("שמות יב ב", "ברכות ב.", "או״ח ס") — Enter קופץ אליו בחלון הקריאה, כמו שכתוב בתיבה ("או קפיצה"); ספר לבד ומילים — חלון תוצאות (v4.17.4)
+    if (e.key === 'Enter' && !arrowed && q.value.trim().length >= 2) { e.preventDefault(); const qv = q.value.trim(), ph = placeOfQ(qv); closeSearch(); if (ph) { killHost(); openRead(ph); q.blur(); return; } const sc = hostScope(); killHost(); openResults(qv, sc); q.blur(); return; }
     if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key) || !H || !H.doc) return;
     e.preventDefault(); H.doc.getElementById('rdQ').value = q.value; fire('keydown', { key: e.key });
     if (e.key === 'Escape') q.value = H.doc.getElementById('rdQ').value; // Esc כשהרשימה סגורה מנקה את התיבה בקורא — וגם בבנר, כדי שלא יתפרדו
@@ -948,13 +951,14 @@
         if (i >= 0) m.splice(i, 1); else m.unshift({ h, t: label(h) || w.t || h });
         setMarks(m.slice(0, 30)); star(); listMarks(); markPaint();
       } else {
-        const h0 = cur(); go.click();
-        setTimeout(() => { const h1 = decodeURI(f.win.location.hash); if (chKey(h1) !== chKey(h0)) { if (w.hi > 0 && w.hist[w.hi] === h1) { w.hist.splice(w.hi, 1); w.hi--; } navTo(w, h0); paint(w); } openRead(h1, true); }, 60);
+        // החלון הזה נשאר במקומו: h0 = המקום הפתוח לפני הלחיצה (לא cur(), שמחזיר את המקום שנבחר בבורר — אחרת גם החלון הזה עבר אליו)
+        const h0 = curHash(w); go.click();
+        setTimeout(() => { const h1 = dec(f.win.location.hash); if (chKey(h1) !== chKey(h0)) { if (w.hi > 0 && w.hist[w.hi] === h1) { w.hist.splice(w.hi, 1); w.hi--; } navTo(w, h0); paint(w); } openRead(h1, true); }, 60);
       }
     });
     // עמודת הסימניות: הקצה הימני של הבורר, מקובצת לפי ספר, שורה אחת לכל סימניה (שם ארוך נחתך ב-…)
     const grid = j.querySelector('.rdJGrid'), col = f.doc.createElement('div'); col.className = 'rdJCol dkBmCol';
-    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור'], catOf = h => { const gr = f.win && f.win.GimReader; return (gr && gr.placeCat && gr.placeCat(h)) || ''; };
+    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור', 'שולחן ערוך'], catOf = h => { const gr = f.win && f.win.GimReader; return (gr && gr.placeCat && gr.placeCat(h)) || ''; };
     let flt = '';
     function listMarks() {
       const m = marks(); col.textContent = ''; j.classList.toggle('dkBmOn', !!m.length); if (grid) grid.classList.toggle('dkBm', !!m.length);
@@ -1013,7 +1017,7 @@
   function openMarks(w, anchor) {
     const old = document.getElementById('dkMkPop'); if (old) { old.remove(); if (old._a === anchor && !old._re) return; }
     const m = marks(), gr = mkGr(w), cur = curHash(w), label = x => mkLabel(w, x.h) || x.t || x.h;
-    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור'], catOf = h => (gr && gr.placeCat && gr.placeCat(h)) || '';
+    const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור', 'שולחן ערוך'], catOf = h => (gr && gr.placeCat && gr.placeCat(h)) || '';
     const el = document.createElement('div'); el.id = 'dkMkPop'; el.className = 'dkMkPop'; el.dir = document.documentElement.dir || 'rtl'; el._w = w; el._a = anchor;
     const add = (t, h) => { const e = document.createElement(h || 'div'); e.className = t; return e; };
     const hd = add('hd'); hd.innerHTML = SV('<path d="' + STARP + '"/>') + ' '; hd.append(T('סימניות', 'Bookmarks') + ' · ' + m.length); el.appendChild(hd);
@@ -1095,7 +1099,7 @@
 
   // כתובת: #read/… פותח את המקום (בחלון שכבר מציג אותו, או בחלון חדש); #gim — חלון הגימטריה
   function fromUrl() {
-    const h = decodeURI(location.hash || '');
+    const h = dec(location.hash);
     if (/^#gim$/i.test(h)) openGem();
     else if (/^#read/i.test(h)) { const w = reads().find(x => chKey(curHash(x)) === chKey(h)); if (w) focusWin(w.id); else if (!W(D.act) || curHash(W(D.act)) !== h) openRead(h, true); }
   }
