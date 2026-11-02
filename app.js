@@ -1,6 +1,6 @@
 (function () {
 'use strict';
-const VERSION = '4.17.6'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
+const VERSION = '4.18.0'; // מספר גרסה — לעדכן בכל שינוי (ראו CHANGELOG.md)
 // שם הענף ותאריך הפריסה (מוצגים רק במצב פיתוח — 5 לחיצות רצופות על מספר הגרסה) אינם קבועים בקוד:
 // קבוע כזה עובר עם כל מיזוג לענף אחר ומתיישן (כך הוצג "v4.8.0 · windows" ב-main). הם נקבעים בזמן ריצה, ראו buildInfo למטה.
 let BRANCH = '…', BUILT = '';
@@ -225,7 +225,7 @@ const GROUP_EN = {
 };
 const groupName = he => LANG === 'en' ? (GROUP_EN[he] || he) : he;
 // ממשק קטן למסך "קריאה ומפרשים" (reader.js), שרץ מחוץ ל-IIFE הזה ולכן לא רואה את LANG/bookName/groupName/trackEvent ישירות
-window.GimApp = { isEn: () => LANG === 'en', bookName: he => bookName(he), groupName: he => groupName(he), trackEvent: (n, p) => trackEvent(n, p), tourBase: () => tourBase() };
+window.GimApp = { isEn: () => LANG === 'en', bookName: he => bookName(he), groupName: he => groupName(he), trackEvent: (n, p) => trackEvent(n, p), tourBase: () => tourBase(), tourDriver: cfg => tourDriver(cfg), ready: () => !!IDX };
 const PARSHA_EN = {
   'בראשית': 'Bereshit', 'נח': 'Noach', 'לך לך': 'Lech Lecha', 'וירא': 'Vayera', 'חיי שרה': 'Chayei Sarah', 'תולדות': 'Toldot',
   'ויצא': 'Vayetzei', 'וישלח': 'Vayishlach', 'וישב': 'Vayeshev', 'מקץ': 'Miketz', 'ויגש': 'Vayigash', 'ויחי': 'Vayechi',
@@ -1972,7 +1972,7 @@ function tourExtraShow(w) {
     ring.style.cssText = `left:${tr.left - 5}px;top:${tr.top - 5}px;width:${tr.width + 10}px;height:${tr.height + 10}px`;
     document.body.appendChild(ring); tourExtras.push(ring);
   }
-  const avoid = [document.querySelector('.driver-popover'), document.querySelector('.driver-active-element')].filter(Boolean).map(e => e.getBoundingClientRect());
+  const avoid = [document.querySelector('.driver-popover'), document.querySelector('.driver-active-element')].filter(Boolean).map(e => e.getBoundingClientRect()).concat(window.GT_tourAvoid ? window.GT_tourAvoid() : []); // בשולחן העבודה חלון הסיור בשולחן (GT_tourAvoid)
   const hit = (x, y) => avoid.some(r => x < r.right + 6 && x + ww > r.left - 6 && y < r.bottom + 6 && y + wh > r.top - 6);
   const clampX = x => Math.max(M, Math.min(vw - ww - M, x)), clampY = y => Math.max(M, Math.min(vh - wh - M, y));
   let pos = null;
@@ -2082,7 +2082,7 @@ let tourUnionInfo = null;
 function tourUnionDim() {
   const info = tourUnionInfo; if (!info) return;
   const row = info.els[0].closest('.rf'); if (!row) return;
-  const path = document.querySelector('.driver-overlay path'), op = path ? parseFloat(path.style.opacity) : 0.5;
+  const path = document.querySelector('.driver-overlay path'), op = path ? parseFloat(path.style.opacity) : tourBase().overlayOpacity;
   const R = info.rect;
   [...row.children].filter(c => !info.els.includes(c)).forEach(c => {
     const r = c.getBoundingClientRect(); if (!r.width || !r.height) return;
@@ -2162,8 +2162,8 @@ function buildTourSteps() {
     filterTourStep(false),
     { element: '#ftA', popover: { title: 'Choosing sources and range', description: 'Clicking here opens a panel where you choose which books (and which chapter/parsha ranges) to search, and which gematria methods are included in the search itself and in notarikon matching.', side: 'bottom', align: 'end' } },
     settingsPanelStep(true),
-    { id: 'theme', demo: tourThemeDemo, element: '.themeSw', popover: { title: 'App appearance', description: 'This toggle switches between a light "parchment" look and a dark "night" look, whichever you prefer. We just switched it for you, and in a few seconds it returns to your look.', side: 'bottom', align: 'end' } },
-    { element: '#startTour', popover: { title: "That's it, you're ready!", description: 'You can start this tour again any time from here.', side: 'bottom', align: 'end' } },
+    { id: 'theme', demo: tourThemeDemo, element: '.themeSw', shell: '#dkBan .themeSw', popover: { title: 'App appearance', description: 'This toggle switches between a light "parchment" look and a dark "night" look, whichever you prefer. We just switched it for you, and in a few seconds it returns to your look.', side: 'bottom', align: 'end' } },
+    { element: '#startTour', shell: '#dkGemTools .tourBtn', popover: { title: "That's it, you're ready!", description: 'You can start this tour again any time from here, along with the tours of search and reading.', side: 'bottom', align: 'end' } },
   ];
   return [
     { popover: { title: 'ברוכים הבאים לגימטריבון', description: 'סיור קצר (אפשר לדלג/לצאת בכל רגע) — שתי "עמודות" זהות (א׳/ב׳) שמאפשרות להשוות בין שני ביטויים/חיפושים זה לצד זה. נתחיל מצד א׳.' } },
@@ -2176,8 +2176,8 @@ function buildTourSteps() {
     filterTourStep(false),
     { element: '#ftA', popover: { title: 'בחירת מקורות וטווח', description: 'לחיצה כאן פותחת פנל שבו בוחרים באילו ספרים (ואילו טווחי פרקים/פרשות) לחפש, ואילו שיטות-גימטריה ייכללו בחיפוש עצמו ובהתאמת-נוטריקון.', side: 'bottom', align: 'end' } },
     settingsPanelStep(false),
-    { id: 'theme', demo: tourThemeDemo, element: '.themeSw', popover: { title: 'מראה האפליקציה', description: 'מתג זה מחליף בין מראה "גוויל" בהיר למראה "לילה" כהה, לפי הנוחות שלכם. הרגע העברנו אותו למראה השני, ובעוד כמה שניות הוא חוזר למראה שהיה לכם.', side: 'bottom', align: 'end' } },
-    { element: '#startTour', popover: { title: 'זהו, אפשר להתחיל!', description: 'אפשר להפעיל את הסיור הזה שוב בכל רגע מכאן.', side: 'bottom', align: 'end' } },
+    { id: 'theme', demo: tourThemeDemo, element: '.themeSw', shell: '#dkBan .themeSw', popover: { title: 'מראה האפליקציה', description: 'מתג זה מחליף בין מראה "גוויל" בהיר למראה "לילה" כהה, לפי הנוחות שלכם. הרגע העברנו אותו למראה השני, ובעוד כמה שניות הוא חוזר למראה שהיה לכם.', side: 'bottom', align: 'end' } },
+    { element: '#startTour', shell: '#dkGemTools .tourBtn', popover: { title: 'זהו, אפשר להתחיל!', description: 'אפשר להפעיל את הסיור הזה שוב בכל רגע מכאן, וגם את הסיורים על החיפוש ועל הקריאה.', side: 'bottom', align: 'end' } },
   ];
 }
 // הגדרות driver.js המשותפות לשני הסיורים (מסך הגימטריה כאן, מסך הקריאה ב-reader.js: GimReader.tour)
@@ -2198,6 +2198,12 @@ function tourBase() {
     smoothScroll: true,
     popoverClass: 'gtTourPopover',
   };
+}
+// v4.18.0: בתוך חלון של שולחן העבודה הסיור רץ בשולחן עצמו (desktop.js: GT_tourDriver) — שכבת ההחשכה מכסה את כל המסך,
+// חלון ההסבר לא נחתך בגבולות החלון, וצעד יכול להצביע על פקד בבנר (step.shell) במקום על הפקד המוסתר שבתוך החלון
+function tourDriver(cfg) {
+  let P = null; try { if (window.parent !== window && window.parent.GT_tourDriver) P = window.parent.GT_tourDriver; } catch (e) {}
+  return P ? P(window, cfg) : window.driverjs.driver(cfg);
 }
 function startTour() {
   if (!window.driverjs) return;
@@ -2221,7 +2227,7 @@ function startTour() {
   const wrapSteps = steps => steps.map(st => !st.demo ? st : { ...st, popover: { ...st.popover,
     onNextClick: (el, step, o) => { runUndo(); o.driver.moveNext(); },
     onPrevClick: (el, step, o) => { runUndo(); o.driver.movePrevious(); } } });
-  const tour = window.driverjs.driver({
+  const tour = tourDriver({
     ...tourBase(),
     skipMissingElement: true, // אם היעד של צעד מסוים לא קיים (למשל: למשתמש יש חיפוש-משלו בלי התאמה בין הצדדים) — מדלגים עליו בשקט, בלי פופ-אובר "תועה" במרכז המסך
     steps: wrapSteps(mobileActive ? buildMobileTourSteps() : buildTourSteps()), // v3.4.0: סט-צעדים נפרד לנייד (ראו buildMobileTourSteps)

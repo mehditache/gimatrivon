@@ -1,6 +1,6 @@
 /* בדיקת דפדפן לשני הסיורים המודרכים (v3.31.0): הסיור של מסך הגימטריה והסיור של מסך הקריאה רצים עד הסוף בלי שגיאות,
    הסיור בגימטריה מסביר את כפתור "פתיחה בספר", וחלון הסיור בצבע הבאנר (--rdBar). דורש Playwright; בלעדיו — מדלג.
-   רץ על תוכן החלונות של שולחן העבודה (index.html?embed=…), לא על המסך הישן.
+   רץ על תוכן החלונות של שולחן העבודה (index.html?embed=…), לא על המסך הישן, ובשולחן עצמו (desktop.html): שלושת הסיורים מהתפריט.
    node tests/tour.e2e.js */
 const http = require('http'), fs = require('fs'), path = require('path');
 let chromium;
@@ -56,6 +56,37 @@ const rgb = hex => { const n = parseInt(hex.replace('#', ''), 16); return `rgb($
   // בחלון אין כותרת ישנה (מתג המראה ותפריט ⋮), ולכן הסיור מסתיים בצעד של שורת המיקום
   ok('קריאה: הסיור הגיע לסוף', r.titles[0] === 'מסך הקריאה' && r.titles[r.titles.length - 1] === 'מיקום בפרק' && !(await p.$('.driver-popover')), r.titles.join(' | '));
   ok('קריאה: החלוניות נסגרו בסוף', await p.evaluate(() => document.querySelector('#rdSet').hidden && document.querySelector('#rdJump').hidden));
+  // v4.18.0: שולחן העבודה — שלושת הסיורים מתפריט "? סיור מודרך" רצים בשולחן עצמו (ההחשכה מכסה גם את הבנר), עד הסוף, ומנקים אחריהם
+  const dp = await ctx.newPage(); dp.on('pageerror', e => errs.push('desk: ' + e.message));
+  await dp.goto(base + 'desktop.html#read/TN/Gen/1/1');
+  await dp.waitForTimeout(4000);
+  async function deskWalk(k) {
+    await dp.click('#dkGemTools .tourBtn'); await dp.click('[data-tour=' + k + ']');
+    await dp.waitForSelector('.driver-popover', { timeout: 120000 });
+    const titles = [], shellHits = [];
+    for (let i = 0; i < 40; i++) {
+      await dp.waitForTimeout(500); await dp.waitForFunction(() => !document.querySelector('.dkTourBusy'), null, { timeout: 30000 }); await dp.waitForTimeout(300);
+      if (!(await dp.$('.driver-popover'))) break;
+      titles.push(await dp.$eval('.driver-popover-title', e => e.textContent));
+      shellHits.push(await dp.evaluate(() => { const a = document.querySelector('.driver-active-element'); return a ? (a.dataset.shell ? 'banner' : a.classList.contains('dkTourGhost') ? 'ghost' : a.closest('#dkBan,#dkTask') ? 'banner' : 'shell') : 'none'; }));
+      await dp.click('.driver-popover-next-btn');
+    }
+    await dp.waitForTimeout(800);
+    const clean = await dp.evaluate(() => !document.querySelector('.driver-overlay,.driver-popover,.dkTourGhost') && !document.documentElement.classList.contains('dkTouring') && !document.querySelector('#dkQ').value);
+    return { titles, shellHits, clean };
+  }
+  const dr = await deskWalk('read');
+  ok('שולחן: סיור הקריאה הגיע לסוף', dr.titles[dr.titles.length - 1] === 'זהו, אפשר לקרוא!', dr.titles.join(' | '));
+  ok('שולחן: סיור הקריאה מצביע על פקדי הבנר', ['חלונות', 'המקום בספר', 'חיפוש וקפיצה', 'הדפסה / PDF'].every(t => dr.shellHits[dr.titles.indexOf(t)] === 'banner'), dr.shellHits.join(','));
+  ok('שולחן: סיור הקריאה ניקה אחריו', dr.clean);
+  const ds = await deskWalk('search');
+  ok('שולחן: סיור החיפוש הגיע לסוף', ds.titles.length >= 10 && ds.titles[ds.titles.length - 1] === 'גם מתוך הטקסט', ds.titles.join(' | '));
+  ok('שולחן: סיור החיפוש סימן את הרשימה ואת חלון התוצאות', ds.shellHits[ds.titles.indexOf('חיפוש חכם')] === 'ghost' && ds.shellHits[ds.titles.indexOf('סינון לפי ספר ומקור')] === 'ghost', ds.shellHits.join(','));
+  ok('שולחן: סיור החיפוש ניקה אחריו', ds.clean);
+  const dg = await deskWalk('gem');
+  ok('שולחן: סיור הגימטריה הגיע לסוף', dg.titles[dg.titles.length - 1] === 'זהו, אפשר להתחיל!', dg.titles.join(' | '));
+  ok('שולחן: מתג המראה בסיור הגימטריה מסומן בבנר', dg.shellHits[dg.titles.indexOf('מראה האפליקציה')] === 'banner', dg.shellHits.join(','));
+  ok('שולחן: סיור הגימטריה ניקה אחריו', dg.clean);
   ok('בלי שגיאות JavaScript', !errs.length, errs.join(' | '));
 
   await br.close(); server.close();

@@ -3629,7 +3629,11 @@
     const en = isEn(), tal = isTal(), tur = isTur();
     closePops(); closeDrop();
     const shown = sel => { const e = typeof sel === 'string' ? $r(sel) : sel; if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
-    const pop = id => () => { if (openPop !== id) openPopover(id); return $r(id === 'jump' ? '#rdJump' : '#rdSet'); };
+    // v4.18.0: בחלון של שולחן העבודה הפקדים של הקורא מוצגים בבנר (desktop.js משכפל אותם), והסיור רץ בשולחן ומצביע עליהם (shell)
+    let desk = null; try { if (G.parent !== G && G.parent.GT_tourDriver) desk = G.parent; } catch (e) {}
+    const deskShown = sel => { try { const e = desk && desk.document.querySelector(sel); if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; } catch (e) { return false; } };
+    const PBTN = { jump: '#dkNav .rdWhere', set: '#dkTools [data-src-id=rdSetBtn]' };
+    const pop = id => () => { if (desk) desk.GT_tourPop(G, PBTN[id]); if (openPop !== id) openPopover(id); if (desk) desk.GT_tourPop(G); return $r(id === 'jump' ? '#rdJump' : '#rdSet'); };
     const st = (element, he, heD, enT, enD, side, align, extra) => Object.assign({ element, popover: { title: en ? enT : he, description: en ? enD : heD, side: side || 'bottom', align: align || 'center' } }, extra || {});
     const bookTip = tal && talT().z
       ? ['לחיצה על פסקה בזוהר (או על תרגום) פותחת חלון עם הפסקה, התרגום וביאור הסולם שלה. העמודים לפי דפוס וילנא.', 'Clicking a paragraph of the Zohar (or a translation) opens a window with the paragraph, its translation and the Sulam commentary. Pages follow the Vilna edition.']
@@ -3641,29 +3645,41 @@
     const steps = [
       st(null, 'מסך הקריאה', 'כאן קוראים את המקורות עצמם, כמו בספר: תנ״ך עם תרגומים ורש״י, משנה, רמב״ם, ש״ס, זוהר וטור, עם המפרשים. סיור קצר, אפשר לדלג או לצאת בכל רגע.',
         'The reading screen', 'Here you read the sources themselves, like a book: Tanakh with translations and Rashi, Mishnah, Rambam, Talmud, Zohar and Tur, with their commentaries. A short tour; skip or exit any time.'),
+      ...(desk ? [
+        st('#dkTask', 'חלונות', 'בשולחן העבודה כל ספר נפתח בחלון משלו, ואפשר לקרוא כמה ספרים יחד, זה לצד זה. בפס הזה כל החלונות הפתוחים, ולחיצה על חלון מביאה אותו קדימה או ממזערת אותו. חלון ממוזער משחרר את הזיכרון ושומר את המקום.',
+          'Windows', 'On the desktop every book opens in its own window, so you can read several books side by side. This bar lists the open windows; clicking one brings it forward or minimizes it. A minimized window frees memory and keeps its place.', 'left', 'center', { shell: '#dkTask' }),
+        st('#dkAdd', 'חלון קריאה חדש', 'פותח עוד חלון קריאה, באותו מקום שבו אתם קוראים, כדי להשוות או לעיין במקור נוסף בלי לאבד את המקום. אפשר גם "⧉ בחלון חדש" בחלון המעבר.',
+          'New reading window', 'Opens another reading window at the place you are reading, to compare or look something up without losing your place. "⧉ In a new window" in the jump window does the same.', 'left', 'center', { shell: '#dkAdd' }),
+        st('#dkArrBtn', 'סידור החלונות', 'סידור כל החלונות בלחיצה: במה (חלון אחד במרכז), מדורג, זה לצד זה או רשת. לכל חלון גם חיצי אחורה וקדימה משלו בפס העליון שלו.',
+          'Arrange windows', 'Arrange all the windows in one click: stage (one window in the centre), cascade, side by side or grid. Each window also has its own Back and Forward arrows in its top bar.', 'left', 'center', { shell: '#dkArrBtn' }),
+      ] : [
       st((() => { const n = document.getElementById('mNav'); return n && getComputedStyle(n).display !== 'none' ? '#mNav' : '#modeSw'; })(), 'גימטריה / קריאה', 'המתג הזה (בטלפון: הסרגל התחתון) עובר בין מסך הגימטריה למסך הקריאה. כשחוזרים לכאן, הספר נפתח במקום שבו הפסקתם.',
         'Gematria / Reading', 'This switch moves between the gematria screen and the reading screen. When you come back here, the book opens where you stopped.'),
+      ]),
       st('#rdWhere', 'המקום בספר', 'הספר והפרק שפתוחים עכשיו. החצים משני הצדדים עוברים לפרק הקודם ולפרק הבא.',
-        'Where you are', 'The book and chapter open now. The arrows on either side go to the previous and next chapter.'),
+        'Where you are', 'The book and chapter open now. The arrows on either side go to the previous and next chapter.', 'bottom', 'center', { shell: '#dkNav .rdWhere' }),
       st(pop('jump'), 'מעבר לפרק ופסוק', 'לחיצה על המקום (או Ctrl G) פותחת את החלון הזה: בוחרים אוסף, ספר, פרק ופסוק, ועוברים ישר לשם. פתחנו אותו בשבילכם, והוא ייסגר בצעד הבא.',
         'Go to chapter and verse', 'Clicking the location (or Ctrl G) opens this window: choose a collection, a book, a chapter and a verse, and go straight there. We opened it for you; it closes at the next step.', 'bottom', 'center', { onDeselected: () => closePops() }),
-      st('#rdSearch', 'חיפוש וקפיצה', 'מקלידים מילים כדי לחפש בספר הפתוח (או בכל האוסף), או מקום כדי לקפוץ אליו: "שמות יב ב", "ב״מ נט:", "או״ח ס", גם בראשי תיבות. הצעות מופיעות תוך כדי הקלדה. קיצור: Ctrl+Shift+K.',
-        'Search and jump', 'Type words to search the open book (or the whole collection), or a place to jump to it: "Exodus 12 2", "BM 59b", "OC 60", abbreviations too. Suggestions appear as you type. Shortcut: Ctrl+Shift+K.'),
+      st('#rdSearch', 'חיפוש וקפיצה', 'מקלידים מילים כדי לחפש בספר הפתוח (או בכל האוסף), או מקום כדי לקפוץ אליו: "שמות יב ב", "ב״מ נט:", "או״ח ס", גם בראשי תיבות. הצעות מופיעות תוך כדי הקלדה. קיצור: Ctrl+Shift+K.' + (desk ? ' לחיפוש יש סיור משלו, תחת "? סיור מודרך".' : ''),
+        'Search and jump', 'Type words to search the open book (or the whole collection), or a place to jump to it: "Exodus 12 2", "BM 59b", "OC 60", abbreviations too. Suggestions appear as you type. Shortcut: Ctrl+Shift+K.' + (desk ? ' The search has a tour of its own, under "? Guided tour".' : ''), 'bottom', 'center', { shell: '#dkSearch' }),
       st('#rdViewSeg', 'סוג התצוגה', 'מחליף את צורת הדף, לפי הספר: למשל "ספר" או "פסוק מול תרגום" בתנ״ך, "צורת הדף" או "גמרא ומפרשים" בש״ס.',
-        'View type', 'Switches the page layout, depending on the book: for example "Book" or "Verse and translation" in Tanakh, "Daf" or "Gemara and commentaries" in the Talmud.'),
+        'View type', 'Switches the page layout, depending on the book: for example "Book" or "Verse and translation" in Tanakh, "Daf" or "Gemara and commentaries" in the Talmud.', 'bottom', 'center', { shell: '#dkTools [data-src-id=rdViewSeg]' }),
       st(pop('set'), 'הגדרות תצוגה (אָ)', 'הכפתור אָ פותח את החלון הזה: גודל אותיות, אילו מפרשים ותרגום מוצגים, כתב הפירוש, ניקוד ברמב״ם ועוד. ההגדרות נשמרות לפעם הבאה. פתחנו אותו בשבילכם, והוא ייסגר בצעד הבא.',
         'Display settings (אָ)', 'The אָ button opens this window: letter size, which commentaries and translation are shown, the commentary font, vowels in the Rambam and more. Settings are saved for next time. We opened it for you; it closes at the next step.', 'bottom', 'center', { onDeselected: () => closePops() }),
       st('#rdPrintBtn', 'הדפסה / PDF', 'בוחרים מה להדפיס, ברקע נייר וצבעים או ברקע לבן לחיסכון בדיו, ומדפיסים או שומרים כ-PDF. קיצור: Ctrl P.',
-        'Print / PDF', 'Choose what to print, with a paper background and colours or a white background to save ink, then print or save as PDF. Shortcut: Ctrl P.'),
+        'Print / PDF', 'Choose what to print, with a paper background and colours or a white background to save ink, then print or save as PDF. Shortcut: Ctrl P.', 'bottom', 'center', { shell: '#dkTools [data-src-id=rdPrintBtn]' }),
       st('#rdBook', 'הדף', bookTip[0] + ' דפדוף: החצים בצדי הדף, מקשי החצים במקלדת, או החלקה בטלפון.',
         'The page', bookTip[1] + ' Turning pages: the arrows beside the page, the arrow keys, or a swipe on a phone.', 'top', 'center'),
+      st(null, 'סימון טקסט', 'מסמנים מילה או משפט בדף (גם בארמית), ומעל הסימון מופיע סרגל קטן: ערך גימטרי, חיפוש של מה שסומן, העתקה, ובגמרא ובזוהר גם תרגום ומילון. קליק ימני פותח את כל האפשרויות.',
+        'Selecting text', 'Select a word or a sentence on the page (Aramaic too), and a small bar appears above it: gematria value, search for the selection, copy, and in the Talmud and Zohar also translation and dictionary. A right click opens all the options.'),
       st('.rdFoot', 'מיקום בפרק', 'כאן רואים באיזה עמוד אתם מתוך כמה בפרק, ופס התקדמות. הכפתורים בצדדים מדפדפים גם הם.',
         'Position in the chapter', 'Shows which page you are on out of how many in the chapter, with a progress bar. The buttons at the sides turn pages too.', 'top', 'center'),
-      st('.themeSw', 'מראה', 'מעבר בין מראה בהיר ("גוויל") למראה כהה ("לילה").', 'Appearance', 'Switches between the light "parchment" look and the dark "night" look.', 'bottom', 'end'),
+      st('.themeSw', 'מראה', 'מעבר בין מראה בהיר ("גוויל") למראה כהה ("לילה").', 'Appearance', 'Switches between the light "parchment" look and the dark "night" look.', 'bottom', 'end', { shell: '#dkBan .themeSw' }),
       st('#mKebab', 'זהו, אפשר לקרוא!', 'בתפריט הזה: שיטות הגימטריה, אודות, צור קשר, והסיור הזה שוב. למסך הגימטריה יש סיור משלו, ומכל תוצאה שם כפתור הספר פותח אותה כאן, במקום המדויק.',
-        "That's it, happy reading!", 'This menu has the gematria methods, About, Contact, and this tour again. The gematria screen has its own tour, and from any result there the book button opens it here, at the exact place.', 'bottom', 'end'),
-    ].filter(x => !x.element || typeof x.element === 'function' || shown(x.element));
-    const d = G.driverjs.driver(Object.assign(APP.tourBase(), { steps, onDestroyed: () => closePops() }));
+        "That's it, happy reading!", 'This menu has the gematria methods, About, Contact, and this tour again. The gematria screen has its own tour, and from any result there the book button opens it here, at the exact place.', 'bottom', 'end', { shell: '#dkKebab' }),
+    ].filter(x => !x.element || typeof x.element === 'function' || shown(x.element) || (desk && x.shell && deskShown(x.shell)));
+    const cfg = Object.assign(APP.tourBase(), { steps, onDestroyed: () => closePops() });
+    const d = APP.tourDriver ? APP.tourDriver(cfg) : G.driverjs.driver(cfg);
     d.drive();
     return d;
   }
