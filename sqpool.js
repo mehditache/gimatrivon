@@ -24,6 +24,7 @@
     let D = null;
     const cfg = i => [{ from: 'inline', config: { serverMode: 'chunked', urlPrefix: abs(D.file) + '.', suffixLength: 3, serverChunkSize: D.chunk, databaseLengthBytes: D.bytes, cacheBust: D.hash + '&w=' + i, requestChunkSize: D.page * RCS, maxReadSpeed: D.page * 8 * Math.max(1, RCS / 2) } }];
     const open = async (i, first) => {
+      if (D.noRange) throw new Error('no range'); // שולחן ערוך: רק קבצים דחוסים (sqmem.js)
       const w = await G.createDbWorker(cfg(i), abs('vendor/sql.js-httpvfs/sqlite.worker.js'), abs('vendor/sql.js-httpvfs/sql-wasm.wasm'));
       const NW = D.bytes > 40 << 20 ? 2 : 3;
       if (first) for (let k = 1; k < NW; k++) open(k).then(x => { st.pool.push(x); pump(); }, () => {});

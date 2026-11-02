@@ -27,7 +27,7 @@ const byKey = {}; books.forEach((b, i) => { byKey[b.cat + '|' + b.heTitle] = i; 
 // שם הספר שעליו המפרש / התרגום (כותרת הטקסט), לפי תחום
 const BASE_KEY = { tanakh: (cat, t) => '0|' + t, mishnah: (cat, t) => '1|' + (cat === 5 ? 'משנה ' + t : t), rambam: (cat, t) => '7|' + t };
 const talPlain = s => plain(String(s).replace(/[\u0001-\u0004]/g, ''));
-const turPlain = s => plain(String(s || '').replace(/\u0010[yc]\d+\u0011/g, ' ').replace(/[\u0003-\u0006]/g, ''));
+const turPlain = s => plain(String(s || '').replace(/\u0010[a-z]\d+\u0011/g, ' ').replace(/[\u0003-\u0006]/g, ''));
 
 /* אוספים: כל אחד מחזיר {units: Map(rowid → טקסט), miss, bk?}. bk = ספרים סינתטיים {k, he, cv} לגמרא ולטור (אין להם ספרים באינדקס הקורפוס) */
 function collectCorpus(name) {
@@ -77,10 +77,10 @@ function collectTalmud() {
   return { units, miss: 0, bk };
 }
 // טור: ספר = אחד מארבעת הטורים, פרק = סימן (s + 1; ההקדמה = 1), פסוק = שורה בטור / פסקה בב״י / פסקה בב״ח (i + 1)
-function collectTur() {
-  const tdir = path.join(root, 'generated', 'tur') + path.sep, w = {};
+function collectTur(sa) {
+  const tdir = path.join(root, 'generated', sa ? 'sa' : 'tur') + path.sep, w = {};
   vm.runInNewContext(fs.readFileSync(tdir + 'index.js', 'utf8'), { window: w });
-  const T = w.GIM_TUR_INDEX, bk = [], rows = [];
+  const T = sa ? w.GIM_SA_INDEX : w.GIM_TUR_INDEX, bk = [], rows = [];
   T.forEach((t, b) => {
     const S = []; t.parts.forEach(p => { const g = {}; vm.runInNewContext(fs.readFileSync(tdir + p.f, 'utf8'), { window: g }); const d = Object.values(g.GIM_TUR_P)[0]; d.s.forEach((r, i) => { S[d.from + i] = r; }); });
     const cv = [0], lo = t.intro ? 0 : 1;
@@ -88,11 +88,11 @@ function collectTur() {
     bk.push({ k: t.k, he: t.he, cv });
     rows.push({ b, S, t, lo });
   });
-  const map = SQ.mapOf(bk.map(x => ({ cat: 101, cv: x.cv })), 101), units = new Map();
+  const map = SQ.mapOf(bk.map(x => ({ cat: sa ? 102 : 101, cv: x.cv })), sa ? 102 : 101), units = new Map();
   rows.forEach(({ b, S, t, lo }) => {
     for (let s = lo; s < t.n; s++) {
       const r = S[s]; if (!r) continue;
-      String(r[0] || '').split('\n').forEach((l, i) => { const x = turPlain(l); if (x) units.set(SQ.rid(0, map.ord(b, s + 1, i + 1), 0), x); });
+      String(r[0] || '').split('\n').forEach((l, i) => { const x = turPlain(l); if (x) units.set(SQ.rid(sa && t.kh ? 3 : 0, map.ord(b, s + 1, i + 1), 0), x); });
       [1, 2].forEach(src => (r[src] || []).forEach((l, i) => { const x = turPlain(l); if (x) units.set(SQ.rid(src, map.ord(b, s + 1, i + 1), 0), x); }));
     }
   });
@@ -100,7 +100,7 @@ function collectTur() {
 }
 
 function build(name) {
-  const D = SQ.DOMAINS[name], C = name === 'talmud' ? collectTalmud() : name === 'tur' ? collectTur() : collectCorpus(name);
+  const D = SQ.DOMAINS[name], C = name === 'talmud' ? collectTalmud() : name === 'tur' ? collectTur() : name === 'sa' ? collectTur(true) : collectCorpus(name);
   const units = C.units, TABS = D.tabs;
   fs.mkdirSync(out, { recursive: true });
   const file = path.join(out, name + '.sqlite3');
@@ -134,6 +134,9 @@ function build(name) {
   fs.unlinkSync(file);
   const meta = { file: 'generated/sqlite/' + name + '.sqlite3', chunk: CHUNK, parts, bytes: buf.length, page: PAGE, hash, units: ids.length, words: nw };
   if (C.bk) meta.bk = C.bk; // ספרים סינתטיים (גמרא וטור): שם ומספר הקטעים בכל פרק, למיפוי מקום ← מספר סידורי
+  if (name === 'sa') { // רק קבצים דחוסים (חוסך כ-2/3 ממקום האתר): בלי קריאת טווחים; בכשל — החיפוש בזיכרון
+    meta.noRange = true; fs.readdirSync(out).filter(f => f.startsWith(name + '.sqlite3.') && !f.includes('.gz.')).forEach(f => fs.unlinkSync(path.join(out, f)));
+  }
   gzOut(name, buf, meta);
   console.log(name + ': units', ids.length, 'words', nw, 'bytes', buf.length, 'hash', hash, 'missing refs', C.miss);
 }
