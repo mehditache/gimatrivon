@@ -915,7 +915,7 @@ body[data-mode=read] .mMenuPanel{top:3.6rem}
 .rdFs{position:absolute;top:4px;bottom:4px;inset-inline-end:3px;width:6px;border-radius:4px;background:color-mix(in srgb,var(--rdLine) 70%,transparent);cursor:pointer;touch-action:none;z-index:3}
 .rdFs[hidden]{display:none}
 .rdFsBand{position:absolute;inset-inline:0;pointer-events:none;border-radius:2px}
-.rdFsBand.b0{background:#c9962b}.rdFsBand.b1{background:#3f7fbf}.rdFsBand.b2{background:#4e9a62}.rdFsBand.b3{background:#8a5cb5}.rdFsBand.b4{background:#c25a4a}
+.rdFsBand.b0{background:#c9962b}.rdFsBand.b1{background:#3f7fbf}.rdFsBand.b2{background:#4e9a62}.rdFsBand.b3{background:#8a5cb5}.rdFsBand.b4{background:#c25a4a}.rdFsBand.b5{background:#2a8f8f}
 .rdDI.ph{pointer-events:none;opacity:.55}.rdDI.ph .sn i{display:block;height:10px;margin-top:6px;width:70%;border-radius:5px;background:linear-gradient(90deg,var(--rdLine) 25%,color-mix(in srgb,var(--rdGold) 35%,var(--rdLine)) 50%,var(--rdLine) 75%);background-size:300% 100%;animation:rdPh 1.2s linear infinite}
 @keyframes rdPh{from{background-position:100% 0}to{background-position:0 0}}
 @media (prefers-reduced-motion:reduce){.rdDI.ph .sn i{animation:none}}
