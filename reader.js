@@ -2067,7 +2067,7 @@
     const units = [], pos = {}; let off = 0;
     lines.forEach((l, i) => { const toks = turToks(l); toks.forEach((w, j) => { const a = SBA.exec(w); if (a) pos[(a[1] === 't' ? 'b' : a[1]) + a[2]] = off + j; }); units.push({ sec: 't', i, first: i === 0, toks, off }); off += toks.length; });
     if (xs.t) { xs.b = xs.t; delete xs.t; }
-    order.forEach(c => { let f = true, last = 0; (lists[c] || []).forEach((txt, i) => { if (txt) { const q = pos[c + i]; last = q == null ? last : Math.max(last, q); units.push({ sec: c, i, first: f, toks: turToks(txt), anc: last }); f = false; } }); });
+    order.forEach(c => { let f = true, last = 0; (lists[c] || []).forEach((txt, i) => { if (txt) { const q = pos[c + i]; last = q == null ? last : Math.max(last, q); units.push({ sec: c, i, first: f, toks: turToks(t.kh && c === 'y' ? txt.replace(/^(\u0003?)[א-ת]{1,3}\)\s*/, '$1') : txt), anc: last }); f = false; } }); });
     let lw = 0; units.forEach(u => { if (u.sec === 't') u.toks.forEach((w, j) => { if (!SBA.test(w)) lw = u.off + j + 1; }); }); // סוף המילה האחרונה בטקסט (אחריה יש רק עוגנים)
     units.forEach(u => { if (u.anc != null && lw) u.anc = Math.min(u.anc, lw - 1); });
     const m = { k, s, hd, units, total: off, lw }; SBC.set(key, m); trimMap(SBC, 40); return m;
