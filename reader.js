@@ -417,7 +417,7 @@
     'רש״י': 'Rashi', 'ברטנורא': 'Bartenura', 'פרק': 'Chapter', 'פסוק': 'Verse', 'משנה': 'Mishnah', 'תנ״ך': 'Tanakh', 'מקרא': 'Text',
     'פרק קודם': 'Previous chapter', 'פרק הבא': 'Next chapter', 'עמוד קודם': 'Previous page', 'עמוד הבא': 'Next page',
     'חיפוש, או קפיצה: ״שמות יב ב״': 'Search, or jump: "Exodus 12 2"', 'חיפוש מהיר או קפיצה למקום': 'Quick search or jump to a place',
-    'בפרק': 'Chapter', 'בפרשה': 'Parsha', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'חיפוש ב': 'Search in', 'פסוקים': 'Verses', 'משניות': 'Mishnayot', 'תרגום': 'Targum', 'הכל': 'All', 'מציג': 'showing', 'אין תוצאות': 'No results',
+    'בפרק': 'Chapter', 'בפרשה': 'Parsha', 'בספר': 'Book', 'בכל התנ״ך': 'All Tanakh', 'בכל המשנה': 'All Mishnah', 'תוצאות': 'results', 'תוצאה': 'Result', 'חיפוש ב': 'Search in', 'פסוקים': 'Verses', 'משניות': 'Mishnayot', 'תרגום': 'Targum', 'הכל': 'All', 'מציג': 'showing', 'אין תוצאות': 'No results', 'פתיחה בחלון': 'Open in window', 'פתיחת כל התוצאות בחלון «תוצאות חיפוש» (Enter)': 'Open all results in a Search results window (Enter)',
     'מעבר אל': 'Go to', 'פתיחת': 'Open', 'מעבר לפרק ופסוק': 'Go to chapter and verse', 'סגירה': 'Close',
     'אפשר גם להקליד מקום בתיבת החיפוש': 'You can also type a place in the search box', 'דפדוף': 'turn pages',
     'עמוד': 'Page', 'עמודים': 'Pages', 'מתוך': 'of', 'ממשיך ל': 'continues to ', 'ההגדרות נשמרות לפעם הבאה.': 'Settings are saved for next time.',
@@ -2619,6 +2619,14 @@
   function closeDrop() { const d = $r('#rdDrop'); if (d) d.hidden = true; dropItems = []; dropAct = -1; PIN = []; busy(false); }
   // פס זוהר מסתובב סביב מסגרת החיפוש מההקלדה ועד שהתוצאות מוצגות
   function busy(on) { const o = $r('.rdOmni'); if (o) o.classList.toggle('rdBusy', !!on); }
+  /* v4.17.5: מארח החיפוש של שולחן העבודה (embed=search): כפתור "פתיחה בחלון" בפס ההיקף של הרשימה — כמו Enter, פותח חלון "תוצאות חיפוש" */
+  const OWIN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="15" height="15" rx="2.5"/><path d="M3 9.5h15M13 3h8v8M21 3l-8.5 8.5"/></svg>';
+  function paintDrop(d, html, on) {
+    d.innerHTML = html; d.hidden = false; busy(on);
+    if (!document.documentElement.classList.contains('gtSearch') || !G.GT_EMBED || G.parent === G || $r('#rdQ').value.trim().length < 2) return;
+    const bar = d.querySelector('.rdDScope'); if (!bar) return;
+    bar.insertAdjacentHTML('beforeend', '<button type="button" class="rdOWin" data-owin title="' + T('פתיחת כל התוצאות בחלון «תוצאות חיפוש» (Enter)') + '">' + OWIN + '<span>' + T('פתיחה בחלון') + '</span><kbd>Enter</kbd></button>');
+  }
   function scopeBooks() { const e = effScope(sqDomOf() || 'tanakh'); if (e === 'all') return IX.base.filter(i => IX.books[i].cat === IX.books[S.b].cat); if (e === 'grp') return grpBooks(S.b); return [S.b]; }
   function refLabel(r) { return bkName(IX.books[r.b].heTitle) + ' ' + num(r.ch) + (r.v ? ', ' + num(r.v) : ''); }
   /* תוצאות החיפוש: כל ההתאמות (בלי תקרה) ברשימה וירטואלית, בדומה לרשימת התוצאות במסך הגימטריה.
@@ -2712,7 +2720,7 @@
         return { tag, fc: tag && !t0.z ? S.cmFont : '', ref: x.ref || dafTxt(x.j) + ' · ' + T(t0.z ? 'פסקה' : 'קטע') + ' ' + num(x.s + 1), t: plainT(x.t), html: x.html };
       }
     });
-    d.innerHTML = html; d.hidden = false; busy(sq && res.wait);
+    paintDrop(d, html, sq && res.wait);
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
@@ -2740,7 +2748,7 @@
       row: x => ({ tag: x.x === 't' ? '' : turCmName(x.x, x.k) + ' ' + RL(x.x, x.i), fc: x.x === 't' ? '' : 'rashi', ref: x.ref || sLabel(x.s), t: x.pt != null ? x.pt : turHitText(x), html: x.html })
     });
     else if (!res.wait) html += '<p class="rdNote rdDNote">' + T(res.q.length < 2 ? 'בטור מקלידים מקום: ״או״ח ס״, ״יו״ד קצג״, או מספר סימן.' : 'אפשר גם להקליד מקום: ״או״ח ס״, ״יו״ד קצג״.') + '</p>';
-    d.innerHTML = html; d.hidden = false; busy(res.wait);
+    paintDrop(d, html, res.wait);
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
@@ -3114,7 +3122,7 @@
         return { tag: cm ? cmName(x.cs) : tr ? trLabel(x.tr) : '', fc: cm ? S.cmFont : tr ? S.trFont : '', ref: x.ref || refLabel(x), t: x.pt, html: x.html };
       }
     });
-    d.innerHTML = html; d.hidden = false; busy(res.wait);
+    paintDrop(d, html, res.wait);
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
@@ -3154,7 +3162,7 @@
         }
       });
     }
-    d.innerHTML = html; d.hidden = false; busy(sq ? res.wait : wait);
+    paintDrop(d, html, sq ? res.wait : wait);
     bindRes();
     if (dropItems.length) setAct(lastAct());
   }
@@ -3516,6 +3524,7 @@
     $r('#rdDrop').addEventListener('mousedown', e => e.preventDefault()); // שהפוקוס לא יברח מהתיבה
     fsBind();
     $r('#rdDrop').onclick = e => {
+      if (e.target.closest('[data-owin]')) { G.parent.postMessage({ gtDesk: 'resopen', q: $r('#rdQ').value }, '*'); return; }
       const gl = e.target.closest('[data-glob]'); if (gl) { S.glob = gl.dataset.glob === '1'; return renderDrop(); }
       const nsc = e.target.closest('[data-sc]'); if (nsc) return setScope(nsc.dataset.sc);
       const ntg = e.target.closest('[data-tg]'); if (ntg) return toggleSrc(ntg.dataset.tg);
