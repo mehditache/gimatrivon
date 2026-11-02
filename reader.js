@@ -1777,7 +1777,7 @@
   const fitWhere = el => { if (G.GT_fitWhere) G.GT_fitWhere(el); else if (el && el.dataset.full != null) el.textContent = el.dataset.full; };
   try { document.fonts.addEventListener('loadingdone', () => fitWhere($r('#rdWhereTxt'))); } catch (e) {} // הגופן משנה את הרוחב
   function setWhere(x) { const el = $r('#rdWhereTxt'); if (!el) return; el.dataset.full = x; fitWhere(el); }
-  const hilOf = (t, s) => { let n = ''; (t.hil || []).forEach(x => { if (x[0] <= s) n = x[1]; }); return s ? n : ''; };
+  const hilOf = (t, s) => { let n = '', a = -1; (t.hil || []).forEach(x => { if (x[0] <= s && x[0] > a) { n = x[1]; a = x[0]; } }); return s ? n : ''; }; // שתי הלכות באותו סימן (יו״ד רצז): הראשונה
   const RL = (x, i) => x === 'y' ? '(' + toHeb(i + 1) + ')' : '[' + toHeb(i + 1) + ']';
   const turCmName = (x, k) => { const t = k && RX && RX.byK[k] != null ? turTOf(k) : S.rk && RX && RX.byK[S.rk] != null ? turT() : null; const e = t && t.xs && t.xs.find(z => z[0] === x); return e ? T(e[1]) : t && t.cm ? T(t.cm[x === 'y' ? 0 : 1]) : T(x === 'y' ? 'בית יוסף' : 'ב״ח'); };
   const turFull = t => t.sa ? turPartName(t) : T('טור') + ' ' + turPartName(t); // שם החלק עם המילה "טור" (בשולחן ערוך השם כולל אותה)

@@ -88,7 +88,7 @@ def hilchot():
     out = {}
     for part in d['alts']['Topic']['nodes']:
         en = next(t['text'] for t in part['titles'] if t['lang'] == 'en' and t.get('primary'))
-        out[en] = [[int(re.search(r'(\d+)(?:-\d+)?$', n['wholeRef']).group(1)), n['heTitle'] if 'heTitle' in n else next(t['text'] for t in n['titles'] if t['lang'] == 'he' and t.get('primary'))] for n in part['nodes']]
+        out[en] = [[int(re.search(r' (\d+)(?::\d+)?(?:-[\d:]+)?$', n['wholeRef']).group(1)), n['heTitle'] if 'heTitle' in n else next(t['text'] for t in n['titles'] if t['lang'] == 'he' and t.get('primary'))] for n in part['nodes']]
     return out
 
 os.makedirs(OUT, exist_ok=True)
