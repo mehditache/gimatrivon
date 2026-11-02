@@ -258,7 +258,7 @@
   /* ---------- מיקום בספר והיסטוריה (אחורה / קדימה) ---------- */
   function onHash(id) {
     const w = W(id), f = F.get(id); if (!w || !f || !f.win) return;
-    const h = decodeURI(f.win.location.hash || '');
+    const h = dec(f.win.location.hash);
     if (!/^#read/i.test(h)) return;
     if (f.first) { f.first = false; w.hist[w.hi] = h; w.navTo = null; } // הכתובת הראשונה אחרי טעינה (מנורמלת) מחליפה את הרשומה
     else if (w.navTo != null) { if (chKey(h) === chKey(w.navTo)) { w.hist[w.hi] = h; w.navTo = null; } }
@@ -949,7 +949,7 @@
         setMarks(m.slice(0, 30)); star(); listMarks(); markPaint();
       } else {
         const h0 = cur(); go.click();
-        setTimeout(() => { const h1 = decodeURI(f.win.location.hash); if (chKey(h1) !== chKey(h0)) { if (w.hi > 0 && w.hist[w.hi] === h1) { w.hist.splice(w.hi, 1); w.hi--; } navTo(w, h0); paint(w); } openRead(h1, true); }, 60);
+        setTimeout(() => { const h1 = dec(f.win.location.hash); if (chKey(h1) !== chKey(h0)) { if (w.hi > 0 && w.hist[w.hi] === h1) { w.hist.splice(w.hi, 1); w.hi--; } navTo(w, h0); paint(w); } openRead(h1, true); }, 60);
       }
     });
     // עמודת הסימניות: הקצה הימני של הבורר, מקובצת לפי ספר, שורה אחת לכל סימניה (שם ארוך נחתך ב-…)
@@ -1095,7 +1095,7 @@
 
   // כתובת: #read/… פותח את המקום (בחלון שכבר מציג אותו, או בחלון חדש); #gim — חלון הגימטריה
   function fromUrl() {
-    const h = decodeURI(location.hash || '');
+    const h = dec(location.hash);
     if (/^#gim$/i.test(h)) openGem();
     else if (/^#read/i.test(h)) { const w = reads().find(x => chKey(curHash(x)) === chKey(h)); if (w) focusWin(w.id); else if (!W(D.act) || curHash(W(D.act)) !== h) openRead(h, true); }
   }
