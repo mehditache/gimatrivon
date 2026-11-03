@@ -53,6 +53,7 @@ t('parse', 'ביטוי עם גרשיים בתוכו', () => { const e = SQ.parse
 t('parse', 'תחילית *', () => { const e = SQ.parse('בר*'); return e.k === 'w' && e.pre && e.kf === 'בר'; });
 t('parse', '^ תחילת פסוק', () => SQ.parse('^וידבר').caret === true);
 t('parse', 'OR / | ', () => eq([SQ.parse('משה OR אהרן').k, SQ.parse('משה | אהרן').k, SQ.parse('משה or אהרן').k], ['or', 'or', 'or']));
+t('parse', '| בלי רווחים (v4.19.2)', () => eq([SQ.parse('משה|אהרן').k, SQ.parse('משה||אהרן').c.length, SQ.parse('"גר בארץ"|משה').k], ['or', 2, 'or']));
 t('parse', 'NOT ו-מילה', () => { const a = SQ.parse('משה NOT אהרן'), b = SQ.parse('משה -אהרן'); return a.k === 'not' && b.k === 'and' && b.neg.length === 1; });
 t('parse', 'סדר: NOT > AND > OR', () => { const e = SQ.parse('א1 אב OR גד NOT הו'); return e.k === 'or' && e.c[1].k === 'not'; });
 t('parse', 'סוגריים', () => { const e = SQ.parse('(משה OR אהרן) פרעה'); return e.k === 'and' && e.c[0].k === 'or'; });
