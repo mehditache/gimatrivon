@@ -13,7 +13,7 @@
 
   /* ---------- טקסט: בראשית א:א – ו:ח, אותיות בלבד כמו בספר תורה ---------- */
   let raw;
-  try { raw = (await (await fetch('data/Tanakh/Genesis.json')).json()).text; } catch (e) { cv.remove(); return; }
+  try { raw = window.DESK_SPHERE_RAW || (await (await fetch('data/Tanakh/Genesis.json')).json()).text; } catch (e) { cv.remove(); return; }   // DESK_SPHERE_RAW: לקובץ הדגמה עצמאי
   const toks = [];
   for (let c = 0; c < 6; c++) {
     const n = c < 5 ? raw[c].length : 8;
@@ -66,7 +66,13 @@
   /* ---------- WebGL ---------- */
   const VS = 'attribute vec3 p;attribute vec2 uv;uniform mat4 mvp;uniform mat3 rot;varying vec2 vUv;varying vec3 vN;' +
     'void main(){vUv=uv;vN=rot*p;gl_Position=mvp*vec4(p,1.0);}';
-  const FS = `precision mediump float;varying vec2 vUv;varying vec3 vN;uniform sampler2D tex;uniform float back;uniform vec3 tint;uniform float dark;
+  const FS = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vUv;varying vec3 vN;uniform sampler2D tex;uniform float back;uniform vec3 tint;uniform float dark;uniform float time;
+float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 void main(){
   vec3 n=normalize(vN), e=vec3(0.0,0.0,1.0);
   vec4 t=texture2D(tex,vUv);
@@ -78,7 +84,20 @@ void main(){
     float k=clamp(abs(ndv),0.0,1.0);
     vec3 g=mix(vec3(0.50,0.33,0.07),vec3(0.95,0.76,0.30),k)*mix(0.66,1.12,dark);
     g+=vec3(1.0,0.93,0.70)*(pow(max(dot(reflect(-L,n),e),0.0),18.0)*0.9+spec*0.6)*mix(0.35,1.0,dark);
+    // ניצוצות: פס אור שעובר על האותיות כל 12 שניות, וניצוצות קטנים שמהבהבים כל אחד בקצב שלו
+    float sw=fract(vUv.x+vUv.y*0.4-time/12.0);
+    float glint=smoothstep(0.0,0.02,sw)*(1.0-smoothstep(0.02,0.08,sw));
+    vec2 cell=floor(vec2(vUv.x*220.0,vUv.y*110.0));
+    float h=hash(cell), h2=hash(cell+7.3);
+    float ph=fract(time*(1.0+floor(h*3.0))/20.0+h2);
+    float tw=step(0.9,h)*pow(max(sin(ph*3.14159),0.0),14.0);
+    g=mix(g,vec3(1.0,0.90,0.52),clamp((glint*0.85+tw*0.95)*k,0.0,1.0));
     t=vec4(min(g,vec3(1.0))*t.a,t.a);
+  }
+  if(back<0.5){
+    // מאחורי השם התלת־ממדי האותיות שעל פני הכדור מתעמעמות, כדי שהשם יקרא
+    float m=smoothstep(0.55,1.0,length(vec2(n.x/0.88,n.y/0.28)));
+    t*=mix(0.28,1.0,m);
   }
   if(back>0.5){
     float a=mix(0.20,0.16,dark);
@@ -103,8 +122,9 @@ void main(){
     for (let i = 0; i <= SLON; i++) { const u = i / SLON, lon = (u - 0.5) * 2 * Math.PI; pos.push(Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)); uvs.push(u - 0.5, v); }
   }
   for (let j = 0; j < SLAT; j++) for (let i = 0; i < SLON; i++) { const a = j * (SLON + 1) + i, b = a + SLON + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
-  const buf = (data, name, size) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW); const l = gl.getAttribLocation(prog, name); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0); };
-  buf(pos, 'p', 3); buf(uvs, 'uv', 2);
+  const mkBuf = data => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW); return b; };
+  const sphBufs = [[mkBuf(pos), gl.getAttribLocation(prog, 'p'), 3], [mkBuf(uvs), gl.getAttribLocation(prog, 'uv'), 2]];
+  const bindSphere = () => { gl.useProgram(prog); for (const [b, l, n] of sphBufs) { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, n, gl.FLOAT, false, 0, 0); } };
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);   // 129×65 קודקודים: נכנס ב־16 ביט
 
@@ -117,6 +137,91 @@ void main(){
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   tc.width = tc.height = 1;   // משחררים את עותק ה־CPU של המרקם (32MB)
+
+  /* ---------- השם בתוך הכדור: אותיות זהב תלת־ממדיות ----------
+     הצורה נבנית משכבות: 14 מלבנים זה מאחורי זה, וכל אחד מצויר רק היכן שהאות "עבה" מספיק.
+     בשכבות הקדמיות והאחוריות הסף עולה, וכך נוצר שיפוע (שיפוע חיתוך) בקצה האות, ובין לבין דופן ישרה. */
+  const NAME = 'בראשית', NL = 14, NT = 0.16, BEV = 16, NW = 1024, NH = 256;
+  await document.fonts.load('900 100px "GimFrank"', NAME).catch(() => {});
+  const mc = document.createElement('canvas'); mc.width = NW; mc.height = NH;
+  const mx = mc.getContext('2d');
+  mx.direction = 'rtl'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#fff';
+  let fpx = 200; mx.font = '900 ' + fpx + 'px "GimFrank",serif';
+  fpx = Math.min(215, fpx * 930 / mx.measureText(NAME).width); mx.font = '900 ' + fpx + 'px "GimFrank",serif';
+  mx.fillText(NAME, NW / 2, NH / 2 + fpx * 0.06);
+  const md = mx.getImageData(0, 0, NW, NH).data, dist = new Float32Array(NW * NH), INF = 1e4;
+  for (let i = 0; i < NW * NH; i++) dist[i] = md[i * 4 + 3] > 127 ? INF : 0;
+  for (let y = 0; y < NH; y++) for (let x = 0; x < NW; x++) {        // מרחק מהקצה (שני מעברים)
+    const i = y * NW + x; let d = dist[i];
+    if (x > 0) d = Math.min(d, dist[i - 1] + 1);
+    if (y > 0) { d = Math.min(d, dist[i - NW] + 1); if (x > 0) d = Math.min(d, dist[i - NW - 1] + 1.414); if (x < NW - 1) d = Math.min(d, dist[i - NW + 1] + 1.414); }
+    dist[i] = d;
+  }
+  for (let y = NH - 1; y >= 0; y--) for (let x = NW - 1; x >= 0; x--) {
+    const i = y * NW + x; let d = dist[i];
+    if (x < NW - 1) d = Math.min(d, dist[i + 1] + 1);
+    if (y < NH - 1) { d = Math.min(d, dist[i + NW] + 1); if (x < NW - 1) d = Math.min(d, dist[i + NW + 1] + 1.414); if (x > 0) d = Math.min(d, dist[i + NW - 1] + 1.414); }
+    dist[i] = d;
+  }
+  const nd = new Uint8Array(NW * NH * 4);
+  for (let i = 0; i < NW * NH; i++) { nd[i * 4] = md[i * 4 + 3]; nd[i * 4 + 1] = Math.min(255, dist[i] / BEV * 255); nd[i * 4 + 2] = Math.min(255, dist[i] / 48 * 255); nd[i * 4 + 3] = 255; }
+  mc.width = mc.height = 1;
+  const texN = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texN);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, NW, NH, 0, gl.RGBA, gl.UNSIGNED_BYTE, nd);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.activeTexture(gl.TEXTURE0);
+  const VS2 = 'attribute vec2 q;uniform mat4 mvp;uniform vec2 hf;uniform float z;varying vec2 vUv;' +
+    'void main(){vUv=vec2((q.x+1.0)*0.5,(1.0-q.y)*0.5);gl_Position=mvp*vec4(q.x*hf.x,q.y*hf.y,z,1.0);}';
+  const FS2 = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vUv;uniform sampler2D tx;uniform float zf;uniform mat3 rot;uniform vec2 px;
+void main(){
+  vec4 s=texture2D(tx,vUv);
+  float u=abs(zf-0.5)*2.0, t=clamp((u-0.55)/0.45,0.0,1.0);
+  float a=s.r*clamp((s.g-t*0.98)*${BEV}.0+0.5,0.0,1.0);
+  if(a<0.02)discard;
+  bool wall=(t<0.001||zf<0.6);
+  vec2 g;
+  if(wall) g=vec2(texture2D(tx,vUv+vec2(px.x,0.0)).b-texture2D(tx,vUv-vec2(px.x,0.0)).b, texture2D(tx,vUv-vec2(0.0,px.y)).b-texture2D(tx,vUv+vec2(0.0,px.y)).b);
+  else   g=vec2(texture2D(tx,vUv+vec2(px.x,0.0)).g-texture2D(tx,vUv-vec2(px.x,0.0)).g, texture2D(tx,vUv-vec2(0.0,px.y)).g-texture2D(tx,vUv+vec2(0.0,px.y)).g);
+  float gm=length(g);
+  vec3 nl=vec3(0.0,0.0,1.0);
+  if(gm>0.002) nl=normalize(vec3(-g/gm, wall?0.12:0.85));
+  vec3 N=normalize(rot*nl), E=vec3(0.0,0.0,1.0), L=normalize(vec3(-0.45,0.6,0.75));
+  float dif=max(dot(N,L),0.0), sp=pow(max(dot(reflect(-L,N),E),0.0),36.0);
+  vec3 Rv=reflect(-E,N);
+  float env=smoothstep(-0.2,0.9,Rv.y)*0.55+0.25*smoothstep(0.2,0.9,dot(Rv,normalize(vec3(0.7,0.2,0.6))));
+  vec3 gold=mix(vec3(0.46,0.29,0.05),vec3(1.0,0.80,0.34),clamp(0.25+dif*0.6+env*0.5,0.0,1.0));
+  vec3 c=gold*(0.55+0.55*dif)+vec3(1.0,0.93,0.72)*(sp*0.8+env*0.18);
+  c*=mix(0.55,1.0,zf);
+  gl_FragColor=vec4(min(c,vec3(1.0))*a,a);
+}`;
+  const prog2 = gl.createProgram();
+  gl.attachShader(prog2, sh(gl.VERTEX_SHADER, VS2)); gl.attachShader(prog2, sh(gl.FRAGMENT_SHADER, FS2));
+  gl.linkProgram(prog2);
+  const U2 = n => gl.getUniformLocation(prog2, n), qBuf = mkBuf([-1, 1, 1, 1, -1, -1, 1, -1]), qLoc = gl.getAttribLocation(prog2, 'q');
+  function drawName(now) {
+    const sec = now / 1000, yaw = reduce.matches ? 0.3 : 0.36 * Math.sin(sec * 2 * Math.PI / 16), pitch = (reduce.matches ? 0 : 0.07 * Math.sin(sec * 2 * Math.PI / 11 + 1)) + 0.05;
+    const mt = qMat(qN(qMul(qAx(1, 0, 0, pitch), qAx(0, 1, 0, yaw))));
+    const R4 = [mt[0], mt[1], mt[2], 0, mt[3], mt[4], mt[5], 0, mt[6], mt[7], mt[8], 0, 0, 0, 0, 1];
+    gl.useProgram(prog2);
+    gl.bindBuffer(gl.ARRAY_BUFFER, qBuf); gl.enableVertexAttribArray(qLoc); gl.vertexAttribPointer(qLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texN); gl.uniform1i(U2('tx'), 1);
+    gl.uniformMatrix4fv(U2('mvp'), false, mul4(P, mul4([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -DIST, 1], R4)));
+    gl.uniformMatrix3fv(U2('rot'), false, mt);
+    gl.uniform2f(U2('hf'), 0.8, 0.8 * NH / NW); gl.uniform2f(U2('px'), 1 / NW, 1 / NH);
+    for (let k = 0; k < NL; k++) { const zf = k / (NL - 1); gl.uniform1f(U2('zf'), zf); gl.uniform1f(U2('z'), (zf - 0.5) * NT); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }
+    gl.activeTexture(gl.TEXTURE0);
+  }
 
   /* ---------- ציור ---------- */
   const qMul = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
@@ -143,11 +248,15 @@ void main(){
     const m = qMat(q);
     gl.uniformMatrix4fv(U('mvp'), false, mul4(P, [m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, -DIST, 1]));
     gl.uniformMatrix3fv(U('rot'), false, m);
-    const dk = isDark();
-    gl.uniform3fv(U('tint'), dk ? [0.62, 0.75, 1.0] : [0.55, 0.62, 0.72]); gl.uniform1f(U('dark'), dk ? 1 : 0);
-    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.enable(gl.CULL_FACE); gl.frontFace(gl.CW);
-    gl.cullFace(gl.FRONT); gl.uniform1f(U('back'), 1); gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
-    gl.cullFace(gl.BACK); gl.uniform1f(U('back'), 0); gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+    const dk = isDark(), now = performance.now();
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.frontFace(gl.CW);
+    bindSphere();
+    gl.uniform3fv(U('tint'), dk ? [0.62, 0.75, 1.0] : [0.55, 0.62, 0.72]); gl.uniform1f(U('dark'), dk ? 1 : 0); gl.uniform1f(U('time'), (now / 1000) % 60);
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.FRONT); gl.uniform1f(U('back'), 1); gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);   // צד אחורי של הזכוכית
+    gl.disable(gl.CULL_FACE); drawName(now);                                                                             // השם, בתוך הכדור
+    bindSphere(); gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK); gl.uniform1f(U('back'), 0); gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);    // צד קדמי: מעל השם
     stats.frames++; frames++; dirty = false;
   }
   // מסתובב רק כשרואים אותו ויש פעילות; כשהוא עומד אין שום ציור
