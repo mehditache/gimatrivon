@@ -76,6 +76,7 @@ t('search', 'ביטוי לא מוצא מילים בסדר אחר', async () => e
 t('search', 'תחילית: בראש*', async () => { const r = await S('בראש*'); return r.total > 50 && refs(r).includes('בראשית 1:1'); });
 t('search', 'תחילית בתוך ביטוי', async () => { const r = await S('"ויאמר אל*"'); return r.total > 400; });
 t('search', 'תחילית עם אותיות שימוש: ראשי* מוצא בראשית', async () => refs(await S('ראשית*')).includes('בראשית 1:1'));
+t('search', 'תחילית עם ו/י מקפידה על האותיות (v4.19.2): שלו* בלי שלישי/שלשים, עם השלום', async () => { const r = await S('שלו*'); const bad = r.res.filter(x => !text(x.u).split(/[\s\u05BE]+/).some(w => /^[ובכלמהשד]{0,3}שלו/.test(w.replace(/[^א-ת]/g, '')))); return r.total > 300 && r.total < 500 && !bad.length && refs(r).includes('בראשית 29:6'); });
 t('search', '^: רק בתחילת פסוק', async () => { const r = await S('^וידבר משה'); const tx = r.res.slice(0, 30).map(x => SQ.words(text(x.u)).ws[0]); return r.total > 50 && tx.every(w => w === 'וידבר'); });
 t('search', 'OR: איחוד', async () => { const a = (await S('"פרעה"')).total, b = (await S('"מצרים"')).total, o = (await S('"פרעה" OR "מצרים"')).total; return o >= Math.max(a, b) && o <= a + b; });
 t('search', 'NOT: אין בתוצאה את המילה', async () => { const r = await S('משה NOT אהרן'); return r.total > 200 && r.res.every(x => x.u < 0 || !SQ.words(text(x.u)).ws.map(SQ.K).some(w => w === SQ.K('אהרן') || w.endsWith(SQ.K('אהרן')))); });

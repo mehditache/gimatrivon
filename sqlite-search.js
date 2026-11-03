@@ -122,7 +122,8 @@
     const pts = s.split(/[־\-]+/), out = [];
     pts.forEach((p, k) => {
       const pre = /\*\s*$/.test(p), w = letters(p);
-      if (w.length >= 2) out.push({ w, kf: K(w), of: O(w), pre, caret: caret && k === 0 });
+      // lit (v4.19.2, החלטת M): תחילית עם ו/י אחרי האות הראשונה — האותיות שנכתבו מחייבות (K מוחק ו/י, ואז שלו* היה כמו של*: שלישי, שלשים)
+      if (w.length >= 2) out.push({ w, kf: K(w), of: O(w), pre, lit: pre && /[וי]/.test(w.slice(1)), caret: caret && k === 0 });
     });
     return { neg, ws: out };
   }
@@ -186,8 +187,8 @@
   function lookups(e, out) {
     out = out || new Map(); if (!e) return out;
     // מילה: הצורה בכתיב המנורמל (עמודות t, a, b), וגם הכתיב המדויק (עמודה o) כשהוא שונה — לדירוג
-    const one = (kf, pre) => { const key = (pre ? '*' : '=') + kf; if (!out.has(key)) out.set(key, { kf, pre }); return key; };
-    const add = w => { w.key = one(w.kf, w.pre); w.okey = w.of !== w.kf ? one(w.of, w.pre) : null; };
+    const one = (kf, pre, lit) => { const key = (lit ? '~' : pre ? '*' : '=') + kf; if (!out.has(key)) out.set(key, { kf, pre, lit: !!lit }); return key; };
+    const add = w => { if (w.lit) { w.key = one(w.of, true, true); w.okey = null; return; } w.key = one(w.kf, w.pre); w.okey = w.of !== w.kf ? one(w.of, w.pre) : null; };
     if (e.k === 'w') add(e);
     else if (e.k === 'p') e.ws.forEach(add);
     else if (e.k === 'not') { lookups(e.a, out); lookups(e.b, out); }
@@ -200,7 +201,15 @@
   const COLS = "(CASE col WHEN 'o' THEN 0 WHEN 't' THEN 1 WHEN 'a' THEN 2 ELSE 3 END)";
   const nextStr = s => s.slice(0, -1) + String.fromCharCode(s.charCodeAt(s.length - 1) + 1);
   // טבלת אינדקס לכל סוג מקור (v0 פסוקים, v1 רש״י, v2 תרגומים): חיפוש בפסוקים לא קורא את ההתאמות שבמפרשים
+  // תחילית מילולית (lit): בעמודה o (הכתיב כמו שהוא), התחילית עצמה (עמודה 0 = מדויק) או אחרי אותיות שימוש (2), באותה שאילתה
+  const PRE_ALL = (() => { const out = new Set(); for (const v of ['', 'ו']) for (const sh of ['', 'ש', 'כש', 'מש']) for (const h of ['', 'ב', 'כ', 'ל', 'מ', 'מה', 'ה', 'ד', 'דב', 'דכ', 'דל', 'דמ']) {
+    const p = v + sh + h; if (p && (PRE_HE.test(p) || PRE_AR.test(p))) out.add(p); } return [...out]; })();
   function lookupSql(L, tab) {
+    if (L.lit) {
+      const ps = [''].concat(PRE_ALL), args = [];
+      const sql = ps.map(p => { args.push(p + L.kf, nextStr(p + L.kf)); return 'SELECT doc, ' + (p ? 2 : 0) + ' AS c, offset FROM v' + tab + " WHERE term >= ? AND term < ? AND col = 'o'"; }).join(' UNION ALL ');
+      return { sql, args };
+    }
     const where = L.pre ? 'term >= ? AND term < ?' : 'term = ?', args = L.pre ? [L.kf, nextStr(L.kf)] : [L.kf];
     return { sql: 'SELECT doc, ' + COLS + ', offset FROM v' + tab + ' WHERE ' + where, args };
   }
@@ -376,7 +385,7 @@
     const dom = DOMAINS[name == null || typeof name === 'number' ? ['tanakh', 'mishnah'][name || 0] : name], cat = dom.cat;
     const map = mapOf(books, cat), TABF = dom.tab, cache = new Map(), MAXC = 80;
     function occOf(L, tab) {
-      const key = tab + (L.pre ? '*' : '=') + L.kf;
+      const key = tab + (L.lit ? '~' : L.pre ? '*' : '=') + L.kf;
       if (cache.has(key)) { const v = cache.get(key); cache.delete(key); cache.set(key, v); return v; }
       const { sql, args } = lookupSql(L, tab);
       const p = Promise.resolve(backend.all(sql, args)).then(toOcc);
