@@ -92,11 +92,12 @@
   function lex(q) {
     const s = String(q), out = []; let i = 0;
     const isQ = c => c === '"' || c === '“' || c === '”' || c === '״' || c === '„';
-    const brk = c => c == null || /\s/.test(c) || c === '(' || c === ')' || c === ',';
+    const brk = c => c == null || /\s/.test(c) || c === '(' || c === ')' || c === ',' || c === '|';
     while (i < s.length) {
       const c = s[i];
       if (/\s/.test(c)) { i++; continue; }
       if (c === '(' || c === ')' || c === ',') { out.push({ t: c }); i++; continue; }
+      if (c === '|') { out.push({ t: 'OR' }); while (s[i] === '|') i++; continue; } // גם בלי רווחים: שלום|ברכה (עד v4.19.1 נקרא כמילה אחת, 0 תוצאות)
       if (isQ(c)) { // מירכאות פותחות: עד מירכאות סוגרות שאחריהן גבול (לא גרשיים בין אותיות, כמו רש״י)
         let j = i + 1;
         while (j < s.length && !(isQ(s[j]) && !(HEB.test(s[j - 1] || '') && HEB.test(s[j + 1] || '')) && brk(s[j + 1]))) j++;

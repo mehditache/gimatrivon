@@ -141,12 +141,14 @@ daf-renderer של TalmudLab (רישיון MIT, ראו `vendor/daf-renderer.LICEN
   `json/Tanakh/Targum/Targum Jonathan/Prophets/Targum Jonathan on Amos/Hebrew/Mikraot Gedolot.json`
   (כולם תחת `Sefaria/database_export` ב-Hugging Face).
 
-## גופן סת״ם (רקע שולחן העבודה)
+## גופני סת״ם (רקע שולחן העבודה)
 
 - **Stam Sefarad CLM** מפרויקט [Culmus](https://culmus.sourceforge.io) (גרסה 0.140), © Yoram Gnat. רק 22 אותיות א–ת, בקובץ
   `vendor/fonts/StamSefaradCLM-letters.woff2`.
 - **רישיון: GPL-2.0 עם חריג לגופנים** (font exception): הטמעת הגופן במסמך או באפליקציה אינה מחילה עליהם את ה-GPL.
   נוסח הרישיון המלא: `vendor/fonts/StamSefaradCLM-LICENSE.txt`.
+- **Stam Ashkenaz CLM** מאותו פרויקט [Culmus](https://culmus.sourceforge.io), © Yoram Gnat, באותו רישיון (GPL-2.0 עם חריג לגופנים).
+  רק 22 אותיות א–ת, בקובץ `vendor/fonts/StamAshkenazCLM-letters.woff2`. משמש לפרשת בראשית שעל הכדור המסתובב ברקע (`desk-sphere.js`, v4.19.0).
 
 ## גופן לטיני של הלוגו ("TORAH.ONE")
 
