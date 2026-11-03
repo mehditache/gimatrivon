@@ -1184,6 +1184,35 @@
   // שמות המקורות בחלון הקטע ובעימוד: בגמרא רש״י ותוספות (או רשב״ם), בזוהר הסולם והתרגום
   const srcLabel = (k, j, src) => { const t = tOf(k); return t && t.z ? T(src === 'r' ? 'הסולם' : 'תרגום') : src === 'r' ? innerLabel(k, j) : T('תוספות'); };
   const amudRow = (k, j) => (TD[k] || [])[j] || [[], [], []];
+  /* פרקי הגמרא: פרק חדש מתחיל בקטע שאחרי "הדרן עלך ..." (קטע נפרד בנתונים), ושמו נלקח מה"הדרן" שבסופו.
+     PK[k] = [{j, s, name}] לפי הסדר. בכל התצוגות פרק חדש מתחיל בעמוד חדש, ושם הפרק מופיע בכותרת העמוד ליד שם המסכת. */
+  const PK = {}, HADRAN = /^הדרן עלך\s+(.+?)(?:\s+וסליקא.*)?\s*[:.]?\s*$/;
+  function pereks(k) {
+    if (PK[k]) return PK[k]; const A = TD[k], t = tOf(k); if (!A || !t || t.z) return [];
+    const out = [{ j: 0, s: 0, name: '' }];
+    A.forEach((r, j) => (r ? r[0] : []).forEach((sg, s) => {
+      const c = plainT(sg).trim(), m = c.length < 80 && HADRAN.exec(c); if (!m) return;
+      out[out.length - 1].name = m[1].trim();
+      let nj = j, ns = s + 1; if (ns >= r[0].length) { nj++; ns = 0; }
+      if (nj < A.length && nj < t.n) out.push({ j: nj, s: ns, name: '' });
+    }));
+    out.forEach(p => { if (!p.name) { const r = A[p.j]; p.name = r && r[0][p.s] ? plainT(r[0][p.s]).replace(/^מתני['׳]\s*/, '').split(/\s+/).slice(0, 2).join(' ').replace(/[^א-ת" ]/g, '') : ''; } }); // פרק בלי "הדרן" (סוף המסכת בלי סיום): מילות הפתיחה
+    return (PK[k] = out);
+  }
+  const perekIx = (k, j, s) => { const P = pereks(k); let i = 0; while (i + 1 < P.length && (P[i + 1].j < j || (P[i + 1].j === j && P[i + 1].s <= s))) i++; return P.length ? i : -1; };
+  const perekLabel = (k, j, s) => { const i = perekIx(k, j, s); if (i < 0) return ''; return isEn() ? T('פרק') + ' ' + (i + 1) : 'פרק ' + pereks(k)[i].name; };
+  const perekStart = (k, j, s) => pereks(k).some(p => p.j === j && p.s === s);
+  // חלקי עמוד-הגמרא בצורת הדף: פרק שמתחיל באמצע העמוד פותח עמוד משלו. [[מקטע, עד קטע (לא כולל)], ...]
+  const dafParts = (k, j) => { const n = amudRow(k, j)[0].length, cut = pereks(k).filter(p => p.j === j && p.s > 0 && p.s < n).map(p => p.s), b = [0].concat(cut, [n]); return b.slice(0, -1).map((s, i) => [s, b[i + 1]]); };
+  const partOf = (k, j, s) => Math.max(0, dafParts(k, j).findIndex(r => s >= r[0] && s < r[1]));
+  /* צורת הדף בשני עמודים: כל דף (עמוד א ו-ב) נפתח במסך חדש כמו קודם. אם פרק מתחיל באמצע עמוד, החלק החדש פותח מסך חדש (בעמוד הימני),
+     ובמקום הפנוי שלפניו נשאר עמוד ריק. מחזיר מערך מסכים, בכל אחד עד שני חלקים {j, p}. */
+  function dafSpreads(k, d) {
+    const n = tOf(k).n, out = []; let cur = null;
+    [d, d + 1].filter(j => j < n).forEach(j => dafParts(k, j).forEach((_, p) => { if (!cur || cur.length === 2 || p > 0) out.push(cur = []); cur.push({ j, p }); }));
+    return out;
+  }
+  const dafSpreadAt = (k, j, p) => { const d = j - (j & 1), L = dafSpreads(k, d); return { d, L, i: Math.max(0, L.findIndex(x => x.some(u => u.j === j && u.p === p))) }; };
   const fmtT = s => { // סימוני הדגשה מאוזנים תמיד: סגירה בלי פתיחה נזרקת, ופתיחה שלא נסגרה נסגרת בסוף (אחרת ההדגשה דולפת לעמוד הבא)
     let open = 0; const out = h(s).replace(/[\u0001-\u0004]/g, c => c === '\u0001' || c === '\u0003' ? (open++, c === '\u0001' ? '<b class="big">' : '<b>') : open > 0 ? (open--, '</b>') : '');
     return open > 0 ? out + '</b>'.repeat(open) : out;
@@ -1301,11 +1330,12 @@
     cl.className = 'rdDafIn';
     return cl.outerHTML;
   }
-  function dafHtml(k, j, W, H, q) {
-    const key = k + ':' + j + ':' + W + 'x' + H + ':' + S.size + ':' + (q || ''); if (DC.has(key)) return DC.get(key);
-    const a = amudRow(k, j), sp = (cls, s, inner) => '<span class="' + cls + '" data-j="' + j + '" data-s="' + s + '">' + inner + '</span>';
-    const main = a[0].map((s, i) => sp('tg', i, talTxt(s, q))).join(' ');
-    const cm = (list, c) => list.map(e => sp('tc ' + c, e[0], (e[1] ? '<b>' + talTxt(e[1], q) + '</b> ' : '') + talTxt(e[2], q))).join(' ');
+  function dafHtml(k, j, W, H, q, rg) {
+    const a = amudRow(k, j); rg = rg || [0, a[0].length];
+    const key = k + ':' + j + ':' + rg.join('-') + ':' + W + 'x' + H + ':' + S.size + ':' + (q || ''); if (DC.has(key)) return DC.get(key);
+    const sp = (cls, s, inner) => '<span class="' + cls + '" data-j="' + j + '" data-s="' + s + '">' + inner + '</span>', inR = s => s >= rg[0] && s < rg[1];
+    const main = a[0].map((s, i) => inR(i) ? sp('tg', i, talTxt(s, q)) : '').filter(Boolean).join(' ');
+    const cm = (list, c) => list.filter(e => inR(e[0])).map(e => sp('tc ' + c, e[0], (e[1] ? '<b>' + talTxt(e[1], q) + '</b> ' : '') + talTxt(e[2], q))).join(' ');
     const host = $r('#rdDafHost'); host.style.width = W + 'px';
     const maxScale = 1 + S.size * 0.12;
     const run = s => {
@@ -1321,22 +1351,24 @@
     run(lo); out = freezeDaf(host.firstChild); host.innerHTML = '';
     measured(); DC.set(key, out); trimMap(DC, 40); return out;
   }
-  const talHead = (t, j) => t.z
+  const talHead = (t, j, s) => t.z
     ? '<header class="rdHead"><span>' + h(T('זוהר') + ' · ' + T('חלק') + ' ' + (isEn() ? t.v : ['', 'א׳', 'ב׳', 'ג׳'][t.v])) + '</span><span class="mid">' + h(talName(t)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(T('דף') + ' ' + dafTxt(j, t.k)) + '</span></header>'
-    : '<header class="rdHead"><span>' + h(T('מסכת') + ' ' + talName(t)) + '</span><span class="mid">' + h(grpName(t.g)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(dafTxt(j)) + '</span></header>';
+    : '<header class="rdHead"><span>' + h(T('מסכת') + ' ' + talName(t)) + (s != null && TD[t.k] ? '<span class="pk"> · ' + h(perekLabel(t.k, j, s)) + '</span>' : '') + '</span><span class="mid">' + h(grpName(t.g)) + '</span><span' + (isEn() ? ' dir="ltr"' : '') + '>' + h(dafTxt(j)) + '</span></header>';
   // מידות שטח הטקסט בעמוד (בלי כותרת ומספר), לפי עמוד-בדיקה עם אותן מחלקות
   function dafBox(g) {
     const probe = $r('#rdProbe'); probe.className = 'rdPage tal' + g.cls;
     probe.innerHTML = talHead(talT(), 0) + '<div class="rdDaf"></div><div class="rdNum">א</div>';
     const b = probe.querySelector('.rdDaf'), r = { W: Math.floor(b.clientWidth), H: Math.floor(b.clientHeight) - 4 }; probe.innerHTML = ''; return r;
   }
-  function dafPage(k, j, side, g, q) {
+  function dafPage(k, j, side, g, q, p) {
     const t = TX.list[TX.byK[k]];
-    if (j >= t.n) return '<article class="rdPage ' + side + ' blank' + g.cls + '" aria-hidden="true"></article>';
-    const box = dafBox(g);
-    return '<article class="rdPage tal ' + side + g.cls + '" aria-label="' + h(T('דף') + ' ' + dafTxt(j)) + '">' + talHead(t, j) +
-      '<div class="rdDaf">' + dafHtml(k, j, box.W, box.H, q) + '</div><div class="rdNum">' + h(dafTxt(j)) + '</div></article>';
+    if (j == null || j >= t.n) return '<article class="rdPage ' + side + ' blank' + g.cls + '" aria-hidden="true"></article>';
+    const box = dafBox(g), P = dafParts(k, j), rg = P[Math.min(p || 0, P.length - 1)] || [0, 0], part = P.length > 1;
+    return '<article class="rdPage tal ' + side + g.cls + '" aria-label="' + h(T('דף') + ' ' + dafTxt(j)) + '">' + talHead(t, j, rg[0]) +
+      '<div class="rdDaf">' + dafHtml(k, j, box.W, box.H, q, part ? rg : null) + '</div><div class="rdNum">' + h(dafTxt(j)) + '</div></article>';
   }
+  // מסך בצורת הדף: שני עמודים (או אחד במסך צר) לפי המיקום S.tj / S.tp (החלק בעמוד)
+  const dafUnitHtml = (k, u, side, g, q) => u ? dafPage(k, u.j, side, g, q, u.p) : dafPage(k, null, side, g, q);
 
   /* גמרא ומפרשים: עמודים לכל עמוד-גמרא (pg = {segs: [קטעים], cm: [פירושים]}), כמו pagesFor של תנ״ך/משנה */
   const maxOkF = (lo, max, ok) => {
@@ -1349,8 +1381,9 @@
   function studyInner(k, j, pg, q) {
     const t = TX.list[TX.byK[k]], a = amudRow(k, j), cmCls = t.z || S.cmFont !== 'rashi' ? 'fN' : 'fR';
     const chip = s => '<span class="vn">' + num(s + 1) + '</span>';
-    let html = talHead(t, j);
-    if (pg.first) html += '<div class="rdChTitle">' + (j === 0 ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h(T('דף') + ' ' + dafTxt(j, k)) + '</span></div>';
+    const s0 = pg.segs.length ? pg.segs[0] : pg.cm.length ? pg.cm[0].v : 0, pkS = !t.z && pg.segs.length && perekStart(k, j, s0); // עמוד שפותח פרק: שם הפרק בכותרת שבראש העמוד
+    let html = talHead(t, j, t.z ? null : s0);
+    if (pg.first || pkS) html += '<div class="rdChTitle">' + (j === 0 && pg.first ? '<span class="bk">' + h(talTitle(t)) + '</span>' : '') + '<span class="ch">' + h([pkS ? perekLabel(k, j, s0) : '', pg.first ? T('דף') + ' ' + dafTxt(j, k) : ''].filter(Boolean).join(' · ')) + '</span></div>';
     const seg = s => '<span class="rdV tg" data-j="' + j + '" data-s="' + s + '">' + chip(s) + talTxt(a[0][s], q) + '</span>';
     if (stzOn(k, j)) { // ביאור שטיינזלץ שורה מול שורה: הגמרא מימין, הביאור משמאל, לפי קטע
       const sz = stzRow(k, j);
@@ -1485,10 +1518,12 @@
       return ok;
     };
     if (tt.z && !a[0].length) { const pg = { segs: [], first: true, cm: [] }; PC.set(key, [pg]); return [pg]; } // עמוד בלי פסקאות (פסקה ארוכה שנמשכת מהעמוד הקודם)
-    const queue = a[0].map((_, i) => i);
+    const queue = a[0].map((_, i) => i), PB = new Set(tt.z ? [] : pereks(k).filter(p => p.j === j && p.s > 0).map(p => p.s)); // פרק חדש פותח עמוד חדש
     if (!queue.length) queue.push(0);
     while (queue.length) {
-      let n = fits([queue[0]]) ? maxOkF(1, queue.length, n => fits(queue.slice(0, n))) : 0, cut = null;
+      if (carry.length && PB.has(queue[0])) { pages.push({ segs: [], first: false, cm: carry }); carry = []; } // שארית פירושי הפרק הקודם — בעמוד שלפני הפרק החדש
+      const stop = queue.findIndex((x, i) => i > 0 && PB.has(x)), L = stop < 0 ? queue.length : stop;
+      let n = fits([queue[0]]) ? maxOkF(1, L, n => fits(queue.slice(0, n))) : 0, cut = null;
       if (!n) { n = 1; const seg = [queue[0]]; cut = maxOkF(0, carry.concat(...seg.map(s => ents.filter(e => e.v === s))).reduce((x, e) => x + cmLen(e), 0), c => fits(seg, c)); }
       const segs = queue.splice(0, n), pg = mk(segs, cut);
       carry = cut == null ? [] : cutCm(carry.concat(...segs.map(s => ents.filter(e => e.v === s))), cut)[1];
@@ -1536,8 +1571,9 @@
     S.tj = Math.max(0, Math.min(S.tj, t.n - 1));
     let html = '', from = S.tj, last = S.tj, lastPg = null;
     if (S.tview === 'daf' && !t.z) {
-      if (geo.two) { from = S.tj - (S.tj & 1); last = Math.min(from + 1, t.n - 1); html = dafPage(k, from, 'right', geo, S.hl) + dafPage(k, from + 1, 'left', geo, S.hl); }
-      else html = dafPage(k, S.tj, 'single', geo, S.hl);
+      if (S.tp >= dafParts(k, S.tj).length) S.tp = 0;
+      if (geo.two) { const sp = dafSpreadAt(k, S.tj, S.tp), u = sp.L[sp.i]; S.tj = u[0].j; S.tp = u[0].p; from = u[0].j; last = u[u.length - 1].j; html = dafUnitHtml(k, u[0], 'right', geo, S.hl) + dafUnitHtml(k, u[1], 'left', geo, S.hl); }
+      else html = dafPage(k, S.tj, 'single', geo, S.hl, S.tp);
       $r('#rdPos').textContent = (from !== last ? T('עמודים') + ' ' + dafTxt(from) + '–' + dafTxt(last) : T('עמוד') + ' ' + dafTxt(from)) + ' ' + T('מתוך') + ' ' + dafTxt(t.n - 1);
     } else {
       const ps = studyPages(k, S.tj, geo); if (S.tp >= ps.length) S.tp = ps.length - 1;
@@ -1557,16 +1593,29 @@
     fxAfter(book);
     setBar();
     const dafV = S.tview === 'daf' && !t.z;
-    const atStart = dafV ? from === 0 : !stNext(k, S.tj, S.tp, -1, geo);
-    const atEnd = dafV ? (geo.two ? from + 2 >= t.n : S.tj + 1 >= t.n) : !stNext(k, lastPg.j, lastPg.p, 1, geo);
+    const atStart = dafV ? !dafNext(k, -1) : !stNext(k, S.tj, S.tp, -1, geo);
+    const atEnd = dafV ? !dafNext(k, 1) : !stNext(k, lastPg.j, lastPg.p, 1, geo);
     ['#rdPrev', '#rdPrev2'].forEach(s => { $r(s).disabled = atStart; });
     ['#rdNext', '#rdNext2'].forEach(s => { $r(s).disabled = atEnd; });
     markSel();
     save();
   }
+  // צורת הדף: המסך הבא / הקודם (חלק בעמוד, עמוד או דף), או null בקצה המסכת
+  function dafNext(k, dir) {
+    const n = tOf(k).n;
+    if (!geo.two) {
+      const P = dafParts(k, S.tj).length;
+      if (dir > 0) return S.tp + 1 < P ? { j: S.tj, p: S.tp + 1 } : S.tj + 1 < n ? { j: S.tj + 1, p: 0 } : null;
+      return S.tp > 0 ? { j: S.tj, p: S.tp - 1 } : S.tj > 0 ? { j: S.tj - 1, p: dafParts(k, S.tj - 1).length - 1 } : null;
+    }
+    const sp = dafSpreadAt(k, S.tj, S.tp), i = sp.i + dir;
+    if (i >= 0 && i < sp.L.length) return sp.L[i][0];
+    const d = sp.d + dir * 2; if (d < 0 || d >= n) return null;
+    const L = dafSpreads(k, d); return (dir > 0 ? L[0] : L[L.length - 1])[0];
+  }
   function talTurn(dir) {
     const t = talT();
-    if (S.tview === 'daf' && !t.z) { const step = geo.two ? 2 : 1, base = geo.two ? S.tj - (S.tj & 1) : S.tj, n = base + dir * step; if (n < 0 || n >= t.n) return; S.tj = n; S.tp = 0; fxDir = dir; return render(); }
+    if (S.tview === 'daf' && !t.z) { const x = dafNext(t.k, dir); if (!x) return; S.tj = x.j; S.tp = x.p; fxDir = dir; return render(); }
     let x = { j: S.tj, p: S.tp };
     for (let i = 0; i < (geo.two && !(t.z && S.tview === 'daf' && !geo.zc) ? 2 : 1); i++) { const n = stNext(t.k, x.j, x.p, dir, geo); if (!n) { if (i === 0) return; break; } x = n; }
     S.tj = x.j; S.tp = x.p; fxDir = dir; render();
@@ -1578,6 +1627,7 @@
     render();
     if (s == null || !TD[k]) return;
     if (S.tview === 'study' || isZ()) { const p = studyPages(k, S.tj, geo).findIndex(pg => pg.segs.includes(s)); if (p > 0) { S.tp = p; render(); } }
+    else { const p = partOf(k, S.tj, s); if (p > 0) { S.tp = p; render(); } }
     openSeg(S.tj, s);
   }
 
@@ -1744,7 +1794,7 @@
     if (s < 0) { if (j === 0) return; j--; s = amudRow(t.k, j)[0].length - 1; }
     else if (s >= amudRow(t.k, j)[0].length) { if (j + 1 >= t.n) return; j++; s = 0; }
     const vis = R.querySelector('.rdBook [data-j="' + j + '"][data-s="' + s + '"]');
-    if (!vis) { S.tj = j; S.tp = 0; if (S.tview === 'study') { const p = studyPages(t.k, j, geo).findIndex(pg => pg.segs.includes(s)); if (p > 0) S.tp = p; } render(); }
+    if (!vis) { S.tj = j; S.tp = 0; if (S.tview === 'study') { const p = studyPages(t.k, j, geo).findIndex(pg => pg.segs.includes(s)); if (p > 0) S.tp = p; } else if (!t.z) S.tp = partOf(t.k, j, s); render(); }
     openSeg(j, s);
   }
 
@@ -2415,7 +2465,12 @@
       const vars = R.getAttribute('style'); geo = saved; if (geo) setVars(geo);
       return { html, vars, sheets: n };
     }
-    if (S.tview === 'daf') pages = js.map(j => side => dafPage(k, j, side, geo, ''));
+    if (S.tview === 'daf') { // כמו במסך: פרק שמתחיל באמצע עמוד פותח גיליון חדש
+      let html = ''; const L = dafSpreads(k, from);
+      L.forEach(u => { html += '<div class="rdSheet">' + dafUnitHtml(k, u[0], 'right', geo, '') + dafUnitHtml(k, u[1], 'left', geo, '') + '</div>'; });
+      const vars = R.getAttribute('style'); geo = saved; if (geo) setVars(geo);
+      return { html, vars, sheets: L.length };
+    }
     else pages = [].concat(...js.map(j => studyPages(k, j, geo).map(pg => side => '<article class="rdPage tal prt ' + side + '">' + studyInner(k, j, pg, '') + '</article>')));
     let html = '';
     for (let i = 0; i < pages.length; i += 2) html += '<div class="rdSheet">' + pages[i]('right') + (pages[i + 1] ? pages[i + 1]('left') : '<article class="rdPage prt left blank"></article>') + '</div>';
