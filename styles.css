@@ -146,6 +146,8 @@ select{appearance:none;padding-inline-end:1.7rem;background-image:linear-gradien
    בלי reflow בכל פריים — גם אם תוכן הפנל ארוך. translateY(100%)→0 נותן אפקט "גלילה" מלמטה למעלה. */
 .filtPane{position:absolute;inset:0;overflow:auto;transform:translateY(100%);opacity:0;pointer-events:none;background:var(--pn);transition:transform .32s cubic-bezier(.22,.61,.36,1),opacity .24s ease}
 .filtPane.open{transform:translateY(0);opacity:1;pointer-events:auto}
+/* כל פס גלילה באפליקציה: דק ובצבע הטקסט (בהיר על רקע כהה, כהה על רקע בהיר), לא הפס הלבן של הדפדפן. כללים עם מחלקה גוברים על זה */
+*{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,currentColor 32%,transparent) transparent}
 .sc::-webkit-scrollbar{width:8px;height:8px}.sc::-webkit-scrollbar-track{background:transparent}.sc::-webkit-scrollbar-thumb{background:var(--sb);border-radius:8px;border:2px solid var(--pn)}.sc::-webkit-scrollbar-thumb:hover{background:var(--ac)}
 .sec{margin:0 0 .9rem}.sec>h3{margin:0 0 .35rem;font-size:.78rem;font-weight:600;color:var(--mu);display:flex;flex-direction:column;gap:.15rem}
 .sec>h3 .hint{font-weight:400;font-size:.7rem;color:var(--mu);opacity:.85}

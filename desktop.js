@@ -839,10 +839,10 @@
         f.home[id] = { p: el.parentNode, n: el.nextSibling };
         popLayer.style.top = ($('#dkBan').getBoundingClientRect().bottom + 6) + 'px';
         popLayer.appendChild(document.adoptNode(el)); popLayer.dataset.w = w.id;
-        popX(el, anchorRc(), popLayer.getBoundingClientRect());
         f.pops[id] = el; f.win.GT_POPS = Object.fromEntries(Object.keys(f.pops).map(k => ['#' + k, f.pops[k]]));
         if (!el._dk) { el._dk = new MutationObserver(() => syncPops(w, f)); el._dk.observe(el, { attributes: true, attributeFilter: ['hidden'], childList: true }); }
-        if (id === 'rdJump') jumpExtras(w, f);
+        if (id === 'rdJump') jumpExtras(w, f); // קודם עמודת הסימניות (מרחיבה את החלון), ואז המיקום — אחרת החלון הרחב גולש מעבר לקצה המסך
+        popX(el, anchorRc(), popLayer.getBoundingClientRect());
       } else if (lifted && lifted.hidden) {
         const h = f.home[id]; delete f.pops[id];
         f.win.GT_POPS = Object.fromEntries(Object.keys(f.pops).map(k => ['#' + k, f.pops[k]]));
@@ -957,6 +957,7 @@
     // עמודת הסימניות: הקצה הימני של הבורר, מקובצת לפי ספר, שורה אחת לכל סימניה (שם ארוך נחתך ב-…)
     const grid = j.querySelector('.rdJGrid'), col = f.doc.createElement('div'); col.className = 'rdJCol dkBmCol';
     const CATS = ['תנ״ך', 'משנה', 'רמב״ם', 'ש״ס', 'זוהר', 'טור', 'שולחן ערוך'], catOf = h => { const gr = f.win && f.win.GimReader; return (gr && gr.placeCat && gr.placeCat(h)) || ''; };
+    const CAT_EN = { 'תנ״ך': 'Tanakh', 'משנה': 'Mishnah', 'רמב״ם': 'Rambam', 'ש״ס': 'Talmud', 'זוהר': 'Zohar', 'טור': 'Tur', 'שולחן ערוך': 'Shulchan Arukh' }, catLbl = c => T(c, CAT_EN[c] || c);
     let flt = '';
     function listMarks() {
       const m = marks(); col.textContent = ''; j.classList.toggle('dkBmOn', !!m.length); if (grid) grid.classList.toggle('dkBm', !!m.length);
@@ -970,10 +971,10 @@
         const cats = CATS.concat(rows.map(r => r.c).filter(c => CATS.indexOf(c) < 0).filter((c, i, a) => a.indexOf(c) === i));
         cats.forEach(c => {
           const rs = rows.filter(r => r.c === c); if (!rs.length) return;
-          const g = f.doc.createElement('div'); g.className = 'rdJGrp'; g.textContent = c + ' · ' + rs.length; body.appendChild(g);
+          const g = f.doc.createElement('div'); g.className = 'rdJGrp'; g.textContent = catLbl(c) + ' · ' + rs.length; body.appendChild(g);
           rs.forEach(r => {
             const row = f.doc.createElement('div'); row.className = 'dkBmRow' + (r.x.h === cur() ? ' cu' : '');
-            const b = f.doc.createElement('button'); b.type = 'button'; b.className = 'dkBmGo'; b.title = r.t; b.innerHTML = gsv('<path d="' + STAR + '"/>', true) + ' '; const sp = f.doc.createElement('span'); sp.textContent = r.t; b.appendChild(sp);
+            const b = f.doc.createElement('button'); b.type = 'button'; b.className = 'dkBmGo'; b.title = r.t; b.innerHTML = gsv('<path d="' + STAR + '"/>', true) + ' '; const sp = f.doc.createElement('span'); sp.dir = 'auto'; sp.textContent = r.t; b.appendChild(sp);
             b.onclick = () => { close(); navPush(w, r.x.h); };
             const d = f.doc.createElement('button'); d.type = 'button'; d.className = 'dkBmDel'; d.setAttribute('aria-label', T('הסרת הסימניה', 'Remove bookmark')); d.title = T('הסרת הסימניה', 'Remove bookmark'); d.innerHTML = gsv('<path d="m6 6 12 12M18 6 6 18"/>');
             d.onclick = e => { e.stopPropagation(); setMarks(marks().filter(y => y.h !== r.x.h)); star(); listMarks(); markPaint(); };
