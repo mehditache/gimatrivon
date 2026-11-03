@@ -215,6 +215,7 @@ const BOOK_EN = {
 B.books.forEach(b => { if (b.cat === 7) BOOK_EN[b.heTitle] = b.title.replace(/^Mishneh Torah, /, ''); });
 const bookName = he => LANG === 'en' ? (BOOK_EN[he] || he) : he;
 const GROUP_EN = {
+  'הקדמה': 'Introduction', 'ספר בראשית': 'Genesis', 'ספר שמות': 'Exodus', 'ספר ויקרא': 'Leviticus', 'ספר במדבר': 'Numbers', 'ספר דברים': 'Deuteronomy', 'הוספות': 'Additions', // קבוצות הזוהר בבורר
   'תורה': 'Torah', 'נביאים': 'Prophets', 'כתובים': 'Writings',
   'סדר זרעים': 'Seder Zeraim', 'סדר מועד': 'Seder Moed', 'סדר נשים': 'Seder Nashim',
   'סדר נזיקין': 'Seder Nezikin', 'סדר קדשים': 'Seder Kodashim', 'סדר טהרות': 'Seder Tahorot',
