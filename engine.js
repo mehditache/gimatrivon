@@ -51,7 +51,7 @@ function normalizeText(text) {
 }
 const letterList = n => [...n.normalizedText.replace(/ /g, '')];
 function calculateRegular(text) { const n = normalizeText(text); return regOf(n.normalizedText); }
-function calculateKollel(text) { return calculateRegular(text) + 1; }
+function calculateKollel(text) { const v = calculateRegular(text); return letterList(normalizeText(text)).length ? v + 1 : 0; }
 function calculateWords(text) { const n = normalizeText(text); return regOf(n.normalizedText) + n.words.length; }
 function calculateLetters(text) { const n = normalizeText(text); return regOf(n.normalizedText) + letterList(n).length; }
 function calculateMilui(text) { let t = 0; for (const c of letterList(normalizeText(text))) t += MILUI[base(c)]; return t; }
@@ -93,6 +93,8 @@ function calculateGematria(text, method) {
       else { r.value = base + L; r.details = { atbach: base, letterCount: L, formula: `${base} + ${L} אותיות = ${r.value}` }; }
     }
   } else throw new Error('שיטה לא מוכרת: ' + method);
+  // v4.19.2: בלי אף אות (תיבה ריקה, רק ספרות או אותיות לועזיות) אין ערך — עד עכשיו "עם הכולל" הציג 1
+  if (!L && r.value) { r.value = 0; r.details = { formula: '0' }; }
   return r;
 }
 
