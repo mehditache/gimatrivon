@@ -31,6 +31,15 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { c ? pass++ : fail++; console.l
   await pg.keyboard.type('אהרן', { delay: 30 }); ok('הקלדה אחרי ניקוי פותחת', await waitShown());
   await pg.keyboard.press('Escape'); await pg.mouse.click(1350, 700); await pg.waitForTimeout(500);
   await pg.click('#dkQ'); ok('אחרי לחיצה בחוץ וחזרה לתיבה', await waitShown());
+  // רגרסיה (v4.19.3): בחירה ב"מעבר אל" ברשימה פתחה את הפרק בלי המשנה / הפסוק ("בבא קמא ח ז" → משנה א), כי הכתובת של המארח
+  // נלקחה מהעוגן שלו אחרי הציור (תחילת העמוד שהמארח הצר צייר) ולא מהמקום שנבחר
+  for (const [qq, want, v, how] of [['בבא קמא ח ז', '#read/MS/BK/8', 7, 'click'], ['הלכות שבת ב ג', '#read/MT/Sab/2', 3, 'arrow'], ['שמות יב ב', '#read/TN/Exod/12', 2, 'click']]) {
+    await pg.keyboard.press('Escape'); await pg.keyboard.press('Escape'); await pg.click('#dkQ'); await pg.fill('#dkQ', ''); await pg.keyboard.type(qq, { delay: 20 }); await waitShown(); await pg.waitForTimeout(800);
+    if (how === 'click') await (await (await pg.$('.dkHost')).contentFrame()).click('#rdDrop .rdDI.ref'); else { await pg.keyboard.press('ArrowDown'); await pg.keyboard.press('Enter'); }
+    // חלון קריאה בפרק, שבו המשנה / ההלכה / הפסוק שנבחרו מהבהבים (ההבהוב נמשך כ-2.6 שניות)
+    const seen = await pg.waitForFunction(([w, v]) => [...document.querySelectorAll('iframe')].filter(f => !f.classList.contains('dkHost')).some(f => { try { const h = decodeURIComponent(f.contentWindow.location.hash); return (h === w || h.startsWith(w + '/')) && !!f.contentDocument.querySelector('.flash[data-v="' + v + '"]'); } catch (e) { return false; } }), [want, v], { timeout: 4000 }).then(() => true, () => false);
+    ok('מעבר אל "' + qq + '" (' + how + ') פותח את המקום המדויק', seen, await pg.evaluate(() => [...document.querySelectorAll('iframe')].map(f => { try { return decodeURIComponent(f.contentWindow.location.hash); } catch (e) { return ''; } }).join(' ')));
+  }
   await pg.click('#dkScope'); await pg.waitForTimeout(500); await pg.click('#dkScMenu [data-sc="glob"]'); await pg.waitForTimeout(300);
   await pg.click('#dkQ'); ok('אחרי שינוי טווח', await waitShown());
   // זוהר: תפריט הטווח בבנר מציג "בפרשה" / "בכל הספרים" ואת המקורות, והם פועלים
