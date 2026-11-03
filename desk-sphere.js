@@ -126,8 +126,7 @@ void main(){
   const persp = (fovy, n, f) => { const t = 1 / Math.tan(fovy / 2); return [t, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]; };
   const mul4 = (a, b) => { const o = new Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s; } return o; };
   const DIST = 3.3, FOV = 2 * Math.atan(Math.tan(Math.asin(1 / DIST)) / 0.96), P = persp(FOV, 0.1, 20);
-  const tilt = qAx(1, 0, 0, 0.36);
-  let spin = 0.32;
+  let q = qN(qMul(qAx(1, 0, 0, 0.36), qAx(0, 1, 0, 0.32))), vel = [0, 0], dragging = false, lastDrag = -1e9;
   const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const IDLE = 5 * 60e3;
@@ -141,7 +140,7 @@ void main(){
   }
   function draw() {
     gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-    const m = qMat(qN(qMul(tilt, qAx(0, 1, 0, spin))));
+    const m = qMat(q);
     gl.uniformMatrix4fv(U('mvp'), false, mul4(P, [m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, -DIST, 1]));
     gl.uniformMatrix3fv(U('rot'), false, m);
     const dk = isDark();
@@ -152,16 +151,43 @@ void main(){
     stats.frames++; frames++; dirty = false;
   }
   // מסתובב רק כשרואים אותו ויש פעילות; כשהוא עומד אין שום ציור
-  const shouldRun = () => !document.hidden && !document.body.classList.contains('dkMax') && !reduce.matches && performance.now() - lastAct < IDLE;
+  const coast = () => Math.hypot(vel[0], vel[1]) > 1e-5;
+  const shouldRun = () => !document.hidden && !document.body.classList.contains('dkMax') && (coast() || (!reduce.matches && performance.now() - lastAct < IDLE));
+  const turn = (ax, ay, ang) => { q = qN(qMul(qAx(ax, ay, 0, ang), q)); };
   function frame(t) {
     raf = 0;
     if (!shouldRun()) { stats.running = false; if (dirty) { resize(); draw(); } return; }
     raf = requestAnimationFrame(frame);
     if (tPrev && t - tPrev < 31) return;          // עד ~30 פריימים בשנייה
     const dt = tPrev ? Math.min(100, t - tPrev) : 16; tPrev = t;
-    spin -= 0.00010 * dt; stats.running = true;
+    stats.running = true;
+    const sp = Math.hypot(vel[0], vel[1]);
+    if (dragging) { /* הגרירה עצמה מסובבת */ }
+    else if (sp > 1e-5) { const k = dt / 16; turn(vel[0] / sp, vel[1] / sp, sp * k); vel = vel.map(v => v * Math.pow(0.95, k)); if (Math.hypot(...vel) < 1e-5) vel = [0, 0]; }
+    else if (!reduce.matches && t - lastDrag > 2500) turn(0, 1, -0.00010 * dt);
     resize(); draw();
   }
+  /* ---------- סיבוב בגרירה עם העכבר (v4.19.1): תנופה אחרי שעוזבים, וחזרה לסיבוב העצמי אחרי 2.5 שניות ---------- */
+  let px = 0, py = 0, pt = 0;
+  cv.addEventListener('pointerdown', e => {
+    if (e.button) return;
+    dragging = true; vel = [0, 0]; px = e.clientX; py = e.clientY; pt = performance.now();
+    cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); e.preventDefault(); wake();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - px, dy = e.clientY - py, d = Math.hypot(dx, dy), now = performance.now();
+    if (!d) return;
+    const ang = d * 2.6 / cv.clientHeight, ax = dy / d, ay = dx / d;
+    turn(ax, ay, ang);
+    const dt = Math.max(8, now - pt); vel = [ax * ang / dt * 16, ay * ang / dt * 16];
+    px = e.clientX; py = e.clientY; pt = now; lastDrag = now; dirty = true;
+    if (!raf) { tPrev = 0; raf = requestAnimationFrame(frame); }
+    if (!shouldRun()) { resize(); draw(); }
+  });
+  const release = () => { if (!dragging) return; dragging = false; cv.classList.remove('drag'); if (performance.now() - pt > 80) vel = [0, 0]; lastDrag = performance.now(); };
+  cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+
   const wake = () => { lastAct = performance.now(); if (!raf) { tPrev = 0; raf = requestAnimationFrame(frame); } };
   ['pointermove', 'pointerdown', 'keydown', 'wheel'].forEach(ev => addEventListener(ev, wake, { passive: true, capture: true }));
   // לחיצה בתוך חלון (iframe) מעבירה אליו את המיקוד: גם זו פעילות
