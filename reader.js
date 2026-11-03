@@ -500,7 +500,9 @@
   const setHash = x => { if (location.hash === x || (location.hash && !MODE_HASH.test(location.hash))) return; try { history.replaceState(history.state, '', x); } catch (e) {} };
   // חלון פתוח (קטע בגמרא, דיבור בטור) נכנס לכתובת, כדי שקישור שמועתק ממנו יפתח אותו שוב
   const curRef = () => isTur() ? Object.assign({ kind: 'tur', k: S.rk, s: S.rs }, S.rsel && S.rsel.x !== 't' ? { x: S.rsel.x, i: S.rsel.i, s: S.rsel.s } : {})
-    : isTal() ? Object.assign({ kind: 'tal', k: S.tk, j: S.tj }, talT().z ? { z: 1, d0: talT().d0 } : {}, S.sel ? { j: S.sel.j, s: S.sel.s } : {}) : { kind: 'ref', b: S.b, ch: S.ch, v: S.anchor };
+    : isTal() ? Object.assign({ kind: 'tal', k: S.tk, j: S.tj }, talT().z ? { z: 1, d0: talT().d0 } : {}, S.sel ? { j: S.sel.j, s: S.sel.s } : {}) : { kind: 'ref', b: S.b, ch: S.ch, v: hostPin && hostPin.b === S.b && hostPin.ch === S.ch ? hostPin.v : S.anchor };
+  // מקום שנבחר ברשימה של מארח החיפוש (pickDrop) — עד שהמארח מסונכרן שוב לחלון אחר (hashchange)
+  let hostPin = null; if (G.addEventListener) G.addEventListener('hashchange', () => { hostPin = null; });
   function syncHash() { if (IX && document.body.dataset.mode === 'read') setHash(hashOfRef(IX, curRef())); }
 
   let TX = null;
@@ -3335,7 +3337,7 @@
     return dropItems[0] && dropItems[0].sg && RS && RS.n ? RS.start : 0; // רק הצעות ספרים — Enter לתוצאה הראשונה
   }
   function pickDrop(i) {
-    const it = dropItems[i]; if (!it || it.kind === 'ph') return;
+    hostPin = null; const it = dropItems[i]; if (!it || it.kind === 'ph') return;
     const q = $r('#rdQ').value;
     if (it.kind === 'hit' || it.kind === 'thit' || it.kind === 'rhit') { S.hl = q; SQHL = (it.kind === 'hit' ? it.r : it.x).sq ? sqHl(q) : null; LP = { q, sig: dropSig(), i, kind: it.kind }; if (it.r && it.r.tr && S.tr !== it.r.tr) S.tr = it.r.tr; } else { S.hl = ''; $r('#rdQ').value = ''; }
     $r('#rdQ').blur(); // כדי שהחצים ידפדפו מיד
@@ -3344,6 +3346,9 @@
     if (it.kind === 'tal') return goTal(it.k, it.j);
     if (it.kind === 'rhit') return goTurHit(it.x);
     if (it.kind === 'thit') { segTab = it.x.src === 't' ? 't' : 'r'; return goTal(it.x.tk || S.tk, it.x.j, it.x.s); }
+    // v4.19.3: במארח החיפוש של שולחן העבודה הכתובת היא הבחירה, ושולחן העבודה פותח אותה בחלון. העוגן אחרי הציור הוא תחילת
+    // העמוד שהמארח הצר צייר, ולכן הכתובת נשארת על המקום המדויק שנבחר (אחרת "בבא קמא ח ז" נפתח בחלון במשנה א)
+    hostPin = document.documentElement.classList.contains('gtSearch') && G.GT_EMBED && G.parent !== G ? { b: it.r.b, ch: it.r.ch, v: it.r.v || 0 } : null;
     goTo(it.r.b, it.r.ch, it.r.v);
   }
   function updClear() { $r('#rdQClr').hidden = !$r('#rdQ').value; }
