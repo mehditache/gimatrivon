@@ -530,3 +530,6 @@ html.dkTouring .dkHost{z-index:10002}
 .dkTourMenu button>span{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:1px}
 .dkTourMenu small{margin:0;font:400 12px/1.35 var(--ui);color:var(--mu);text-align:start}
 .driver-popover.dkTourBusy .driver-popover-next-btn{opacity:.55;cursor:progress}
+/* כדור בראשית מסתובב ברקע (desk-sphere.js) */
+@font-face{font-family:"GimStamA";src:url(vendor/fonts/StamAshkenazCLM-letters.woff2) format("woff2");font-display:block;unicode-range:U+05D0-05EA}
+.wpSphere{position:absolute;left:50%;top:50%;width:min(82vmin,920px);aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none}
